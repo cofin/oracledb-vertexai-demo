@@ -18,19 +18,14 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from langchain_community.vectorstores.oraclevs import OracleVS
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.vectorstores import VectorStore
 from langchain_google_vertexai import ChatVertexAI
 
 from app.config import get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import oracledb
     from langchain_core.embeddings import Embeddings
-    from langchain_core.messages import BaseMessage
     from langchain_core.vectorstores import VectorStore
 
 
@@ -68,16 +63,3 @@ def get_embedding(query: str) -> list[float]:
 
 def get_vector_store(connection: oracledb.Connection, embeddings: Embeddings, table_name: str) -> VectorStore:
     return OracleVS(client=connection, embedding_function=embeddings, table_name=table_name, query=None)
-
-
-class InMemoryHistory(BaseChatMessageHistory, BaseModel):
-    """In memory implementation of chat message history."""
-
-    messages: list[BaseMessage] = Field(default_factory=list)
-
-    def add_messages(self, messages: Sequence[BaseMessage]) -> None:
-        """Add a list of messages to the store"""
-        self.messages.extend(messages)
-
-    def clear(self) -> None:
-        self.messages = []

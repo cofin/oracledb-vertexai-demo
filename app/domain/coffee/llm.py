@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
@@ -21,7 +22,7 @@ import structlog
 from langchain.chat_models.base import BaseChatModel
 from langchain.schema import SystemMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import (
     ConfigurableFieldSpec,
@@ -30,7 +31,6 @@ from langchain_core.runnables import (
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from app.config import get_settings
-from app.domain.coffee.utils import InMemoryHistory
 
 if TYPE_CHECKING:
     from langchain.chat_models.base import BaseChatModel
@@ -39,9 +39,18 @@ if TYPE_CHECKING:
 
 settings = get_settings()
 logger = structlog.get_logger()
-conversation_history = InMemoryHistory()
+conversation_history = InMemoryChatMessageHistory()
 
-store = {}
+
+def create_session_storage() -> defaultdict[tuple, InMemoryChatMessageHistory]:
+    from collections import defaultdict
+
+    from langchain_core.chat_history import InMemoryChatMessageHistory
+
+    return defaultdict(InMemoryChatMessageHistory)
+
+
+store = create_session_storage()
 
 
 def get_session_history(
@@ -77,8 +86,8 @@ def get_retrieval_chain(model: BaseChatModel, system_message: SystemMessage | No
     runnable = prompt | model
 
     return RunnableWithMessageHistory(
-        runnable,  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
-        get_session_history,
+        runnable=runnable,  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
+        get_session_history=get_session_history,
         history_factory_config=[
             ConfigurableFieldSpec(
                 id="user_id",
