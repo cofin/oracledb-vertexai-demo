@@ -21,10 +21,8 @@ if TYPE_CHECKING:
 
 
 __all__ = (
-    "AuthorizationError",
     "MissingDependencyError",
     "ApplicationClientError",
-    "HealthCheckConfigurationError",
     "ApplicationError",
 )
 
@@ -68,11 +66,3 @@ class MissingDependencyError(ApplicationError, ImportError):
 
 class ApplicationClientError(ApplicationError):
     """Base exception type for client errors."""
-
-
-class AuthorizationError(ApplicationClientError):
-    """A user tried to do something they shouldn't have."""
-
-
-class HealthCheckConfigurationError(ApplicationError):
-    """An error occurred while registering an health check."""

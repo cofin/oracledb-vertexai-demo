@@ -31,9 +31,7 @@ from advanced_alchemy.filters import (
 from litestar.di import Provide
 from litestar.params import Dependency, Parameter
 
-from app.config import constants
-
-__all__ = [
+__all__ = (
     "create_collection_dependencies",
     "provide_created_filter",
     "provide_filter_dependencies",
@@ -48,7 +46,7 @@ __all__ = [
     "OrderBy",
     "SearchFilter",
     "FilterTypes",
-]
+)
 
 DTorNone = datetime | None
 StringOrNone = str | None
@@ -161,7 +159,7 @@ def provide_limit_offset_pagination(
     page_size: int = Parameter(
         query="pageSize",
         ge=1,
-        default=constants.DEFAULT_PAGINATION_SIZE,
+        default=10,
         required=False,
     ),
 ) -> LimitOffset:

@@ -15,12 +15,10 @@
 from __future__ import annotations
 
 from app.config import app as plugin_configs
-from app.config import constants
 from app.config.base import BASE_DIR, DEFAULT_MODULE_NAME, Settings, get_settings
 
 __all__ = (
     "Settings",
-    "constants",
     "get_settings",
     "plugin_configs",
     "DEFAULT_MODULE_NAME",

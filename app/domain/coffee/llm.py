@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
@@ -33,6 +32,8 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from app.config import get_settings
 
 if TYPE_CHECKING:
+    from collections import defaultdict
+
     from langchain.chat_models.base import BaseChatModel
     from langchain_core.chat_history import BaseChatMessageHistory
     from langchain_core.runnables import Runnable
