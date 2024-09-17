@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from typing import Annotated
+
 from langchain_community.vectorstores.oraclevs import OracleVS
 from langchain_core.embeddings import Embeddings
 from langchain_core.runnables import Runnable
@@ -21,8 +23,12 @@ from litestar import Controller, WebSocket, get, post
 from litestar.channels import ChannelsPlugin
 from litestar.datastructures import State
 from litestar.di import Provide
+from litestar.enums import RequestEncodingType
+from litestar.params import Body
+from litestar.response import Template
 from litestar_vite.inertia import InertiaRequest
 
+from app.config import get_settings
 from app.domain.coffee.dependencies import (
     provide_embeddings_service,
     provide_product_description_vector_store,
@@ -61,7 +67,33 @@ class CoffeeChatController(Controller):
         CoffeeChatReply,
         RecommendationService,
         CoffeeChatMessage,
+        Body,
+        RequestEncodingType,
     ]
+
+    @get(path="/", name="ocw.show")
+    async def show_ocw(self) -> Template:
+        """Serve site root."""
+        settings = get_settings()
+        return Template(template_name="ocw.html.j2", context={"google_maps_api_key": settings.app.GOOGLE_API_KEY})
+
+    @post(path="/", name="ocw.get")
+    async def get_ocw(
+        self,
+        data: Annotated[CoffeeChatMessage, Body(title="OAuth2 Login", media_type=RequestEncodingType.URL_ENCODED)],
+        recommendation_service: RecommendationService,
+    ) -> Template:
+        """Serve site root."""
+        settings = get_settings()
+        message_response = await recommendation_service.ask_question(data.message.lower())
+        return Template(
+            template_name="ocw.html.j2",
+            context={
+                "google_maps_api_key": settings.app.GOOGLE_API_KEY,
+                "locations": message_response["points_of_interest"],
+                "output": message_response["answer"],
+            },
+        )
 
     @get(component="coffee/simple-chat", name="simple-chat.show", path="/simple-chat/")
     async def simple_chat_show(self) -> dict:

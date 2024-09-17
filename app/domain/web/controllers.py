@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from litestar import Controller, get, post
+from litestar import Controller, get
 from litestar.response import File
 
 from app.config import app as config
@@ -22,16 +22,6 @@ class WebController(Controller):
     """Web Controller."""
 
     include_in_schema = False
-
-    @get(component="coffee/recommend", path="/", name="recommendations.show")
-    async def show_recommendations(self) -> dict:
-        """Serve site root."""
-        return {}
-
-    @post(component="coffee/recommend", path="/", name="recommendations.get")
-    async def get_recommendations(self) -> dict:
-        """Serve Dashboard Page."""
-        return {}
 
     @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, sync_to_thread=False)
     def favicon(self) -> File:
