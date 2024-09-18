@@ -5,7 +5,7 @@
 groups = ["default", "dev", "linting", "test"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:932699e7f220f64df9950cc51f4f51e90bc180798ffd08fd8547e0a5780b083c"
+content_hash = "sha256:8e45bfd4b438d3d2226e35e76c9d26f5357d1f128b8b14d5ac3130f7aa7f0250"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -207,6 +207,17 @@ dependencies = [
 files = [
     {file = "attrs-24.2.0-py3-none-any.whl", hash = "sha256:81921eb96de3191c8258c199618104dd27ac608d9366f5e35d011eae1867ede2"},
     {file = "attrs-24.2.0.tar.gz", hash = "sha256:5cfb1b9148b5b086569baec03f20d7b6bf3bcacc9a42bebf87ffaaca362f6346"},
+]
+
+[[package]]
+name = "blinker"
+version = "1.8.2"
+requires_python = ">=3.8"
+summary = "Fast, simple object-to-object and broadcast signaling"
+groups = ["default"]
+files = [
+    {file = "blinker-1.8.2-py3-none-any.whl", hash = "sha256:1779309f71bf239144b9399d06ae925637cf6634cf6bd131104184531bf67c01"},
+    {file = "blinker-1.8.2.tar.gz", hash = "sha256:8f77b09d3bf7c795e969e9486f39c2c5e9c39d4ee07424be2bc594ece9642d83"},
 ]
 
 [[package]]
@@ -618,6 +629,41 @@ files = [
 ]
 
 [[package]]
+name = "flask"
+version = "3.0.3"
+requires_python = ">=3.8"
+summary = "A simple framework for building complex web applications."
+groups = ["default"]
+dependencies = [
+    "Jinja2>=3.1.2",
+    "Werkzeug>=3.0.0",
+    "blinker>=1.6.2",
+    "click>=8.1.3",
+    "importlib-metadata>=3.6.0; python_version < \"3.10\"",
+    "itsdangerous>=2.1.2",
+]
+files = [
+    {file = "flask-3.0.3-py3-none-any.whl", hash = "sha256:34e815dfaa43340d1d15a5c3a02b8476004037eb4840b34910c6e21679d288f3"},
+    {file = "flask-3.0.3.tar.gz", hash = "sha256:ceb27b0af3823ea2737928a4d99d125a06175b8512c445cbd9a9ce200ef76842"},
+]
+
+[[package]]
+name = "flask-wtf"
+version = "1.2.1"
+requires_python = ">=3.8"
+summary = "Form rendering, validation, and CSRF protection for Flask with WTForms."
+groups = ["default"]
+dependencies = [
+    "flask",
+    "itsdangerous",
+    "wtforms",
+]
+files = [
+    {file = "flask_wtf-1.2.1-py3-none-any.whl", hash = "sha256:fa6793f2fb7e812e0fe9743b282118e581fb1b6c45d414b8af05e659bd653287"},
+    {file = "flask_wtf-1.2.1.tar.gz", hash = "sha256:8bb269eb9bb46b87e7c8233d7e7debdf1f8b74bf90cc1789988c29b37a97b695"},
+]
+
+[[package]]
 name = "frozenlist"
 version = "1.4.1"
 requires_python = ">=3.8"
@@ -713,7 +759,7 @@ files = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.66.0"
+version = "1.67.0"
 requires_python = ">=3.8"
 summary = "Vertex AI API client library"
 groups = ["default"]
@@ -731,23 +777,23 @@ dependencies = [
     "shapely<3.0.0dev",
 ]
 files = [
-    {file = "google-cloud-aiplatform-1.66.0.tar.gz", hash = "sha256:e95a2b45087e0e2cbfed9ffaf3f10aa8ef3fa2e5642f067246181b5c7b9b2b04"},
-    {file = "google_cloud_aiplatform-1.66.0-py2.py3-none-any.whl", hash = "sha256:3f7de6aab42f67b933a36bfb1354e36a5256f45780df92ac8b1b6361a145af49"},
+    {file = "google-cloud-aiplatform-1.67.0.tar.gz", hash = "sha256:4c9738d5a66d8baae01e1d0150fa972960481a1829c2ec2060b8a4fe16768901"},
+    {file = "google_cloud_aiplatform-1.67.0-py2.py3-none-any.whl", hash = "sha256:8d14292b2c1ddeadcb67f20364758f794b4c70eedd8f1356dd194303047cd179"},
 ]
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.66.0"
+version = "1.67.0"
 extras = ["all"]
 requires_python = ">=3.8"
 summary = "Vertex AI API client library"
 groups = ["default"]
 dependencies = [
-    "google-cloud-aiplatform==1.66.0",
+    "google-cloud-aiplatform==1.67.0",
 ]
 files = [
-    {file = "google-cloud-aiplatform-1.66.0.tar.gz", hash = "sha256:e95a2b45087e0e2cbfed9ffaf3f10aa8ef3fa2e5642f067246181b5c7b9b2b04"},
-    {file = "google_cloud_aiplatform-1.66.0-py2.py3-none-any.whl", hash = "sha256:3f7de6aab42f67b933a36bfb1354e36a5256f45780df92ac8b1b6361a145af49"},
+    {file = "google-cloud-aiplatform-1.67.0.tar.gz", hash = "sha256:4c9738d5a66d8baae01e1d0150fa972960481a1829c2ec2060b8a4fe16768901"},
+    {file = "google_cloud_aiplatform-1.67.0-py2.py3-none-any.whl", hash = "sha256:8d14292b2c1ddeadcb67f20364758f794b4c70eedd8f1356dd194303047cd179"},
 ]
 
 [[package]]
@@ -1249,6 +1295,17 @@ groups = ["test"]
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+]
+
+[[package]]
+name = "itsdangerous"
+version = "2.2.0"
+requires_python = ">=3.8"
+summary = "Safely pass data to untrusted environments and back."
+groups = ["default"]
+files = [
+    {file = "itsdangerous-2.2.0-py3-none-any.whl", hash = "sha256:c6242fc49e35958c8b15141343aa660db5fc54d4f13a1db01a3f5891b98700ef"},
+    {file = "itsdangerous-2.2.0.tar.gz", hash = "sha256:e0050c0b7da1eea53ffaf149c0cfbb5c6e2e2b69c4bef22c81fa6eb73e5f6173"},
 ]
 
 [[package]]
@@ -2709,16 +2766,16 @@ files = [
 
 [[package]]
 name = "vertexai"
-version = "1.66.0"
+version = "1.67.0"
 requires_python = ">=3.8"
 summary = "Please run pip install vertexai to use the Vertex SDK."
 groups = ["default"]
 dependencies = [
-    "google-cloud-aiplatform[all]==1.66.0",
+    "google-cloud-aiplatform[all]==1.67.0",
 ]
 files = [
-    {file = "vertexai-1.66.0-py3-none-any.whl", hash = "sha256:f772b716d218493f7021b649656b4c004cb54a1010d14c20dddcb2c512b36609"},
-    {file = "vertexai-1.66.0.tar.gz", hash = "sha256:0e178910b4ced28cc2a37f01ec792c32e01be31f22637af060abb352ebaca4da"},
+    {file = "vertexai-1.67.0-py3-none-any.whl", hash = "sha256:9b28d1241da05dfb29483d6621bf1e90a9a38416bc0315e96a430493e466dbdf"},
+    {file = "vertexai-1.67.0.tar.gz", hash = "sha256:d72308d9fa975f71c2013e05a7a21bead6998ef87c966e77d1ff46ed84ddc679"},
 ]
 
 [[package]]
@@ -2800,6 +2857,34 @@ dependencies = [
 files = [
     {file = "wcwidth-0.2.13-py2.py3-none-any.whl", hash = "sha256:3da69048e4540d84af32131829ff948f1e022c1c6bdb8d6102117aac784f6859"},
     {file = "wcwidth-0.2.13.tar.gz", hash = "sha256:72ea0c06399eb286d978fdedb6923a9eb47e1c486ce63e9b4e64fc18303972b5"},
+]
+
+[[package]]
+name = "werkzeug"
+version = "3.0.4"
+requires_python = ">=3.8"
+summary = "The comprehensive WSGI web application library."
+groups = ["default"]
+dependencies = [
+    "MarkupSafe>=2.1.1",
+]
+files = [
+    {file = "werkzeug-3.0.4-py3-none-any.whl", hash = "sha256:02c9eb92b7d6c06f31a782811505d2157837cea66aaede3e217c7c27c039476c"},
+    {file = "werkzeug-3.0.4.tar.gz", hash = "sha256:34f2371506b250df4d4f84bfe7b0921e4762525762bbd936614909fe25cd7306"},
+]
+
+[[package]]
+name = "wtforms"
+version = "3.1.2"
+requires_python = ">=3.8"
+summary = "Form validation and rendering for Python web development."
+groups = ["default"]
+dependencies = [
+    "markupsafe",
+]
+files = [
+    {file = "wtforms-3.1.2-py3-none-any.whl", hash = "sha256:bf831c042829c8cdbad74c27575098d541d039b1faa74c771545ecac916f2c07"},
+    {file = "wtforms-3.1.2.tar.gz", hash = "sha256:f8d76180d7239c94c6322f7990ae1216dae3659b7aa1cee94b6318bdffb474b9"},
 ]
 
 [[package]]
