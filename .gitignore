@@ -152,3 +152,7 @@ node_modules
 .npmrc
 install-pdm.py
 .messages.db
+
+demo.py
+static/
+templates/
