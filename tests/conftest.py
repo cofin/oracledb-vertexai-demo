@@ -17,13 +17,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from redis.asyncio import Redis
 
-from app.config import base
+from app.lib import settings as app_settings
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from pytest import MonkeyPatch
 
 
@@ -32,7 +29,6 @@ pytest_plugins = [
     "tests.data_fixtures",
     "pytest_databases.docker",
     "pytest_databases.docker.oracle",
-    "pytest_databases.docker.redis",
 ]
 
 
@@ -45,19 +41,9 @@ def anyio_backend() -> str:
 def _patch_settings(monkeypatch: MonkeyPatch) -> None:
     """Path the settings."""
 
-    settings = base.Settings.from_env(".env.testing")
+    settings = app_settings.Settings.from_env(".env.testing")
 
-    def get_settings(dotenv_filename: str = ".env.testing") -> base.Settings:
+    def get_settings(dotenv_filename: str = ".env.testing") -> app_settings.Settings:
         return settings
 
-    monkeypatch.setattr(base, "get_settings", get_settings)
-
-
-@pytest.fixture(name="redis", autouse=True)
-async def fx_redis(redis_docker_ip: str, redis_service: None, redis_port: int) -> AsyncGenerator[Redis, None]:
-    """Redis instance for testing.
-
-    Returns:
-        Redis client instance, function scoped.
-    """
-    yield Redis(host=redis_docker_ip, port=redis_port)
+    monkeypatch.setattr(app_settings, "get_settings", get_settings)

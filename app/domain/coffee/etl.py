@@ -34,7 +34,7 @@ def _convert_to_documents(results: list[dict]) -> list[Document]:
     ]
 
 
-def generate_embeddings() -> None:
+def generate_embeddings(create_index: bool = True) -> None:
     settings = get_settings()
     model = get_embeddings_service(settings.app.EMBEDDING_MODEL_TYPE)
     with oracle.get_connection() as db_connection, db_connection.cursor() as cursor:
@@ -51,9 +51,12 @@ def generate_embeddings() -> None:
             table_name=table_name,
             distance_strategy=DistanceStrategy.DOT_PRODUCT,
         )
-        console.print(f"Creating HNSW Index for {table_name}")
-        oraclevs.create_index(
-            client=db_connection,
-            vector_store=vs,
-            params={"idx_name": f"IDX_{table_name}_HNSW".upper(), "idx_type": "HNSW"},
-        )
+        if create_index:
+            console.print(f"Creating HNSW Index for {table_name}")
+            oraclevs.create_index(
+                client=db_connection,
+                vector_store=vs,
+                params={"idx_name": f"IDX_{table_name}_HNSW".upper(), "idx_type": "HNSW"},
+            )
+        else:
+            console.print(f"Skipping HNSW Index for {table_name}")

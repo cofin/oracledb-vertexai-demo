@@ -2,7 +2,7 @@
 """cloud world models
 
 Revision ID: 724c06a4b4c3
-Revises: 
+Revises:
 Create Date: 2024-09-18 19:54:22.385218+00:00
 
 """

@@ -186,10 +186,10 @@
             {% for location in points_of_interest %}
             (function () {
                 var marker = new google.maps.Marker({
-                    position: { 
-                        lat: {{ location.get("latitude") }}, 
-                        lng: {{ location.get("longitude") }}, 
-                        map: map, 
+                    position: {
+                        lat: {{ location.get("latitude") }},
+                        lng: {{ location.get("longitude") }},
+                        map: map,
                         title: '{{ location["name"] }}'
                     }
                 });

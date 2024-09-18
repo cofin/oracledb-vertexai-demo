@@ -45,7 +45,7 @@ def load_vectors() -> None:
     console = get_console()
 
     console.rule("Populating vector stores")
-    generate_embeddings()
+    generate_embeddings(False)
     console.rule("Vectors loaded")
 
 
