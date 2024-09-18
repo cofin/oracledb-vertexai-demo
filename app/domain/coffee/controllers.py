@@ -14,17 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-from langchain_community.vectorstores.oraclevs import OracleVS
-from langchain_core.embeddings import Embeddings
 from langchain_core.runnables import Runnable
-from litestar import Controller, WebSocket, get, post
-from litestar.channels import ChannelsPlugin
-from litestar.datastructures import State
+from litestar import Controller, get, post
 from litestar.di import Provide
-from litestar.enums import RequestEncodingType
-from litestar.params import Body
 from litestar.response import File, Template
 from litestar_vite.inertia import InertiaRequest
 
@@ -40,6 +34,10 @@ from app.domain.coffee.dependencies import (
 from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
 from app.domain.coffee.services import ProductService, RecommendationService, ShopService
 from app.lib.settings import get_settings
+
+if TYPE_CHECKING:
+    from litestar.enums import RequestEncodingType
+    from litestar.params import Body
 
 
 class CoffeeChatController(Controller):
@@ -95,16 +93,9 @@ class CoffeeChatController(Controller):
     signature_namespace = {"Request": InertiaRequest}
     signature_types = [
         Runnable,
-        ChannelsPlugin,
-        WebSocket,
-        State,
-        Embeddings,
-        OracleVS,
         ProductService,
         ShopService,
         CoffeeChatReply,
         RecommendationService,
         CoffeeChatMessage,
-        Body,
-        RequestEncodingType,
     ]

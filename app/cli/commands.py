@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from advanced_alchemy.extensions.litestar.cli import database_group
-from litestar.cli.main import litestar_group
+from rich_click import group
 
 from app.domain.coffee.llm import setup_system_message
 
@@ -49,7 +49,12 @@ def load_vectors() -> None:
     console.rule("Vectors loaded")
 
 
-@litestar_group.command(name="recommend", help="Get a recommendation.")  # type: ignore[misc]
+@group(name="recommend")
+def app_group() -> None:
+    """Application Commands."""
+
+
+@app_group.command(name="recommend", help="Find a coffee.")
 def recommend() -> None:
     """Execute the recommendation engine from the CLI"""
     import anyio

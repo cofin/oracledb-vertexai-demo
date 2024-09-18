@@ -51,8 +51,13 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from langchain_core.embeddings import Embeddings
         from langchain_core.runnables import Runnable
         from langchain_core.vectorstores import VectorStore
+        from litestar import WebSocket
+        from litestar.channels import ChannelsPlugin
+        from litestar.datastructures import State
+        from litestar.enums import RequestEncodingType
         from litestar.openapi.config import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
+        from litestar.params import Body
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config
@@ -113,12 +118,19 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "AsyncConnectionPool": AsyncConnectionPool,
                 "ConnectionPool": ConnectionPool,
                 "Runnable": Runnable,
+                "RequestEncodingType": RequestEncodingType,
+                "Body": Body,
+                "State": State,
+                "ChannelsPlugin": ChannelsPlugin,
+                "WebSocket": WebSocket,
             },
         )
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
+        from app.cli.commands import recommend
         from app.lib.settings import get_settings
 
         settings = get_settings()
         self.app_slug = settings.app.slug
+        cli.add_command(recommend, name="recommend")
