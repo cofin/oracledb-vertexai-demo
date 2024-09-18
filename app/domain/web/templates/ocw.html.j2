@@ -180,7 +180,7 @@
             function initMap() {
                 var map = new google.maps.Map(document.getElementById('map'), {
                     zoom: 10,
-                    center: { lat: {{ locations[0]["latitude"] }}, lng: {{ locations[0]["longitude"] }} },
+                    center: { lat: {{ content["points_of_interest"][0]["latitude"] }}, lng: {{ content["points_of_interest"][0]["longitude"] }} },
             });
 
             {% for location in content["points_of_interest"] %}
