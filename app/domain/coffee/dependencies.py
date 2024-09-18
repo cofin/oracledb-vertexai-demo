@@ -20,9 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 from langchain_community.vectorstores.oraclevs import OracleVS
 
-from app.config import get_settings
-from app.config.app import alchemy
-from app.domain.coffee.llm import get_retrieval_chain
+from app.config import alchemy
+from app.domain.coffee.llm import get_embeddings_service, get_llm, get_retrieval_chain
 from app.domain.coffee.services import (
     CompanyService,
     InventoryService,
@@ -30,7 +29,7 @@ from app.domain.coffee.services import (
     RecommendationService,
     ShopService,
 )
-from app.domain.coffee.utils import get_embeddings_service, get_llm
+from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -55,7 +54,7 @@ def provide_recommendation_service(
         retrieval_chain=retrieval_chain,
         products_service=products_service,
         shops_service=shops_service,
-        history_meta={"user_id": "1", "conversation_id": request.get_session_id() or "1"},
+        history_meta={"user_id": "1", "conversation_id": "1"},
     )
 
 

@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from litestar.config.app import AppConfig
 
 
-class ApplicationConfigurator(InitPluginProtocol, CLIPluginProtocol):
-    """Application configuration plugin.
+class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
+    """Application core configuration plugin.
 
     This class is responsible for configuring the main Litestar application with our routes, guards, and various plugins
     """
@@ -55,13 +55,12 @@ class ApplicationConfigurator(InitPluginProtocol, CLIPluginProtocol):
         from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
+        from app import config
         from app.__metadata__ import __version__ as current_version
-        from app.config import app as config
-        from app.config import get_settings
         from app.domain.coffee.controllers import CoffeeChatController
-        from app.domain.web.controllers import WebController
         from app.lib import log
         from app.lib.dependencies import create_collection_dependencies
+        from app.lib.settings import get_settings
         from app.server import plugins
 
         settings = get_settings()
@@ -97,7 +96,6 @@ class ApplicationConfigurator(InitPluginProtocol, CLIPluginProtocol):
         # routes
         app_config.route_handlers.extend(
             [
-                WebController,
                 CoffeeChatController,
             ],
         )
@@ -120,7 +118,7 @@ class ApplicationConfigurator(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.config import get_settings
+        from app.lib.settings import get_settings
 
         settings = get_settings()
         self.app_slug = settings.app.slug

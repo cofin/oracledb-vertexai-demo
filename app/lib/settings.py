@@ -321,11 +321,11 @@ class ViteSettings:
         default_factory=lambda: os.getenv("VITE_ENABLE_REACT_HELPERS", "True") in TRUE_VALUES,
     )
     """Enable React support in HMR."""
-    BUNDLE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/web/public"))
+    BUNDLE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/public"))
     """Bundle directory"""
     RESOURCE_DIR: Path = field(default_factory=lambda: Path("resources"))
     """Resource directory"""
-    TEMPLATE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/web/templates"))
+    TEMPLATE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/templates"))
     """Template directory."""
     ASSET_URL: str = field(default_factory=lambda: os.getenv("ASSET_URL", "/static/"))
     """Base URL for assets"""

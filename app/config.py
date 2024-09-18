@@ -40,55 +40,50 @@ from litestar_oracledb import SyncOracleDatabaseConfig, SyncOraclePoolConfig
 from litestar_vite import ViteConfig
 from litestar_vite.inertia import InertiaConfig
 
-from app.config.base import get_settings
+from app.lib.settings import get_settings
 
-settings = get_settings()
+_settings = get_settings()
 
 csrf = CSRFConfig(
-    secret=settings.app.SECRET_KEY,
-    cookie_secure=settings.app.CSRF_COOKIE_SECURE,
-    cookie_name=settings.app.CSRF_COOKIE_NAME,
-    header_name=settings.app.CSRF_HEADER_NAME,
+    secret=_settings.app.SECRET_KEY,
+    cookie_secure=_settings.app.CSRF_COOKIE_SECURE,
+    cookie_name=_settings.app.CSRF_COOKIE_NAME,
+    header_name=_settings.app.CSRF_HEADER_NAME,
 )
-cors = CORSConfig(allow_origins=cast("list[str]", settings.app.ALLOWED_CORS_ORIGINS))
+cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORIGINS))
 
 
 alchemy = SQLAlchemyAsyncConfig(
-    engine_instance=settings.db.get_engine(),
+    engine_instance=_settings.db.get_engine(),
     before_send_handler=async_autocommit_handler_maker(  # note: change the session scope key if using multiple engines
         commit_on_redirect=True,
     ),
     session_config=AsyncSessionConfig(expire_on_commit=False),
     alembic_config=AlembicAsyncConfig(
         render_as_batch=False,
-        version_table_name=settings.db.MIGRATION_DDL_VERSION_TABLE,
-        script_config=settings.db.MIGRATION_CONFIG,
-        script_location=settings.db.MIGRATION_PATH,
+        version_table_name=_settings.db.MIGRATION_DDL_VERSION_TABLE,
+        script_config=_settings.db.MIGRATION_CONFIG,
+        script_location=_settings.db.MIGRATION_PATH,
     ),
 )
 oracle = SyncOracleDatabaseConfig(
-    pool_config=SyncOraclePoolConfig(user=settings.db.USER, password=settings.db.PASSWORD, dsn=settings.db.DSN),
+    pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
 )
 vite = ViteConfig(
-    bundle_dir=settings.vite.BUNDLE_DIR,
-    resource_dir=settings.vite.RESOURCE_DIR,
-    template_dir=settings.vite.TEMPLATE_DIR,
-    use_server_lifespan=settings.vite.USE_SERVER_LIFESPAN,
-    dev_mode=settings.vite.DEV_MODE,
-    hot_reload=settings.vite.HOT_RELOAD,
-    is_react=settings.vite.ENABLE_REACT_HELPERS,
-    port=settings.vite.PORT,
-    host=settings.vite.HOST,
+    bundle_dir=_settings.vite.BUNDLE_DIR,
+    resource_dir=_settings.vite.RESOURCE_DIR,
+    template_dir=_settings.vite.TEMPLATE_DIR,
+    use_server_lifespan=_settings.vite.USE_SERVER_LIFESPAN,
+    dev_mode=_settings.vite.DEV_MODE,
+    hot_reload=_settings.vite.HOT_RELOAD,
+    is_react=_settings.vite.ENABLE_REACT_HELPERS,
+    port=_settings.vite.PORT,
+    host=_settings.vite.HOST,
 )
 inertia = InertiaConfig(
     root_template="index.html.j2",
-    redirect_unauthorized_to="/login",
-    extra_static_page_props={
-        "canResetPassword": True,
-        "hasTermsAndPrivacyPolicyFeature": True,
-    },
 )
-session = CookieBackendConfig(secret=settings.app.SECRET_KEY.encode("utf-8"))
+session = CookieBackendConfig(secret=_settings.app.SECRET_KEY.encode("utf-8"))
 
 
 @lru_cache
@@ -97,7 +92,7 @@ def _is_tty() -> bool:
 
 
 _structlog_processors = default_structlog_processors(as_json=not _is_tty())
-log_level = getattr(logging, settings.log.LEVEL)
+log_level = getattr(logging, _settings.log.LEVEL)
 log = StructlogConfig(
     enable_middleware_logging=False,
     structlog_logging_config=StructLoggingConfig(
@@ -105,7 +100,7 @@ log = StructlogConfig(
         processors=_structlog_processors,
         logger_factory=default_logger_factory(as_json=not _is_tty()),
         standard_lib_logging_config=LoggingConfig(
-            root={"level": settings.log.LEVEL, "handlers": ["queue_listener"]},
+            root={"level": _settings.log.LEVEL, "handlers": ["queue_listener"]},
             formatters={
                 "standard": {
                     "()": structlog.stdlib.ProcessorFormatter,
@@ -115,32 +110,32 @@ log = StructlogConfig(
             loggers={
                 "saq": {
                     "propagate": False,
-                    "level": settings.log.SAQ_LEVEL,
+                    "level": _settings.log.SAQ_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "_granian": {
                     "propagate": False,
-                    "level": settings.log.GRANIAN_ERROR_LEVEL,
+                    "level": _settings.log.GRANIAN_ERROR_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "granian.access": {
                     "propagate": False,
-                    "level": settings.log.GRANIAN_ACCESS_LEVEL,
+                    "level": _settings.log.GRANIAN_ACCESS_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "sqlalchemy.engine": {
                     "propagate": False,
-                    "level": settings.log.SQLALCHEMY_LEVEL,
+                    "level": _settings.log.SQLALCHEMY_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "sqlalchemy.pool": {
                     "propagate": False,
-                    "level": settings.log.SQLALCHEMY_LEVEL,
+                    "level": _settings.log.SQLALCHEMY_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "urllib3": {
                     "propagate": False,
-                    "level": settings.log.SQLALCHEMY_LEVEL,
+                    "level": _settings.log.SQLALCHEMY_LEVEL,
                     "handlers": ["queue_listener"],
                 },
             },

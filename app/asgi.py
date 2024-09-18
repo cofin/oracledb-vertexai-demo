@@ -25,7 +25,7 @@ def create_app() -> Litestar:
 
     from litestar import Litestar
 
-    from app.config import get_settings
+    from app.lib.settings import get_settings
     from app.server import plugins
 
     settings = get_settings()

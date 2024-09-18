@@ -14,22 +14,35 @@
 
 from __future__ import annotations
 
-from advanced_alchemy.repository import SQLAlchemyAsyncRepository, SQLAlchemyAsyncSlugRepository
+from typing import Literal, TypedDict
 
-from app.db.models import Company, Inventory, Product, Shop
-
-
-class CompanyRepository(SQLAlchemyAsyncRepository[Company]):
-    model_type = Company
+from app.lib.schema import CamelizedBaseStruct
 
 
-class ProductRepository(SQLAlchemyAsyncRepository[Product]):
-    model_type = Product
+class CoffeeChatMessage(CamelizedBaseStruct):
+    message: str
 
 
-class ShopRepository(SQLAlchemyAsyncSlugRepository[Shop]):
-    model_type = Shop
+class PointsOfInterest(TypedDict):
+    id: int
+    name: str
+    address: str
+    latitude: float
+    longitude: float
 
 
-class InventoryRepository(SQLAlchemyAsyncRepository[Inventory]):
-    model_type = Inventory
+class ChatMessage(TypedDict):
+    message: str
+    source: Literal["human", "ai", "system"]
+
+
+class CoffeeChatReply(TypedDict):
+    message: str
+    messages: list[ChatMessage]
+    answer: str
+    points_of_interest: list[PointsOfInterest]
+
+
+class HistoryMeta(TypedDict):
+    conversation_id: str
+    user_id: str

@@ -69,7 +69,6 @@ async def chat_session(
     history = FileHistory(str(history_file))
     session: PromptSession = PromptSession(history=history, erase_when_done=True)
     messages: list[BaseMessage] = []
-    message_counter = 0
     while True:
         text = await session.prompt_async("☕ > ", auto_suggest=AutoSuggestFromHistory())
         if not text:
@@ -90,8 +89,7 @@ async def chat_session(
             console.print("")
             console.rule()
         messages.append(llm_message)
-        console.print("")
-        message_counter += 1
+        console.rule(style="rule.dotted")
 
 
 async def print_response(

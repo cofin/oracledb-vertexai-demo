@@ -20,12 +20,12 @@ from litestar_oracledb import OracleDatabasePlugin
 from litestar_vite import VitePlugin
 from litestar_vite.inertia import InertiaPlugin
 
-from app.config import app as config
-from app.config import get_settings
-from app.server.builder import ApplicationConfigurator
+from app import config
+from app.lib.settings import get_settings
+from app.server.core import ApplicationCore
 
 settings = get_settings()
-app_config = ApplicationConfigurator()
+app_config = ApplicationCore()
 vite = VitePlugin(config=config.vite)
 oracle = OracleDatabasePlugin(config=config.oracle)
 granian = GranianPlugin()

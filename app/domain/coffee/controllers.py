@@ -25,10 +25,10 @@ from litestar.datastructures import State
 from litestar.di import Provide
 from litestar.enums import RequestEncodingType
 from litestar.params import Body
-from litestar.response import Template
+from litestar.response import File, Template
 from litestar_vite.inertia import InertiaRequest
 
-from app.config import get_settings
+from app import config
 from app.domain.coffee.dependencies import (
     provide_embeddings_service,
     provide_product_description_vector_store,
@@ -37,15 +37,53 @@ from app.domain.coffee.dependencies import (
     provide_retrieval_chain,
     provide_shops_service,
 )
-from app.domain.coffee.services import CoffeeChatReply, ProductService, RecommendationService, ShopService
-from app.lib.schema import CamelizedBaseStruct
-
-
-class CoffeeChatMessage(CamelizedBaseStruct):
-    message: str
+from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
+from app.domain.coffee.services import ProductService, RecommendationService, ShopService
+from app.lib.settings import get_settings
 
 
 class CoffeeChatController(Controller):
+    @get(path="/", name="ocw.show")
+    async def show_ocw(self) -> Template:
+        """Serve site root."""
+        settings = get_settings()
+        return Template(template_name="ocw.html.j2", context={"google_maps_api_key": settings.app.GOOGLE_API_KEY})
+
+    @post(path="/", name="ocw.get")
+    async def get_ocw(
+        self,
+        data: Annotated[CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)],
+        recommendation_service: RecommendationService,
+    ) -> Template:
+        """Serve site root."""
+        settings = get_settings()
+        reply = await recommendation_service.ask_question(data.message.lower())
+        return Template(
+            template_name="ocw.html.j2",
+            context={
+                "google_maps_api_key": settings.app.GOOGLE_API_KEY,
+                "answer": reply["answer"],
+                "points_of_interest": reply["points_of_interest"],
+            },
+        )
+
+    @get(component="coffee/simple-chat", name="simple-chat.show", path="/simple-chat/")
+    async def simple_chat_show(self) -> dict:
+        return {}
+
+    @post(component="coffee/simple-chat", name="simple-chat.send", path="/simple-chat/")
+    async def simple_chat_send(
+        self,
+        data: CoffeeChatMessage,
+        recommendation_service: RecommendationService,
+    ) -> CoffeeChatReply:
+        return await recommendation_service.ask_question(data.message.lower())
+
+    @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, sync_to_thread=False, include_in_schema=False)
+    def favicon(self) -> File:
+        """Serve site root."""
+        return File(path=f"{config.vite.public_dir}/favicon.ico")
+
     dependencies = {
         "embeddings": Provide(provide_embeddings_service),
         "vector_store": Provide(provide_product_description_vector_store),
@@ -70,38 +108,3 @@ class CoffeeChatController(Controller):
         Body,
         RequestEncodingType,
     ]
-
-    @get(path="/", name="ocw.show")
-    async def show_ocw(self) -> Template:
-        """Serve site root."""
-        settings = get_settings()
-        return Template(template_name="ocw.html.j2", context={"google_maps_api_key": settings.app.GOOGLE_API_KEY})
-
-    @post(path="/", name="ocw.get")
-    async def get_ocw(
-        self,
-        data: Annotated[CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)],
-        recommendation_service: RecommendationService,
-    ) -> Template:
-        """Serve site root."""
-        settings = get_settings()
-        reply = await recommendation_service.ask_question(data.message.lower())
-        return Template(
-            template_name="ocw.html.j2",
-            context={
-                "google_maps_api_key": settings.app.GOOGLE_API_KEY,
-                "content": reply,
-            },
-        )
-
-    @get(component="coffee/simple-chat", name="simple-chat.show", path="/simple-chat/")
-    async def simple_chat_show(self) -> dict:
-        return {}
-
-    @post(component="coffee/simple-chat", name="simple-chat.send", path="/simple-chat/")
-    async def simple_chat_send(
-        self,
-        data: CoffeeChatMessage,
-        recommendation_service: RecommendationService,
-    ) -> CoffeeChatReply:
-        return await recommendation_service.ask_question(data.message.lower())

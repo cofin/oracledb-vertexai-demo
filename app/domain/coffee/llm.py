@@ -14,155 +14,123 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any
 
-from advanced_alchemy.filters import CollectionFilter, LimitOffset
-from advanced_alchemy.service import (
-    SQLAlchemyAsyncRepositoryService,
+import structlog
+from langchain.chat_models.base import BaseChatModel
+from langchain.schema import SystemMessage
+from langchain_community.chat_message_histories import SQLChatMessageHistory
+from langchain_community.vectorstores.oraclevs import OracleVS
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import (
+    ConfigurableFieldSpec,
+    Runnable,
 )
-from sqlalchemy import select
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.vectorstores import VectorStore
+from langchain_google_vertexai import ChatVertexAI
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.db.models import Company, Inventory, Product, Shop
-from app.domain.coffee.repositories import CompanyRepository, InventoryRepository, ProductRepository, ShopRepository
+from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from langchain_community.vectorstores.oraclevs import OracleVS
+    import oracledb
+    from langchain.chat_models.base import BaseChatModel
+    from langchain_core.embeddings import Embeddings
     from langchain_core.runnables import Runnable
+    from langchain_core.vectorstores import VectorStore
 
 
-class PointsOfInterest(TypedDict):
-    id: int
-    name: str
-    address: str
-    latitude: float
-    longitude: float
+settings = get_settings()
+logger = structlog.get_logger()
+
+_chat_engine = create_async_engine(url="sqlite+aiosqlite:///.memory.db")
 
 
-class ChatMessage(TypedDict):
-    message: str
-    source: Literal["human", "ai", "system"]
+@lru_cache
+def get_llm() -> ChatVertexAI:
+    return ChatVertexAI(
+        model_name="gemini-1.5-flash-001",
+        project=settings.app.GOOGLE_PROJECT_ID,
+        temperature=0,
+        max_tokens=None,
+        max_retries=6,
+        stop=None,
+        # other params...
+    )
 
 
-class CoffeeChatReply(TypedDict):
-    message: str
-    messages: list[ChatMessage]
-    answer: str
-    points_of_interest: list[PointsOfInterest]
+@lru_cache
+def get_embeddings_service(model_type: str) -> Embeddings:
+    match model_type:
+        case "textembedding-gecko@003":
+            from langchain_google_vertexai import VertexAIEmbeddings
+
+            return VertexAIEmbeddings(model_name=model_type, project=settings.app.GOOGLE_PROJECT_ID)
+        case _:
+            msg = "Model is not supported"
+            raise ValueError(msg)
 
 
-class HistoryMeta(TypedDict):
-    conversation_id: str
-    user_id: str
+def get_embedding(query: str) -> list[float]:
+    return get_embeddings_service("textembedding-gecko@003").embed_query(query)
 
 
-class RecommendationService:
-    def __init__(
-        self,
-        vector_store: OracleVS,
-        retrieval_chain: Runnable[Any, Any],
-        products_service: ProductService,
-        shops_service: ShopService,
-        history_meta: HistoryMeta,
-    ) -> None:
-        self.vector_store = vector_store
-        self.retrieval_chain = retrieval_chain
-        self.products_service = products_service
-        self.shops_service = shops_service
-        self.history_meta = history_meta
-
-    async def ask_question(self, query: str) -> CoffeeChatReply:
-        chat_metadata: dict[str, Any] = {}
-        matched_product_ids: Sequence[int] = []
-        if any(word in query for word in ("coffee", "recommend", "find", "looking", "want", "need")):
-            matched_documents = await self.vector_store.asimilarity_search(query=query, k=4)
-            matched_product_ids = [match.metadata["id"] for match in matched_documents]
-            similar_products = await self.products_service.list(
-                CollectionFilter[int](
-                    field_name="id",
-                    values=matched_product_ids,
-                ),
-                LimitOffset(2, 0),
-            )
-            chat_metadata["product_matches"] = [f"- {obj.name}: {obj.description}" for obj in similar_products]
-        if any(word in query for word in ("where", "find", "locations", "show me", "near")) and matched_product_ids:
-            shops_with_products = await self.shops_service.list(
-                Shop.id.in_(select(Inventory.shop_id).where(Inventory.product_id.in_(matched_product_ids))),
-                LimitOffset(4, 0),
-            )
-            chat_metadata["locations"] = [
-                obj.to_dict(exclude={"created_at", "updated_at"}) for obj in shops_with_products
-            ]
-        llm_response = await self._llm_response(
-            query,
-            chat_metadata,
-        )
-        chat_response: CoffeeChatReply = {
-            "message": query,
-            "messages": [
-                {"message": query, "source": "human"},
-                {"message": llm_response, "source": "ai"},
-            ],
-            "answer": llm_response,
-            "points_of_interest": chat_metadata.get("locations", []),
-        }
-        return chat_response
-
-    async def _llm_response(
-        self,
-        query: str,
-        chat_metadata: dict[str, Any],
-    ) -> str:
-        formatted_query: str = dedent(f"""
-            # User Query:
-            {query}
-
-        """)
-        if chat_metadata.get("product_matches"):
-            fragment = "\n".join(chat_metadata.get("product_matches", []))
-            formatted_query += dedent(f"""
-                # Matching coffee products (if applicable):
-            {fragment}
-            """)
-        if chat_metadata.get("product_matches") and chat_metadata.get("locations"):
-            fragment = f"\n# There are {len(chat_metadata.get('locations', []))} location(s) with these products\n"
-            formatted_query += dedent(f"""
-                # Product Availability:
-            {fragment}
-            """)
-        chat_response = await self.retrieval_chain.ainvoke(
-            {"input": formatted_query},
-            config={
-                "configurable": {
-                    "conversation_id": self.history_meta["conversation_id"] or "1",
-                    "user_id": self.history_meta["user_id"] or "1",
-                },
-            },
-        )
-        return chat_response.content  # type: ignore
+def get_vector_store(connection: oracledb.Connection, embeddings: Embeddings, table_name: str) -> VectorStore:
+    return OracleVS(client=connection, embedding_function=embeddings, table_name=table_name, query=None)
 
 
-class ProductService(SQLAlchemyAsyncRepositoryService[Product]):
-    """Handles database operations for user roles."""
-
-    repository_type = ProductRepository
+def get_session_history(user_id: str, conversation_id: str) -> SQLChatMessageHistory:
+    return SQLChatMessageHistory(session_id=f"{user_id}--{conversation_id}", connection=_chat_engine)
 
 
-class InventoryService(SQLAlchemyAsyncRepositoryService[Inventory]):
-    """Handles database operations for user roles."""
+def setup_system_message(message: str | None = None) -> SystemMessage:
+    """Set up the system message"""
+    setup = dedent("""
+        You are a helpful AI assistant specializing in coffee recommendations.
+        Given a user's chat history and the latest user query and a list of matching coffees from a database, provide an engaging and informative response.
+        If the user is asking about coffee recommendations and locations, provide the information and finish the response with "the map below displays the locations where you can find the coffee."
+        If the user is asking a general question or making a statement, respond appropriately without using the database.
+        Your responses should be as concise as possible.
 
-    repository_type = InventoryRepository
+        **Response:**
+    """)
+    system_message = message or dedent(setup).strip()
+    return SystemMessage(content=system_message)
 
 
-class CompanyService(SQLAlchemyAsyncRepositoryService[Company]):
-    """Handles database operations for user roles."""
+def get_retrieval_chain(model: BaseChatModel, system_message: SystemMessage | None = None) -> Runnable[Any, Any]:
+    system_message = system_message if system_message is not None else setup_system_message()
 
-    repository_type = CompanyRepository
+    prompt = ChatPromptTemplate.from_messages(
+        [system_message, MessagesPlaceholder("chat_history"), ("human", "{input}")],
+    )
+    runnable = prompt | model
 
-
-class ShopService(SQLAlchemyAsyncRepositoryService[Shop]):
-    """Handles database operations for user roles."""
-
-    repository_type = ShopRepository
+    return RunnableWithMessageHistory(
+        runnable=runnable,  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
+        get_session_history=get_session_history,
+        history_factory_config=[
+            ConfigurableFieldSpec(
+                id="user_id",
+                annotation=str,
+                name="User ID",
+                description="Unique identifier for the user.",
+                default="",
+                is_shared=True,
+            ),
+            ConfigurableFieldSpec(
+                id="conversation_id",
+                annotation=str,
+                name="Conversation ID",
+                description="Unique identifier for the conversation.",
+                default="",
+                is_shared=True,
+            ),
+        ],
+        input_messages_key="input",
+        history_messages_key="chat_history",
+        output_messages_key="answer",
+    )

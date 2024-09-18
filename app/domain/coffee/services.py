@@ -15,16 +15,16 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any
 
 from advanced_alchemy.filters import CollectionFilter, LimitOffset
+from advanced_alchemy.repository import SQLAlchemyAsyncRepository, SQLAlchemyAsyncSlugRepository
 from advanced_alchemy.service import (
     SQLAlchemyAsyncRepositoryService,
 )
 from sqlalchemy import select
 
 from app.db.models import Company, Inventory, Product, Shop
-from app.domain.coffee.repositories import CompanyRepository, InventoryRepository, ProductRepository, ShopRepository
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,30 +32,9 @@ if TYPE_CHECKING:
     from langchain_community.vectorstores.oraclevs import OracleVS
     from langchain_core.runnables import Runnable
 
+    from app.domain.coffee.schemas import CoffeeChatReply, HistoryMeta
 
-class PointsOfInterest(TypedDict):
-    id: int
-    name: str
-    address: str
-    latitude: float
-    longitude: float
-
-
-class ChatMessage(TypedDict):
-    message: str
-    source: Literal["human", "ai", "system"]
-
-
-class CoffeeChatReply(TypedDict):
-    message: str
-    messages: list[ChatMessage]
-    answer: str
-    points_of_interest: list[PointsOfInterest]
-
-
-class HistoryMeta(TypedDict):
-    conversation_id: str
-    user_id: str
+# recommendation
 
 
 class RecommendationService:
@@ -144,16 +123,11 @@ class RecommendationService:
         return chat_response.content  # type: ignore
 
 
-class ProductService(SQLAlchemyAsyncRepositoryService[Product]):
-    """Handles database operations for user roles."""
-
-    repository_type = ProductRepository
+# Company
 
 
-class InventoryService(SQLAlchemyAsyncRepositoryService[Inventory]):
-    """Handles database operations for user roles."""
-
-    repository_type = InventoryRepository
+class CompanyRepository(SQLAlchemyAsyncRepository[Company]):
+    model_type = Company
 
 
 class CompanyService(SQLAlchemyAsyncRepositoryService[Company]):
@@ -162,7 +136,40 @@ class CompanyService(SQLAlchemyAsyncRepositoryService[Company]):
     repository_type = CompanyRepository
 
 
+# Product
+
+
+class ProductRepository(SQLAlchemyAsyncRepository[Product]):
+    model_type = Product
+
+
+class ProductService(SQLAlchemyAsyncRepositoryService[Product]):
+    """Handles database operations for user roles."""
+
+    repository_type = ProductRepository
+
+
+# Shop
+
+
+class ShopRepository(SQLAlchemyAsyncSlugRepository[Shop]):
+    model_type = Shop
+
+
 class ShopService(SQLAlchemyAsyncRepositoryService[Shop]):
     """Handles database operations for user roles."""
 
     repository_type = ShopRepository
+
+
+# Inventory
+
+
+class InventoryRepository(SQLAlchemyAsyncRepository[Inventory]):
+    model_type = Inventory
+
+
+class InventoryService(SQLAlchemyAsyncRepositoryService[Inventory]):
+    """Handles database operations for user roles."""
+
+    repository_type = InventoryRepository

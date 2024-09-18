@@ -66,19 +66,17 @@ async def get_recommendations() -> None:
     from langchain_community.vectorstores.oraclevs import OracleVS
     from rich import get_console
 
-    from app.config import get_settings
-    from app.config.app import alchemy, oracle
+    from app.cli.utils import chat_session
+    from app.config import alchemy, oracle
     from app.domain.coffee.dependencies import (
         provide_products_service,
         provide_shops_service,
     )
-    from app.domain.coffee.llm import get_retrieval_chain
+    from app.domain.coffee.llm import get_embeddings_service, get_llm, get_retrieval_chain
     from app.domain.coffee.services import (
         RecommendationService,
     )
-    from app.domain.coffee.utils import get_embeddings_service, get_llm
-
-    from .utils import chat_session
+    from app.lib.settings import get_settings
 
     console = get_console()
     system_message = setup_system_message("""
@@ -122,9 +120,9 @@ async def load_database_fixtures() -> None:
     from advanced_alchemy.utils.fixtures import open_fixture_async
     from structlog import get_logger
 
-    from app.config import get_settings
-    from app.config.app import alchemy
+    from app.config import alchemy
     from app.domain.coffee.services import CompanyService, InventoryService, ProductService, ShopService
+    from app.lib.settings import get_settings
 
     settings = get_settings()
     logger = get_logger()
