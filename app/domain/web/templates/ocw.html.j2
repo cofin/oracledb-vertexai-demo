@@ -151,7 +151,6 @@
         }
     </style>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}"></script>
 </head>
 
 <body class="font-sans antialiased h-full">
@@ -160,42 +159,43 @@
         <h1>Coffee Connoisseur</h1>
         <form method="post" action="{{ url_for('ocw.get') }}">
             {{ csrf_input | safe }}
-            <label for="text">
+            <label for="message">
                 <h3>Find me a Coffee:</h3>
             </label>
-            <input id="text" name="text" placeholder="Enter your coffee preference..." required="" size="40" type="text"
-                value="">
+            <input id="message" name="message" placeholder="Enter your coffee preference..." required="" size="40"
+                type="text" value="">
             <input id="submit" name="submit" type="submit" value="Discover Coffee">
         </form>
 
-        {% if output %}
+        {% if content %}
         <div class="output-container">
             <h2>A Coffee For You:</h2>
-            {% for i in output %}
-            <p>{{ i }}</p>
-            {% endfor %}
+            <p>{{ content["answer"] }}</p>
         </div>
         {% endif %}
 
-        {% if locations %}
+        {% if cotent and "points_of_interest" in content %}
         <div id="map"></div>
         <script>
             function initMap() {
                 var map = new google.maps.Map(document.getElementById('map'), {
                     zoom: 10,
-                    center: { lat: {{ locations[0].lat }}, lng: { { locations[0].lng } }},
+                    center: { lat: {{ locations[0]["latitude"] }}, lng: {{ locations[0]["longitude"] }} },
             });
 
-            {% for location in locations %}
+            {% for location in content["points_of_interest"] %}
             (function () {
                 var marker = new google.maps.Marker({
-                    position: { lat: {{ location.lat }}, lng: { { location.lng } }},
-            map: map,
-                title: '{{ location.name }}'
-                    });
+                    position: { 
+                        lat: {{ location["latitude"] }}, 
+                        lng: {{ location["longitude"] }}, 
+                        map: map, 
+                        title: '{{ location["name"] }}'
+                    }
+                });
 
             var infowindow = new google.maps.InfoWindow({
-                content: '<div style="padding: 10px;"><strong>{{ location.name }}</strong><br>{{ location.address }}</div>'
+                content: '<div style="padding: 10px;"><strong>{{ location["name"] }}</strong><br>{{ location["address"] }}</div>'
             });
 
             marker.addListener('click', function () {

@@ -26,6 +26,7 @@ dependencies = [
     "vertexai>=1.63.0",
     "numpy>=1.26.4",
     "prompt-toolkit>=3.0.47",
+    "aiosqlite>=0.20.0",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]

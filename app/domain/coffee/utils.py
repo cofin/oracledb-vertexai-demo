@@ -21,8 +21,6 @@ from langchain_community.vectorstores.oraclevs import OracleVS
 from langchain_core.vectorstores import VectorStore
 from langchain_google_vertexai import ChatVertexAI
 
-from app.config import get_settings
-
 if TYPE_CHECKING:
     import oracledb
     from langchain_core.embeddings import Embeddings
@@ -32,7 +30,7 @@ if TYPE_CHECKING:
 @lru_cache
 def get_llm() -> ChatVertexAI:
     return ChatVertexAI(
-        model="gemini-1.5-flash-001",
+        model_name="gemini-1.5-flash-001",
         temperature=0,
         max_tokens=None,
         max_retries=6,
@@ -43,15 +41,11 @@ def get_llm() -> ChatVertexAI:
 
 @lru_cache
 def get_embeddings_service(model_type: str) -> Embeddings:
-    settings = get_settings()
     match model_type:
         case "textembedding-gecko@003":
             from langchain_google_vertexai import VertexAIEmbeddings
 
-            return VertexAIEmbeddings(
-                google_api_key=settings.app.GOOGLE_API_KEY,
-                model=model_type,
-            )
+            return VertexAIEmbeddings(model_name=model_type)
         case _:
             msg = "Model is not supported"
             raise ValueError(msg)

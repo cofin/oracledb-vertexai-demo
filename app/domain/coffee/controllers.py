@@ -80,18 +80,17 @@ class CoffeeChatController(Controller):
     @post(path="/", name="ocw.get")
     async def get_ocw(
         self,
-        data: Annotated[CoffeeChatMessage, Body(title="OAuth2 Login", media_type=RequestEncodingType.URL_ENCODED)],
+        data: Annotated[CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)],
         recommendation_service: RecommendationService,
     ) -> Template:
         """Serve site root."""
         settings = get_settings()
-        message_response = await recommendation_service.ask_question(data.message.lower())
+        reply = await recommendation_service.ask_question(data.message.lower())
         return Template(
             template_name="ocw.html.j2",
             context={
                 "google_maps_api_key": settings.app.GOOGLE_API_KEY,
-                "locations": message_response["points_of_interest"],
-                "output": message_response["answer"],
+                "content": reply,
             },
         )
 
