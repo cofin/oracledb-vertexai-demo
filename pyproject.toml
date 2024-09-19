@@ -28,9 +28,6 @@ dependencies = [
     "prompt-toolkit>=3.0.47",
     # temporarily for messages
     "aiosqlite>=0.20.0",
-    # temporary
-    "flask-wtf>=1.2.1",
-    "wtforms>=3.1.2",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
