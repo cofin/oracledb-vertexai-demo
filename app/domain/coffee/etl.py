@@ -21,7 +21,7 @@ from langchain_core.documents import Document
 from rich import get_console
 
 from app.config import oracle
-from app.domain.coffee.llm import get_embeddings_service
+from app.domain.coffee.utils import get_embeddings_service
 from app.lib.settings import get_settings
 
 console = get_console()

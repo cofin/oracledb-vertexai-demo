@@ -16,12 +16,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from langchain_community.vectorstores.oraclevs import OracleVS
 
 from app.config import alchemy
-from app.domain.coffee.llm import get_embeddings_service, get_llm, get_retrieval_chain
 from app.domain.coffee.services import (
     CompanyService,
     InventoryService,
@@ -29,32 +28,38 @@ from app.domain.coffee.services import (
     RecommendationService,
     ShopService,
 )
+from app.domain.coffee.utils import get_chat_history_manager, get_embeddings_service
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
+    from langchain_core.chat_history import BaseChatMessageHistory
     from langchain_core.embeddings import Embeddings
-    from langchain_core.runnables import Runnable
     from litestar import Request
     from oracledb import Connection
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
+def provide_message_history(
+    request: Request,
+) -> Generator[BaseChatMessageHistory, None, None]:
+    """Provide the embedding service."""
+    yield get_chat_history_manager("1", request.get_session_id() or "1")
+
+
 def provide_recommendation_service(
     request: Request,
     vector_store: OracleVS,
-    retrieval_chain: Runnable[Any, Any],
     products_service: ProductService,
     shops_service: ShopService,
 ) -> Generator[RecommendationService, None, None]:
     """Provide the embedding service."""
     yield RecommendationService(
         vector_store=vector_store,
-        retrieval_chain=retrieval_chain,
         products_service=products_service,
         shops_service=shops_service,
-        history_meta={"user_id": "1", "conversation_id": "1"},
+        history_meta={"user_id": "1", "conversation_id": request.get_session_id() or "1"},
     )
 
 
@@ -78,12 +83,6 @@ def provide_product_description_vector_store(
     )
 
 
-def provide_retrieval_chain() -> Generator[Runnable[Any, Any], None, None]:
-    """Construct a vector store."""
-    llm = get_llm()
-    yield get_retrieval_chain(llm)
-
-
 async def provide_companies_service(db_session: AsyncSession) -> AsyncGenerator[CompanyService, None]:
     """Provide Company service.
 
@@ -93,7 +92,11 @@ async def provide_companies_service(db_session: AsyncSession) -> AsyncGenerator[
     Returns:
         CompanyService: A role service object
     """
-    async with CompanyService.new(session=db_session, config=alchemy) as service:
+    async with CompanyService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
         yield service
 
 
@@ -106,7 +109,11 @@ async def provide_products_service(db_session: AsyncSession | None = None) -> As
     Returns:
         ProductService: A role service object
     """
-    async with ProductService.new(session=db_session, config=alchemy) as service:
+    async with ProductService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
         yield service
 
 
@@ -121,7 +128,11 @@ async def provide_inventory_service(
     Returns:
         InventoryService: A user oauth account service object
     """
-    async with InventoryService.new(session=db_session, config=alchemy) as service:
+    async with InventoryService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
         yield service
 
 
@@ -134,5 +145,9 @@ async def provide_shops_service(db_session: AsyncSession | None = None) -> Async
     Returns:
         ShopService: A user role service object
     """
-    async with ShopService.new(session=db_session, config=alchemy) as service:
+    async with ShopService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
         yield service

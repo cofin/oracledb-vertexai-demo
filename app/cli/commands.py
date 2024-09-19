@@ -19,8 +19,6 @@ from pathlib import Path
 from advanced_alchemy.extensions.litestar.cli import database_group
 from rich_click import group
 
-from app.domain.coffee.llm import setup_system_message
-
 
 @database_group.command(name="load-fixtures", help="Import base model seeding data.")
 def load_fixtures() -> None:
@@ -77,23 +75,15 @@ async def get_recommendations() -> None:
         provide_products_service,
         provide_shops_service,
     )
-    from app.domain.coffee.llm import get_embeddings_service, get_llm, get_retrieval_chain
     from app.domain.coffee.services import (
         RecommendationService,
     )
+    from app.domain.coffee.utils import get_embeddings_service
     from app.lib.settings import get_settings
 
     console = get_console()
-    system_message = setup_system_message("""
-        You are a helpful AI assistant specializing in coffee recommendations.
-        Given a user's chat history and the latest user query and a list of matching coffees from a database, provide an engaging and informative response.
-        If the user is asking about coffee recommendations and locations, provide the information and finish the response as concisely as possible.
-        Your responses should always be returning in Markdown format.
-        If the user is asking a general question or making a statement, respond appropriately without using the database.
-
-        **Response:**
-    """)
     settings = get_settings()
+    engine = alchemy.get_engine()
     async with alchemy.get_session() as db_session:
         shops_service = await anext(provide_shops_service(db_session))
         products_service = await anext(provide_products_service(db_session))
@@ -105,17 +95,23 @@ async def get_recommendations() -> None:
                 table_name="PRODUCT_DESCRIPTION_VS",
                 query="Where can I get a good coffee nearby?",
             )
-            llm = get_llm()
-            retrieval_chain = get_retrieval_chain(llm, system_message)
             service = RecommendationService(
                 vector_store=vector_store,
-                retrieval_chain=retrieval_chain,
                 products_service=products_service,
                 shops_service=shops_service,
                 history_meta={"user_id": "cli-0", "conversation_id": "cli-0"},
+                system_context_message="""
+        You are a helpful AI assistant specializing in coffee recommendations.
+        Given a user's chat history and the latest user query and a list of matching coffees from a database, provide an engaging and informative response.
+        If the user is asking about coffee recommendations and locations, provide the information and finish the response as concisely as possible.
+        Your responses should always be returning in Markdown format.
+        If the user is asking a general question or making a statement, respond appropriately without using the database.
+
+        **Response:**
+    """,
             )
             await chat_session(service=service, console=console)
-    engine = alchemy.get_engine()
+
     await engine.dispose()
 
 

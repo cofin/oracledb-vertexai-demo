@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 pytestmark = pytest.mark.anyio
 pytest_plugins = [
-    "tests.data_fixtures",
     "pytest_databases.docker",
     "pytest_databases.docker.oracle",
 ]

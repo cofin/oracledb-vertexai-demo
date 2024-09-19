@@ -48,8 +48,10 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         """
         from langchain_community.chat_message_histories import ChatMessageHistory
         from langchain_community.vectorstores.oraclevs import OracleVS
+        from langchain_core.chat_history import BaseChatMessageHistory
         from langchain_core.embeddings import Embeddings
         from langchain_core.runnables import Runnable
+        from langchain_core.runnables.history import RunnableWithMessageHistory
         from langchain_core.vectorstores import VectorStore
         from litestar import WebSocket
         from litestar.channels import ChannelsPlugin
@@ -58,11 +60,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.openapi.config import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
         from litestar.params import Body
+        from litestar_vite.inertia import InertiaRequest
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config
         from app.__metadata__ import __version__ as current_version
         from app.domain.coffee.controllers import CoffeeChatController
+        from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
+        from app.domain.coffee.services import ProductService, RecommendationService, ShopService
         from app.lib import log
         from app.lib.dependencies import create_collection_dependencies
         from app.lib.settings import get_settings
@@ -123,6 +128,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
+                "BaseChatMessageHistory": BaseChatMessageHistory,
+                "ProductService": ProductService,
+                "ShopService": ShopService,
+                "RecommendationService": RecommendationService,
+                "CoffeeChatMessage": CoffeeChatMessage,
+                "CoffeeChatReply": CoffeeChatReply,
+                "Request": InertiaRequest,
+                "RunnableWithMessageHistory": RunnableWithMessageHistory,
             },
         )
         return app_config

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 from app.lib.schema import CamelizedBaseStruct
 
@@ -41,6 +41,7 @@ class CoffeeChatReply(TypedDict):
     messages: list[ChatMessage]
     answer: str
     points_of_interest: list[PointsOfInterest]
+    llm_response: Any
 
 
 class HistoryMeta(TypedDict):

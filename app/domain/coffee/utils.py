@@ -14,21 +14,13 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
-from langchain.chat_models.base import BaseChatModel
 from langchain.schema import SystemMessage
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 from langchain_community.vectorstores.oraclevs import OracleVS
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import (
-    ConfigurableFieldSpec,
-    Runnable,
-)
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.vectorstores import VectorStore
 from langchain_google_vertexai import ChatVertexAI
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -37,9 +29,7 @@ from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     import oracledb
-    from langchain.chat_models.base import BaseChatModel
     from langchain_core.embeddings import Embeddings
-    from langchain_core.runnables import Runnable
     from langchain_core.vectorstores import VectorStore
 
 
@@ -49,7 +39,6 @@ logger = structlog.get_logger()
 _chat_engine = create_async_engine(url="sqlite+aiosqlite:///.memory.db")
 
 
-@lru_cache
 def get_llm() -> ChatVertexAI:
     return ChatVertexAI(
         model_name="gemini-1.5-flash-001",
@@ -62,7 +51,6 @@ def get_llm() -> ChatVertexAI:
     )
 
 
-@lru_cache
 def get_embeddings_service(model_type: str) -> Embeddings:
     match model_type:
         case "textembedding-gecko@003":
@@ -82,7 +70,7 @@ def get_vector_store(connection: oracledb.Connection, embeddings: Embeddings, ta
     return OracleVS(client=connection, embedding_function=embeddings, table_name=table_name, query=None)
 
 
-def get_session_history(user_id: str, conversation_id: str) -> SQLChatMessageHistory:
+def get_chat_history_manager(user_id: str, conversation_id: str) -> SQLChatMessageHistory:
     return SQLChatMessageHistory(session_id=f"{user_id}--{conversation_id}", connection=_chat_engine)
 
 
@@ -95,42 +83,7 @@ def setup_system_message(message: str | None = None) -> SystemMessage:
         If the user is asking a general question or making a statement, respond appropriately without using the database.
         Your responses should be as concise as possible.
 
-        **Response:**
+        {context}
     """)
     system_message = message or dedent(setup).strip()
     return SystemMessage(content=system_message)
-
-
-def get_retrieval_chain(model: BaseChatModel, system_message: SystemMessage | None = None) -> Runnable[Any, Any]:
-    system_message = system_message if system_message is not None else setup_system_message()
-
-    prompt = ChatPromptTemplate.from_messages(
-        [system_message, MessagesPlaceholder("chat_history"), ("human", "{input}")],
-    )
-    runnable = prompt | model
-
-    return RunnableWithMessageHistory(
-        runnable=runnable,  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
-        get_session_history=get_session_history,
-        history_factory_config=[
-            ConfigurableFieldSpec(
-                id="user_id",
-                annotation=str,
-                name="User ID",
-                description="Unique identifier for the user.",
-                default="",
-                is_shared=True,
-            ),
-            ConfigurableFieldSpec(
-                id="conversation_id",
-                annotation=str,
-                name="Conversation ID",
-                description="Unique identifier for the conversation.",
-                default="",
-                is_shared=True,
-            ),
-        ],
-        input_messages_key="input",
-        history_messages_key="chat_history",
-        output_messages_key="answer",
-    )
