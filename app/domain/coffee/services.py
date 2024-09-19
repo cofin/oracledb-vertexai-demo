@@ -63,7 +63,7 @@ class RecommendationService:
         self.history_meta = history_meta
         self.system_message = self._setup_system_message(system_context_message)
 
-    async def ask_question(self, query: str, system_message: SystemMessage | None = None) -> CoffeeChatReply:
+    async def get_recommendation(self, query: str, system_message: SystemMessage | None = None) -> CoffeeChatReply:
         chain = self.get_retrieval_chain(system_message)
         chat_metadata, matched_product_ids = await self._route_products_question(query, {})
         chat_metadata, _matched_location_count = await self._route_locations_question(

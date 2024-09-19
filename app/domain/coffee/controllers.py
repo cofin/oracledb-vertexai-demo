@@ -65,7 +65,7 @@ class CoffeeChatController(Controller):
     ) -> Template:
         """Serve site root."""
         settings = get_settings()
-        reply = await recommendation_service.ask_question(data.message)
+        reply = await recommendation_service.get_recommendation(data.message)
         return Template(
             template_name="ocw.html.j2",
             context={
@@ -85,7 +85,7 @@ class CoffeeChatController(Controller):
         data: CoffeeChatMessage,
         recommendation_service: RecommendationService,
     ) -> CoffeeChatReply:
-        return await recommendation_service.ask_question(data.message.lower())
+        return await recommendation_service.get_recommendation(data.message.lower())
 
     @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, sync_to_thread=False, include_in_schema=False)
     def favicon(self) -> File:

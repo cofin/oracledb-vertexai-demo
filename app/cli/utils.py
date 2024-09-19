@@ -101,7 +101,7 @@ async def print_response(
     """Stream the response"""
     panel_class = Panel if panel is True else NoPadding
     with Live(Spinner("aesthetic"), refresh_per_second=15, console=console, transient=True):
-        response = await service.ask_question(message)
+        response = await service.get_recommendation(message)
         text = response["answer"]
         console.print(panel_class(Markdown(text), title="🤖 Cymbal AI", title_align="left"))
         poi_template = dedent("""
