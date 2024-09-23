@@ -20,11 +20,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-__all__ = (
-    "MissingDependencyError",
-    "ApplicationClientError",
-    "ApplicationError",
-)
+__all__ = ("ApplicationError",)
 
 
 class ApplicationError(Exception):
@@ -55,14 +51,3 @@ class ApplicationError(Exception):
 
     def __str__(self) -> str:
         return " ".join((*self.args, self.detail)).strip()
-
-
-class MissingDependencyError(ApplicationError, ImportError):
-    """Missing optional dependency.
-
-    This exception is raised only when a module depends on a dependency that has not been installed.
-    """
-
-
-class ApplicationClientError(ApplicationError):
-    """Base exception type for client errors."""

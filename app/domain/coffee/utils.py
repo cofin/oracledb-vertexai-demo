@@ -62,10 +62,6 @@ def get_embeddings_service(model_type: str) -> Embeddings:
             raise ValueError(msg)
 
 
-def get_embedding(query: str) -> list[float]:
-    return get_embeddings_service("textembedding-gecko@003").embed_query(query)
-
-
 def get_vector_store(connection: oracledb.Connection, embeddings: Embeddings, table_name: str) -> VectorStore:
     return OracleVS(client=connection, embedding_function=embeddings, table_name=table_name, query=None)
 
