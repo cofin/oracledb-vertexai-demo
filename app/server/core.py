@@ -69,7 +69,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
         from app.domain.coffee.services import ProductService, RecommendationService, ShopService
         from app.lib import log
-        from app.lib.dependencies import create_collection_dependencies
         from app.lib.settings import get_settings
         from app.server import plugins
 
@@ -101,7 +100,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             title=settings.app.NAME,
             version=current_version,
             use_handler_docstrings=True,
-            render_plugins=[ScalarRenderPlugin(version="1.24.46"), SwaggerRenderPlugin()],
+            render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
         )
         # routes
         app_config.route_handlers.extend(
@@ -109,8 +108,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 CoffeeChatController,
             ],
         )
-        # deps
-        app_config.dependencies.update(create_collection_dependencies())
         # signatures
         app_config.signature_namespace.update(
             {
@@ -141,7 +138,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli.commands import recommend
+        from app.cli import recommend
         from app.lib.settings import get_settings
 
         settings = get_settings()
