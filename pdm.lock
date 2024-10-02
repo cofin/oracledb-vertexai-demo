@@ -5,7 +5,7 @@
 groups = ["default", "dev", "linting", "test"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:932699e7f220f64df9950cc51f4f51e90bc180798ffd08fd8547e0a5780b083c"
+content_hash = "sha256:4b7cd5ba6c870d472484a5684f00b7267933e9861becdd05975c2d7a2a15f6d8"
 
 [[metadata.targets]]
 requires_python = ">=3.11"
@@ -336,7 +336,7 @@ name = "click"
 version = "8.1.7"
 requires_python = ">=3.7"
 summary = "Composable command line interface toolkit"
-groups = ["default", "linting"]
+groups = ["default"]
 dependencies = [
     "colorama; platform_system == \"Windows\"",
     "importlib-metadata; python_version < \"3.8\"",
@@ -351,7 +351,7 @@ name = "colorama"
 version = "0.4.6"
 requires_python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 summary = "Cross-platform colored terminal text."
-groups = ["default", "linting", "test"]
+groups = ["default", "test"]
 marker = "sys_platform == \"win32\" or platform_system == \"Windows\""
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
@@ -713,7 +713,7 @@ files = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.67.1"
+version = "1.69.0"
 requires_python = ">=3.8"
 summary = "Vertex AI API client library"
 groups = ["default"]
@@ -731,23 +731,23 @@ dependencies = [
     "shapely<3.0.0dev",
 ]
 files = [
-    {file = "google-cloud-aiplatform-1.67.1.tar.gz", hash = "sha256:701a19061c8c670baa93464ca0b8a1a8720494f802187cef06bc9fcf952db315"},
-    {file = "google_cloud_aiplatform-1.67.1-py2.py3-none-any.whl", hash = "sha256:2ff0e1794839fcf74d644f3f54ff2de5d8099b3e388edecc48f6d620c1f3582c"},
+    {file = "google-cloud-aiplatform-1.69.0.tar.gz", hash = "sha256:08be3a4432fd87d9cc86db83ba626f988d13597197bc53c6808e1c4c65a25bb0"},
+    {file = "google_cloud_aiplatform-1.69.0-py2.py3-none-any.whl", hash = "sha256:6e21c29bf4506ed3bfb00cfe47ab1ad1788854b18f0ded2458016837c917e520"},
 ]
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.67.1"
+version = "1.69.0"
 extras = ["all"]
 requires_python = ">=3.8"
 summary = "Vertex AI API client library"
 groups = ["default"]
 dependencies = [
-    "google-cloud-aiplatform==1.67.1",
+    "google-cloud-aiplatform==1.69.0",
 ]
 files = [
-    {file = "google-cloud-aiplatform-1.67.1.tar.gz", hash = "sha256:701a19061c8c670baa93464ca0b8a1a8720494f802187cef06bc9fcf952db315"},
-    {file = "google_cloud_aiplatform-1.67.1-py2.py3-none-any.whl", hash = "sha256:2ff0e1794839fcf74d644f3f54ff2de5d8099b3e388edecc48f6d620c1f3582c"},
+    {file = "google-cloud-aiplatform-1.69.0.tar.gz", hash = "sha256:08be3a4432fd87d9cc86db83ba626f988d13597197bc53c6808e1c4c65a25bb0"},
+    {file = "google_cloud_aiplatform-1.69.0-py2.py3-none-any.whl", hash = "sha256:6e21c29bf4506ed3bfb00cfe47ab1ad1788854b18f0ded2458016837c917e520"},
 ]
 
 [[package]]
@@ -1292,7 +1292,7 @@ files = [
 
 [[package]]
 name = "langchain"
-version = "0.3.0"
+version = "0.3.1"
 requires_python = "<4.0,>=3.9"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
@@ -1301,7 +1301,7 @@ dependencies = [
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
     "async-timeout<5.0.0,>=4.0.0; python_version < \"3.11\"",
-    "langchain-core<0.4.0,>=0.3.0",
+    "langchain-core<0.4.0,>=0.3.6",
     "langchain-text-splitters<0.4.0,>=0.3.0",
     "langsmith<0.2.0,>=0.1.17",
     "numpy<2,>=1; python_version < \"3.12\"",
@@ -1311,13 +1311,13 @@ dependencies = [
     "tenacity!=8.4.0,<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain-0.3.0-py3-none-any.whl", hash = "sha256:59a75a6a1eb7bfd2a6bf0c7a5816409a8fdc9046187b07af287b23b9899617af"},
-    {file = "langchain-0.3.0.tar.gz", hash = "sha256:a7c23892440bd1f5b9e029ff0dd709dd881ae927c4c0a3210ac64dba9bbf3f7f"},
+    {file = "langchain-0.3.1-py3-none-any.whl", hash = "sha256:94e5ee7464d4366e4b158aa5704953c39701ea237b9ed4b200096d49e83bb3ae"},
+    {file = "langchain-0.3.1.tar.gz", hash = "sha256:54d6e3abda2ec056875a231a418a4130ba7576e629e899067e499bfc847b7586"},
 ]
 
 [[package]]
 name = "langchain-community"
-version = "0.3.0"
+version = "0.3.1"
 requires_python = "<4.0,>=3.9"
 summary = "Community contributed LangChain integrations."
 groups = ["default"]
@@ -1326,9 +1326,9 @@ dependencies = [
     "SQLAlchemy<3,>=1.4",
     "aiohttp<4.0.0,>=3.8.3",
     "dataclasses-json<0.7,>=0.5.7",
-    "langchain-core<0.4.0,>=0.3.0",
-    "langchain<0.4.0,>=0.3.0",
-    "langsmith<0.2.0,>=0.1.112",
+    "langchain-core<0.4.0,>=0.3.6",
+    "langchain<0.4.0,>=0.3.1",
+    "langsmith<0.2.0,>=0.1.125",
     "numpy<2,>=1; python_version < \"3.12\"",
     "numpy<2.0.0,>=1.26.0; python_version >= \"3.12\"",
     "pydantic-settings<3.0.0,>=2.4.0",
@@ -1336,20 +1336,20 @@ dependencies = [
     "tenacity!=8.4.0,<9.0.0,>=8.1.0",
 ]
 files = [
-    {file = "langchain_community-0.3.0-py3-none-any.whl", hash = "sha256:40084f1f785f0fb56c8698ff059bbda8bd8c683cbdffa7902a0e04e72961496c"},
-    {file = "langchain_community-0.3.0.tar.gz", hash = "sha256:1ee8a469ad66977f21b9d96bdcdd8549c5281c474f0f9cc13b932efd63a78105"},
+    {file = "langchain_community-0.3.1-py3-none-any.whl", hash = "sha256:627eb26c16417764762ac47dd0d3005109f750f40242a88bb8f2958b798bcf90"},
+    {file = "langchain_community-0.3.1.tar.gz", hash = "sha256:c964a70628f266a61647e58f2f0434db633d4287a729f100a81dd8b0654aec93"},
 ]
 
 [[package]]
 name = "langchain-core"
-version = "0.3.1"
+version = "0.3.6"
 requires_python = "<4.0,>=3.9"
 summary = "Building applications with LLMs through composability"
 groups = ["default"]
 dependencies = [
     "PyYAML>=5.3",
     "jsonpatch<2.0,>=1.33",
-    "langsmith<0.2.0,>=0.1.117",
+    "langsmith<0.2.0,>=0.1.125",
     "packaging<25,>=23.2",
     "pydantic<3.0.0,>=2.5.2; python_full_version < \"3.12.4\"",
     "pydantic<3.0.0,>=2.7.4; python_full_version >= \"3.12.4\"",
@@ -1357,13 +1357,13 @@ dependencies = [
     "typing-extensions>=4.7",
 ]
 files = [
-    {file = "langchain_core-0.3.1-py3-none-any.whl", hash = "sha256:52656baafd9f14163f112c2828b4c3099170a99861479cdbb8e8949f4153b5c5"},
-    {file = "langchain_core-0.3.1.tar.gz", hash = "sha256:c4609eba3969df633fb3e3f3378f51bac8b85cdea18f7cb09a1f44c6a1d07723"},
+    {file = "langchain_core-0.3.6-py3-none-any.whl", hash = "sha256:7bb3df0117bdc628b18b6c8748de72c6f537d745d47566053ce6650d5712281c"},
+    {file = "langchain_core-0.3.6.tar.gz", hash = "sha256:eb190494a5483f1965f693bb2085edb523370b20fc52dc294d3bd425773cd076"},
 ]
 
 [[package]]
 name = "langchain-google-vertexai"
-version = "2.0.1"
+version = "2.0.3"
 requires_python = "<4.0,>=3.9"
 summary = "An integration package connecting Google VertexAI and LangChain"
 groups = ["default"]
@@ -1376,8 +1376,8 @@ dependencies = [
     "pydantic<3,>=2",
 ]
 files = [
-    {file = "langchain_google_vertexai-2.0.1-py3-none-any.whl", hash = "sha256:45bc042e52efe39b2c33a4d20e9ea884bc14510e47de4049c9285ba561a4cccb"},
-    {file = "langchain_google_vertexai-2.0.1.tar.gz", hash = "sha256:1c37660f07fb6139710889ec2ef47e0a4bfe4a3e4cff2b302993e28b3dbd427b"},
+    {file = "langchain_google_vertexai-2.0.3-py3-none-any.whl", hash = "sha256:43835bed9f03f6969b3f8b73356c44d7898d209c69bd5124b0a80c35d8cebdd0"},
+    {file = "langchain_google_vertexai-2.0.3.tar.gz", hash = "sha256:6f71061b578c0cd44fd5a147b61f66a1486bfc8b1dc69b4ac31e0f3c470d90d8"},
 ]
 
 [[package]]
@@ -1396,7 +1396,7 @@ files = [
 
 [[package]]
 name = "langsmith"
-version = "0.1.117"
+version = "0.1.128"
 requires_python = "<4.0,>=3.8.1"
 summary = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 groups = ["default"]
@@ -1408,13 +1408,13 @@ dependencies = [
     "requests<3,>=2",
 ]
 files = [
-    {file = "langsmith-0.1.117-py3-none-any.whl", hash = "sha256:e936ee9bcf8293b0496df7ba462a3702179fbe51f9dc28744b0fbec0dbf206ae"},
-    {file = "langsmith-0.1.117.tar.gz", hash = "sha256:a1b532f49968b9339bcaff9118d141846d52ed3d803f342902e7448edf1d662b"},
+    {file = "langsmith-0.1.128-py3-none-any.whl", hash = "sha256:c1b59d947584be7487ac53dffb4e232704626964011b714fd3d9add4b3694cbc"},
+    {file = "langsmith-0.1.128.tar.gz", hash = "sha256:3299e17a659f3c47725c97c47f4445fc34113ac668becce425919866fbcb6ec2"},
 ]
 
 [[package]]
 name = "litestar"
-version = "2.11.0"
+version = "2.12.1"
 requires_python = "<4.0,>=3.8"
 summary = "Litestar - A production-ready, highly performant, extensible ASGI API Framework"
 groups = ["default"]
@@ -1434,26 +1434,26 @@ dependencies = [
     "typing-extensions",
 ]
 files = [
-    {file = "litestar-2.11.0-py3-none-any.whl", hash = "sha256:6d677ccdc00a0b4ce54cff5172531890358a27d6da1a054c8cab6a7e2119823e"},
-    {file = "litestar-2.11.0.tar.gz", hash = "sha256:6c8cf2b60c352e6b8e08e6a995d2a66ddc26ec53bc2f1df7214d26abcc1d00c2"},
+    {file = "litestar-2.12.1-py3-none-any.whl", hash = "sha256:74915e3731c200caa099c416a1c3b3079ffacdd6e6393974e0284f8919606f9c"},
+    {file = "litestar-2.12.1.tar.gz", hash = "sha256:d2cc43157060a06dac8a77e9dc6ba2936238beada61e272e8842c21fca23fcee"},
 ]
 
 [[package]]
 name = "litestar-granian"
-version = "0.5.1"
+version = "0.6.0"
 requires_python = ">=3.8"
 summary = "Granian plugin for Litestar"
 groups = ["default"]
 dependencies = [
     "fast-query-parsers",
-    "granian[all]>=1.3.0",
+    "granian[all]>=1.6.0",
     "httptools",
     "litestar>=2.7.0",
     "uvloop; sys_platform != \"win32\"",
 ]
 files = [
-    {file = "litestar_granian-0.5.1-py3-none-any.whl", hash = "sha256:cc4119df32b137167aa2ef1a9e51d3237c908ff710d0ae4dacfa7f80667131ff"},
-    {file = "litestar_granian-0.5.1.tar.gz", hash = "sha256:0aa065e09caf12820940f05c8f30336a4f0082d9bfd87db8eefd85471212c54d"},
+    {file = "litestar_granian-0.6.0-py3-none-any.whl", hash = "sha256:d0e633fa0db73cde0d7b99d2d81ca189e1c90f6910dff5e91362fe2dbf7bfb22"},
+    {file = "litestar_granian-0.6.0.tar.gz", hash = "sha256:bd319c26a57f6da9931b33767d376cb77d6f3b19f7fba7cb84b66ef1a1b3764f"},
 ]
 
 [[package]]
@@ -1503,7 +1503,7 @@ files = [
 
 [[package]]
 name = "litestar"
-version = "2.11.0"
+version = "2.12.1"
 extras = ["cryptography", "jinja", "jwt", "pydantic", "redis", "sqlalchemy", "structlog"]
 requires_python = "<4.0,>=3.8"
 summary = "Litestar - A production-ready, highly performant, extensible ASGI API Framework"
@@ -1514,7 +1514,7 @@ dependencies = [
     "cryptography",
     "email-validator",
     "jinja2>=3.1.2",
-    "litestar==2.11.0",
+    "litestar==2.12.1",
     "pydantic",
     "pydantic-extra-types",
     "pyjwt>=2.9.0",
@@ -1522,24 +1522,24 @@ dependencies = [
     "structlog",
 ]
 files = [
-    {file = "litestar-2.11.0-py3-none-any.whl", hash = "sha256:6d677ccdc00a0b4ce54cff5172531890358a27d6da1a054c8cab6a7e2119823e"},
-    {file = "litestar-2.11.0.tar.gz", hash = "sha256:6c8cf2b60c352e6b8e08e6a995d2a66ddc26ec53bc2f1df7214d26abcc1d00c2"},
+    {file = "litestar-2.12.1-py3-none-any.whl", hash = "sha256:74915e3731c200caa099c416a1c3b3079ffacdd6e6393974e0284f8919606f9c"},
+    {file = "litestar-2.12.1.tar.gz", hash = "sha256:d2cc43157060a06dac8a77e9dc6ba2936238beada61e272e8842c21fca23fcee"},
 ]
 
 [[package]]
 name = "litestar"
-version = "2.11.0"
+version = "2.12.1"
 extras = ["jinja"]
 requires_python = "<4.0,>=3.8"
 summary = "Litestar - A production-ready, highly performant, extensible ASGI API Framework"
 groups = ["default"]
 dependencies = [
     "jinja2>=3.1.2",
-    "litestar==2.11.0",
+    "litestar==2.12.1",
 ]
 files = [
-    {file = "litestar-2.11.0-py3-none-any.whl", hash = "sha256:6d677ccdc00a0b4ce54cff5172531890358a27d6da1a054c8cab6a7e2119823e"},
-    {file = "litestar-2.11.0.tar.gz", hash = "sha256:6c8cf2b60c352e6b8e08e6a995d2a66ddc26ec53bc2f1df7214d26abcc1d00c2"},
+    {file = "litestar-2.12.1-py3-none-any.whl", hash = "sha256:74915e3731c200caa099c416a1c3b3079ffacdd6e6393974e0284f8919606f9c"},
+    {file = "litestar-2.12.1.tar.gz", hash = "sha256:d2cc43157060a06dac8a77e9dc6ba2936238beada61e272e8842c21fca23fcee"},
 ]
 
 [[package]]
@@ -1914,7 +1914,7 @@ files = [
 
 [[package]]
 name = "prompt-toolkit"
-version = "3.0.47"
+version = "3.0.48"
 requires_python = ">=3.7.0"
 summary = "Library for building powerful interactive command lines in Python"
 groups = ["default"]
@@ -1922,8 +1922,8 @@ dependencies = [
     "wcwidth",
 ]
 files = [
-    {file = "prompt_toolkit-3.0.47-py3-none-any.whl", hash = "sha256:0d7bfa67001d5e39d02c224b663abc33687405033a8c422d0d675a5a13361d10"},
-    {file = "prompt_toolkit-3.0.47.tar.gz", hash = "sha256:1e1b29cb58080b1e69f207c893a1a7bf16d127a5c30c9d17a25a5d77792e5360"},
+    {file = "prompt_toolkit-3.0.48-py3-none-any.whl", hash = "sha256:f49a827f90062e411f1ce1f854f2aedb3c23353244f8108b89283587397ac10e"},
+    {file = "prompt_toolkit-3.0.48.tar.gz", hash = "sha256:d6623ab0477a80df74e646bdbc93621143f5caf104206aa29294d53de1a03d90"},
 ]
 
 [[package]]
@@ -2379,29 +2379,29 @@ files = [
 
 [[package]]
 name = "ruff"
-version = "0.6.5"
+version = "0.6.8"
 requires_python = ">=3.7"
 summary = "An extremely fast Python linter and code formatter, written in Rust."
 groups = ["linting"]
 files = [
-    {file = "ruff-0.6.5-py3-none-linux_armv6l.whl", hash = "sha256:7e4e308f16e07c95fc7753fc1aaac690a323b2bb9f4ec5e844a97bb7fbebd748"},
-    {file = "ruff-0.6.5-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:932cd69eefe4daf8c7d92bd6689f7e8182571cb934ea720af218929da7bd7d69"},
-    {file = "ruff-0.6.5-py3-none-macosx_11_0_arm64.whl", hash = "sha256:3a8d42d11fff8d3143ff4da41742a98f8f233bf8890e9fe23077826818f8d680"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a50af6e828ee692fb10ff2dfe53f05caecf077f4210fae9677e06a808275754f"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:794ada3400a0d0b89e3015f1a7e01f4c97320ac665b7bc3ade24b50b54cb2972"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:381413ec47f71ce1d1c614f7779d88886f406f1fd53d289c77e4e533dc6ea200"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:52e75a82bbc9b42e63c08d22ad0ac525117e72aee9729a069d7c4f235fc4d276"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:09c72a833fd3551135ceddcba5ebdb68ff89225d30758027280968c9acdc7810"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:800c50371bdcb99b3c1551d5691e14d16d6f07063a518770254227f7f6e8c178"},
-    {file = "ruff-0.6.5-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8e25ddd9cd63ba1f3bd51c1f09903904a6adf8429df34f17d728a8fa11174253"},
-    {file = "ruff-0.6.5-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:7291e64d7129f24d1b0c947ec3ec4c0076e958d1475c61202497c6aced35dd19"},
-    {file = "ruff-0.6.5-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:9ad7dfbd138d09d9a7e6931e6a7e797651ce29becd688be8a0d4d5f8177b4b0c"},
-    {file = "ruff-0.6.5-py3-none-musllinux_1_2_i686.whl", hash = "sha256:005256d977021790cc52aa23d78f06bb5090dc0bfbd42de46d49c201533982ae"},
-    {file = "ruff-0.6.5-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:482c1e6bfeb615eafc5899127b805d28e387bd87db38b2c0c41d271f5e58d8cc"},
-    {file = "ruff-0.6.5-py3-none-win32.whl", hash = "sha256:cf4d3fa53644137f6a4a27a2b397381d16454a1566ae5335855c187fbf67e4f5"},
-    {file = "ruff-0.6.5-py3-none-win_amd64.whl", hash = "sha256:3e42a57b58e3612051a636bc1ac4e6b838679530235520e8f095f7c44f706ff9"},
-    {file = "ruff-0.6.5-py3-none-win_arm64.whl", hash = "sha256:51935067740773afdf97493ba9b8231279e9beef0f2a8079188c4776c25688e0"},
-    {file = "ruff-0.6.5.tar.gz", hash = "sha256:4d32d87fab433c0cf285c3683dd4dae63be05fd7a1d65b3f5bf7cdd05a6b96fb"},
+    {file = "ruff-0.6.8-py3-none-linux_armv6l.whl", hash = "sha256:77944bca110ff0a43b768f05a529fecd0706aac7bcce36d7f1eeb4cbfca5f0f2"},
+    {file = "ruff-0.6.8-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:27b87e1801e786cd6ede4ada3faa5e254ce774de835e6723fd94551464c56b8c"},
+    {file = "ruff-0.6.8-py3-none-macosx_11_0_arm64.whl", hash = "sha256:cd48f945da2a6334f1793d7f701725a76ba93bf3d73c36f6b21fb04d5338dcf5"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:677e03c00f37c66cea033274295a983c7c546edea5043d0c798833adf4cf4c6f"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:9f1476236b3eacfacfc0f66aa9e6cd39f2a624cb73ea99189556015f27c0bdeb"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6f5a2f17c7d32991169195d52a04c95b256378bbf0de8cb98478351eb70d526f"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:5fd0d4b7b1457c49e435ee1e437900ced9b35cb8dc5178921dfb7d98d65a08d0"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:f8034b19b993e9601f2ddf2c517451e17a6ab5cdb1c13fdff50c1442a7171d87"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:6cfb227b932ba8ef6e56c9f875d987973cd5e35bc5d05f5abf045af78ad8e098"},
+    {file = "ruff-0.6.8-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6ef0411eccfc3909269fed47c61ffebdcb84a04504bafa6b6df9b85c27e813b0"},
+    {file = "ruff-0.6.8-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:007dee844738c3d2e6c24ab5bc7d43c99ba3e1943bd2d95d598582e9c1b27750"},
+    {file = "ruff-0.6.8-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:ce60058d3cdd8490e5e5471ef086b3f1e90ab872b548814e35930e21d848c9ce"},
+    {file = "ruff-0.6.8-py3-none-musllinux_1_2_i686.whl", hash = "sha256:1085c455d1b3fdb8021ad534379c60353b81ba079712bce7a900e834859182fa"},
+    {file = "ruff-0.6.8-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:70edf6a93b19481affd287d696d9e311388d808671bc209fb8907b46a8c3af44"},
+    {file = "ruff-0.6.8-py3-none-win32.whl", hash = "sha256:792213f7be25316f9b46b854df80a77e0da87ec66691e8f012f887b4a671ab5a"},
+    {file = "ruff-0.6.8-py3-none-win_amd64.whl", hash = "sha256:ec0517dc0f37cad14a5319ba7bba6e7e339d03fbf967a6d69b0907d61be7a263"},
+    {file = "ruff-0.6.8-py3-none-win_arm64.whl", hash = "sha256:8d3bb2e3fbb9875172119021a13eed38849e762499e3cfde9588e4b4d70968dc"},
+    {file = "ruff-0.6.8.tar.gz", hash = "sha256:a5bf44b1aa0adaf6d9d20f86162b34f7c593bfedabc51239953e446aefc8ce18"},
 ]
 
 [[package]]
@@ -2478,21 +2478,6 @@ groups = ["default"]
 files = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},
     {file = "six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926"},
-]
-
-[[package]]
-name = "slotscheck"
-version = "0.19.0"
-requires_python = ">=3.8.1"
-summary = "Ensure your __slots__ are working properly."
-groups = ["linting"]
-dependencies = [
-    "click<9.0,>=8.0",
-    "tomli<3.0.0,>=0.2.6; python_version < \"3.11\"",
-]
-files = [
-    {file = "slotscheck-0.19.0-py3-none-any.whl", hash = "sha256:53fbc9befacb331a2ab25b385004d99ea72b5cee4f3deb6da676c8f08d0fcdd9"},
-    {file = "slotscheck-0.19.0.tar.gz", hash = "sha256:707b4339d280664139ffd2c78fef99b3028e215f13cc77244147dd6126fe2e0d"},
 ]
 
 [[package]]
@@ -2709,16 +2694,16 @@ files = [
 
 [[package]]
 name = "vertexai"
-version = "1.67.1"
+version = "1.69.0"
 requires_python = ">=3.8"
 summary = "Please run pip install vertexai to use the Vertex SDK."
 groups = ["default"]
 dependencies = [
-    "google-cloud-aiplatform[all]==1.67.1",
+    "google-cloud-aiplatform[all]==1.69.0",
 ]
 files = [
-    {file = "vertexai-1.67.1-py3-none-any.whl", hash = "sha256:6702af342e630964a0dd03f832d49d6dcfef9520b6b5b3b3cd0682e01e336c32"},
-    {file = "vertexai-1.67.1.tar.gz", hash = "sha256:9a3fba4826a014845a0dad4d537895526941ad85a76384799a014330531af03c"},
+    {file = "vertexai-1.69.0-py3-none-any.whl", hash = "sha256:e5058c3c6471d57955110a106c6804a1f32a77a04b177c8fe89caa36563dedf3"},
+    {file = "vertexai-1.69.0.tar.gz", hash = "sha256:615fc2189bc41c5cc9bedb9133a9a52099000ad8c329eae53c2be1ae77f78ae7"},
 ]
 
 [[package]]

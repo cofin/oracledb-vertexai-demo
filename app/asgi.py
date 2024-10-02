@@ -31,6 +31,3 @@ def create_app() -> Litestar:
     settings = get_settings()
 
     return Litestar(debug=settings.app.DEBUG, plugins=[plugins.app_config])
-
-
-app = create_app()
