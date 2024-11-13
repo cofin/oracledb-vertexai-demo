@@ -155,8 +155,6 @@ class ServerSettings:
 
     APP_LOC: str = "app.asgi:app"
     """Path to app executable, or factory."""
-    APP_LOC_IS_FACTORY: bool = False
-    """Indicate if APP_LOC points to an executable or factory."""
     HOST: str = field(default_factory=lambda: os.getenv("LITESTAR_HOST", "0.0.0.0"))  # noqa: S104
     """Server network host."""
     PORT: int = field(default_factory=lambda: int(os.getenv("LITESTAR_PORT", "8000")))
@@ -306,7 +304,7 @@ class ViteSettings:
     )
     """Start `vite` development server."""
     USE_SERVER_LIFESPAN: bool = field(
-        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "True") in TRUE_VALUES,
+        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "False") in TRUE_VALUES,
     )
     """Auto start and stop `vite` processes when running in development mode.."""
     HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
@@ -314,7 +312,7 @@ class ViteSettings:
     PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
     """The port to start vite on.  Default to `5173`"""
     HOT_RELOAD: bool = field(
-        default_factory=lambda: os.getenv("VITE_HOT_RELOAD", "True") in TRUE_VALUES,
+        default_factory=lambda: os.getenv("VITE_HOT_RELOAD", "False") in TRUE_VALUES,
     )
     """Start `vite` with HMR enabled."""
     ENABLE_REACT_HELPERS: bool = field(

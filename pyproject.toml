@@ -34,7 +34,7 @@ keywords = ["litestar", "vertexai", "oracledb", "google"]
 license = { text = "MIT" }
 name = "app"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 version = "0.1.0"
 
 [project.scripts]
@@ -52,12 +52,10 @@ dev-mode-dirs = ["./"]
 include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini"]
 packages = ["app"]
 
-[tool.hatch.build.targets.app]
-
 [tool.pdm.scripts]
 lint = "pdm run pre-commit run --all-files"
-post_install = "pdm run python scripts/pre-build.py --install-packages"
-pre_build = "pdm run python scripts/pre-build.py --build-assets"
+# post_install = "pdm run python scripts/pre-build.py --install-packages"
+# pre_build = "pdm run python scripts/pre-build.py --build-assets"
 start-infra = "docker compose -f docker-compose.yml up --force-recreate -d"
 stop-infra = "docker compose -f docker-compose.yml down --remove-orphans"
 test = "pdm run pytest tests"
@@ -65,14 +63,7 @@ test_coverage = { composite = ["pdm run pytest tests", "pdm run coverage html", 
 
 [tool.pdm.dev-dependencies]
 dev = ["nodeenv"]
-linting = [
-    "pre-commit>=3.4.0",
-    "mypy>=1.5.1",
-    "ruff>=0.0.287",
-    "types-click",
-    "types-pyyaml",
-    "types-redis",
-]
+linting = ["pre-commit>=3.4.0", "mypy>=1.5.1", "ruff>=0.0.287", "types-click", "types-pyyaml", "types-redis"]
 test = [
     "pytest",
     "pytest-xdist",

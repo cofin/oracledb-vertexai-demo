@@ -6,10 +6,8 @@ SHELL := /bin/bash
 .DEFAULT_GOAL:=help
 .ONESHELL:
 USING_PDM		          	=	$(shell grep "tool.pdm" pyproject.toml && echo "yes")
-USING_NPM             		= $(shell python3 -c "if __import__('pathlib').Path('package-lock.json').exists(): print('yes')")
 ENV_PREFIX		        	=.venv/bin/
 VENV_EXISTS           		=	$(shell python3 -c "if __import__('pathlib').Path('.venv/bin/activate').exists(): print('yes')")
-NODE_MODULES_EXISTS			=	$(shell python3 -c "if __import__('pathlib').Path('node_modules').exists(): print('yes')")
 SRC_DIR               		=src
 BUILD_DIR             		=dist
 PDM_OPTS 		          	?=
@@ -32,8 +30,6 @@ upgrade:       										## Upgrade all dependencies to the latest stable versio
 	@echo "=> Updating all dependencies"
 	@if [ "$(USING_PDM)" ]; then $(PDM) update; fi
 	@echo "=> Python Dependencies Updated"
-	@if [ "$(USING_NPM)" ]; then npm upgrade --latest; fi
-	@echo "=> Node Dependencies Updated"
 	@$(ENV_PREFIX)pre-commit autoupdate
 	@echo "=> Updated Pre-commit"
 
@@ -62,24 +58,28 @@ install:											## Install the project and
 	@if ! $(PDM) --version > /dev/null; then echo '=> Installing PDM'; $(MAKE) install-pdm; fi
 	@if [ "$(VENV_EXISTS)" ]; then echo "=> Removing existing virtual environment"; fi
 	@if [ "$(VENV_EXISTS)" ]; then $(MAKE) destroy-venv && $(MAKE) clean; fi
-	@if [ "$(NODE_MODULES_EXISTS)" ]; then echo "=> Removing existing node modules"; fi
-	@if [ "$(NODE_MODULES_EXISTS)" ]; then $(MAKE) destroy-node_modules; fi
 	@if [ "$(USING_PDM)" ]; then $(PDM) config venv.in_project true && pdm venv --python 3.12 create --force; fi
 	@if [ "$(USING_PDM)" ]; then $(PDM) install -G:all; fi
 	@echo "=> Install complete! Note: If you want to re-install re-run 'make install'"
 
 
-clean: 												## Cleanup temporary build artifacts
-	@echo "=> Cleaning working directory"
-	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .mypy_cache
+.PHONY: clean
+clean: ## Remove build, test, and documentation artifacts
+	@echo "=> Cleaning project..."
+	@rm -rf \
+		.coverage coverage.xml coverage.json htmlcov/ \
+		.pytest_cache tests/.pytest_cache tests/**/.pytest_cache \
+		.mypy_cache .unasyncd_cache/ \
+		.ruff_cache .hypothesis build/ dist/ .eggs/
 	@find . -name '*.egg-info' -exec rm -rf {} +
-	@find . -name '*.egg' -exec rm -f {} +
+	@find . -type f -name '*.egg' -exec rm -f {} +
 	@find . -name '*.pyc' -exec rm -f {} +
 	@find . -name '*.pyo' -exec rm -f {} +
 	@find . -name '*~' -exec rm -f {} +
 	@find . -name '__pycache__' -exec rm -rf {} +
-	@find . -name '.pytest_cache' -exec rm -rf {} +
 	@find . -name '.ipynb_checkpoints' -exec rm -rf {} +
+	@find . -name '.terraform' -exec rm -fr {} +
+	@echo "=> Clean complete."
 
 destroy-venv: 											## Destroy the virtual environment
 	@echo "=> Cleaning Python virtual environment"
