@@ -15,7 +15,7 @@ make start-infra # starts containers and configures user
 **Note** If would like to do this manually, here are the steps the above `make start-infra` process is running:
 
 ```shell
-docker compose up # starts dev infra
+docker-compose up -d # starts dev infra
 cp .env.example .env # edit accordingly
 docker exec -it  oracledb-vertexai-demo-db-1 bash
 sqlplus / as sysdba

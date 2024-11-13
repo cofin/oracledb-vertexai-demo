@@ -151,19 +151,19 @@ test:  												## Run the tests
 .PHONY: start-infra
 start-infra: ## Start local containers
 	@echo "=> Starting local Oracle 23AI & Valkey instances..."
-	@docker compose -f docker-compose.yml up -d --force-recreate
+	@docker-compose -f docker-compose.yml up -d --force-recreate
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
 	@echo "=> Stopping local Oracle 23AI & Valkey instances..."
-	@docker compose -f docker-compose.yml down
+	@docker-compose -f docker-compose.yml down
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
 	@echo "=> Wiping local Oracle 23AI & Valkey instances..."
-	@docker compose -f docker-compose.yml down -v --remove-orphans
+	@docker-compose -f docker-compose.yml down -v --remove-orphans
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
 	@echo "=> Tailing logs for local Oracle 23AI & Valkey instances..."
-	@docker compose -f docker-compose.yml logs -f
+	@docker-compose -f docker-compose.yml logs -f
