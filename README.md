@@ -5,7 +5,7 @@
 ### Setup database and environment
 
 ```shell
-docker-compos up # starts dev infra
+docker-compose up # starts dev infra
 cp .env.example .env # edit accordingly
 make install
 docker exec -it  oracledb-vertexai-demo-db-1 bash
