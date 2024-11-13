@@ -92,15 +92,19 @@ def recommend() -> None:
                     products_service=products_service,
                     shops_service=shops_service,
                     history_meta={"user_id": "cli-0", "conversation_id": "cli-0"},
-                    system_context_message="""
+                    system_context_message=dedent("""
             You are a helpful AI assistant specializing in coffee recommendations.
             Given a user's chat history and the latest user query and a list of matching coffees from a database, provide an engaging and informative response.
-            If the user is asking about coffee recommendations and locations, provide the information and finish the response as concisely as possible.
-            Your responses should always be returning in Markdown format.
-            If the user is asking a general question or making a statement, respond appropriately without using the database.
+            If the user is asking about coffee recommendations and locations, only provide the product information and finish the response as concisely as possible.
+            Do not provide a list of details of the locations.  Only tell the customer how many locations nearby have the product.
 
-            **Response:**
-        """,
+            If the user is asking a general question or making a statement, respond appropriately without using the database.
+            Your responses should be as concise as possible.  You should not have any "placeholder syntax" in your response. If you don't know, it should be omitted.
+            Do not ask the user if you should list the stores.
+
+            Your responses should always be returning in Markdown format.
+            When providing locations, only provide responses that utilize the count of stores found that match the product selection.  The Locations will be provided separately by another component of the user interface.
+        """),
                 )
                 await _chat_session(service=service, console=console)
 
@@ -175,6 +179,7 @@ async def _print_response(
     with Live(Spinner("aesthetic"), refresh_per_second=15, console=console, transient=True):
         response = await service.get_recommendation(message)
         text = response["answer"]
+        console.print_json(data=response)
         console.print(panel_class(Markdown(text), title="🤖 Cymbal AI", title_align="left"))
         poi_template = dedent("""
         [{name}](https://www.google.com/maps/place/{latitude},{longitude}/@{latitude},{longitude},17z)

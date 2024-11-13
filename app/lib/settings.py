@@ -184,7 +184,7 @@ class LogSettings:
     """Log event name for logs from Litestar handlers."""
     INCLUDE_COMPRESSED_BODY: bool = False
     """Include 'body' of compressed responses in log output."""
-    LEVEL: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "ERROR"))
+    LEVEL: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "ERROR").upper())
     """Stdlib log levels.
 
     Only emit logs at this level, or higher.

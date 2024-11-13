@@ -17,6 +17,7 @@ from __future__ import annotations
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
+import structlog
 from advanced_alchemy.filters import CollectionFilter, LimitOffset
 from advanced_alchemy.repository import SQLAlchemyAsyncRepository, SQLAlchemyAsyncSlugRepository
 from advanced_alchemy.service import (
@@ -45,6 +46,9 @@ if TYPE_CHECKING:
     from langchain_core.runnables import Runnable
 
     from app.domain.coffee.schemas import CoffeeChatReply, HistoryMeta
+
+
+logger = structlog.get_logger()
 
 
 class RecommendationService:
@@ -120,7 +124,6 @@ class RecommendationService:
             ],
             input_messages_key="question",
             history_messages_key="chat_history",
-            output_messages_key="answer",
         )
 
     @staticmethod
@@ -144,6 +147,8 @@ class RecommendationService:
             If the user is asking about coffee recommendations and locations, provide the information and finish the response with "the map below displays the locations where you can find the coffee."
             If the user is asking a general question or making a statement, respond appropriately without using the database.
             Your responses should be as concise as possible.
+
+            When providing locations, only provide responses that utilize the count of stores found that match the product selection.  The Locations will be provided separately by another component of the user interface.
         """)
         system_message = message or dedent(setup).strip()
         return SystemMessage(content=system_message)
