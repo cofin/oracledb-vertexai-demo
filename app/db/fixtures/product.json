@@ -1,1946 +1,1730 @@
 [
-    {
-      "id" : 103,
-      "company_id" : 1,
-      "name" : "Mocha Moose",
-      "current_price" : 2.99,
-      "description" : "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 122,
-      "company_id" : 1,
-      "name" : "Coffee Rhapsody",
-      "current_price" : 2.49,
-      "description" : "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 35,
-      "company_id" : 1,
-      "name" : "Cookie Jar Symphony",
-      "current_price" : 3.99,
-      "description" : "A medley of chocolate chip, oatmeal raisin, and peanut butter cookies.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 118,
-      "company_id" : 1,
-      "name" : "Espresso Explosion Cookie",
-      "current_price" : 3.99,
-      "description" : "A soft and chewy cookie packed with chocolate chips and espresso powder.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 3,
-      "company_id" : 1,
-      "name" : "Mocha Marvel",
-      "current_price" : 5.99,
-      "description" : "A sweet and creamy combination of chocolate and coffee.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 4,
-      "company_id" : 1,
-      "name" : "Espresso Yeti",
-      "current_price" : 2.99,
-      "description" : "A bold and intense shot of espresso.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 52,
-      "company_id" : 1,
-      "name" : "Java Journey",
-      "current_price" : 4.99,
-      "description" : "Java Journey - Small",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 54,
-      "company_id" : 1,
-      "name" : "Java Journey",
-      "current_price" : 6.99,
-      "description" : "Java Journey - Large",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 53,
-      "company_id" : 1,
-      "name" : "Java Journey",
-      "current_price" : 5.99,
-      "description" : "Java Journey - Medium",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 128,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 3.49,
-      "description" : "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 40,
-      "company_id" : 1,
-      "name" : "Crema Splash",
-      "current_price" : 4.25,
-      "description" : "A classic espresso with a creamy splash of steamed milk.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 1,
-      "company_id" : 1,
-      "name" : "Mocha Marvel",
-      "current_price" : 3.99,
-      "description" : "A sweet and creamy combination of chocolate and coffee.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 2,
-      "company_id" : 1,
-      "name" : "Mocha Marvel",
-      "current_price" : 4.99,
-      "description" : "A sweet and creamy combination of chocolate and coffee.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 164,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 4.49,
-      "description" : "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 129,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 3.99,
-      "description" : "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 127,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 2.99,
-      "description" : "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 108,
-      "company_id" : 1,
-      "name" : "Mocha Mousse",
-      "current_price" : 4.99,
-      "description" : "Our Mocha Mousse is a light and fluffy mousse made with rich chocolate and coffee. It is the perfect dessert for any occasion.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 119,
-      "company_id" : 1,
-      "name" : "Beanish Bagel",
-      "current_price" : 2.99,
-      "description" : "A toasted bagel topped with cream cheese and a sprinkle of poppy seeds.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 163,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 3.99,
-      "description" : "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 165,
-      "company_id" : 1,
-      "name" : "Mocha Melody",
-      "current_price" : 4.99,
-      "description" : "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 183,
-      "company_id" : 1,
-      "name" : "Cosmic Coffee",
-      "current_price" : 3.99,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 182,
-      "company_id" : 1,
-      "name" : "Cosmic Coffee",
-      "current_price" : 3.49,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 181,
-      "company_id" : 1,
-      "name" : "Cosmic Coffee",
-      "current_price" : 2.99,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 6,
-      "company_id" : 1,
-      "name" : "Espresso Yeti",
-      "current_price" : 4.99,
-      "description" : "A bold and intense shot of espresso.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 5,
-      "company_id" : 1,
-      "name" : "Espresso Yeti",
-      "current_price" : 3.99,
-      "description" : "A bold and intense shot of espresso.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 39,
-      "company_id" : 1,
-      "name" : "Coffee Nebula",
-      "current_price" : 7.95,
-      "description" : "This rich blend of coffee and dark chocolate will leave you wanting more.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 38,
-      "company_id" : 1,
-      "name" : "Coffee Nebula",
-      "current_price" : 6.75,
-      "description" : "This rich blend of coffee and dark chocolate will leave you wanting more.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 37,
-      "company_id" : 1,
-      "name" : "Coffee Nebula",
-      "current_price" : 5.25,
-      "description" : "This rich blend of coffee and dark chocolate will leave you wanting more.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 196,
-      "company_id" : 1,
-      "name" : "Midnight Brew",
-      "current_price" : 2.99,
-      "description" : "A bold, robust coffee with a hint of smokiness.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 149,
-      "company_id" : 1,
-      "name" : "Mocha Blossom",
-      "current_price" : 2.99,
-      "description" : "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 148,
-      "company_id" : 1,
-      "name" : "Mocha Blossom",
-      "current_price" : 2.49,
-      "description" : "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 150,
-      "company_id" : 1,
-      "name" : "Mocha Blossom",
-      "current_price" : 3.49,
-      "description" : "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 12,
-      "company_id" : 1,
-      "name" : "Biscotti Boost",
-      "current_price" : 2.5,
-      "description" : "A crunchy and flavorful biscotti with a hint of espresso.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 197,
-      "company_id" : 1,
-      "name" : "Midnight Brew",
-      "current_price" : 3.99,
-      "description" : "A bold, robust coffee with a hint of smokiness.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 198,
-      "company_id" : 1,
-      "name" : "Midnight Brew",
-      "current_price" : 4.99,
-      "description" : "A bold, robust coffee with a hint of smokiness.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 25,
-      "company_id" : 1,
-      "name" : "Coffee Cascade",
-      "current_price" : 2.99,
-      "description" : "A refreshing coffee blend with hints of chocolate and caramel.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 27,
-      "company_id" : 1,
-      "name" : "Coffee Cascade",
-      "current_price" : 3.99,
-      "description" : "A refreshing coffee blend with hints of chocolate and caramel.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 26,
-      "company_id" : 1,
-      "name" : "Coffee Cascade",
-      "current_price" : 3.49,
-      "description" : "A refreshing coffee blend with hints of chocolate and caramel.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 61,
-      "company_id" : 1,
-      "name" : "Coffee Delight",
-      "current_price" : 2.5,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 63,
-      "company_id" : 1,
-      "name" : "Coffee Delight",
-      "current_price" : 4.5,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 81,
-      "company_id" : 1,
-      "name" : "Caramel Clouds",
-      "current_price" : 5.99,
-      "description" : "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 80,
-      "company_id" : 1,
-      "name" : "Caramel Clouds",
-      "current_price" : 4.99,
-      "description" : "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 79,
-      "company_id" : 1,
-      "name" : "Caramel Clouds",
-      "current_price" : 3.99,
-      "description" : "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 28,
-      "company_id" : 1,
-      "name" : "Java Jolt",
-      "current_price" : 2.99,
-      "description" : "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 100,
-      "company_id" : 1,
-      "name" : "RoboRoast",
-      "current_price" : 2.99,
-      "description" : "A bold and flavorful blend of coffee beans, roasted to perfection.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 102,
-      "company_id" : 1,
-      "name" : "RoboRoast",
-      "current_price" : 4.99,
-      "description" : "A bold and flavorful blend of coffee beans, roasted to perfection.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 101,
-      "company_id" : 1,
-      "name" : "RoboRoast",
-      "current_price" : 3.99,
-      "description" : "A bold and flavorful blend of coffee beans, roasted to perfection.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 179,
-      "company_id" : 1,
-      "name" : "Bean Bagel",
-      "current_price" : 2.99,
-      "description" : "A bagel made with coffee beans.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 30,
-      "company_id" : 1,
-      "name" : "Java Jolt",
-      "current_price" : 3.99,
-      "description" : "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 29,
-      "company_id" : 1,
-      "name" : "Java Jolt",
-      "current_price" : 3.49,
-      "description" : "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 33,
-      "company_id" : 1,
-      "name" : "Mocha Mist",
-      "current_price" : 4.49,
-      "description" : "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 192,
-      "company_id" : 1,
-      "name" : "Donut Dream",
-      "current_price" : 3.5,
-      "description" : "A light and fluffy donut, topped with a sweet glaze.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 67,
-      "company_id" : 1,
-      "name" : "Mocha Magic",
-      "current_price" : 2.5,
-      "description" : "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 69,
-      "company_id" : 1,
-      "name" : "Mocha Magic",
-      "current_price" : 4.5,
-      "description" : "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 68,
-      "company_id" : 1,
-      "name" : "Mocha Magic",
-      "current_price" : 3.5,
-      "description" : "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 60,
-      "company_id" : 1,
-      "name" : "Latte Loaf",
-      "current_price" : 4.99,
-      "description" : "Sweet bread infused with espresso and topped with a vanilla glaze.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 31,
-      "company_id" : 1,
-      "name" : "Mocha Mist",
-      "current_price" : 3.49,
-      "description" : "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 32,
-      "company_id" : 1,
-      "name" : "Mocha Mist",
-      "current_price" : 3.99,
-      "description" : "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 99,
-      "company_id" : 1,
-      "name" : "Coffee Comet",
-      "current_price" : 4.99,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 97,
-      "company_id" : 1,
-      "name" : "Coffee Comet",
-      "current_price" : 2.99,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 98,
-      "company_id" : 1,
-      "name" : "Coffee Comet",
-      "current_price" : 3.99,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 133,
-      "company_id" : 1,
-      "name" : "Coffee Dream",
-      "current_price" : 2.99,
-      "description" : "A rich and creamy blend of coffee, milk, and chocolate.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 134,
-      "company_id" : 1,
-      "name" : "Coffee Dream",
-      "current_price" : 3.99,
-      "description" : "A rich and creamy blend of coffee, milk, and chocolate.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 105,
-      "company_id" : 1,
-      "name" : "Mocha Moose",
-      "current_price" : 4.99,
-      "description" : "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 104,
-      "company_id" : 1,
-      "name" : "Mocha Moose",
-      "current_price" : 3.99,
-      "description" : "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 62,
-      "company_id" : 1,
-      "name" : "Coffee Delight",
-      "current_price" : 3.5,
-      "description" : "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 110,
-      "company_id" : 1,
-      "name" : "Coffee Embrace",
-      "current_price" : 4.99,
-      "description" : "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 111,
-      "company_id" : 1,
-      "name" : "Coffee Embrace",
-      "current_price" : 5.99,
-      "description" : "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 109,
-      "company_id" : 1,
-      "name" : "Coffee Embrace",
-      "current_price" : 3.99,
-      "description" : "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 170,
-      "company_id" : 1,
-      "name" : "Coffee Nirvana",
-      "current_price" : 3.99,
-      "description" : "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 135,
-      "company_id" : 1,
-      "name" : "Coffee Dream",
-      "current_price" : 4.99,
-      "description" : "A rich and creamy blend of coffee, milk, and chocolate.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 41,
-      "company_id" : 1,
-      "name" : "Crema Splash",
-      "current_price" : 5.75,
-      "description" : "A classic espresso with a creamy splash of steamed milk.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 42,
-      "company_id" : 1,
-      "name" : "Crema Splash",
-      "current_price" : 6.75,
-      "description" : "A classic espresso with a creamy splash of steamed milk.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 201,
-      "company_id" : 1,
-      "name" : "Espresso Magic",
-      "current_price" : 4.99,
-      "description" : "A rich, intense espresso with a creamy foam.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 199,
-      "company_id" : 1,
-      "name" : "Espresso Magic",
-      "current_price" : 2.99,
-      "description" : "A rich, intense espresso with a creamy foam.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 200,
-      "company_id" : 1,
-      "name" : "Espresso Magic",
-      "current_price" : 3.99,
-      "description" : "A rich, intense espresso with a creamy foam.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 207,
-      "company_id" : 1,
-      "name" : "Espresso Swirl",
-      "current_price" : 3.99,
-      "description" : "A blend of espresso, milk, and caramel syrup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 205,
-      "company_id" : 1,
-      "name" : "Espresso Swirl",
-      "current_price" : 2.99,
-      "description" : "A blend of espresso, milk, and caramel syrup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 169,
-      "company_id" : 1,
-      "name" : "Coffee Nirvana",
-      "current_price" : 2.99,
-      "description" : "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 171,
-      "company_id" : 1,
-      "name" : "Coffee Nirvana",
-      "current_price" : 4.99,
-      "description" : "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 140,
-      "company_id" : 1,
-      "name" : "Hazelnut Symphony",
-      "current_price" : 4.79,
-      "description" : "A nutty and flavorful blend of coffee, milk, and hazelnut.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 172,
-      "company_id" : 1,
-      "name" : "Midnight Espresso",
-      "current_price" : 2.99,
-      "description" : "A shot of espresso with steamed milk, topped with a layer of foam.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 173,
-      "company_id" : 1,
-      "name" : "Midnight Espresso",
-      "current_price" : 3.99,
-      "description" : "A shot of espresso with steamed milk, topped with a layer of foam.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 174,
-      "company_id" : 1,
-      "name" : "Midnight Espresso",
-      "current_price" : 4.99,
-      "description" : "A shot of espresso with steamed milk, topped with a layer of foam.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 8,
-      "company_id" : 1,
-      "name" : "Affogato Avalanche",
-      "current_price" : 5.99,
-      "description" : "A scoop of vanilla ice cream topped with a shot of espresso.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 206,
-      "company_id" : 1,
-      "name" : "Espresso Swirl",
-      "current_price" : 3.49,
-      "description" : "A blend of espresso, milk, and caramel syrup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 73,
-      "company_id" : 1,
-      "name" : "Hazelnut Haiku",
-      "current_price" : 3.99,
-      "description" : "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 75,
-      "company_id" : 1,
-      "name" : "Hazelnut Haiku",
-      "current_price" : 5.99,
-      "description" : "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 143,
-      "company_id" : 1,
-      "name" : "Cappuccino Cupcake",
-      "current_price" : 2.99,
-      "description" : "A moist and fluffy cupcake flavored with cappuccino and topped with a whipped cream frosting.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 59,
-      "company_id" : 1,
-      "name" : "Cappuccino Custard",
-      "current_price" : 3.49,
-      "description" : "Creamy custard layered with espresso and whipped cream.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 144,
-      "company_id" : 1,
-      "name" : "Coffee Bean Cookie",
-      "current_price" : 1.99,
-      "description" : "A chewy and chocolatey cookie made with coffee beans and topped with a chocolate chip.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 180,
-      "company_id" : 1,
-      "name" : "Coffee Buttercream",
-      "current_price" : 3.49,
-      "description" : "A buttercream frosting made with coffee.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 130,
-      "company_id" : 1,
-      "name" : "Coffee Cake Donuts",
-      "current_price" : 2.99,
-      "description" : "Freshly baked coffee cake donuts, topped with a sweet glaze. Perfect for breakfast or a snack.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 9,
-      "company_id" : 1,
-      "name" : "Affogato Avalanche",
-      "current_price" : 6.99,
-      "description" : "A scoop of vanilla ice cream topped with a shot of espresso.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 7,
-      "company_id" : 1,
-      "name" : "Affogato Avalanche",
-      "current_price" : 4.99,
-      "description" : "A scoop of vanilla ice cream topped with a shot of espresso.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 189,
-      "company_id" : 1,
-      "name" : "Sweet Dreams Latte",
-      "current_price" : 3.99,
-      "description" : "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 188,
-      "company_id" : 1,
-      "name" : "Sweet Dreams Latte",
-      "current_price" : 3.49,
-      "description" : "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 136,
-      "company_id" : 1,
-      "name" : "Barista's Delight",
-      "current_price" : 3.49,
-      "description" : "A smooth and velvety blend of espresso, steamed milk, and caramel.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 137,
-      "company_id" : 1,
-      "name" : "Barista's Delight",
-      "current_price" : 4.49,
-      "description" : "A smooth and velvety blend of espresso, steamed milk, and caramel.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 138,
-      "company_id" : 1,
-      "name" : "Barista's Delight",
-      "current_price" : 5.49,
-      "description" : "A smooth and velvety blend of espresso, steamed milk, and caramel.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 34,
-      "company_id" : 1,
-      "name" : "Coffee Crunch Cake",
-      "current_price" : 4.99,
-      "description" : "A delightful coffee-flavored cake with a crunchy topping.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 36,
-      "company_id" : 1,
-      "name" : "Mochaccino Muffins",
-      "current_price" : 2.99,
-      "description" : "A delicious muffin infused with mocha and chocolate chips.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 187,
-      "company_id" : 1,
-      "name" : "Sweet Dreams Latte",
-      "current_price" : 2.99,
-      "description" : "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 153,
-      "company_id" : 1,
-      "name" : "Cafe au Lait Breeze",
-      "current_price" : 2.99,
-      "description" : "This coffee drink is made with steamed milk and espresso.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 175,
-      "company_id" : 1,
-      "name" : "Cocoa Caramel Crush",
-      "current_price" : 2.99,
-      "description" : "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 177,
-      "company_id" : 1,
-      "name" : "Cocoa Caramel Crush",
-      "current_price" : 4.99,
-      "description" : "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 74,
-      "company_id" : 1,
-      "name" : "Hazelnut Haiku",
-      "current_price" : 4.99,
-      "description" : "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 91,
-      "company_id" : 1,
-      "name" : "Midnight Mocha",
-      "current_price" : 3.99,
-      "description" : "A rich and decadent mocha with a hint of chocolate.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 152,
-      "company_id" : 1,
-      "name" : "Cafe au Lait Breeze",
-      "current_price" : 2.49,
-      "description" : "This coffee drink is made with steamed milk and espresso.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 151,
-      "company_id" : 1,
-      "name" : "Cafe au Lait Breeze",
-      "current_price" : 1.99,
-      "description" : "This coffee drink is made with steamed milk and espresso.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 126,
-      "company_id" : 1,
-      "name" : "Tiramisu Twist",
-      "current_price" : 4.49,
-      "description" : "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 125,
-      "company_id" : 1,
-      "name" : "Tiramisu Twist",
-      "current_price" : 3.99,
-      "description" : "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 49,
-      "company_id" : 1,
-      "name" : "Coffee Carnival",
-      "current_price" : 4.99,
-      "description" : "Coffee Carnival - Small",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 51,
-      "company_id" : 1,
-      "name" : "Coffee Carnival",
-      "current_price" : 6.99,
-      "description" : "Coffee Carnival - Large",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 50,
-      "company_id" : 1,
-      "name" : "Coffee Carnival",
-      "current_price" : 5.99,
-      "description" : "Coffee Carnival - Medium",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 92,
-      "company_id" : 1,
-      "name" : "Midnight Mocha",
-      "current_price" : 4.49,
-      "description" : "A rich and decadent mocha with a hint of chocolate.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 93,
-      "company_id" : 1,
-      "name" : "Midnight Mocha",
-      "current_price" : 4.99,
-      "description" : "A rich and decadent mocha with a hint of chocolate.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 124,
-      "company_id" : 1,
-      "name" : "Tiramisu Twist",
-      "current_price" : 3.49,
-      "description" : "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 139,
-      "company_id" : 1,
-      "name" : "Hazelnut Symphony",
-      "current_price" : 3.79,
-      "description" : "A nutty and flavorful blend of coffee, milk, and hazelnut.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 17,
-      "company_id" : 1,
-      "name" : "Espresso Elixir",
-      "current_price" : 4.49,
-      "description" : "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 19,
-      "company_id" : 1,
-      "name" : "Cappuccino Dream",
-      "current_price" : 4.29,
-      "description" : "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 113,
-      "company_id" : 1,
-      "name" : "Espresso Fantasy",
-      "current_price" : 4.99,
-      "description" : "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 141,
-      "company_id" : 1,
-      "name" : "Hazelnut Symphony",
-      "current_price" : 5.79,
-      "description" : "A nutty and flavorful blend of coffee, milk, and hazelnut.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 16,
-      "company_id" : 1,
-      "name" : "Espresso Elixir",
-      "current_price" : 3.49,
-      "description" : "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 20,
-      "company_id" : 1,
-      "name" : "Cappuccino Dream",
-      "current_price" : 5.29,
-      "description" : "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 114,
-      "company_id" : 1,
-      "name" : "Espresso Fantasy",
-      "current_price" : 5.99,
-      "description" : "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 176,
-      "company_id" : 1,
-      "name" : "Cocoa Caramel Crush",
-      "current_price" : 3.99,
-      "description" : "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 18,
-      "company_id" : 1,
-      "name" : "Espresso Elixir",
-      "current_price" : 5.49,
-      "description" : "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 21,
-      "company_id" : 1,
-      "name" : "Cappuccino Dream",
-      "current_price" : 6.29,
-      "description" : "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 45,
-      "company_id" : 1,
-      "name" : "Hazelnut Horizon",
-      "current_price" : 7.25,
-      "description" : "A sweet and nutty latte with a hint of hazelnut.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 48,
-      "company_id" : 1,
-      "name" : "Coffee Bean Brittle",
-      "current_price" : 2.75,
-      "description" : "Crispy and sweet coffee bean brittle.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 185,
-      "company_id" : 1,
-      "name" : "Hazelnut Heaven",
-      "current_price" : 3.49,
-      "description" : "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 116,
-      "company_id" : 1,
-      "name" : "Caramel Symphony",
-      "current_price" : 4.99,
-      "description" : "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 44,
-      "company_id" : 1,
-      "name" : "Hazelnut Horizon",
-      "current_price" : 6.25,
-      "description" : "A sweet and nutty latte with a hint of hazelnut.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 191,
-      "company_id" : 1,
-      "name" : "Coffee Break Cookie",
-      "current_price" : 2.25,
-      "description" : "A classic chocolate chip cookie, perfect for a quick snack or a sweet treat.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 184,
-      "company_id" : 1,
-      "name" : "Hazelnut Heaven",
-      "current_price" : 2.99,
-      "description" : "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 115,
-      "company_id" : 1,
-      "name" : "Caramel Symphony",
-      "current_price" : 3.99,
-      "description" : "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 43,
-      "company_id" : 1,
-      "name" : "Hazelnut Horizon",
-      "current_price" : 4.95,
-      "description" : "A sweet and nutty latte with a hint of hazelnut.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 214,
-      "company_id" : 1,
-      "name" : "Coffee Cake Muffins",
-      "current_price" : 2.99,
-      "description" : "Buttery and moist coffee cake muffins topped with sweet crumbles.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 186,
-      "company_id" : 1,
-      "name" : "Hazelnut Heaven",
-      "current_price" : 3.99,
-      "description" : "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 117,
-      "company_id" : 1,
-      "name" : "Caramel Symphony",
-      "current_price" : 5.99,
-      "description" : "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 203,
-      "company_id" : 1,
-      "name" : "Macchiato Muffin",
-      "current_price" : 4.99,
-      "description" : "A rich, robust espresso shot layered with steamed milk, topped with a dollop of foam and a sprinkle of cinnamon. Served with a warm, fluffy muffin.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 178,
-      "company_id" : 1,
-      "name" : "Coffee Crumble Cake",
-      "current_price" : 3.99,
-      "description" : "A delicious coffee cake with a crumbly topping.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 90,
-      "company_id" : 1,
-      "name" : "Honey Bee Latte",
-      "current_price" : 4.49,
-      "description" : "A sweet and creamy latte with a hint of honey.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 76,
-      "company_id" : 1,
-      "name" : "Chai Tea Delight",
-      "current_price" : 3.99,
-      "description" : "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 156,
-      "company_id" : 1,
-      "name" : "Mocha Magic Cake",
-      "current_price" : 5.99,
-      "description" : "A moist and fluffy cake with a mocha filling.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 46,
-      "company_id" : 1,
-      "name" : "Espresso Cheesecake",
-      "current_price" : 7.25,
-      "description" : "A creamy cheesecake. Swirls of espresso pudding nestle between layers of thick vanilla cheesecake.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 88,
-      "company_id" : 1,
-      "name" : "Honey Bee Latte",
-      "current_price" : 3.49,
-      "description" : "A sweet and creamy latte with a hint of honey.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 78,
-      "company_id" : 1,
-      "name" : "Chai Tea Delight",
-      "current_price" : 5.99,
-      "description" : "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 167,
-      "company_id" : 1,
-      "name" : "Cafe Latte Crepes",
-      "current_price" : 7.99,
-      "description" : "A light and fluffy crepe filled with cafe latte mousse and topped with whipped cream.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 190,
-      "company_id" : 1,
-      "name" : "Wakey Wakey Waffles",
-      "current_price" : 7.5,
-      "description" : "Fluffy, golden waffles with your choice of butter, syrup, or fruit.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 89,
-      "company_id" : 1,
-      "name" : "Honey Bee Latte",
-      "current_price" : 3.99,
-      "description" : "A sweet and creamy latte with a hint of honey.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 77,
-      "company_id" : 1,
-      "name" : "Chai Tea Delight",
-      "current_price" : 4.99,
-      "description" : "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 160,
-      "company_id" : 1,
-      "name" : "Caffeinated Crush",
-      "current_price" : 3.49,
-      "description" : "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 121,
-      "company_id" : 1,
-      "name" : "Coffee Rhapsody",
-      "current_price" : 1.99,
-      "description" : "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 58,
-      "company_id" : 1,
-      "name" : "Mocha Munchkins",
-      "current_price" : 2.99,
-      "description" : "Espresso-infused donut holes rolled in powdered sugar and drizzled with chocolate.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 14,
-      "company_id" : 1,
-      "name" : "Coffee Conundrum",
-      "current_price" : 3.99,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 161,
-      "company_id" : 1,
-      "name" : "Caffeinated Crush",
-      "current_price" : 3.99,
-      "description" : "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 85,
-      "company_id" : 1,
-      "name" : "Dark Woods Brew",
-      "current_price" : 2.49,
-      "description" : "A dark roasted coffee with a rich, bold flavor.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 157,
-      "company_id" : 1,
-      "name" : "Barista's Brew",
-      "current_price" : 2.99,
-      "description" : "A classic coffee drink made with freshly brewed coffee and steamed milk.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 13,
-      "company_id" : 1,
-      "name" : "Coffee Conundrum",
-      "current_price" : 2.99,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 162,
-      "company_id" : 1,
-      "name" : "Caffeinated Crush",
-      "current_price" : 4.49,
-      "description" : "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 86,
-      "company_id" : 1,
-      "name" : "Dark Woods Brew",
-      "current_price" : 2.99,
-      "description" : "A dark roasted coffee with a rich, bold flavor.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 158,
-      "company_id" : 1,
-      "name" : "Barista's Brew",
-      "current_price" : 3.49,
-      "description" : "A classic coffee drink made with freshly brewed coffee and steamed milk.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 15,
-      "company_id" : 1,
-      "name" : "Coffee Conundrum",
-      "current_price" : 4.99,
-      "description" : "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 66,
-      "company_id" : 1,
-      "name" : "Caffeinated Dream",
-      "current_price" : 4.5,
-      "description" : "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 87,
-      "company_id" : 1,
-      "name" : "Dark Woods Brew",
-      "current_price" : 3.49,
-      "description" : "A dark roasted coffee with a rich, bold flavor.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 159,
-      "company_id" : 1,
-      "name" : "Barista's Brew",
-      "current_price" : 3.99,
-      "description" : "A classic coffee drink made with freshly brewed coffee and steamed milk.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 155,
-      "company_id" : 1,
-      "name" : "Espresso Brownie",
-      "current_price" : 3.99,
-      "description" : "A rich and decadent brownie made with espresso.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 64,
-      "company_id" : 1,
-      "name" : "Caffeinated Dream",
-      "current_price" : 2.5,
-      "description" : "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 146,
-      "company_id" : 1,
-      "name" : "Espresso Clouds",
-      "current_price" : 2.49,
-      "description" : "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 57,
-      "company_id" : 1,
-      "name" : "Brewhaha Bonanza",
-      "current_price" : 6.99,
-      "description" : "Brewhaha Bonanza - Large",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 106,
-      "company_id" : 1,
-      "name" : "Espresso Delight",
-      "current_price" : 3.99,
-      "description" : "Treat yourself to a rich and decadent espresso drink that will awaken your senses and leave you feeling refreshed.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 65,
-      "company_id" : 1,
-      "name" : "Caffeinated Dream",
-      "current_price" : 3.5,
-      "description" : "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 147,
-      "company_id" : 1,
-      "name" : "Espresso Clouds",
-      "current_price" : 2.99,
-      "description" : "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 55,
-      "company_id" : 1,
-      "name" : "Brewhaha Bonanza",
-      "current_price" : 4.99,
-      "description" : "Brewhaha Bonanza - Small",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 112,
-      "company_id" : 1,
-      "name" : "Espresso Fantasy",
-      "current_price" : 3.99,
-      "description" : "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 22,
-      "company_id" : 1,
-      "name" : "Coffee Cake Cloud",
-      "current_price" : 3.99,
-      "description" : "Sweet and fluffy coffee cake with a hint of vanilla. Topped with roasted coffee beans.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 145,
-      "company_id" : 1,
-      "name" : "Espresso Clouds",
-      "current_price" : 1.99,
-      "description" : "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 56,
-      "company_id" : 1,
-      "name" : "Brewhaha Bonanza",
-      "current_price" : 5.99,
-      "description" : "Brewhaha Bonanza - Medium",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 166,
-      "company_id" : 1,
-      "name" : "Coffee Cake Caramel Corn",
-      "current_price" : 4.99,
-      "description" : "A sweet and crunchy snack made with coffee cake pieces and caramel sauce.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 11,
-      "company_id" : 1,
-      "name" : "Café au Lait Crumble",
-      "current_price" : 3.75,
-      "description" : "A sweet and creamy coffee cake with a crumbly topping.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 209,
-      "company_id" : 1,
-      "name" : "Butterscotch Caramel Buzz",
-      "current_price" : 3.49,
-      "description" : "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 154,
-      "company_id" : 1,
-      "name" : "Coffee Cake Croissant",
-      "current_price" : 4.99,
-      "description" : "A delicious croissant filled with coffee cake.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 210,
-      "company_id" : 1,
-      "name" : "Butterscotch Caramel Buzz",
-      "current_price" : 3.99,
-      "description" : "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 47,
-      "company_id" : 1,
-      "name" : "Caramel Latte Cupcakes",
-      "current_price" : 5.5,
-      "description" : "Decadent caramel latte cupcakes topped with a swirl of caramel icing.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 208,
-      "company_id" : 1,
-      "name" : "Butterscotch Caramel Buzz",
-      "current_price" : 2.99,
-      "description" : "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 70,
-      "company_id" : 1,
-      "name" : "Coffee Cake Cloud Nine",
-      "current_price" : 4.99,
-      "description" : "A fluffy cloud of coffee and cake. The perfect way to start your day.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 95,
-      "company_id" : 1,
-      "name" : "Cappuccino Crème Brûlée",
-      "current_price" : 7.99,
-      "description" : "Our Cappuccino Crème Brûlaye combines the flavors of cappuccino and crème brûlaye into a single dessert. This decadent treat features a creamy cappuccino custard topped with a caramelized sugar crust. Served with a side of fresh berries.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 142,
-      "company_id" : 1,
-      "name" : "Coffee Doughnut Crunch",
-      "current_price" : 3.99,
-      "description" : "A delicious doughnut made with coffee and sprinkled with chocolate chips.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 84,
-      "company_id" : 1,
-      "name" : "Coffee Bean Butter Cookies",
-      "current_price" : 2.99,
-      "description" : "A classic cookie made with coffee beans and butter.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 107,
-      "company_id" : 1,
-      "name" : "Coffee and Cream Scone",
-      "current_price" : 2.99,
-      "description" : "A classic coffee shop treat, our Coffee and Cream Scone is made with fresh, locally sourced coffee and creamy butter.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 215,
-      "company_id" : 1,
-      "name" : "Espresso Glazed Croissants",
-      "current_price" : 3.99,
-      "description" : "Flaky and buttery croissants topped with a rich espresso glaze.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 82,
-      "company_id" : 1,
-      "name" : "Java Jeweled Croissant",
-      "current_price" : 3.99,
-      "description" : "A delicious croissant with a sweet glaze and a sprinkle of chopped nuts.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 132,
-      "company_id" : 1,
-      "name" : "Espresso Shortbread Cookies",
-      "current_price" : 2.79,
-      "description" : "Buttery shortbread cookies infused with the rich flavor of espresso. Perfect for a sweet treat or a gift.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 123,
-      "company_id" : 1,
-      "name" : "Coffee Rhapsody",
-      "current_price" : 2.99,
-      "description" : "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 24,
-      "company_id" : 1,
-      "name" : "Mocha Madness Meltdown",
-      "current_price" : 5.99,
-      "description" : "Warm and gooey chocolate croissant filled with a creamy mocha filling, served with whipped cream and a sprinkle of cocoa powder.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 94,
-      "company_id" : 1,
-      "name" : "Coffee-infused Avocado Toast",
-      "current_price" : 12.99,
-      "description" : "Our Coffee-infused Avocado Toast is an elevated take on classic avocado toast, featuring toasted sourdough bread topped with a creamy spread made from coffee-infused avocado, sprinkled with feta cheese and fresh herbs. Served with a side of our signature coffee-infused vinaigrette.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 131,
-      "company_id" : 1,
-      "name" : "Caf-Pow! Protein Bar",
-      "current_price" : 3.49,
-      "description" : "A delicious and nutritious protein bar, perfect for a quick snack or post-workout refuel. Made with all-natural ingredients, Caf-Pow! is packed with protein, fiber, and vitamins.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 120,
-      "company_id" : 1,
-      "name" : "Caffeinated Carrot Cake",
-      "current_price" : 4.99,
-      "description" : "A moist and flavorful carrot cake made with coffee and topped with a cream cheese frosting.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 168,
-      "company_id" : 1,
-      "name" : "Espresso Infused Jelly Donuts",
-      "current_price" : 6.99,
-      "description" : "A rich and decadent donut infused with espresso and filled with a sweet jelly filling.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 71,
-      "company_id" : 1,
-      "name" : "Caramel Latte Crunch",
-      "current_price" : 3.99,
-      "description" : "A decadent combination of caramel, latte, and crunch. Sure to satisfy your sweet tooth.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 23,
-      "company_id" : 1,
-      "name" : "Café Croissant Crusade",
-      "current_price" : 4.99,
-      "description" : "Crispy and buttery croissants filled with a rich coffee-chocolate ganache, sprinkled with roasted nuts.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 96,
-      "company_id" : 1,
-      "name" : "Caramelatte Chocolate Chip Cookies",
-      "current_price" : 4.99,
-      "description" : "Our Caramelatte Chocolate Chip Cookies are a delicious treat that combines the flavors of caramel and chocolate. These cookies are made with a caramelatte-infused dough and loaded with chocolate chips. They are then baked to perfection and served warm.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 10,
-      "company_id" : 1,
-      "name" : "Coffee Clutch Cookie",
-      "current_price" : 3.25,
-      "description" : "A soft and chewy cookie with a rich coffee flavor.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 204,
-      "company_id" : 1,
-      "name" : "Cappuccino Chiffon Cake",
-      "current_price" : 7.99,
-      "description" : "A light and airy chiffon cake infused with the rich flavor of cappuccino. Served with a dollop of whipped cream and a dusting of cocoa powder.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 194,
-      "company_id" : 1,
-      "name" : "Coffee Constellation",
-      "current_price" : 3.99,
-      "description" : "A smooth, dark roast coffee with notes of chocolate and caramel.",
-      "size" : "Medium"
-
-    },
-    {
-      "id" : 72,
-      "company_id" : 1,
-      "name" : "Americano Almond Delight",
-      "current_price" : 2.99,
-      "description" : "A smooth and nutty blend of americano and almond. The perfect drink for any time of day.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 193,
-      "company_id" : 1,
-      "name" : "Coffee Constellation",
-      "current_price" : 2.99,
-      "description" : "A smooth, dark roast coffee with notes of chocolate and caramel.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 202,
-      "company_id" : 1,
-      "name" : "Cafe con Leche Croissant",
-      "current_price" : 6.5,
-      "description" : "A warm, foamy cup of milk with a hint of coffee, paired with a flaky, buttery croissant. The perfect way to start your day.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 195,
-      "company_id" : 1,
-      "name" : "Coffee Constellation",
-      "current_price" : 4.99,
-      "description" : "A smooth, dark roast coffee with notes of chocolate and caramel.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 211,
-      "company_id" : 1,
-      "name" : "Clouds of Coffee Delight",
-      "current_price" : 2.99,
-      "description" : "A blend of coffee, milk, and vanilla syrup.",
-      "size" : "Small"
-
-    },
-    {
-      "id" : 83,
-      "company_id" : 1,
-      "name" : "Cup O'' Joe Sandwich",
-      "current_price" : 5.99,
-      "description" : "A hearty sandwich made with ham, bacon, and cheese, served on a toasted bagel.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 213,
-      "company_id" : 1,
-      "name" : "Clouds of Coffee Delight",
-      "current_price" : 3.99,
-      "description" : "A blend of coffee, milk, and vanilla syrup.",
-      "size" : "Large"
-
-    },
-    {
-      "id" : 216,
-      "company_id" : 1,
-      "name" : "Mocha Swirl Pancakes",
-      "current_price" : 4.99,
-      "description" : "Fluffy pancakes swirled with chocolate mocha and topped with whipped cream.",
-      "size" : "n/a"
-
-    },
-    {
-      "id" : 212,
-      "company_id" : 1,
-      "name" : "Clouds of Coffee Delight",
-      "current_price" : 3.49,
-      "description" : "A blend of coffee, milk, and vanilla syrup.",
-      "size" : "Medium"
-
-    }
-  ]
+  {
+    "id": 103,
+    "company_id": 1,
+    "name": "Mocha Moose",
+    "current_price": 2.99,
+    "description": "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
+    "size": "Small"
+  },
+  {
+    "id": 122,
+    "company_id": 1,
+    "name": "Coffee Rhapsody",
+    "current_price": 2.49,
+    "description": "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
+    "size": "Medium"
+  },
+  {
+    "id": 35,
+    "company_id": 1,
+    "name": "Cookie Jar Symphony",
+    "current_price": 3.99,
+    "description": "A medley of chocolate chip, oatmeal raisin, and peanut butter cookies.",
+    "size": "n/a"
+  },
+  {
+    "id": 118,
+    "company_id": 1,
+    "name": "Espresso Explosion Cookie",
+    "current_price": 3.99,
+    "description": "A soft and chewy cookie packed with chocolate chips and espresso powder.",
+    "size": "n/a"
+  },
+  {
+    "id": 3,
+    "company_id": 1,
+    "name": "Mocha Marvel",
+    "current_price": 5.99,
+    "description": "A sweet and creamy combination of chocolate and coffee.",
+    "size": "Large"
+  },
+  {
+    "id": 4,
+    "company_id": 1,
+    "name": "Espresso Yeti",
+    "current_price": 2.99,
+    "description": "A bold and intense shot of espresso.",
+    "size": "Small"
+  },
+  {
+    "id": 52,
+    "company_id": 1,
+    "name": "Java Journey",
+    "current_price": 4.99,
+    "description": "Java Journey - Small",
+    "size": "Small"
+  },
+  {
+    "id": 54,
+    "company_id": 1,
+    "name": "Java Journey",
+    "current_price": 6.99,
+    "description": "Java Journey - Large",
+    "size": "Large"
+  },
+  {
+    "id": 53,
+    "company_id": 1,
+    "name": "Java Journey",
+    "current_price": 5.99,
+    "description": "Java Journey - Medium",
+    "size": "Medium"
+  },
+  {
+    "id": 128,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 3.49,
+    "description": "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
+    "size": "Medium"
+  },
+  {
+    "id": 40,
+    "company_id": 1,
+    "name": "Crema Splash",
+    "current_price": 4.25,
+    "description": "A classic espresso with a creamy splash of steamed milk.",
+    "size": "Small"
+  },
+  {
+    "id": 1,
+    "company_id": 1,
+    "name": "Mocha Marvel",
+    "current_price": 3.99,
+    "description": "A sweet and creamy combination of chocolate and coffee.",
+    "size": "Small"
+  },
+  {
+    "id": 2,
+    "company_id": 1,
+    "name": "Mocha Marvel",
+    "current_price": 4.99,
+    "description": "A sweet and creamy combination of chocolate and coffee.",
+    "size": "Medium"
+  },
+  {
+    "id": 164,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 4.49,
+    "description": "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
+    "size": "Medium"
+  },
+  {
+    "id": 129,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 3.99,
+    "description": "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
+    "size": "Large"
+  },
+  {
+    "id": 127,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 2.99,
+    "description": "Mocha Melody is a rich and decadent chocolate drink made with espresso, steamed milk, and chocolate syrup. It is topped with a dollop of whipped cream and a dusting of cocoa powder.",
+    "size": "Small"
+  },
+  {
+    "id": 108,
+    "company_id": 1,
+    "name": "Mocha Mousse",
+    "current_price": 4.99,
+    "description": "Our Mocha Mousse is a light and fluffy mousse made with rich chocolate and coffee. It is the perfect dessert for any occasion.",
+    "size": "n/a"
+  },
+  {
+    "id": 119,
+    "company_id": 1,
+    "name": "Beanish Bagel",
+    "current_price": 2.99,
+    "description": "A toasted bagel topped with cream cheese and a sprinkle of poppy seeds.",
+    "size": "n/a"
+  },
+  {
+    "id": 163,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 3.99,
+    "description": "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
+    "size": "Small"
+  },
+  {
+    "id": 165,
+    "company_id": 1,
+    "name": "Mocha Melody",
+    "current_price": 4.99,
+    "description": "A decadent coffee drink made with espresso, chocolate syrup, and steamed milk.",
+    "size": "Large"
+  },
+  {
+    "id": 183,
+    "company_id": 1,
+    "name": "Cosmic Coffee",
+    "current_price": 3.99,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
+    "size": "Large"
+  },
+  {
+    "id": 182,
+    "company_id": 1,
+    "name": "Cosmic Coffee",
+    "current_price": 3.49,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
+    "size": "Medium"
+  },
+  {
+    "id": 181,
+    "company_id": 1,
+    "name": "Cosmic Coffee",
+    "current_price": 2.99,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection. Enjoy the smooth, chocolatey notes with a hint of caramel.",
+    "size": "Small"
+  },
+  {
+    "id": 6,
+    "company_id": 1,
+    "name": "Espresso Yeti",
+    "current_price": 4.99,
+    "description": "A bold and intense shot of espresso.",
+    "size": "Large"
+  },
+  {
+    "id": 5,
+    "company_id": 1,
+    "name": "Espresso Yeti",
+    "current_price": 3.99,
+    "description": "A bold and intense shot of espresso.",
+    "size": "Medium"
+  },
+  {
+    "id": 39,
+    "company_id": 1,
+    "name": "Coffee Nebula",
+    "current_price": 7.95,
+    "description": "This rich blend of coffee and dark chocolate will leave you wanting more.",
+    "size": "Large"
+  },
+  {
+    "id": 38,
+    "company_id": 1,
+    "name": "Coffee Nebula",
+    "current_price": 6.75,
+    "description": "This rich blend of coffee and dark chocolate will leave you wanting more.",
+    "size": "Medium"
+  },
+  {
+    "id": 37,
+    "company_id": 1,
+    "name": "Coffee Nebula",
+    "current_price": 5.25,
+    "description": "This rich blend of coffee and dark chocolate will leave you wanting more.",
+    "size": "Small"
+  },
+  {
+    "id": 196,
+    "company_id": 1,
+    "name": "Midnight Brew",
+    "current_price": 2.99,
+    "description": "A bold, robust coffee with a hint of smokiness.",
+    "size": "Small"
+  },
+  {
+    "id": 149,
+    "company_id": 1,
+    "name": "Mocha Blossom",
+    "current_price": 2.99,
+    "description": "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
+    "size": "Medium"
+  },
+  {
+    "id": 148,
+    "company_id": 1,
+    "name": "Mocha Blossom",
+    "current_price": 2.49,
+    "description": "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
+    "size": "Small"
+  },
+  {
+    "id": 150,
+    "company_id": 1,
+    "name": "Mocha Blossom",
+    "current_price": 3.49,
+    "description": "This chocolatey drink is made with espresso, steamed milk, and chocolate syrup.",
+    "size": "Large"
+  },
+  {
+    "id": 12,
+    "company_id": 1,
+    "name": "Biscotti Boost",
+    "current_price": 2.5,
+    "description": "A crunchy and flavorful biscotti with a hint of espresso.",
+    "size": "n/a"
+  },
+  {
+    "id": 197,
+    "company_id": 1,
+    "name": "Midnight Brew",
+    "current_price": 3.99,
+    "description": "A bold, robust coffee with a hint of smokiness.",
+    "size": "Medium"
+  },
+  {
+    "id": 198,
+    "company_id": 1,
+    "name": "Midnight Brew",
+    "current_price": 4.99,
+    "description": "A bold, robust coffee with a hint of smokiness.",
+    "size": "Large"
+  },
+  {
+    "id": 25,
+    "company_id": 1,
+    "name": "Coffee Cascade",
+    "current_price": 2.99,
+    "description": "A refreshing coffee blend with hints of chocolate and caramel.",
+    "size": "Small"
+  },
+  {
+    "id": 27,
+    "company_id": 1,
+    "name": "Coffee Cascade",
+    "current_price": 3.99,
+    "description": "A refreshing coffee blend with hints of chocolate and caramel.",
+    "size": "Large"
+  },
+  {
+    "id": 26,
+    "company_id": 1,
+    "name": "Coffee Cascade",
+    "current_price": 3.49,
+    "description": "A refreshing coffee blend with hints of chocolate and caramel.",
+    "size": "Medium"
+  },
+  {
+    "id": 61,
+    "company_id": 1,
+    "name": "Coffee Delight",
+    "current_price": 2.5,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
+    "size": "Small"
+  },
+  {
+    "id": 63,
+    "company_id": 1,
+    "name": "Coffee Delight",
+    "current_price": 4.5,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
+    "size": "Large"
+  },
+  {
+    "id": 81,
+    "company_id": 1,
+    "name": "Caramel Clouds",
+    "current_price": 5.99,
+    "description": "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
+    "size": "Large"
+  },
+  {
+    "id": 80,
+    "company_id": 1,
+    "name": "Caramel Clouds",
+    "current_price": 4.99,
+    "description": "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
+    "size": "Medium"
+  },
+  {
+    "id": 79,
+    "company_id": 1,
+    "name": "Caramel Clouds",
+    "current_price": 3.99,
+    "description": "A sweet and decadent treat that is sure to satisfy your sweet tooth.",
+    "size": "Small"
+  },
+  {
+    "id": 28,
+    "company_id": 1,
+    "name": "Java Jolt",
+    "current_price": 2.99,
+    "description": "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
+    "size": "Small"
+  },
+  {
+    "id": 100,
+    "company_id": 1,
+    "name": "RoboRoast",
+    "current_price": 2.99,
+    "description": "A bold and flavorful blend of coffee beans, roasted to perfection.",
+    "size": "Small"
+  },
+  {
+    "id": 102,
+    "company_id": 1,
+    "name": "RoboRoast",
+    "current_price": 4.99,
+    "description": "A bold and flavorful blend of coffee beans, roasted to perfection.",
+    "size": "Large"
+  },
+  {
+    "id": 101,
+    "company_id": 1,
+    "name": "RoboRoast",
+    "current_price": 3.99,
+    "description": "A bold and flavorful blend of coffee beans, roasted to perfection.",
+    "size": "Medium"
+  },
+  {
+    "id": 179,
+    "company_id": 1,
+    "name": "Bean Bagel",
+    "current_price": 2.99,
+    "description": "A bagel made with coffee beans.",
+    "size": "n/a"
+  },
+  {
+    "id": 30,
+    "company_id": 1,
+    "name": "Java Jolt",
+    "current_price": 3.99,
+    "description": "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
+    "size": "Large"
+  },
+  {
+    "id": 29,
+    "company_id": 1,
+    "name": "Java Jolt",
+    "current_price": 3.49,
+    "description": "A bold and invigorating coffee blend for those who need a quick pick-me-up.",
+    "size": "Medium"
+  },
+  {
+    "id": 33,
+    "company_id": 1,
+    "name": "Mocha Mist",
+    "current_price": 4.49,
+    "description": "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
+    "size": "Large"
+  },
+  {
+    "id": 192,
+    "company_id": 1,
+    "name": "Donut Dream",
+    "current_price": 3.5,
+    "description": "A light and fluffy donut, topped with a sweet glaze.",
+    "size": "n/a"
+  },
+  {
+    "id": 67,
+    "company_id": 1,
+    "name": "Mocha Magic",
+    "current_price": 2.5,
+    "description": "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
+    "size": "Small"
+  },
+  {
+    "id": 69,
+    "company_id": 1,
+    "name": "Mocha Magic",
+    "current_price": 4.5,
+    "description": "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
+    "size": "Large"
+  },
+  {
+    "id": 68,
+    "company_id": 1,
+    "name": "Mocha Magic",
+    "current_price": 3.5,
+    "description": "A rich and decadent blend of chocolate and coffee, roasted to perfection and brewed to a smooth and creamy cup.",
+    "size": "Medium"
+  },
+  {
+    "id": 60,
+    "company_id": 1,
+    "name": "Latte Loaf",
+    "current_price": 4.99,
+    "description": "Sweet bread infused with espresso and topped with a vanilla glaze.",
+    "size": "n/a"
+  },
+  {
+    "id": 31,
+    "company_id": 1,
+    "name": "Mocha Mist",
+    "current_price": 3.49,
+    "description": "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
+    "size": "Small"
+  },
+  {
+    "id": 32,
+    "company_id": 1,
+    "name": "Mocha Mist",
+    "current_price": 3.99,
+    "description": "A rich and decadent coffee blend with hints of chocolate and steamed milk.",
+    "size": "Medium"
+  },
+  {
+    "id": 99,
+    "company_id": 1,
+    "name": "Coffee Comet",
+    "current_price": 4.99,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection.",
+    "size": "Large"
+  },
+  {
+    "id": 97,
+    "company_id": 1,
+    "name": "Coffee Comet",
+    "current_price": 2.99,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection.",
+    "size": "Small"
+  },
+  {
+    "id": 98,
+    "company_id": 1,
+    "name": "Coffee Comet",
+    "current_price": 3.99,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection.",
+    "size": "Medium"
+  },
+  {
+    "id": 133,
+    "company_id": 1,
+    "name": "Coffee Dream",
+    "current_price": 2.99,
+    "description": "A rich and creamy blend of coffee, milk, and chocolate.",
+    "size": "Small"
+  },
+  {
+    "id": 134,
+    "company_id": 1,
+    "name": "Coffee Dream",
+    "current_price": 3.99,
+    "description": "A rich and creamy blend of coffee, milk, and chocolate.",
+    "size": "Medium"
+  },
+  {
+    "id": 105,
+    "company_id": 1,
+    "name": "Mocha Moose",
+    "current_price": 4.99,
+    "description": "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
+    "size": "Large"
+  },
+  {
+    "id": 104,
+    "company_id": 1,
+    "name": "Mocha Moose",
+    "current_price": 3.99,
+    "description": "A rich and creamy blend of chocolate and coffee, topped with whipped cream.",
+    "size": "Medium"
+  },
+  {
+    "id": 62,
+    "company_id": 1,
+    "name": "Coffee Delight",
+    "current_price": 3.5,
+    "description": "A smooth and rich blend of coffee beans, roasted to perfection and brewed to a perfect cup.",
+    "size": "Medium"
+  },
+  {
+    "id": 110,
+    "company_id": 1,
+    "name": "Coffee Embrace",
+    "current_price": 4.99,
+    "description": "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
+    "size": "Medium"
+  },
+  {
+    "id": 111,
+    "company_id": 1,
+    "name": "Coffee Embrace",
+    "current_price": 5.99,
+    "description": "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
+    "size": "Large"
+  },
+  {
+    "id": 109,
+    "company_id": 1,
+    "name": "Coffee Embrace",
+    "current_price": 3.99,
+    "description": "A smooth and creamy blend of coffee beans, roasted to perfection and brewed fresh.",
+    "size": "Small"
+  },
+  {
+    "id": 170,
+    "company_id": 1,
+    "name": "Coffee Nirvana",
+    "current_price": 3.99,
+    "description": "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
+    "size": "Medium"
+  },
+  {
+    "id": 135,
+    "company_id": 1,
+    "name": "Coffee Dream",
+    "current_price": 4.99,
+    "description": "A rich and creamy blend of coffee, milk, and chocolate.",
+    "size": "Large"
+  },
+  {
+    "id": 41,
+    "company_id": 1,
+    "name": "Crema Splash",
+    "current_price": 5.75,
+    "description": "A classic espresso with a creamy splash of steamed milk.",
+    "size": "Medium"
+  },
+  {
+    "id": 42,
+    "company_id": 1,
+    "name": "Crema Splash",
+    "current_price": 6.75,
+    "description": "A classic espresso with a creamy splash of steamed milk.",
+    "size": "Large"
+  },
+  {
+    "id": 201,
+    "company_id": 1,
+    "name": "Espresso Magic",
+    "current_price": 4.99,
+    "description": "A rich, intense espresso with a creamy foam.",
+    "size": "Large"
+  },
+  {
+    "id": 199,
+    "company_id": 1,
+    "name": "Espresso Magic",
+    "current_price": 2.99,
+    "description": "A rich, intense espresso with a creamy foam.",
+    "size": "Small"
+  },
+  {
+    "id": 200,
+    "company_id": 1,
+    "name": "Espresso Magic",
+    "current_price": 3.99,
+    "description": "A rich, intense espresso with a creamy foam.",
+    "size": "Medium"
+  },
+  {
+    "id": 207,
+    "company_id": 1,
+    "name": "Espresso Swirl",
+    "current_price": 3.99,
+    "description": "A blend of espresso, milk, and caramel syrup.",
+    "size": "Large"
+  },
+  {
+    "id": 205,
+    "company_id": 1,
+    "name": "Espresso Swirl",
+    "current_price": 2.99,
+    "description": "A blend of espresso, milk, and caramel syrup.",
+    "size": "Small"
+  },
+  {
+    "id": 169,
+    "company_id": 1,
+    "name": "Coffee Nirvana",
+    "current_price": 2.99,
+    "description": "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
+    "size": "Small"
+  },
+  {
+    "id": 171,
+    "company_id": 1,
+    "name": "Coffee Nirvana",
+    "current_price": 4.99,
+    "description": "A blend of dark roast coffee and steamed milk, topped with whipped cream and a sprinkle of cinnamon.",
+    "size": "Large"
+  },
+  {
+    "id": 140,
+    "company_id": 1,
+    "name": "Hazelnut Symphony",
+    "current_price": 4.79,
+    "description": "A nutty and flavorful blend of coffee, milk, and hazelnut.",
+    "size": "Medium"
+  },
+  {
+    "id": 172,
+    "company_id": 1,
+    "name": "Midnight Espresso",
+    "current_price": 2.99,
+    "description": "A shot of espresso with steamed milk, topped with a layer of foam.",
+    "size": "Small"
+  },
+  {
+    "id": 173,
+    "company_id": 1,
+    "name": "Midnight Espresso",
+    "current_price": 3.99,
+    "description": "A shot of espresso with steamed milk, topped with a layer of foam.",
+    "size": "Medium"
+  },
+  {
+    "id": 174,
+    "company_id": 1,
+    "name": "Midnight Espresso",
+    "current_price": 4.99,
+    "description": "A shot of espresso with steamed milk, topped with a layer of foam.",
+    "size": "Large"
+  },
+  {
+    "id": 8,
+    "company_id": 1,
+    "name": "Affogato Avalanche",
+    "current_price": 5.99,
+    "description": "A scoop of vanilla ice cream topped with a shot of espresso.",
+    "size": "Medium"
+  },
+  {
+    "id": 206,
+    "company_id": 1,
+    "name": "Espresso Swirl",
+    "current_price": 3.49,
+    "description": "A blend of espresso, milk, and caramel syrup.",
+    "size": "Medium"
+  },
+  {
+    "id": 73,
+    "company_id": 1,
+    "name": "Hazelnut Haiku",
+    "current_price": 3.99,
+    "description": "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
+    "size": "Small"
+  },
+  {
+    "id": 75,
+    "company_id": 1,
+    "name": "Hazelnut Haiku",
+    "current_price": 5.99,
+    "description": "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
+    "size": "Large"
+  },
+  {
+    "id": 143,
+    "company_id": 1,
+    "name": "Cappuccino Cupcake",
+    "current_price": 2.99,
+    "description": "A moist and fluffy cupcake flavored with cappuccino and topped with a whipped cream frosting.",
+    "size": "n/a"
+  },
+  {
+    "id": 59,
+    "company_id": 1,
+    "name": "Cappuccino Custard",
+    "current_price": 3.49,
+    "description": "Creamy custard layered with espresso and whipped cream.",
+    "size": "n/a"
+  },
+  {
+    "id": 144,
+    "company_id": 1,
+    "name": "Coffee Bean Cookie",
+    "current_price": 1.99,
+    "description": "A chewy and chocolatey cookie made with coffee beans and topped with a chocolate chip.",
+    "size": "n/a"
+  },
+  {
+    "id": 180,
+    "company_id": 1,
+    "name": "Coffee Buttercream",
+    "current_price": 3.49,
+    "description": "A buttercream frosting made with coffee.",
+    "size": "n/a"
+  },
+  {
+    "id": 130,
+    "company_id": 1,
+    "name": "Coffee Cake Donuts",
+    "current_price": 2.99,
+    "description": "Freshly baked coffee cake donuts, topped with a sweet glaze. Perfect for breakfast or a snack.",
+    "size": "n/a"
+  },
+  {
+    "id": 9,
+    "company_id": 1,
+    "name": "Affogato Avalanche",
+    "current_price": 6.99,
+    "description": "A scoop of vanilla ice cream topped with a shot of espresso.",
+    "size": "Large"
+  },
+  {
+    "id": 7,
+    "company_id": 1,
+    "name": "Affogato Avalanche",
+    "current_price": 4.99,
+    "description": "A scoop of vanilla ice cream topped with a shot of espresso.",
+    "size": "Small"
+  },
+  {
+    "id": 189,
+    "company_id": 1,
+    "name": "Sweet Dreams Latte",
+    "current_price": 3.99,
+    "description": "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
+    "size": "Large"
+  },
+  {
+    "id": 188,
+    "company_id": 1,
+    "name": "Sweet Dreams Latte",
+    "current_price": 3.49,
+    "description": "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
+    "size": "Medium"
+  },
+  {
+    "id": 136,
+    "company_id": 1,
+    "name": "Barista's Delight",
+    "current_price": 3.49,
+    "description": "A smooth and velvety blend of espresso, steamed milk, and caramel.",
+    "size": "Small"
+  },
+  {
+    "id": 137,
+    "company_id": 1,
+    "name": "Barista's Delight",
+    "current_price": 4.49,
+    "description": "A smooth and velvety blend of espresso, steamed milk, and caramel.",
+    "size": "Medium"
+  },
+  {
+    "id": 138,
+    "company_id": 1,
+    "name": "Barista's Delight",
+    "current_price": 5.49,
+    "description": "A smooth and velvety blend of espresso, steamed milk, and caramel.",
+    "size": "Large"
+  },
+  {
+    "id": 34,
+    "company_id": 1,
+    "name": "Coffee Crunch Cake",
+    "current_price": 4.99,
+    "description": "A delightful coffee-flavored cake with a crunchy topping.",
+    "size": "n/a"
+  },
+  {
+    "id": 36,
+    "company_id": 1,
+    "name": "Mochaccino Muffins",
+    "current_price": 2.99,
+    "description": "A delicious muffin infused with mocha and chocolate chips.",
+    "size": "n/a"
+  },
+  {
+    "id": 187,
+    "company_id": 1,
+    "name": "Sweet Dreams Latte",
+    "current_price": 2.99,
+    "description": "A creamy and decadent latte, made with real chocolate syrup. Enjoy the rich, smooth flavor with a hint of vanilla.",
+    "size": "Small"
+  },
+  {
+    "id": 153,
+    "company_id": 1,
+    "name": "Cafe au Lait Breeze",
+    "current_price": 2.99,
+    "description": "This coffee drink is made with steamed milk and espresso.",
+    "size": "Large"
+  },
+  {
+    "id": 175,
+    "company_id": 1,
+    "name": "Cocoa Caramel Crush",
+    "current_price": 2.99,
+    "description": "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
+    "size": "Small"
+  },
+  {
+    "id": 177,
+    "company_id": 1,
+    "name": "Cocoa Caramel Crush",
+    "current_price": 4.99,
+    "description": "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
+    "size": "Large"
+  },
+  {
+    "id": 74,
+    "company_id": 1,
+    "name": "Hazelnut Haiku",
+    "current_price": 4.99,
+    "description": "A delightful blend of nutty flavors and a hint of sweetness that will surely satisfy your taste buds.",
+    "size": "Medium"
+  },
+  {
+    "id": 91,
+    "company_id": 1,
+    "name": "Midnight Mocha",
+    "current_price": 3.99,
+    "description": "A rich and decadent mocha with a hint of chocolate.",
+    "size": "Small"
+  },
+  {
+    "id": 152,
+    "company_id": 1,
+    "name": "Cafe au Lait Breeze",
+    "current_price": 2.49,
+    "description": "This coffee drink is made with steamed milk and espresso.",
+    "size": "Medium"
+  },
+  {
+    "id": 151,
+    "company_id": 1,
+    "name": "Cafe au Lait Breeze",
+    "current_price": 1.99,
+    "description": "This coffee drink is made with steamed milk and espresso.",
+    "size": "Small"
+  },
+  {
+    "id": 126,
+    "company_id": 1,
+    "name": "Tiramisu Twist",
+    "current_price": 4.49,
+    "description": "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
+    "size": "Large"
+  },
+  {
+    "id": 125,
+    "company_id": 1,
+    "name": "Tiramisu Twist",
+    "current_price": 3.99,
+    "description": "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
+    "size": "Medium"
+  },
+  {
+    "id": 49,
+    "company_id": 1,
+    "name": "Coffee Carnival",
+    "current_price": 4.99,
+    "description": "Coffee Carnival - Small",
+    "size": "Small"
+  },
+  {
+    "id": 51,
+    "company_id": 1,
+    "name": "Coffee Carnival",
+    "current_price": 6.99,
+    "description": "Coffee Carnival - Large",
+    "size": "Large"
+  },
+  {
+    "id": 50,
+    "company_id": 1,
+    "name": "Coffee Carnival",
+    "current_price": 5.99,
+    "description": "Coffee Carnival - Medium",
+    "size": "Medium"
+  },
+  {
+    "id": 92,
+    "company_id": 1,
+    "name": "Midnight Mocha",
+    "current_price": 4.49,
+    "description": "A rich and decadent mocha with a hint of chocolate.",
+    "size": "Medium"
+  },
+  {
+    "id": 93,
+    "company_id": 1,
+    "name": "Midnight Mocha",
+    "current_price": 4.99,
+    "description": "A rich and decadent mocha with a hint of chocolate.",
+    "size": "Large"
+  },
+  {
+    "id": 124,
+    "company_id": 1,
+    "name": "Tiramisu Twist",
+    "current_price": 3.49,
+    "description": "Tiramisu Twist is a delightful dessert drink made with coffee, milk, and a hint of chocolate. It is topped with a layer of whipped cream and a dusting of cocoa powder.",
+    "size": "Small"
+  },
+  {
+    "id": 139,
+    "company_id": 1,
+    "name": "Hazelnut Symphony",
+    "current_price": 3.79,
+    "description": "A nutty and flavorful blend of coffee, milk, and hazelnut.",
+    "size": "Small"
+  },
+  {
+    "id": 17,
+    "company_id": 1,
+    "name": "Espresso Elixir",
+    "current_price": 4.49,
+    "description": "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
+    "size": "Medium"
+  },
+  {
+    "id": 19,
+    "company_id": 1,
+    "name": "Cappuccino Dream",
+    "current_price": 4.29,
+    "description": "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
+    "size": "Small"
+  },
+  {
+    "id": 113,
+    "company_id": 1,
+    "name": "Espresso Fantasy",
+    "current_price": 4.99,
+    "description": "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
+    "size": "Medium"
+  },
+  {
+    "id": 141,
+    "company_id": 1,
+    "name": "Hazelnut Symphony",
+    "current_price": 5.79,
+    "description": "A nutty and flavorful blend of coffee, milk, and hazelnut.",
+    "size": "Large"
+  },
+  {
+    "id": 16,
+    "company_id": 1,
+    "name": "Espresso Elixir",
+    "current_price": 3.49,
+    "description": "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
+    "size": "Small"
+  },
+  {
+    "id": 20,
+    "company_id": 1,
+    "name": "Cappuccino Dream",
+    "current_price": 5.29,
+    "description": "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
+    "size": "Medium"
+  },
+  {
+    "id": 114,
+    "company_id": 1,
+    "name": "Espresso Fantasy",
+    "current_price": 5.99,
+    "description": "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
+    "size": "Large"
+  },
+  {
+    "id": 176,
+    "company_id": 1,
+    "name": "Cocoa Caramel Crush",
+    "current_price": 3.99,
+    "description": "A blend of chocolate and caramel syrup, steamed milk, and whipped cream.",
+    "size": "Medium"
+  },
+  {
+    "id": 18,
+    "company_id": 1,
+    "name": "Espresso Elixir",
+    "current_price": 5.49,
+    "description": "A shot of espresso, steamed milk, and a touch of caramel syrup, topped with whipped cream.",
+    "size": "Large"
+  },
+  {
+    "id": 21,
+    "company_id": 1,
+    "name": "Cappuccino Dream",
+    "current_price": 6.29,
+    "description": "A cappuccino made with steamed milk, espresso, and a sprinkle of cocoa powder.",
+    "size": "Large"
+  },
+  {
+    "id": 45,
+    "company_id": 1,
+    "name": "Hazelnut Horizon",
+    "current_price": 7.25,
+    "description": "A sweet and nutty latte with a hint of hazelnut.",
+    "size": "Large"
+  },
+  {
+    "id": 48,
+    "company_id": 1,
+    "name": "Coffee Bean Brittle",
+    "current_price": 2.75,
+    "description": "Crispy and sweet coffee bean brittle.",
+    "size": "n/a"
+  },
+  {
+    "id": 185,
+    "company_id": 1,
+    "name": "Hazelnut Heaven",
+    "current_price": 3.49,
+    "description": "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
+    "size": "Medium"
+  },
+  {
+    "id": 116,
+    "company_id": 1,
+    "name": "Caramel Symphony",
+    "current_price": 4.99,
+    "description": "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
+    "size": "Medium"
+  },
+  {
+    "id": 44,
+    "company_id": 1,
+    "name": "Hazelnut Horizon",
+    "current_price": 6.25,
+    "description": "A sweet and nutty latte with a hint of hazelnut.",
+    "size": "Medium"
+  },
+  {
+    "id": 191,
+    "company_id": 1,
+    "name": "Coffee Break Cookie",
+    "current_price": 2.25,
+    "description": "A classic chocolate chip cookie, perfect for a quick snack or a sweet treat.",
+    "size": "n/a"
+  },
+  {
+    "id": 184,
+    "company_id": 1,
+    "name": "Hazelnut Heaven",
+    "current_price": 2.99,
+    "description": "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
+    "size": "Small"
+  },
+  {
+    "id": 115,
+    "company_id": 1,
+    "name": "Caramel Symphony",
+    "current_price": 3.99,
+    "description": "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
+    "size": "Small"
+  },
+  {
+    "id": 43,
+    "company_id": 1,
+    "name": "Hazelnut Horizon",
+    "current_price": 4.95,
+    "description": "A sweet and nutty latte with a hint of hazelnut.",
+    "size": "Small"
+  },
+  {
+    "id": 214,
+    "company_id": 1,
+    "name": "Coffee Cake Muffins",
+    "current_price": 2.99,
+    "description": "Buttery and moist coffee cake muffins topped with sweet crumbles.",
+    "size": "n/a"
+  },
+  {
+    "id": 186,
+    "company_id": 1,
+    "name": "Hazelnut Heaven",
+    "current_price": 3.99,
+    "description": "A sweet and nutty treat, made with real hazelnut syrup. Enjoy the rich, creamy flavor with a hint of vanilla.",
+    "size": "Large"
+  },
+  {
+    "id": 117,
+    "company_id": 1,
+    "name": "Caramel Symphony",
+    "current_price": 5.99,
+    "description": "A sweet and decadent caramel latte, made with the finest coffee beans, steamed milk, and caramel sauce.",
+    "size": "Large"
+  },
+  {
+    "id": 203,
+    "company_id": 1,
+    "name": "Macchiato Muffin",
+    "current_price": 4.99,
+    "description": "A rich, robust espresso shot layered with steamed milk, topped with a dollop of foam and a sprinkle of cinnamon. Served with a warm, fluffy muffin.",
+    "size": "n/a"
+  },
+  {
+    "id": 178,
+    "company_id": 1,
+    "name": "Coffee Crumble Cake",
+    "current_price": 3.99,
+    "description": "A delicious coffee cake with a crumbly topping.",
+    "size": "n/a"
+  },
+  {
+    "id": 90,
+    "company_id": 1,
+    "name": "Honey Bee Latte",
+    "current_price": 4.49,
+    "description": "A sweet and creamy latte with a hint of honey.",
+    "size": "Large"
+  },
+  {
+    "id": 76,
+    "company_id": 1,
+    "name": "Chai Tea Delight",
+    "current_price": 3.99,
+    "description": "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
+    "size": "Small"
+  },
+  {
+    "id": 156,
+    "company_id": 1,
+    "name": "Mocha Magic Cake",
+    "current_price": 5.99,
+    "description": "A moist and fluffy cake with a mocha filling.",
+    "size": "n/a"
+  },
+  {
+    "id": 46,
+    "company_id": 1,
+    "name": "Espresso Cheesecake",
+    "current_price": 7.25,
+    "description": "A creamy cheesecake. Swirls of espresso pudding nestle between layers of thick vanilla cheesecake.",
+    "size": "n/a"
+  },
+  {
+    "id": 88,
+    "company_id": 1,
+    "name": "Honey Bee Latte",
+    "current_price": 3.49,
+    "description": "A sweet and creamy latte with a hint of honey.",
+    "size": "Small"
+  },
+  {
+    "id": 78,
+    "company_id": 1,
+    "name": "Chai Tea Delight",
+    "current_price": 5.99,
+    "description": "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
+    "size": "Large"
+  },
+  {
+    "id": 167,
+    "company_id": 1,
+    "name": "Cafe Latte Crepes",
+    "current_price": 7.99,
+    "description": "A light and fluffy crepe filled with cafe latte mousse and topped with whipped cream.",
+    "size": "n/a"
+  },
+  {
+    "id": 190,
+    "company_id": 1,
+    "name": "Wakey Wakey Waffles",
+    "current_price": 7.5,
+    "description": "Fluffy, golden waffles with your choice of butter, syrup, or fruit.",
+    "size": "n/a"
+  },
+  {
+    "id": 89,
+    "company_id": 1,
+    "name": "Honey Bee Latte",
+    "current_price": 3.99,
+    "description": "A sweet and creamy latte with a hint of honey.",
+    "size": "Medium"
+  },
+  {
+    "id": 77,
+    "company_id": 1,
+    "name": "Chai Tea Delight",
+    "current_price": 4.99,
+    "description": "A warm and comforting blend of spices and black tea that will leave you feeling relaxed and refreshed.",
+    "size": "Medium"
+  },
+  {
+    "id": 160,
+    "company_id": 1,
+    "name": "Caffeinated Crush",
+    "current_price": 3.49,
+    "description": "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
+    "size": "Small"
+  },
+  {
+    "id": 121,
+    "company_id": 1,
+    "name": "Coffee Rhapsody",
+    "current_price": 1.99,
+    "description": "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
+    "size": "Small"
+  },
+  {
+    "id": 58,
+    "company_id": 1,
+    "name": "Mocha Munchkins",
+    "current_price": 2.99,
+    "description": "Espresso-infused donut holes rolled in powdered sugar and drizzled with chocolate.",
+    "size": "n/a"
+  },
+  {
+    "id": 14,
+    "company_id": 1,
+    "name": "Coffee Conundrum",
+    "current_price": 3.99,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
+    "size": "Medium"
+  },
+  {
+    "id": 161,
+    "company_id": 1,
+    "name": "Caffeinated Crush",
+    "current_price": 3.99,
+    "description": "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
+    "size": "Medium"
+  },
+  {
+    "id": 85,
+    "company_id": 1,
+    "name": "Dark Woods Brew",
+    "current_price": 2.49,
+    "description": "A dark roasted coffee with a rich, bold flavor.",
+    "size": "Small"
+  },
+  {
+    "id": 157,
+    "company_id": 1,
+    "name": "Barista's Brew",
+    "current_price": 2.99,
+    "description": "A classic coffee drink made with freshly brewed coffee and steamed milk.",
+    "size": "Small"
+  },
+  {
+    "id": 13,
+    "company_id": 1,
+    "name": "Coffee Conundrum",
+    "current_price": 2.99,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
+    "size": "Small"
+  },
+  {
+    "id": 162,
+    "company_id": 1,
+    "name": "Caffeinated Crush",
+    "current_price": 4.49,
+    "description": "A refreshing coffee drink made with cold brew, milk, and a hint of vanilla syrup.",
+    "size": "Large"
+  },
+  {
+    "id": 86,
+    "company_id": 1,
+    "name": "Dark Woods Brew",
+    "current_price": 2.99,
+    "description": "A dark roasted coffee with a rich, bold flavor.",
+    "size": "Medium"
+  },
+  {
+    "id": 158,
+    "company_id": 1,
+    "name": "Barista's Brew",
+    "current_price": 3.49,
+    "description": "A classic coffee drink made with freshly brewed coffee and steamed milk.",
+    "size": "Medium"
+  },
+  {
+    "id": 15,
+    "company_id": 1,
+    "name": "Coffee Conundrum",
+    "current_price": 4.99,
+    "description": "A rich and bold blend of coffee beans, roasted to perfection and brewed fresh for a smooth, satisfying cup.",
+    "size": "Large"
+  },
+  {
+    "id": 66,
+    "company_id": 1,
+    "name": "Caffeinated Dream",
+    "current_price": 4.5,
+    "description": "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
+    "size": "Large"
+  },
+  {
+    "id": 87,
+    "company_id": 1,
+    "name": "Dark Woods Brew",
+    "current_price": 3.49,
+    "description": "A dark roasted coffee with a rich, bold flavor.",
+    "size": "Large"
+  },
+  {
+    "id": 159,
+    "company_id": 1,
+    "name": "Barista's Brew",
+    "current_price": 3.99,
+    "description": "A classic coffee drink made with freshly brewed coffee and steamed milk.",
+    "size": "Large"
+  },
+  {
+    "id": 155,
+    "company_id": 1,
+    "name": "Espresso Brownie",
+    "current_price": 3.99,
+    "description": "A rich and decadent brownie made with espresso.",
+    "size": "n/a"
+  },
+  {
+    "id": 64,
+    "company_id": 1,
+    "name": "Caffeinated Dream",
+    "current_price": 2.5,
+    "description": "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
+    "size": "Small"
+  },
+  {
+    "id": 146,
+    "company_id": 1,
+    "name": "Espresso Clouds",
+    "current_price": 2.49,
+    "description": "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
+    "size": "Medium"
+  },
+  {
+    "id": 57,
+    "company_id": 1,
+    "name": "Brewhaha Bonanza",
+    "current_price": 6.99,
+    "description": "Brewhaha Bonanza - Large",
+    "size": "Large"
+  },
+  {
+    "id": 106,
+    "company_id": 1,
+    "name": "Espresso Delight",
+    "current_price": 3.99,
+    "description": "Treat yourself to a rich and decadent espresso drink that will awaken your senses and leave you feeling refreshed.",
+    "size": "n/a"
+  },
+  {
+    "id": 65,
+    "company_id": 1,
+    "name": "Caffeinated Dream",
+    "current_price": 3.5,
+    "description": "A bold and energizing blend of coffee beans, roasted to perfection and brewed to a strong and flavorful cup.",
+    "size": "Medium"
+  },
+  {
+    "id": 147,
+    "company_id": 1,
+    "name": "Espresso Clouds",
+    "current_price": 2.99,
+    "description": "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
+    "size": "Large"
+  },
+  {
+    "id": 55,
+    "company_id": 1,
+    "name": "Brewhaha Bonanza",
+    "current_price": 4.99,
+    "description": "Brewhaha Bonanza - Small",
+    "size": "Small"
+  },
+  {
+    "id": 112,
+    "company_id": 1,
+    "name": "Espresso Fantasy",
+    "current_price": 3.99,
+    "description": "A rich and flavorful espresso, made with the finest coffee beans and steamed milk.",
+    "size": "Small"
+  },
+  {
+    "id": 22,
+    "company_id": 1,
+    "name": "Coffee Cake Cloud",
+    "current_price": 3.99,
+    "description": "Sweet and fluffy coffee cake with a hint of vanilla. Topped with roasted coffee beans.",
+    "size": "n/a"
+  },
+  {
+    "id": 145,
+    "company_id": 1,
+    "name": "Espresso Clouds",
+    "current_price": 1.99,
+    "description": "This espresso drink is made with steamed milk, espresso, and a hint of vanilla.",
+    "size": "Small"
+  },
+  {
+    "id": 56,
+    "company_id": 1,
+    "name": "Brewhaha Bonanza",
+    "current_price": 5.99,
+    "description": "Brewhaha Bonanza - Medium",
+    "size": "Medium"
+  },
+  {
+    "id": 166,
+    "company_id": 1,
+    "name": "Coffee Cake Caramel Corn",
+    "current_price": 4.99,
+    "description": "A sweet and crunchy snack made with coffee cake pieces and caramel sauce.",
+    "size": "n/a"
+  },
+  {
+    "id": 11,
+    "company_id": 1,
+    "name": "Café au Lait Crumble",
+    "current_price": 3.75,
+    "description": "A sweet and creamy coffee cake with a crumbly topping.",
+    "size": "n/a"
+  },
+  {
+    "id": 209,
+    "company_id": 1,
+    "name": "Butterscotch Caramel Buzz",
+    "current_price": 3.49,
+    "description": "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
+    "size": "Medium"
+  },
+  {
+    "id": 154,
+    "company_id": 1,
+    "name": "Coffee Cake Croissant",
+    "current_price": 4.99,
+    "description": "A delicious croissant filled with coffee cake.",
+    "size": "n/a"
+  },
+  {
+    "id": 210,
+    "company_id": 1,
+    "name": "Butterscotch Caramel Buzz",
+    "current_price": 3.99,
+    "description": "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
+    "size": "Large"
+  },
+  {
+    "id": 47,
+    "company_id": 1,
+    "name": "Caramel Latte Cupcakes",
+    "current_price": 5.5,
+    "description": "Decadent caramel latte cupcakes topped with a swirl of caramel icing.",
+    "size": "n/a"
+  },
+  {
+    "id": 208,
+    "company_id": 1,
+    "name": "Butterscotch Caramel Buzz",
+    "current_price": 2.99,
+    "description": "A blend of coffee, milk, butterscotch syrup, and caramel syrup.",
+    "size": "Small"
+  },
+  {
+    "id": 70,
+    "company_id": 1,
+    "name": "Coffee Cake Cloud Nine",
+    "current_price": 4.99,
+    "description": "A fluffy cloud of coffee and cake. The perfect way to start your day.",
+    "size": "n/a"
+  },
+  {
+    "id": 95,
+    "company_id": 1,
+    "name": "Cappuccino Crème Brûlée",
+    "current_price": 7.99,
+    "description": "Our Cappuccino Crème Brûlaye combines the flavors of cappuccino and crème brûlaye into a single dessert. This decadent treat features a creamy cappuccino custard topped with a caramelized sugar crust. Served with a side of fresh berries.",
+    "size": "n/a"
+  },
+  {
+    "id": 142,
+    "company_id": 1,
+    "name": "Coffee Doughnut Crunch",
+    "current_price": 3.99,
+    "description": "A delicious doughnut made with coffee and sprinkled with chocolate chips.",
+    "size": "n/a"
+  },
+  {
+    "id": 84,
+    "company_id": 1,
+    "name": "Coffee Bean Butter Cookies",
+    "current_price": 2.99,
+    "description": "A classic cookie made with coffee beans and butter.",
+    "size": "n/a"
+  },
+  {
+    "id": 107,
+    "company_id": 1,
+    "name": "Coffee and Cream Scone",
+    "current_price": 2.99,
+    "description": "A classic coffee shop treat, our Coffee and Cream Scone is made with fresh, locally sourced coffee and creamy butter.",
+    "size": "n/a"
+  },
+  {
+    "id": 215,
+    "company_id": 1,
+    "name": "Espresso Glazed Croissants",
+    "current_price": 3.99,
+    "description": "Flaky and buttery croissants topped with a rich espresso glaze.",
+    "size": "n/a"
+  },
+  {
+    "id": 82,
+    "company_id": 1,
+    "name": "Java Jeweled Croissant",
+    "current_price": 3.99,
+    "description": "A delicious croissant with a sweet glaze and a sprinkle of chopped nuts.",
+    "size": "n/a"
+  },
+  {
+    "id": 132,
+    "company_id": 1,
+    "name": "Espresso Shortbread Cookies",
+    "current_price": 2.79,
+    "description": "Buttery shortbread cookies infused with the rich flavor of espresso. Perfect for a sweet treat or a gift.",
+    "size": "n/a"
+  },
+  {
+    "id": 123,
+    "company_id": 1,
+    "name": "Coffee Rhapsody",
+    "current_price": 2.99,
+    "description": "Coffee Rhapsody is a smooth and creamy coffee drink made with a shot of espresso, steamed milk, and frothed milk, topped with a dusting of cocoa powder.",
+    "size": "Large"
+  },
+  {
+    "id": 24,
+    "company_id": 1,
+    "name": "Mocha Madness Meltdown",
+    "current_price": 5.99,
+    "description": "Warm and gooey chocolate croissant filled with a creamy mocha filling, served with whipped cream and a sprinkle of cocoa powder.",
+    "size": "n/a"
+  },
+  {
+    "id": 94,
+    "company_id": 1,
+    "name": "Coffee-infused Avocado Toast",
+    "current_price": 12.99,
+    "description": "Our Coffee-infused Avocado Toast is an elevated take on classic avocado toast, featuring toasted sourdough bread topped with a creamy spread made from coffee-infused avocado, sprinkled with feta cheese and fresh herbs. Served with a side of our signature coffee-infused vinaigrette.",
+    "size": "n/a"
+  },
+  {
+    "id": 131,
+    "company_id": 1,
+    "name": "Caf-Pow! Protein Bar",
+    "current_price": 3.49,
+    "description": "A delicious and nutritious protein bar, perfect for a quick snack or post-workout refuel. Made with all-natural ingredients, Caf-Pow! is packed with protein, fiber, and vitamins.",
+    "size": "n/a"
+  },
+  {
+    "id": 120,
+    "company_id": 1,
+    "name": "Caffeinated Carrot Cake",
+    "current_price": 4.99,
+    "description": "A moist and flavorful carrot cake made with coffee and topped with a cream cheese frosting.",
+    "size": "n/a"
+  },
+  {
+    "id": 168,
+    "company_id": 1,
+    "name": "Espresso Infused Jelly Donuts",
+    "current_price": 6.99,
+    "description": "A rich and decadent donut infused with espresso and filled with a sweet jelly filling.",
+    "size": "n/a"
+  },
+  {
+    "id": 71,
+    "company_id": 1,
+    "name": "Caramel Latte Crunch",
+    "current_price": 3.99,
+    "description": "A decadent combination of caramel, latte, and crunch. Sure to satisfy your sweet tooth.",
+    "size": "n/a"
+  },
+  {
+    "id": 23,
+    "company_id": 1,
+    "name": "Café Croissant Crusade",
+    "current_price": 4.99,
+    "description": "Crispy and buttery croissants filled with a rich coffee-chocolate ganache, sprinkled with roasted nuts.",
+    "size": "n/a"
+  },
+  {
+    "id": 96,
+    "company_id": 1,
+    "name": "Caramelatte Chocolate Chip Cookies",
+    "current_price": 4.99,
+    "description": "Our Caramelatte Chocolate Chip Cookies are a delicious treat that combines the flavors of caramel and chocolate. These cookies are made with a caramelatte-infused dough and loaded with chocolate chips. They are then baked to perfection and served warm.",
+    "size": "n/a"
+  },
+  {
+    "id": 10,
+    "company_id": 1,
+    "name": "Coffee Clutch Cookie",
+    "current_price": 3.25,
+    "description": "A soft and chewy cookie with a rich coffee flavor.",
+    "size": "n/a"
+  },
+  {
+    "id": 204,
+    "company_id": 1,
+    "name": "Cappuccino Chiffon Cake",
+    "current_price": 7.99,
+    "description": "A light and airy chiffon cake infused with the rich flavor of cappuccino. Served with a dollop of whipped cream and a dusting of cocoa powder.",
+    "size": "n/a"
+  },
+  {
+    "id": 194,
+    "company_id": 1,
+    "name": "Coffee Constellation",
+    "current_price": 3.99,
+    "description": "A smooth, dark roast coffee with notes of chocolate and caramel.",
+    "size": "Medium"
+  },
+  {
+    "id": 72,
+    "company_id": 1,
+    "name": "Americano Almond Delight",
+    "current_price": 2.99,
+    "description": "A smooth and nutty blend of americano and almond. The perfect drink for any time of day.",
+    "size": "n/a"
+  },
+  {
+    "id": 193,
+    "company_id": 1,
+    "name": "Coffee Constellation",
+    "current_price": 2.99,
+    "description": "A smooth, dark roast coffee with notes of chocolate and caramel.",
+    "size": "Small"
+  },
+  {
+    "id": 202,
+    "company_id": 1,
+    "name": "Cafe con Leche Croissant",
+    "current_price": 6.5,
+    "description": "A warm, foamy cup of milk with a hint of coffee, paired with a flaky, buttery croissant. The perfect way to start your day.",
+    "size": "n/a"
+  },
+  {
+    "id": 195,
+    "company_id": 1,
+    "name": "Coffee Constellation",
+    "current_price": 4.99,
+    "description": "A smooth, dark roast coffee with notes of chocolate and caramel.",
+    "size": "Large"
+  },
+  {
+    "id": 211,
+    "company_id": 1,
+    "name": "Clouds of Coffee Delight",
+    "current_price": 2.99,
+    "description": "A blend of coffee, milk, and vanilla syrup.",
+    "size": "Small"
+  },
+  {
+    "id": 83,
+    "company_id": 1,
+    "name": "Cup O'' Joe Sandwich",
+    "current_price": 5.99,
+    "description": "A hearty sandwich made with ham, bacon, and cheese, served on a toasted bagel.",
+    "size": "n/a"
+  },
+  {
+    "id": 213,
+    "company_id": 1,
+    "name": "Clouds of Coffee Delight",
+    "current_price": 3.99,
+    "description": "A blend of coffee, milk, and vanilla syrup.",
+    "size": "Large"
+  },
+  {
+    "id": 216,
+    "company_id": 1,
+    "name": "Mocha Swirl Pancakes",
+    "current_price": 4.99,
+    "description": "Fluffy pancakes swirled with chocolate mocha and topped with whipped cream.",
+    "size": "n/a"
+  },
+  {
+    "id": 212,
+    "company_id": 1,
+    "name": "Clouds of Coffee Delight",
+    "current_price": 3.49,
+    "description": "A blend of coffee, milk, and vanilla syrup.",
+    "size": "Medium"
+  }
+]

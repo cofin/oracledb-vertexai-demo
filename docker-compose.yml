@@ -41,7 +41,7 @@ services:
     ulimits:
       memlock: -1
     ports:
-      - "${ORACLE23AI_PORT:-1514}:1521" # use a non-standard port here
+      - "${ORACLE23AI_PORT:-1521}:1521" # use a non-standard port here
     hostname: db
     environment:
       ORACLE_SYSTEM_PASSWORD: ${ORACLE_SYSTEM_PASSWORD:-super-secret}

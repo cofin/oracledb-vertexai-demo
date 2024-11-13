@@ -35,7 +35,7 @@ grant select on v_$transaction to app;
 pdm run app database upgrade
 ```
 
-* you can activate the virtual env manually (. .venv/bin/activate) or prefix every command with `pdm run`
+- you can activate the virtual env manually (. .venv/bin/activate) or prefix every command with `pdm run`
 
 ### deploy default data
 
