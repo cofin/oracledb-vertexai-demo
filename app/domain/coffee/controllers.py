@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
-    from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
+    from app.domain.coffee.schemas import CoffeeChatMessage
     from app.domain.coffee.services import RecommendationService
 
 
@@ -74,18 +74,6 @@ class CoffeeChatController(Controller):
                 "points_of_interest": reply["points_of_interest"],
             },
         )
-
-    @get(component="coffee/simple-chat", name="simple-chat.show", path="/simple-chat/")
-    async def simple_chat_show(self) -> dict:
-        return {}
-
-    @post(component="coffee/simple-chat", name="simple-chat.send", path="/simple-chat/")
-    async def simple_chat_send(
-        self,
-        data: CoffeeChatMessage,
-        recommendation_service: RecommendationService,
-    ) -> CoffeeChatReply:
-        return await recommendation_service.get_recommendation(data.message.lower())
 
     @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, sync_to_thread=False, include_in_schema=False)
     def favicon(self) -> File:

@@ -218,11 +218,26 @@ class RecommendationService:
 
 # recommendation
 # to do: integrate proper routing: https://python.langchain.com/docs/how_to/routing/
-_LOCATION_KEYWORDS = {"where", "find", "locations", "show me", "near"}
-_RECOMMEND_KEYWORDS = {"coffee", "recommend", "looking", "latte", "cap", "americano", "caffeine", "beans"}
+_LOCATION_KEYWORDS = {"where", "find", "locations", "show me", "near", "looking", "need", "want", "give me", "gimme"}
+_RECOMMEND_KEYWORDS = {
+    "coffee",
+    "recommend",
+    "looking",
+    "latte",
+    "cap",
+    "americano",
+    "caffeine",
+    "beans",
+    "need",
+    "want",
+    "show",
+    "where",
+    "give me",
+    "gimme",
+}
 
 
-# EVERYTHING BELOW HERE IS REGULAR SQLALCHEMY MODELS.
+# EVERYTHING BELOW HERE ARE REGULAR SQLALCHEMY MODELS.
 # The logic below is purely for easy CRUD interaction with models
 # See: https://github.com/litestar-org/advanced-alchemy
 
