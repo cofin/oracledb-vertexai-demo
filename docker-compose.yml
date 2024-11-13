@@ -50,6 +50,7 @@ services:
       APP_USER: ${ORACLE_USER:-app}
     volumes:
       - db-data:/opt/oracle/oradata
+      - ./deploy/oracle/db-init.sql:/container-entrypoint-initdb.d/db-init.sql:ro
     restart: unless-stopped
     logging:
       options:
@@ -62,6 +63,7 @@ services:
       retries: 10
       # start_period: 5s
       # start_interval: 5s
+
 volumes:
   db-data: {}
   cache-data: {}

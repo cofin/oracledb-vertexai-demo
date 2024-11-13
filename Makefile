@@ -54,7 +54,7 @@ install-pdm: 										## Install latest version of PDM
 	curl -sSL https://pdm.fming.dev/install-pdm.py.sha256 | shasum -a 256 -c - && \
 	python3 install-pdm.py
 
-install:											## Install the project and
+install:											## Install the project and dev deps
 	@if ! $(PDM) --version > /dev/null; then echo '=> Installing PDM'; $(MAKE) install-pdm; fi
 	@if [ "$(VENV_EXISTS)" ]; then echo "=> Removing existing virtual environment"; fi
 	@if [ "$(VENV_EXISTS)" ]; then $(MAKE) destroy-venv && $(MAKE) clean; fi
@@ -144,24 +144,26 @@ test:  												## Run the tests
 	@$(ENV_PREFIX)pytest tests
 	@echo "=> Tests complete"
 
-# =============================================================================
-# Docs
-# =============================================================================
-.PHONY: docs-install
-docs-install: 										## Install docs dependencies
-	@echo "=> Installing documentation dependencies"
-	@$(PDM) install -dG:docs
-	@echo "=> Installed documentation dependencies"
+# -----------------------------------------------------------------------------
+# Local Infrastructure
+# -----------------------------------------------------------------------------
 
-docs-clean: 										## Dump the existing built docs
-	@echo "=> Cleaning documentation build assets"
-	@rm -rf docs/_build
-	@echo "=> Removed existing documentation build assets"
+.PHONY: start-infra
+start-infra: ## Start local containers
+	@echo "=> Starting local Oracle 23AI & Valkey instances..."
+	@docker compose -f docker-compose.yml up -d --force-recreate
 
-docs-serve: docs-clean 								## Serve the docs locally
-	@echo "=> Serving documentation"
-	$(PDM_RUN_BIN) sphinx-autobuild docs docs/_build/ -j auto --watch src --watch docs --watch tests --watch CONTRIBUTING.rst --port 8002
+.PHONY: stop-infra
+stop-infra: ## Stop local containers
+	@echo "=> Stopping local Oracle 23AI & Valkey instances..."
+	@docker compose -f docker-compose.yml down
 
-docs: docs-clean 									## Dump the existing built docs and rebuild them
-	@echo "=> Building documentation"
-	@$(PDM_RUN_BIN) sphinx-build -M html docs docs/_build/ -E -a -j auto --keep-going
+.PHONY: wipe-infra
+wipe-infra: ## Remove local container info
+	@echo "=> Wiping local Oracle 23AI & Valkey instances..."
+	@docker compose -f docker-compose.yml down -v --remove-orphans
+
+.PHONY: infra-logs
+infra-logs: ## Tail development infrastructure logs
+	@echo "=> Tailing logs for local Oracle 23AI & Valkey instances..."
+	@docker compose -f docker-compose.yml logs -f

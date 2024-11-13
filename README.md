@@ -5,9 +5,18 @@
 ### Setup database and environment
 
 ```shell
+make install # install dev components
+cp .env.example .env # edit accordingly
+make start-infra # starts containers and configures user
+```
+
+#### Manual Infrastructure Setup
+
+**Note** If would like to do this manually, here are the steps the above `make start-infra` process is running:
+
+```shell
 docker-compose up # starts dev infra
 cp .env.example .env # edit accordingly
-make install
 docker exec -it  oracledb-vertexai-demo-db-1 bash
 sqlplus / as sysdba
 ```
