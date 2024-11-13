@@ -61,10 +61,9 @@ install-pdm: 										## Install latest version of PDM
 install:											## Install the project and
 	@if ! $(PDM) --version > /dev/null; then echo '=> Installing PDM'; $(MAKE) install-pdm; fi
 	@if [ "$(VENV_EXISTS)" ]; then echo "=> Removing existing virtual environment"; fi
-	if [ "$(VENV_EXISTS)" ]; then $(MAKE) destroy-venv; fi
-	if [ "$(VENV_EXISTS)" ]; then $(MAKE) clean; fi
+	@if [ "$(VENV_EXISTS)" ]; then $(MAKE) destroy-venv && $(MAKE) clean; fi
 	@if [ "$(NODE_MODULES_EXISTS)" ]; then echo "=> Removing existing node modules"; fi
-	if [ "$(NODE_MODULES_EXISTS)" ]; then $(MAKE) destroy-node_modules; fi
+	@if [ "$(NODE_MODULES_EXISTS)" ]; then $(MAKE) destroy-node_modules; fi
 	@if [ "$(USING_PDM)" ]; then $(PDM) config venv.in_project true && pdm venv --python 3.12 create --force; fi
 	@if [ "$(USING_PDM)" ]; then $(PDM) install -G:all; fi
 	@echo "=> Install complete! Note: If you want to re-install re-run 'make install'"
