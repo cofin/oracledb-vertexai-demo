@@ -175,38 +175,18 @@
         {% endif %}
 
         {% if points_of_interest %}
-        <div id="map"></div>
-        <script>
-            function initMap() {
-                var map = new google.maps.Map(document.getElementById('map'), {
-                    zoom: 10,
-                    center: { lat: {{ points_of_interest[0].get("latitude") }}, lng: {{ points_of_interest[0].get("longitude") }} },
-            });
+            <gmp-map center="{{ points_of_interest[0].get('latitude') }},{{ points_of_interest[0].get('longitude') }}" zoom="12" map-id="COFFE_MAPS" style="height: 400px">
+                {% for location in points_of_interest %}
+                    <gmp-advanced-marker
+                        position="{{ location.get('latitude') }},{{ location.get('longitude') }}"
+                        title="{{ location['name'] }}"
+                    ></gmp-advanced-marker>
+                {% endfor %}
 
-            {% for location in points_of_interest %}
-            (function () {
-                var marker = new google.maps.Marker({
-                    position: {
-                        lat: {{ location.get("latitude") }},
-                        lng: {{ location.get("longitude") }},
-                        map: map,
-                        title: '{{ location["name"] }}'
-                    }
-                });
-
-            var infowindow = new google.maps.InfoWindow({
-                content: '<div style="padding: 10px;"><strong>{{ location["name"] }}</strong><br>{{ location["address"] }}</div>'
-            });
-
-            marker.addListener('click', function () {
-                infowindow.open(map, marker);
-            });
-                }) ();
-            {% endfor %}
-        }
-        </script>
-        <script async defer
-            src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap"></script>
+            </gmp-map>
+            <script
+    src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key | default('YOUR_API_KEY' ) }}&loading=async&libraries=maps,marker&v=beta" defer>
+</script>
         {% endif %}
     </div>
 </body>
