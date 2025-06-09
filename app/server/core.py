@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from litestar.openapi import OpenAPIConfig
+from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
 
 if TYPE_CHECKING:
@@ -46,13 +48,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         Args:
             app_config: The :class:`AppConfig <.config.app.AppConfig>` instance.
         """
-        from langchain_community.chat_message_histories import ChatMessageHistory
-        from langchain_community.vectorstores.oraclevs import OracleVS
-        from langchain_core.chat_history import BaseChatMessageHistory
-        from langchain_core.embeddings import Embeddings
-        from langchain_core.runnables import Runnable
-        from langchain_core.runnables.history import RunnableWithMessageHistory
-        from langchain_core.vectorstores import VectorStore
         from litestar import WebSocket
         from litestar.channels import ChannelsPlugin
         from litestar.datastructures import State
@@ -64,7 +59,19 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app import config
         from app.domain.coffee.controllers import CoffeeChatController
         from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
-        from app.domain.coffee.services import ProductService, RecommendationService, ShopService
+        from app.domain.coffee.services import (
+            ChatConversationService,
+            CompanyService,
+            InventoryService,
+            OracleVectorSearchService,
+            ProductService,
+            RecommendationService,
+            ResponseCacheService,
+            SearchMetricsService,
+            ShopService,
+            UserSessionService,
+            VertexAIService,
+        )
         from app.lib import log
         from app.lib.settings import get_settings
         from app.server import plugins
@@ -93,13 +100,12 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             ],
         )
         # openapi
-        app_config.openapi_config = None
-        # app_config.openapi_config = OpenAPIConfig(
-        #     title=settings.app.NAME,
-        #     version=current_version,
-        #     use_handler_docstrings=True,
-        #     render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
-        # )
+        app_config.openapi_config = OpenAPIConfig(
+            title=settings.app.NAME,
+            version="0.2.0",  # Using app version from pyproject.toml
+            use_handler_docstrings=True,
+            render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
+        )
         # routes
         app_config.route_handlers.extend(
             [
@@ -109,28 +115,31 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # signatures
         app_config.signature_namespace.update(
             {
-                "ChatMessageHistory": ChatMessageHistory,
-                "Embeddings": Embeddings,
-                "VectorStore": VectorStore,
-                "OracleVS": OracleVS,
+                # Oracle types
                 "AsyncConnection": AsyncConnection,
                 "Connection": Connection,
                 "AsyncConnectionPool": AsyncConnectionPool,
                 "ConnectionPool": ConnectionPool,
-                "Runnable": Runnable,
                 "RequestEncodingType": RequestEncodingType,
                 "Body": Body,
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
-                "BaseChatMessageHistory": BaseChatMessageHistory,
+                # Service types
                 "ProductService": ProductService,
                 "ShopService": ShopService,
                 "RecommendationService": RecommendationService,
+                "CompanyService": CompanyService,
+                "InventoryService": InventoryService,
+                "VertexAIService": VertexAIService,
+                "OracleVectorSearchService": OracleVectorSearchService,
+                "UserSessionService": UserSessionService,
+                "ChatConversationService": ChatConversationService,
+                "ResponseCacheService": ResponseCacheService,
+                "SearchMetricsService": SearchMetricsService,
                 "CoffeeChatMessage": CoffeeChatMessage,
                 "CoffeeChatReply": CoffeeChatReply,
                 "Request": InertiaRequest,
-                "RunnableWithMessageHistory": RunnableWithMessageHistory,
             },
         )
         return app_config

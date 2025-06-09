@@ -36,15 +36,17 @@ For complete implementation and development guides, see the [`todo/`](todo/) dir
 ## 🏗️ Architecture
 
 This demo uses:
+
 - **Oracle 23AI** - Complete data platform with native vector search
-- **Advanced Alchemy** - Modern SQLAlchemy 2.0 patterns  
-- **Litestar** - High-performance async Python framework
 - **Vertex AI** - Google's generative AI platform
+- **Advanced Alchemy** - Modern SQLAlchemy 2.0 patterns
+- **Litestar** - High-performance async Python framework
 - **HTMX** - Real-time UI without build complexity
 
 ## 🎯 For K-Scope Conference
 
 This implementation is designed for conference demonstration with:
+
 - Real-time chat interface
 - Live Oracle performance metrics
 - Demo control panel with personas
@@ -70,7 +72,7 @@ make lint                      # Code quality checks
 - [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Background story
 - [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation
 - [Litestar Documentation](https://docs.litestar.dev) - Framework documentation
-- [Advanced Alchemy Guide](https://docs.advanced-alchemy.jolt.rs/) - Repository patterns
+- [Advanced Alchemy Guide](https://docs.advanced-alchemy.litestar.org/) - Repository patterns
 
 ---
 

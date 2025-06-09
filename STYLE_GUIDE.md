@@ -91,26 +91,26 @@ from app.db import models as m
 
 class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]):
     """Oracle session management with Advanced Alchemy."""
-    
+
     class Repo(repository.SQLAlchemyAsyncRepository[m.UserSession]):
         """Session repository."""
         model_type = m.UserSession
-    
+
     repository_type = Repo
     match_fields = ["session_id"]  # Fields for get_or_create
-    
+
     async def create_session(self, user_id: str, ttl_hours: int = 24) -> m.UserSession:
         """Create new session with automatic expiry."""
         session_id = str(uuid.uuid4())
         expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
-        
+
         return await self.create({
             "session_id": session_id,
             "user_id": user_id,
             "data": {},
             "expires_at": expires_at
         })
-    
+
     async def get_active_session(self, session_id: str) -> Optional[m.UserSession]:
         """Get session if not expired."""
         session = await self.get_one_or_none(session_id=session_id)
@@ -184,21 +184,21 @@ from advanced_alchemy.base import UUIDAuditBase, BigIntAuditBase
 
 class UserSession(UUIDAuditBase):
     """Oracle-native session storage with JSON data."""
-    
+
     __tablename__ = "user_session"
-    
+
     session_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    
+
     # Relationships
     conversations: Mapped[list["ChatConversation"]] = relationship(
-        back_populates="session", 
+        back_populates="session",
         lazy="selectin",
         cascade="all, delete-orphan"
     )
-    
+
     __table_args__ = (
         Index("ix_session_expires", "expires_at"),
         Index("ix_session_user_expires", "user_id", "expires_at"),
@@ -206,11 +206,11 @@ class UserSession(UUIDAuditBase):
 
 class Product(BigIntAuditBase):
     """Product with Oracle vector embeddings."""
-    
+
     # Existing fields...
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(String(2000))
-    
+
     # Add Oracle 23AI vector field
     embedding: Mapped[Optional[list[float]]] = mapped_column(
         Vector(768), nullable=True  # Oracle native vector type
@@ -232,7 +232,7 @@ Leverage Oracle as complete data platform:
 ```python
 class OracleVectorStore:
     """Oracle 23AI vector search integration."""
-    
+
     async def similarity_search_with_metadata(self, query_vector: list[float], k: int = 5):
         """Combine vector search with relational data in one query."""
         results = await self.db.fetch_all(
@@ -250,19 +250,19 @@ class OracleVectorStore:
 
 class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCache]):
     """Oracle response caching with TTL."""
-    
+
     async def cache_response(self, query: str, response: dict, ttl_minutes: int = 5):
         """Cache with Oracle TTL."""
         cache_key = self._generate_cache_key(query)
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
-        
+
         # Use MERGE for upsert
         await self.db.execute(
             """MERGE INTO response_cache USING dual ON (cache_key = :key)
-               WHEN MATCHED THEN 
+               WHEN MATCHED THEN
                    UPDATE SET response = :resp, expires_at = :expires
-               WHEN NOT MATCHED THEN 
-                   INSERT (cache_key, response, expires_at) 
+               WHEN NOT MATCHED THEN
+                   INSERT (cache_key, response, expires_at)
                    VALUES (:key, :resp, :expires)""",
             {"key": cache_key, "resp": json.dumps(response), "expires": expires_at}
         )
@@ -279,30 +279,30 @@ from google.cloud import aiplatform
 
 class NativeVertexAIService:
     """Native Vertex AI service without LangChain."""
-    
+
     def __init__(self):
         settings = get_settings()
         vertexai.init(
             project=settings.app.GCP_PROJECT_ID,
             location=settings.app.GCP_LOCATION or "us-central1"
         )
-        
+
         self.model = GenerativeModel("gemini-2.0-flash-exp")
         self.embedding_model = "text-embedding-004"
-    
+
     async def generate_content(self, prompt: str, use_cache: bool = True) -> str:
         """Generate content with Oracle caching."""
         if use_cache and self.cache_service:
             cached = await self.cache_service.get_cached_response(prompt)
             if cached:
                 return cached.get("content", "")
-        
+
         response = await self.model.generate_content_async(prompt)
         content = response.text
-        
+
         if use_cache and self.cache_service:
             await self.cache_service.cache_response(prompt, {"content": content})
-        
+
         return content
 ```
 
@@ -317,7 +317,7 @@ from litestar.response import Template, Stream
 @Controller(path="/coffee")
 class CoffeeController:
     """Coffee recommendation controller with HTMX."""
-    
+
     @post("/chat/send")
     async def send_message(
         self,
@@ -328,7 +328,7 @@ class CoffeeController:
         response = await recommendation_service.get_recommendation(
             data.message, user_id="demo_user"
         )
-        
+
         return Template(
             "partials/chat_response.html.j2",
             context={
@@ -339,7 +339,7 @@ class CoffeeController:
                 "metrics": response.search_metrics
             }
         )
-    
+
     @get("/chat/stream/{query_id:str}")
     async def stream_response(self, query_id: str) -> Stream:
         """Stream AI response using Server-Sent Events."""
@@ -348,7 +348,7 @@ class CoffeeController:
             async for chunk in self.ai_service.stream_content(prompt):
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
             yield f"data: {json.dumps({'done': True})}\n\n"
-        
+
         return Stream(
             generate(),
             media_type="text/event-stream",
@@ -363,7 +363,7 @@ Built-in demo controls and personas:
 ```python
 class DemoControlService:
     """Conference demo control and management."""
-    
+
     def __init__(self):
         self.demo_personas = {
             "coffee_novice": {
@@ -383,7 +383,7 @@ class DemoControlService:
                 ]
             }
         }
-    
+
     async def reset_demo(self) -> dict:
         """Reset all demo data for fresh start."""
         await asyncio.gather(
@@ -410,27 +410,31 @@ Simple, server-rendered UI with real-time updates:
 <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
 
 <div id="chat-container" class="chat-container">
-    <div id="chat-history">
-        <!-- Messages appear here -->
-    </div>
-    
-    <form hx-post="/coffee/chat/send" 
-          hx-target="#chat-history" 
-          hx-swap="beforeend">
-        <input name="message" required />
-        <button type="submit">Send ☕</button>
-    </form>
+  <div id="chat-history">
+    <!-- Messages appear here -->
+  </div>
+
+  <form
+    hx-post="/coffee/chat/send"
+    hx-target="#chat-history"
+    hx-swap="beforeend"
+  >
+    <input name="message" required />
+    <button type="submit">Send ☕</button>
+  </form>
 </div>
 
 <!-- Partial templates -->
 <!-- partials/chat_response.html.j2 -->
 <div class="message user">{{ user_message }}</div>
-<div class="message assistant" 
-     hx-ext="sse"
-     sse-connect="/coffee/chat/stream/{{ query_id }}">
-    <div class="content" sse-swap="message">
-        <span class="typing-indicator">AI is thinking...</span>
-    </div>
+<div
+  class="message assistant"
+  hx-ext="sse"
+  sse-connect="/coffee/chat/stream/{{ query_id }}"
+>
+  <div class="content" sse-swap="message">
+    <span class="typing-indicator">AI is thinking...</span>
+  </div>
 </div>
 ```
 

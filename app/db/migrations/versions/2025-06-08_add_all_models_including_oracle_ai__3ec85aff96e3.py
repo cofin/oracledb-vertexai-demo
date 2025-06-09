@@ -2,7 +2,7 @@
 """Add all models including Oracle AI tables
 
 Revision ID: 3ec85aff96e3
-Revises: 
+Revises:
 Create Date: 2025-06-08 22:11:16.852609+00:00
 
 """

@@ -17,16 +17,17 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from litestar.plugins.sqlalchemy import repository, service
 from sqlalchemy import delete, func, select
 
 from app.db import models as m
-from app.domain.coffee.schemas import SearchMetricsCreate
 
 if TYPE_CHECKING:
     from uuid import UUID
+
+    from app.domain.coffee.schemas import SearchMetricsCreate
 
 
 class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]):
@@ -39,6 +40,12 @@ class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]
 
     repository_type = Repo
     match_fields = ["session_id"]
+
+    async def to_model(self, data: Any, operation: str | None = None) -> m.UserSession:
+        """Convert data dictionary to model instance."""
+        if isinstance(data, dict) and operation == "create" and "session_id" not in data:
+            data["session_id"] = str(uuid.uuid4())
+        return await super().to_model(data, operation)
 
     async def create_session(self, user_id: str, ttl_hours: int = 24) -> m.UserSession:
         """Create new session with automatic expiry."""
@@ -63,11 +70,13 @@ class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]
         """Update session data."""
         session = await self.get_active_session(session_id)
         if not session:
-            raise ValueError("Session not found or expired")
+            msg = "Session not found or expired"
+            raise ValueError(msg)
 
         # Merge with existing data
         updated_data = {**session.data, **data}
-        return await self.update(session.id, {"data": updated_data})
+        # Following litestar-fullstack pattern: update expects dict with id
+        return await self.update({"id": session.id, "data": updated_data})
 
     async def cleanup_expired(self) -> int:
         """Remove expired sessions."""
@@ -75,7 +84,7 @@ class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]
         stmt = delete(m.UserSession).where(m.UserSession.expires_at < now)
         result = await self.repository.session.execute(stmt)
         await self.repository.session.commit()
-        return result.rowcount
+        return result.rowcount or 0
 
 
 class ChatConversationService(service.SQLAlchemyAsyncRepositoryService[m.ChatConversation]):
@@ -94,7 +103,7 @@ class ChatConversationService(service.SQLAlchemyAsyncRepositoryService[m.ChatCon
         user_id: str,
         role: str,
         content: str,
-        message_metadata: dict = None,
+        message_metadata: dict | None = None,
     ) -> m.ChatConversation:
         """Add message to conversation."""
         return await self.create({
@@ -132,10 +141,11 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
     repository_type = Repo
     match_fields = ["cache_key"]
 
+
     def _generate_cache_key(self, query: str, user_id: str = "default") -> str:
         """Generate deterministic cache key."""
         content = f"{query.lower().strip()}:{user_id}"
-        return hashlib.md5(content.encode()).hexdigest()
+        return hashlib.sha256(content.encode()).hexdigest()  # Use SHA256 instead of MD5
 
     async def get_cached_response(self, query: str, user_id: str = "default") -> dict | None:
         """Get cached response if not expired."""
@@ -145,7 +155,8 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
         cached = await self.get_one_or_none(cache_key=cache_key)
         if cached and cached.expires_at > now:
             # Increment hit count
-            await self.update(cached.id, {"hit_count": cached.hit_count + 1})
+            # Update hit count using dict with id
+            await self.update({"id": cached.id, "hit_count": cached.hit_count + 1})
             return cached.response
         return None
 
@@ -163,14 +174,13 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
         # Use upsert pattern
         existing = await self.get_one_or_none(cache_key=cache_key)
         if existing:
-            return await self.update(
-                existing.id,
-                {
-                    "response": response,
-                    "expires_at": expires_at,
-                    "query_text": query,
-                },
-            )
+            # Update existing cache entry
+            return await self.update({
+                "id": existing.id,
+                "response": response,
+                "expires_at": expires_at,
+                "query_text": query,
+            })
         return await self.create({
             "cache_key": cache_key,
             "query_text": query,
@@ -185,7 +195,7 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
         stmt = delete(m.ResponseCache).where(m.ResponseCache.expires_at < now)
         result = await self.repository.session.execute(stmt)
         await self.repository.session.commit()
-        return result.rowcount
+        return result.rowcount or 0
 
 
 class SearchMetricsService(service.SQLAlchemyAsyncRepositoryService[m.SearchMetrics]):
@@ -198,7 +208,7 @@ class SearchMetricsService(service.SQLAlchemyAsyncRepositoryService[m.SearchMetr
 
     repository_type = Repo
 
-    async def record_search(self, metrics_data: SearchMetricsCreate) -> m.SearchMetrics:
+    async def record_search(self, metrics_data: "SearchMetricsCreate") -> m.SearchMetrics:
         """Record search performance metrics."""
         return await self.create(metrics_data.__dict__)
 

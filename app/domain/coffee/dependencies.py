@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""User Account Controllers."""
+"""Coffee domain dependency providers.
+
+This module provides dependency injection factories for all coffee domain services.
+Following the litestar-fullstack pattern for service instantiation.
+"""
 
 from __future__ import annotations
 
@@ -20,23 +24,21 @@ from typing import TYPE_CHECKING
 
 from app.config import alchemy
 from app.domain.coffee.services import (
+    ChatConversationService,
     CompanyService,
     InventoryService,
+    OracleVectorSearchService,
     ProductService,
-    ShopService,
-)
-from app.domain.coffee.services.vertex_ai import VertexAIService, OracleVectorSearchService
-from app.domain.coffee.services.recommendation_service import NativeRecommendationService
-from app.domain.coffee.services.oracle_services import (
-    UserSessionService,
-    ChatConversationService,
+    RecommendationService,
     ResponseCacheService,
     SearchMetricsService,
+    ShopService,
+    UserSessionService,
+    VertexAIService,
 )
-from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from litestar import Request
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +51,7 @@ async def provide_vertex_ai_service() -> AsyncGenerator[VertexAIService, None]:
 
 async def provide_oracle_vector_search_service(
     products_service: ProductService,
-    vertex_ai_service: VertexAIService
+    vertex_ai_service: VertexAIService,
 ) -> AsyncGenerator[OracleVectorSearchService, None]:
     """Provide Oracle vector search service."""
     yield OracleVectorSearchService(products_service, vertex_ai_service)
@@ -60,7 +62,6 @@ async def provide_user_session_service(db_session: AsyncSession) -> AsyncGenerat
     async with UserSessionService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
@@ -70,7 +71,6 @@ async def provide_chat_conversation_service(db_session: AsyncSession) -> AsyncGe
     async with ChatConversationService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
@@ -80,7 +80,6 @@ async def provide_response_cache_service(db_session: AsyncSession) -> AsyncGener
     async with ResponseCacheService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
@@ -90,12 +89,11 @@ async def provide_search_metrics_service(db_session: AsyncSession) -> AsyncGener
     async with SearchMetricsService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
 
-async def provide_native_recommendation_service(
+async def provide_recommendation_service(
     request: Request,
     vertex_ai_service: VertexAIService,
     vector_search_service: OracleVectorSearchService,
@@ -105,11 +103,11 @@ async def provide_native_recommendation_service(
     conversation_service: ChatConversationService,
     cache_service: ResponseCacheService,
     metrics_service: SearchMetricsService,
-) -> AsyncGenerator[NativeRecommendationService, None]:
-    """Provide native recommendation service with Oracle integration."""
+) -> AsyncGenerator[RecommendationService, None]:
+    """Provide recommendation service with Oracle integration."""
     user_id = "1"  # You can get this from request.user if you have auth
-    
-    yield NativeRecommendationService(
+
+    yield RecommendationService(
         vertex_ai_service=vertex_ai_service,
         vector_search_service=vector_search_service,
         products_service=products_service,
@@ -126,67 +124,63 @@ async def provide_companies_service(db_session: AsyncSession) -> AsyncGenerator[
     """Provide Company service.
 
     Args:
-        db_session (AsyncSession | None, optional): current database session. Defaults to None.
+        db_session: Current database session.
 
     Returns:
-        CompanyService: A role service object
+        Company service instance.
     """
     async with CompanyService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
 
-async def provide_products_service(db_session: AsyncSession | None = None) -> AsyncGenerator[ProductService, None]:
+async def provide_products_service(db_session: AsyncSession) -> AsyncGenerator[ProductService, None]:
     """Provide products service.
 
     Args:
-        db_session (AsyncSession | None, optional): current database session. Defaults to None.
+        db_session: Current database session.
 
     Returns:
-        ProductService: A role service object
+        Product service instance.
     """
     async with ProductService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
 
 async def provide_inventory_service(
-    db_session: AsyncSession | None = None,
+    db_session: AsyncSession,
 ) -> AsyncGenerator[InventoryService, None]:
-    """Provide user oauth account service.
+    """Provide inventory service.
 
     Args:
-        db_session (AsyncSession | None, optional): current database session. Defaults to None.
+        db_session: Current database session.
 
     Returns:
-        InventoryService: A user oauth account service object
+        Inventory service instance.
     """
     async with InventoryService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service
 
 
-async def provide_shops_service(db_session: AsyncSession | None = None) -> AsyncGenerator[ShopService, None]:
+async def provide_shops_service(db_session: AsyncSession) -> AsyncGenerator[ShopService, None]:
     """Provide shops service.
 
     Args:
-        db_session (AsyncSession | None, optional): current database session. Defaults to None.
+        db_session: Current database session.
 
     Returns:
-        ShopService: A user role service object
+        Shop service instance.
     """
     async with ShopService.new(
         session=db_session,
         config=alchemy,
-        execution_options={"populate_existing": True},
     ) as service:
         yield service

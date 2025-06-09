@@ -110,8 +110,6 @@
     }
   ],
   "sqltools.useNodeRuntime": true,
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}"
-  ],
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
   "geminicodeassist.enable": true
 }

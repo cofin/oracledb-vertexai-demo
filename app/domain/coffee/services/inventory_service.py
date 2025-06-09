@@ -1,0 +1,45 @@
+"""Inventory service with Advanced Alchemy patterns."""
+
+from collections.abc import Sequence
+
+from advanced_alchemy.repository import SQLAlchemyAsyncRepository
+from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
+from sqlalchemy import and_, select
+
+from app.db.models import Inventory
+
+
+class InventoryService(SQLAlchemyAsyncRepositoryService[Inventory]):
+    """Handles database operations for inventory."""
+
+    class Repo(SQLAlchemyAsyncRepository[Inventory]):
+        """Inventory repository."""
+        model_type = Inventory
+
+    repository_type = Repo
+
+    async def get_by_shop_and_product(self, shop_id: int, product_id: int) -> Inventory | None:
+        """Get inventory by shop and product."""
+        stmt = select(Inventory).where(
+            and_(Inventory.shop_id == shop_id, Inventory.product_id == product_id),
+        )
+        result = await self.repository.session.execute(stmt)
+        inventory = result.scalar_one_or_none()
+        return inventory
+
+    async def get_products_in_shop(self, shop_id: int) -> Sequence[Inventory]:
+        """Get all products available in a shop."""
+        return await self.list(Inventory.shop_id == shop_id)
+
+    async def get_shops_with_product(self, product_id: int) -> Sequence[Inventory]:
+        """Get all shops that have a product."""
+        return await self.list(Inventory.product_id == product_id)
+
+    async def update_stock(self, shop_id: int, product_id: int) -> Inventory | None:
+        """Update stock for a product in a shop."""
+        inventory = await self.get_by_shop_and_product(shop_id, product_id)
+        if inventory:
+            # Just return the inventory since there's no quantity field
+            return inventory
+        return None
+

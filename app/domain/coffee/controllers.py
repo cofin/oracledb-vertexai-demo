@@ -22,15 +22,15 @@ from litestar.response import File, Template
 
 from app import config
 from app.domain.coffee.dependencies import (
-    provide_vertex_ai_service,
+    provide_chat_conversation_service,
     provide_oracle_vector_search_service,
     provide_products_service,
-    provide_native_recommendation_service,
-    provide_shops_service,
-    provide_user_session_service,
-    provide_chat_conversation_service,
+    provide_recommendation_service,
     provide_response_cache_service,
     provide_search_metrics_service,
+    provide_shops_service,
+    provide_user_session_service,
+    provide_vertex_ai_service,
 )
 from app.lib.settings import get_settings
 
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from litestar.params import Body
 
     from app.domain.coffee.schemas import CoffeeChatMessage
-    from app.domain.coffee.services.recommendation_service import NativeRecommendationService
+    from app.domain.coffee.services.recommendation_service import RecommendationService
 
 
 class CoffeeChatController(Controller):
@@ -52,7 +52,7 @@ class CoffeeChatController(Controller):
         "conversation_service": Provide(provide_chat_conversation_service),
         "cache_service": Provide(provide_response_cache_service),
         "metrics_service": Provide(provide_search_metrics_service),
-        "recommendation_service": Provide(provide_native_recommendation_service),
+        "recommendation_service": Provide(provide_recommendation_service),
     }
 
     @get(path="/", name="ocw.show")
@@ -65,7 +65,7 @@ class CoffeeChatController(Controller):
     async def get_ocw(
         self,
         data: Annotated[CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)],
-        recommendation_service: NativeRecommendationService,
+        recommendation_service: RecommendationService,
     ) -> Template:
         """Serve site root."""
         settings = get_settings()
