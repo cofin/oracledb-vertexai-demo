@@ -26,6 +26,7 @@ from advanced_alchemy.extensions.litestar import (
 )
 from litestar.config.cors import CORSConfig
 from litestar.config.csrf import CSRFConfig
+from litestar.contrib.jinja import JinjaTemplateEngine
 from litestar.logging.config import (
     LoggingConfig,
     StructLoggingConfig,
@@ -35,7 +36,9 @@ from litestar.logging.config import (
 )
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.client_side import CookieBackendConfig
+from litestar.plugins.flash import FlashConfig
 from litestar.plugins.structlog import StructlogConfig
+from litestar.template import TemplateConfig
 from litestar_oracledb import SyncOracleDatabaseConfig, SyncOraclePoolConfig
 from litestar_vite import ViteConfig
 from litestar_vite.inertia import InertiaConfig
@@ -66,13 +69,14 @@ alchemy = SQLAlchemyAsyncConfig(
         script_location=_settings.db.MIGRATION_PATH,
     ),
 )
+templates = TemplateConfig(engine=JinjaTemplateEngine(directory=_settings.vite.TEMPLATE_DIR))
+flasher = FlashConfig(template_config=templates)
 oracle = SyncOracleDatabaseConfig(
     pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
 )
 vite = ViteConfig(
     bundle_dir=_settings.vite.BUNDLE_DIR,
     resource_dir=_settings.vite.RESOURCE_DIR,
-    template_dir=_settings.vite.TEMPLATE_DIR,
     use_server_lifespan=_settings.vite.USE_SERVER_LIFESPAN,
     dev_mode=_settings.vite.DEV_MODE,
     hot_reload=_settings.vite.HOT_RELOAD,

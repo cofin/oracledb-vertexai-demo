@@ -156,3 +156,7 @@ install-pdm.py
 demo.py
 static/
 templates/
+CLAUDE.md
+CLAUDE.*.md
+.tmp
+todo

@@ -13,33 +13,8 @@
 # limitations under the License.
 
 services:
-  cache:
-    image: valkey/valkey
-    ports:
-      - "16379:6379"
-    hostname: cache
-    volumes:
-      - cache-data:/data
-    command: redis-server --appendonly yes
-    environment:
-      ALLOW_EMPTY_PASSWORD: "yes"
-    restart: unless-stopped
-    logging:
-      options:
-        max-size: 10m
-        max-file: "3"
-    healthcheck:
-      test:
-        - CMD
-        - redis-cli
-        - ping
-      interval: 1s
-      timeout: 3s
-      retries: 30
   db:
     image: gvenzl/oracle-free:latest
-    ulimits:
-      memlock: -1
     ports:
       - "${ORACLE23AI_PORT:-1521}:1521" # use a non-standard port here
     hostname: db
@@ -50,7 +25,7 @@ services:
       APP_USER: ${ORACLE_USER:-app}
     volumes:
       - db-data:/opt/oracle/oradata
-      - ./deploy/oracle/db-init.sql:/container-entrypoint-initdb.d/db-init.sql:ro
+      - ./tools/deploy/oracle/db-init.sql:/container-entrypoint-initdb.d/db-init.sql:ro
     restart: unless-stopped
     logging:
       options:
@@ -66,4 +41,3 @@ services:
 
 volumes:
   db-data: {}
-  cache-data: {}

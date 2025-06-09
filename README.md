@@ -1,62 +1,77 @@
-# Cymbal Coffee - Oracle VertexAI Demo
+# ☕ Oracle + Vertex AI Coffee Demo
 
-## Developer Setup Instructions
+An intelligent coffee recommendation system showcasing Oracle 23AI vector search with Google Vertex AI integration.
 
-### Setup database and environment
+## 🚀 Quick Start
 
-```shell
-make install # install dev components
-cp .env.example .env # edit accordingly
-make start-infra # starts containers and configures user
+```bash
+# Install dependencies with uv
+make install
+
+# Setup environment
+cp .env.example .env  # Edit with your API keys
+
+# Start Oracle 23AI
+make start-infra
+
+# Initialize database
+uv run app database upgrade
+uv run app database load-fixtures
+
+# Start the application
+uv run app run
 ```
 
-#### Manual Infrastructure Setup
+Visit [http://localhost:5005](http://localhost:5005) to try the demo!
 
-**Note** If would like to do this manually, here are the steps the above `make start-infra` process is running:
+## 📚 Documentation
 
-```shell
-docker-compose up -d # starts dev infra
-cp .env.example .env # edit accordingly
-docker exec -it  oracledb-vertexai-demo-db-1 bash
-sqlplus / as sysdba
+For complete implementation and development guides, see the [`todo/`](todo/) directory:
+
+- **[Quick Start Guide](todo/01-QUICK-START.md)** - Get running in 15 minutes
+- **[Implementation Guide](todo/03-IMPLEMENTATION-PHASES-AA.md)** - Advanced Alchemy patterns
+- **[Oracle Architecture](todo/ORACLE-ARCHITECTURE.md)** - Oracle 23AI features
+- **[Conference Prep](todo/05-CONFERENCE-PREP.md)** - Demo presentation guide
+
+## 🏗️ Architecture
+
+This demo uses:
+- **Oracle 23AI** - Complete data platform with native vector search
+- **Advanced Alchemy** - Modern SQLAlchemy 2.0 patterns  
+- **Litestar** - High-performance async Python framework
+- **Vertex AI** - Google's generative AI platform
+- **HTMX** - Real-time UI without build complexity
+
+## 🎯 For K-Scope Conference
+
+This implementation is designed for conference demonstration with:
+- Real-time chat interface
+- Live Oracle performance metrics
+- Demo control panel with personas
+- Fallback modes for reliability
+- Mobile-responsive design
+
+## 🔧 Development Commands
+
+```bash
+# Database operations
+uv run app database upgrade      # Apply migrations
+uv run app database load-fixtures # Load sample data
+uv run app database reset       # Fresh start
+
+# Development
+uv run app run --reload         # Auto-reload mode
+uv run pytest                  # Run tests
+make lint                      # Code quality checks
 ```
 
-`app` needs to be able to select on `v_$transaction` to execute the initial migrations.
+## 📖 Additional Resources
 
-```sql
-ALTER SESSION SET CONTAINER = freepdb1;
-grant connect, resource to app;
-grant select on v_$transaction to app;
-```
+- [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Background story
+- [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation
+- [Litestar Documentation](https://docs.litestar.dev) - Framework documentation
+- [Advanced Alchemy Guide](https://docs.advanced-alchemy.jolt.rs/) - Repository patterns
 
-### deploy database models
+---
 
-```shell
-pdm run app database upgrade
-```
-
-- you can activate the virtual env manually (. .venv/bin/activate) or prefix every command with `pdm run`
-
-### deploy default data
-
-```shell
-pdm run app database load-fixtures
-```
-
-### generate vectors from product descriptions
-
-```shell
-pdm run app database load-vectors
-```
-
-### run the CLI version of the app
-
-```shell
-pdm run app recommend
-```
-
-### run the web server
-
-```shell
-pdm run app run -p 5005 # set port accordingly
-```
+**Ready to showcase the power of Oracle 23AI + Vertex AI at your next conference!** 🎯

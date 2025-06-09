@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from litestar.plugins.flash import FlashConfig, FlashPlugin
+from litestar.plugins.flash import FlashPlugin
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
@@ -29,7 +29,7 @@ app_config = ApplicationCore()
 vite = VitePlugin(config=config.vite)
 oracle = OracleDatabasePlugin(config=config.oracle)
 granian = GranianPlugin()
-flasher = FlashPlugin(config=FlashConfig(template_config=vite.template_config))
+flasher = FlashPlugin(config=config.flasher)
 inertia = InertiaPlugin(config=config.inertia)
 alchemy = SQLAlchemyPlugin(config=config.alchemy)
 structlog = StructlogPlugin(config=config.log)

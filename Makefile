@@ -126,23 +126,23 @@ format: ## Run code formatters
 # =============================================================================
 .PHONY: start-infra
 start-infra: ## Start local containers
-	@echo "${INFO} Starting local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml up -d --force-recreate
+	@echo "${INFO} Starting local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml up -d --force-recreate
 	@echo "${OK} Infrastructure started"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
-	@echo "${INFO} Stopping local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml down
+	@echo "${INFO} Stopping local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml down
 	@echo "${OK} Infrastructure stopped"
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
-	@echo "${INFO} Wiping local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml down -v --remove-orphans
+	@echo "${INFO} Wiping local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml down -v --remove-orphans
 	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
-	@echo "${INFO} Tailing logs for local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml logs -f
+	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml logs -f

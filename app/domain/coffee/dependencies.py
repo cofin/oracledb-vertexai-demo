@@ -18,68 +18,107 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from langchain_community.vectorstores.oraclevs import OracleVS
-
 from app.config import alchemy
 from app.domain.coffee.services import (
     CompanyService,
     InventoryService,
     ProductService,
-    RecommendationService,
     ShopService,
 )
-from app.domain.coffee.utils import get_chat_history_manager, get_embeddings_service
+from app.domain.coffee.services.vertex_ai import VertexAIService, OracleVectorSearchService
+from app.domain.coffee.services.recommendation_service import NativeRecommendationService
+from app.domain.coffee.services.oracle_services import (
+    UserSessionService,
+    ChatConversationService,
+    ResponseCacheService,
+    SearchMetricsService,
+)
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from langchain_core.chat_history import BaseChatMessageHistory
-    from langchain_core.embeddings import Embeddings
     from litestar import Request
-    from oracledb import Connection
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-def provide_message_history(
-    request: Request,
-) -> Generator[BaseChatMessageHistory, None, None]:
-    """Provide the embedding service."""
-    yield get_chat_history_manager("1", request.get_session_id() or "1")
+async def provide_vertex_ai_service() -> AsyncGenerator[VertexAIService, None]:
+    """Provide Vertex AI service."""
+    yield VertexAIService()
 
 
-def provide_recommendation_service(
+async def provide_oracle_vector_search_service(
+    products_service: ProductService,
+    vertex_ai_service: VertexAIService
+) -> AsyncGenerator[OracleVectorSearchService, None]:
+    """Provide Oracle vector search service."""
+    yield OracleVectorSearchService(products_service, vertex_ai_service)
+
+
+async def provide_user_session_service(db_session: AsyncSession) -> AsyncGenerator[UserSessionService, None]:
+    """Provide user session service."""
+    async with UserSessionService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
+        yield service
+
+
+async def provide_chat_conversation_service(db_session: AsyncSession) -> AsyncGenerator[ChatConversationService, None]:
+    """Provide chat conversation service."""
+    async with ChatConversationService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
+        yield service
+
+
+async def provide_response_cache_service(db_session: AsyncSession) -> AsyncGenerator[ResponseCacheService, None]:
+    """Provide response cache service."""
+    async with ResponseCacheService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
+        yield service
+
+
+async def provide_search_metrics_service(db_session: AsyncSession) -> AsyncGenerator[SearchMetricsService, None]:
+    """Provide search metrics service."""
+    async with SearchMetricsService.new(
+        session=db_session,
+        config=alchemy,
+        execution_options={"populate_existing": True},
+    ) as service:
+        yield service
+
+
+async def provide_native_recommendation_service(
     request: Request,
-    vector_store: OracleVS,
+    vertex_ai_service: VertexAIService,
+    vector_search_service: OracleVectorSearchService,
     products_service: ProductService,
     shops_service: ShopService,
-) -> Generator[RecommendationService, None, None]:
-    """Provide the embedding service."""
-    yield RecommendationService(
-        vector_store=vector_store,
+    session_service: UserSessionService,
+    conversation_service: ChatConversationService,
+    cache_service: ResponseCacheService,
+    metrics_service: SearchMetricsService,
+) -> AsyncGenerator[NativeRecommendationService, None]:
+    """Provide native recommendation service with Oracle integration."""
+    user_id = "1"  # You can get this from request.user if you have auth
+    
+    yield NativeRecommendationService(
+        vertex_ai_service=vertex_ai_service,
+        vector_search_service=vector_search_service,
         products_service=products_service,
         shops_service=shops_service,
-        history_meta={"user_id": "1", "conversation_id": request.get_session_id() or "1"},
-    )
-
-
-def provide_embeddings_service() -> Generator[Embeddings, None, None]:
-    """Provide the embedding service."""
-    settings = get_settings()
-    model_type = settings.app.EMBEDDING_MODEL_TYPE
-    yield get_embeddings_service(model_type=model_type)
-
-
-def provide_product_description_vector_store(
-    db_connection: Connection,
-    embeddings: Embeddings,
-) -> Generator[OracleVS, None, None]:
-    """Construct a vector store."""
-    yield OracleVS(
-        client=db_connection,
-        embedding_function=embeddings,
-        table_name="PRODUCT_DESCRIPTION_VS",
-        query="Where can I get a good coffee nearby?",
+        session_service=session_service,
+        conversation_service=conversation_service,
+        cache_service=cache_service,
+        metrics_service=metrics_service,
+        user_id=user_id,
     )
 
 

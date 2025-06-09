@@ -57,14 +57,11 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.channels import ChannelsPlugin
         from litestar.datastructures import State
         from litestar.enums import RequestEncodingType
-        from litestar.openapi.config import OpenAPIConfig
-        from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
         from litestar.params import Body
         from litestar_vite.inertia import InertiaRequest
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config
-        from app.__metadata__ import __version__ as current_version
         from app.domain.coffee.controllers import CoffeeChatController
         from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
         from app.domain.coffee.services import ProductService, RecommendationService, ShopService
@@ -96,12 +93,13 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             ],
         )
         # openapi
-        app_config.openapi_config = OpenAPIConfig(
-            title=settings.app.NAME,
-            version=current_version,
-            use_handler_docstrings=True,
-            render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
-        )
+        app_config.openapi_config = None
+        # app_config.openapi_config = OpenAPIConfig(
+        #     title=settings.app.NAME,
+        #     version=current_version,
+        #     use_handler_docstrings=True,
+        #     render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
+        # )
         # routes
         app_config.route_handlers.extend(
             [

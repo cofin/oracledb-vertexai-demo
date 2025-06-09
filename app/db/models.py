@@ -14,8 +14,13 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Optional
+from uuid import UUID
+
 from advanced_alchemy.base import BigIntAuditBase, UUIDAuditBase
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Text, Index, JSON
+from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -62,6 +67,11 @@ class Product(BigIntAuditBase):
     current_price: Mapped[float]
     size: Mapped[str] = mapped_column(String(50))
     description: Mapped[str] = mapped_column(String(2000))
+    # Oracle 23AI vector field for embeddings
+    embedding: Mapped[Optional[list[float]]] = mapped_column(
+        VECTOR(dim=768, storage_format=VectorStorageFormat.FLOAT32), 
+        nullable=True
+    )
     # -----------
     # ORM Relationships
     # ------------
@@ -103,3 +113,104 @@ class Inventory(UUIDAuditBase):
     product: Mapped[Product] = relationship(back_populates="inventory", innerjoin=True, uselist=False, lazy="joined")
     product_name: AssociationProxy[str] = association_proxy("product", "name")
     current_price: AssociationProxy[str] = association_proxy("product", "current_price")
+
+
+# Oracle-specific models for AI features
+
+class UserSession(UUIDAuditBase):
+    """Oracle-native session storage with JSON data."""
+    
+    __tablename__ = "user_session"
+    
+    session_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    
+    # Relationships
+    conversations: Mapped[list["ChatConversation"]] = relationship(
+        back_populates="session", 
+        lazy="selectin",
+        cascade="all, delete-orphan"
+    )
+    
+    __table_args__ = (
+        Index("ix_session_expires", "expires_at"),
+        Index("ix_session_user_expires", "user_id", "expires_at"),
+    )
+
+
+class ChatConversation(UUIDAuditBase):
+    """Conversation history with Oracle JSON storage."""
+    
+    __tablename__ = "chat_conversation"
+    
+    session_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user_session.id", ondelete="CASCADE"), 
+        nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'user' | 'assistant' | 'system'
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    message_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    
+    # Relationships
+    session: Mapped[UserSession] = relationship(
+        back_populates="conversations",
+        lazy="selectin"
+    )
+    
+    __table_args__ = (
+        Index("ix_chat_user_time", "user_id", "created_at"),
+        Index("ix_chat_session_time", "session_id", "created_at"),
+    )
+
+
+class ResponseCache(UUIDAuditBase):
+    """Oracle-native response caching with TTL."""
+    
+    __tablename__ = "response_cache"
+    
+    cache_key: Mapped[str] = mapped_column(String(256), unique=True, index=True)
+    query_text: Mapped[str] = mapped_column(String(4000), nullable=True)
+    response: Mapped[dict] = mapped_column(JSON, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    hit_count: Mapped[int] = mapped_column(default=0)
+    
+    __table_args__ = (
+        Index("ix_cache_expires", "expires_at"),
+        Index("ix_cache_key_expires", "cache_key", "expires_at"),
+    )
+
+
+class SearchMetrics(UUIDAuditBase):
+    """Real-time search performance metrics."""
+    
+    __tablename__ = "search_metrics"
+    
+    query_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=True, index=True)
+    search_time_ms: Mapped[float] = mapped_column(nullable=False)
+    embedding_time_ms: Mapped[float] = mapped_column(nullable=False)
+    oracle_time_ms: Mapped[float] = mapped_column(nullable=False)
+    similarity_score: Mapped[float] = mapped_column(nullable=True)
+    result_count: Mapped[int] = mapped_column(nullable=False)
+    
+    __table_args__ = (
+        Index("ix_metrics_time", "created_at", "search_time_ms"),
+        Index("ix_metrics_user_time", "user_id", "created_at"),
+    )
+
+
+class AppConfig(UUIDAuditBase):
+    """Application configuration in Oracle."""
+    
+    __tablename__ = "app_config"
+    
+    key: Mapped[str] = mapped_column(String(256), unique=True, index=True)
+    value: Mapped[dict] = mapped_column(JSON, nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=True)
+    
+    __table_args__ = (
+        Index("ix_config_key", "key"),
+    )

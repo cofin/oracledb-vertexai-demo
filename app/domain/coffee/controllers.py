@@ -22,32 +22,37 @@ from litestar.response import File, Template
 
 from app import config
 from app.domain.coffee.dependencies import (
-    provide_embeddings_service,
-    provide_message_history,
-    provide_product_description_vector_store,
+    provide_vertex_ai_service,
+    provide_oracle_vector_search_service,
     provide_products_service,
-    provide_recommendation_service,
+    provide_native_recommendation_service,
     provide_shops_service,
+    provide_user_session_service,
+    provide_chat_conversation_service,
+    provide_response_cache_service,
+    provide_search_metrics_service,
 )
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
-    from langchain_core.chat_history import BaseChatMessageHistory
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
     from app.domain.coffee.schemas import CoffeeChatMessage
-    from app.domain.coffee.services import RecommendationService
+    from app.domain.coffee.services.recommendation_service import NativeRecommendationService
 
 
 class CoffeeChatController(Controller):
     dependencies = {
-        "embeddings": Provide(provide_embeddings_service),
-        "vector_store": Provide(provide_product_description_vector_store),
+        "vertex_ai_service": Provide(provide_vertex_ai_service),
+        "vector_search_service": Provide(provide_oracle_vector_search_service),
         "products_service": Provide(provide_products_service),
         "shops_service": Provide(provide_shops_service),
-        "recommendation_service": Provide(provide_recommendation_service),
-        "chat_history": Provide(provide_message_history),
+        "session_service": Provide(provide_user_session_service),
+        "conversation_service": Provide(provide_chat_conversation_service),
+        "cache_service": Provide(provide_response_cache_service),
+        "metrics_service": Provide(provide_search_metrics_service),
+        "recommendation_service": Provide(provide_native_recommendation_service),
     }
 
     @get(path="/", name="ocw.show")
@@ -60,8 +65,7 @@ class CoffeeChatController(Controller):
     async def get_ocw(
         self,
         data: Annotated[CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)],
-        recommendation_service: RecommendationService,
-        chat_history: BaseChatMessageHistory,
+        recommendation_service: NativeRecommendationService,
     ) -> Template:
         """Serve site root."""
         settings = get_settings()
@@ -70,8 +74,8 @@ class CoffeeChatController(Controller):
             template_name="ocw.html.j2",
             context={
                 "google_maps_api_key": settings.app.GOOGLE_API_KEY,
-                "answer": reply["answer"],
-                "points_of_interest": reply["points_of_interest"],
+                "answer": reply.answer,
+                "points_of_interest": [poi.__dict__ for poi in reply.points_of_interest],
             },
         )
 
