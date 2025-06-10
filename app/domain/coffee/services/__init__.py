@@ -1,16 +1,16 @@
 """Coffee domain services."""
 
-from app.domain.coffee.services.company_service import CompanyService
-from app.domain.coffee.services.inventory_service import InventoryService
-from app.domain.coffee.services.oracle_services import (
+from app.domain.coffee.services.account import (
     ChatConversationService,
     ResponseCacheService,
     SearchMetricsService,
     UserSessionService,
 )
-from app.domain.coffee.services.product_service import ProductService
-from app.domain.coffee.services.recommendation_service import RecommendationService
-from app.domain.coffee.services.shop_service import ShopService
+from app.domain.coffee.services.company import CompanyService
+from app.domain.coffee.services.inventory import InventoryService
+from app.domain.coffee.services.product import ProductService
+from app.domain.coffee.services.recommendation import RecommendationService
+from app.domain.coffee.services.shop import ShopService
 from app.domain.coffee.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 __all__ = [

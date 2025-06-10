@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Command-line interface."""
+
 from __future__ import annotations
 
 import multiprocessing
@@ -69,7 +70,7 @@ def recommend() -> None:
         from app.domain.coffee.services import (
             RecommendationService,
         )
-        from app.domain.coffee.services.oracle_services import (
+        from app.domain.coffee.services.account import (
             ChatConversationService,
             ResponseCacheService,
             SearchMetricsService,

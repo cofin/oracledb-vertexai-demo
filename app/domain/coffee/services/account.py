@@ -125,9 +125,13 @@ class ChatConversationService(service.SQLAlchemyAsyncRepositoryService[m.ChatCon
         if session_id:
             filters.append(m.ChatConversation.session_id == session_id)
 
-        stmt = select(m.ChatConversation).where(*filters).order_by(m.ChatConversation.created_at.desc()).limit(limit)
-        result = await self.repository.session.execute(stmt)
-        return list(result.scalars().all())
+        result = await self.list(
+            statement=select(m.ChatConversation)
+            .where(*filters)
+            .order_by(m.ChatConversation.created_at.desc())
+            .limit(limit)
+        )
+        return list(result)
 
 
 class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCache]):
@@ -140,7 +144,6 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
 
     repository_type = Repo
     match_fields = ["cache_key"]
-
 
     def _generate_cache_key(self, query: str, user_id: str = "default") -> str:
         """Generate deterministic cache key."""

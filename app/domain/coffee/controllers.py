@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from litestar.params import Body
 
     from app.domain.coffee.schemas import CoffeeChatMessage
-    from app.domain.coffee.services.recommendation_service import RecommendationService
+    from app.domain.coffee.services.recommendation import RecommendationService
 
 
 class CoffeeChatController(Controller):

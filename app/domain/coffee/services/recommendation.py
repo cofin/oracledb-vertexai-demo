@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from app.db.models import Inventory, Shop
 from app.domain.coffee.schemas import ChatMessage, CoffeeChatReply, PointsOfInterest
-from app.domain.coffee.services.oracle_services import (
+from app.domain.coffee.services.account import (
     ChatConversationService,
     ResponseCacheService,
     SearchMetricsService,
@@ -72,12 +72,16 @@ class RecommendationService:
         # Route the question through product and location matching
         chat_metadata, matched_product_ids = await self._route_products_question(query)
         chat_metadata, location_count = await self._route_locations_question(
-            query, matched_product_ids, chat_metadata,
+            query,
+            matched_product_ids,
+            chat_metadata,
         )
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
-            self.user_id, limit=10, session_id=session.id,
+            self.user_id,
+            limit=10,
+            session_id=session.id,
         )
 
         # Format conversation history for Vertex AI
@@ -143,13 +147,33 @@ class RecommendationService:
 
         # Check if this is a coffee recommendation query
         recommend_keywords = {
-            "coffee", "recommend", "looking", "latte", "cap", "americano",
-            "caffeine", "beans", "need", "want", "show", "where", "give me", "gimme",
+            "coffee",
+            "recommend",
+            "looking",
+            "latte",
+            "cap",
+            "americano",
+            "caffeine",
+            "beans",
+            "need",
+            "want",
+            "show",
+            "where",
+            "give me",
+            "gimme",
         }
 
         location_keywords = {
-            "where", "find", "locations", "show me", "near", "looking",
-            "need", "want", "give me", "gimme",
+            "where",
+            "find",
+            "locations",
+            "show me",
+            "near",
+            "looking",
+            "need",
+            "want",
+            "give me",
+            "gimme",
         }
 
         if any(word in query_lower for word in recommend_keywords.union(location_keywords)):
@@ -167,10 +191,7 @@ class RecommendationService:
                     LimitOffset(2, 0),
                 )
 
-                chat_metadata["product_matches"] = [
-                    f"- {obj.name}: {obj.description}"
-                    for obj in similar_products
-                ]
+                chat_metadata["product_matches"] = [f"- {obj.name}: {obj.description}" for obj in similar_products]
 
                 return chat_metadata, matched_product_ids
 
@@ -189,8 +210,16 @@ class RecommendationService:
         chat_metadata = chat_metadata or {}
 
         location_keywords = {
-            "where", "find", "locations", "show me", "near", "looking",
-            "need", "want", "give me", "gimme",
+            "where",
+            "find",
+            "locations",
+            "show me",
+            "near",
+            "looking",
+            "need",
+            "want",
+            "give me",
+            "gimme",
         }
 
         if any(word in query_lower for word in location_keywords) and matched_product_ids:
@@ -256,19 +285,20 @@ class RecommendationService:
         # Route the question (same as regular recommendation)
         chat_metadata, matched_product_ids = await self._route_products_question(query)
         chat_metadata, location_count = await self._route_locations_question(
-            query, matched_product_ids, chat_metadata,
+            query,
+            matched_product_ids,
+            chat_metadata,
         )
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
-            self.user_id, limit=10, session_id=session.id,
+            self.user_id,
+            limit=10,
+            session_id=session.id,
         )
 
         # Format conversation history for Vertex AI
-        history_for_ai = [
-            {"role": msg.role, "content": msg.content}
-            for msg in reversed(conversation_history)
-        ]
+        history_for_ai = [{"role": msg.role, "content": msg.content} for msg in reversed(conversation_history)]
 
         # Build context and prompt
         context = self._format_context(query, chat_metadata)

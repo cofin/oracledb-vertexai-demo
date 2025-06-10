@@ -1,9 +1,10 @@
 """Native Vertex AI service without LangChain."""
 
+from __future__ import annotations
+
 import time
 import uuid
-from collections.abc import AsyncGenerator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import vertexai
 from google.api_core import exceptions as google_exceptions
@@ -11,8 +12,12 @@ from google.cloud import aiplatform
 from vertexai.generative_models import GenerativeModel
 
 from app.domain.coffee.schemas import SearchMetricsCreate
-from app.domain.coffee.services.oracle_services import ResponseCacheService, SearchMetricsService
 from app.lib.settings import get_settings
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    from app.domain.coffee.services.account import ResponseCacheService, SearchMetricsService
 
 
 class VertexAIService:
@@ -35,7 +40,7 @@ class VertexAIService:
         self.metrics_service: SearchMetricsService | None = None
         self.cache_service: ResponseCacheService | None = None
 
-    def set_services(self, metrics_service: SearchMetricsService, cache_service: ResponseCacheService) -> None:
+    def set_services(self, metrics_service: "SearchMetricsService", cache_service: "ResponseCacheService") -> None:
         """Inject Oracle services."""
         self.metrics_service = metrics_service
         self.cache_service = cache_service
@@ -81,14 +86,16 @@ class VertexAIService:
             # Record metrics
             if self.metrics_service:
                 total_time = (time.time() - start_time) * 1000
-                await self.metrics_service.record_search(SearchMetricsCreate(
-                    query_id=str(uuid.uuid4()),
-                    user_id=user_id,
-                    search_time_ms=total_time,
-                    embedding_time_ms=0,  # Not applicable for generation
-                    oracle_time_ms=0,  # Measured separately
-                    result_count=1,
-                ))
+                await self.metrics_service.record_search(
+                    SearchMetricsCreate(
+                        query_id=str(uuid.uuid4()),
+                        user_id=user_id,
+                        search_time_ms=total_time,
+                        embedding_time_ms=0,  # Not applicable for generation
+                        oracle_time_ms=0,  # Measured separately
+                        result_count=1,
+                    ),
+                )
 
     async def stream_content(
         self,
@@ -244,18 +251,21 @@ class OracleVectorSearchService:
             # Record metrics
             if self.vertex_ai_service.metrics_service:
                 total_time = (time.time() - start_time) * 1000
-                await self.vertex_ai_service.metrics_service.record_search(SearchMetricsCreate(
-                    query_id=str(uuid.uuid4()),
-                    search_time_ms=total_time,
-                    embedding_time_ms=embedding_time,
-                    oracle_time_ms=oracle_time,
-                    similarity_score=1.0 - (products[0]["distance"] if products else 1.0),
-                    result_count=len(products),
-                ))
+                await self.vertex_ai_service.metrics_service.record_search(
+                    SearchMetricsCreate(
+                        query_id=str(uuid.uuid4()),
+                        search_time_ms=total_time,
+                        embedding_time_ms=embedding_time,
+                        oracle_time_ms=oracle_time,
+                        similarity_score=1.0 - (products[0]["distance"] if products else 1.0),
+                        result_count=len(products),
+                    ),
+                )
 
         except (KeyError, AttributeError) as e:
             # Return empty results on error, but log it
             import structlog
+
             logger = structlog.get_logger()
             logger.exception("Vector search error", error=str(e))
             return []
