@@ -14,13 +14,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
+from uuid import UUID
 
 from advanced_alchemy.base import BigIntAuditBase, UUIDAuditBase
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
 from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy

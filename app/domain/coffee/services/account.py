@@ -19,7 +19,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from litestar.plugins.sqlalchemy import repository, service
+import msgspec
+
+from advanced_alchemy.repository import SQLAlchemyAsyncRepository
+from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 from sqlalchemy import delete, func, select
 
 from app.db import models as m
@@ -30,10 +33,10 @@ if TYPE_CHECKING:
     from app.domain.coffee.schemas import SearchMetricsCreate
 
 
-class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]):
+class UserSessionService(SQLAlchemyAsyncRepositoryService[m.UserSession]):
     """Oracle session management with Advanced Alchemy."""
 
-    class Repo(repository.SQLAlchemyAsyncRepository[m.UserSession]):
+    class Repo(SQLAlchemyAsyncRepository[m.UserSession]):
         """Session repository."""
 
         model_type = m.UserSession
@@ -87,10 +90,10 @@ class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]
         return result.rowcount or 0
 
 
-class ChatConversationService(service.SQLAlchemyAsyncRepositoryService[m.ChatConversation]):
+class ChatConversationService(SQLAlchemyAsyncRepositoryService[m.ChatConversation]):
     """Conversation history with Advanced Alchemy."""
 
-    class Repo(repository.SQLAlchemyAsyncRepository[m.ChatConversation]):
+    class Repo(SQLAlchemyAsyncRepository[m.ChatConversation]):
         """Conversation repository."""
 
         model_type = m.ChatConversation
@@ -129,15 +132,15 @@ class ChatConversationService(service.SQLAlchemyAsyncRepositoryService[m.ChatCon
             statement=select(m.ChatConversation)
             .where(*filters)
             .order_by(m.ChatConversation.created_at.desc())
-            .limit(limit)
+            .limit(limit),
         )
         return list(result)
 
 
-class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCache]):
+class ResponseCacheService(SQLAlchemyAsyncRepositoryService[m.ResponseCache]):
     """Oracle response caching with Advanced Alchemy."""
 
-    class Repo(repository.SQLAlchemyAsyncRepository[m.ResponseCache]):
+    class Repo(SQLAlchemyAsyncRepository[m.ResponseCache]):
         """Cache repository."""
 
         model_type = m.ResponseCache
@@ -201,10 +204,10 @@ class ResponseCacheService(service.SQLAlchemyAsyncRepositoryService[m.ResponseCa
         return result.rowcount or 0
 
 
-class SearchMetricsService(service.SQLAlchemyAsyncRepositoryService[m.SearchMetrics]):
+class SearchMetricsService(SQLAlchemyAsyncRepositoryService[m.SearchMetrics]):
     """Search performance metrics with Advanced Alchemy."""
 
-    class Repo(repository.SQLAlchemyAsyncRepository[m.SearchMetrics]):
+    class Repo(SQLAlchemyAsyncRepository[m.SearchMetrics]):
         """Metrics repository."""
 
         model_type = m.SearchMetrics
@@ -213,7 +216,7 @@ class SearchMetricsService(service.SQLAlchemyAsyncRepositoryService[m.SearchMetr
 
     async def record_search(self, metrics_data: "SearchMetricsCreate") -> m.SearchMetrics:
         """Record search performance metrics."""
-        return await self.create(metrics_data.__dict__)
+        return await self.create(msgspec.to_builtins(metrics_data))
 
     async def get_performance_stats(self, hours: int = 24) -> dict:
         """Get performance statistics."""

@@ -18,6 +18,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+    from litestar import Litestar
+    from litestar.testing import AsyncTestClient
+
 from app.lib import settings as app_settings
 
 if TYPE_CHECKING:
@@ -46,3 +51,18 @@ def _patch_settings(monkeypatch: MonkeyPatch) -> None:
         return settings
 
     monkeypatch.setattr(app_settings, "get_settings", get_settings)
+
+
+@pytest.fixture
+def app() -> "Litestar":
+    """Create test app instance."""
+    from app.asgi import create_app
+    return create_app()
+
+
+@pytest.fixture
+def client(app: "Litestar") -> "AsyncTestClient":
+    """Create test client."""
+    from litestar.testing import AsyncTestClient
+    
+    return AsyncTestClient(app=app, raise_server_exceptions=False)

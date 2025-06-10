@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import anyio
 import click
 import structlog
-from click import Context, group, option, pass_context
+from click import Context
 from rich.prompt import Prompt
 
 from app.__metadata__ import __version__
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from app.domain.coffee.services import RecommendationService
 
 
-__all__ = ["app", "version_callback"]
+__all__ = ["load_fixtures", "load_vectors", "recommend", "version_callback"]
 
 logger = structlog.get_logger()
 
@@ -48,12 +48,7 @@ def version_callback(ctx: Context, _: click.Parameter, value: bool) -> None:
         ctx.exit()
 
 
-@group(name="recommend")
-def app_group() -> None:
-    """Application Commands."""
-
-
-@app_group.command(name="recommend", help="Find a coffee.")
+@click.command(name="recommend", help="Find a coffee.")
 def recommend() -> None:
     """Execute the recommendation engine from the CLI"""
     import anyio
@@ -203,50 +198,9 @@ async def query_recommendation(
             console.print(NoPadding(Markdown("  \n".join(locations)) if locations else "No locations found."))
 
 
-@pass_context
-@option(
-    "--version",
-    is_flag=True,
-    callback=version_callback,
-    expose_value=False,
-    is_eager=True,
-    help="Display the application version and exit.",
-)
-@option(
-    "-v",
-    "--verbose",
-    help="Enable verbose output.",
-    is_flag=True,
-    default=False,
-    type=bool,
-)
-@option(
-    "-q",
-    "--quiet",
-    help="Suppress all output except errors.",
-    is_flag=True,
-    default=False,
-    type=bool,
-)
-@group(
-    context_settings={"help_option_names": ["-h", "--help"], "max_content_width": 80},
-    invoke_without_command=False,
-    epilog="""
-\b
-For more information, visit: [github](https://github.com/cofin/oracledb-vertexai-demo)
-    """,
-)
-def app(ctx: Context, verbose: bool, quiet: bool) -> None:
-    """Oracle + VertexAI Coffee Demo CLI.
-
-    For detailed information on a specific command, use:
-    `oracledb-vertexai-demo database <COMMAND> --help`
-    """
-    ctx.obj = ctx.obj or {}
-    ctx.obj.update(verbose=verbose, quiet=quiet)
+# Individual CLI functions - these will be added to Litestar's CLI by the plugin
 
 
-@app.command(name="load-fixtures", help="Load fixture data into database")
 def load_fixtures() -> None:
     """Load coffee demo fixture data."""
 
@@ -313,7 +267,6 @@ def load_fixtures() -> None:
     anyio.run(_load_fixtures)
 
 
-@app.command(name="load-vectors", help="Generate and load vector embeddings")
 def load_vectors() -> None:
     """Generate and load vector embeddings for products."""
 
@@ -350,15 +303,7 @@ def load_vectors() -> None:
     anyio.run(_load_vectors)
 
 
-app.add_command(app_group)
-
-# Database commands are added via alembic
-try:
-    from app.lib.db import database_management_app
-
-    app.add_command(database_management_app, name="database")
-except ImportError:
-    logger.warning("Database management commands not available")
+# Functions are exported and added to Litestar CLI by the plugin in server/core.py
 
 
 async def wait_for_db(db_session: Connection, *, timeout: int = 10) -> None:
@@ -380,6 +325,4 @@ async def wait_for_db(db_session: Connection, *, timeout: int = 10) -> None:
     raise TimeoutError(msg)
 
 
-if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    app()
+# Main execution removed - CLI is handled by Litestar

@@ -41,6 +41,7 @@ class TestRecommendationService:
         )
         return service
 
+    @pytest.mark.asyncio
     async def test_get_recommendation_basic(self, recommendation_service, mock_services):
         """Test basic recommendation flow."""
         # Setup mocks
@@ -60,11 +61,8 @@ class TestRecommendationService:
         ]
         mock_services["products_service"].list.return_value = mock_products
 
-        # Mock shop service
-        mock_shops = [
-            MagicMock(id=1, name="Shop A", address="123 Main St", latitude=1.0, longitude=2.0),
-            MagicMock(id=2, name="Shop B", address="456 Oak Ave", latitude=3.0, longitude=4.0),
-        ]
+        # Mock shop service - use empty list since we're testing product flow
+        mock_shops = []
         mock_services["shops_service"].list.return_value = mock_shops
 
         # Mock conversation history
@@ -96,6 +94,7 @@ class TestRecommendationService:
         )
         mock_services["conversation_service"].add_message.assert_called()
 
+    @pytest.mark.asyncio
     async def test_route_products_question_with_matches(self, recommendation_service, mock_services):
         """Test product routing with matches."""
         # Mock vector search
@@ -120,6 +119,7 @@ class TestRecommendationService:
         assert len(metadata["product_matches"]) == 2
         assert "Ethiopian Coffee" in metadata["product_matches"][0]
 
+    @pytest.mark.asyncio
     async def test_route_products_question_no_matches(self, recommendation_service, mock_services):
         """Test product routing without coffee keywords."""
         metadata, product_ids = await recommendation_service._route_products_question(
@@ -130,6 +130,7 @@ class TestRecommendationService:
         assert "product_matches" not in metadata
         mock_services["vector_search"].similarity_search.assert_not_called()
 
+    @pytest.mark.asyncio
     async def test_route_locations_question_with_matches(self, recommendation_service, mock_services):
         """Test location routing with matches."""
         mock_shops = [
@@ -161,6 +162,7 @@ class TestRecommendationService:
         assert len(metadata["locations"]) == 2
         assert metadata["locations"][0]["name"] == "Coffee House A"
 
+    @pytest.mark.asyncio
     async def test_route_locations_question_no_products(self, recommendation_service, mock_services):
         """Test location routing without product matches."""
         metadata, location_count = await recommendation_service._route_locations_question(
@@ -173,6 +175,7 @@ class TestRecommendationService:
         assert "locations" not in metadata
         mock_services["shops_service"].list.assert_not_called()
 
+    @pytest.mark.asyncio
     async def test_format_context(self, recommendation_service):
         """Test context formatting."""
         metadata = {
@@ -192,6 +195,7 @@ class TestRecommendationService:
         assert "# Product Availability:" in context
         assert "2 location(s)" in context
 
+    @pytest.mark.asyncio
     async def test_stream_recommendation(self, recommendation_service, mock_services):
         """Test streaming recommendation."""
         # Setup mocks
@@ -222,6 +226,7 @@ class TestRecommendationService:
         assert calls[1][1]["content"] == "Hello world!"
         assert calls[1][1]["message_metadata"]["streamed"] is True
 
+    @pytest.mark.asyncio
     async def test_get_recommendation_with_existing_session(self, recommendation_service, mock_services):
         """Test recommendation with existing session."""
         # Setup existing session

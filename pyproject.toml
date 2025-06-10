@@ -232,6 +232,16 @@ module = [
 ignore_errors = true
 module = ["app.db.migrations.*"]
 
+[tool.pytest.ini_options]
+addopts = ["-ra", "--ignore", "app/db/migrations"]
+filterwarnings = [
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:google.*",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning:sqlalchemy.*",
+]
+testpaths = ["tests"]
+
 [tool.pyright]
 exclude = ["scripts", "docs"]
 include = ["app", "tests"]

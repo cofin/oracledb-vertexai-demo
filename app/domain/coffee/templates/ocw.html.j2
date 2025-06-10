@@ -20,7 +20,11 @@
 
     {{ js_routes }}
 
-    <!-- TEMP -->
+    <!-- HTMX for real-time updates -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+    
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         h1 {
@@ -48,13 +52,162 @@
         }
 
         .container {
-            max-width: 800px;
-            width: 90%;
+            max-width: 1000px;
+            width: 95%;
             margin: 20px auto;
             padding: 30px;
             background-color: #fff;
             border-radius: 15px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--coffee-light);
+        }
+
+        .demo-personas {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .persona-btn {
+            background-color: var(--coffee-light);
+            color: var(--coffee-dark);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .persona-btn:hover {
+            background-color: var(--coffee-medium);
+            color: white;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 15px;
+            background-color: var(--cream);
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background-color: var(--coffee-medium);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.assistant {
+            background-color: white;
+            color: var(--coffee-dark);
+            border: 1px solid var(--coffee-light);
+        }
+
+        .typing-indicator {
+            color: var(--coffee-medium);
+            font-style: italic;
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--coffee-medium);
+        }
+
+        .send-btn {
+            background-color: var(--coffee-medium);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            min-width: 100px;
+        }
+
+        .send-btn:hover {
+            background-color: var(--coffee-dark);
+        }
+
+        .send-btn:disabled {
+            background-color: var(--coffee-light);
+            cursor: not-allowed;
+        }
+
+        .metrics-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--cream);
+            border-radius: 10px;
+            border: 1px solid var(--coffee-light);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--coffee-medium);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--coffee-dark);
         }
 
         h1 {
@@ -155,40 +308,164 @@
 
 <body class="font-sans antialiased h-full">
     <div class="container">
-        <h1><img src="{{ url_for('vite', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur"></h1>
-        <h1>Coffee Connoisseur</h1>
-        <form method="post" action="{{ url_for('ocw.get') }}">
-            {{ csrf_input | safe }}
-            <label for="message">
-                <h3>Find me a Coffee:</h3>
-            </label>
-            <input id="message" name="message" placeholder="Enter your coffee preference..." required="" size="40"
-                type="text" value="">
-            <input id="submit" name="submit" type="submit" value="Discover Coffee">
-        </form>
-
-        {% if answer %}
-        <div class="output-container">
-            <h2>A Coffee For You:</h2>
-            <p>{{ answer }}</p>
+        <!-- Header -->
+        <div class="text-center">
+            <img src="{{ url_for('vite', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur" style="max-height: 80px; margin-bottom: 10px;">
+            <h1>Coffee Connoisseur</h1>
+            <p style="color: var(--coffee-medium); margin-bottom: 30px;">Powered by Oracle 23AI + Google Vertex AI</p>
         </div>
-        {% endif %}
 
-        {% if points_of_interest %}
-            <gmp-map center="{{ points_of_interest[0].get('latitude') }},{{ points_of_interest[0].get('longitude') }}" zoom="12" map-id="COFFE_MAPS" style="height: 400px">
-                {% for location in points_of_interest %}
-                    <gmp-advanced-marker
-                        position="{{ location.get('latitude') }},{{ location.get('longitude') }}"
-                        title="{{ location['name'] }}"
-                    ></gmp-advanced-marker>
-                {% endfor %}
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <!-- Chat Header with Demo Personas -->
+            <div class="chat-header">
+                <h3 style="margin: 0; color: var(--coffee-dark);">Chat with AI Coffee Expert</h3>
+                <div class="demo-personas">
+                    <button class="persona-btn" onclick="setPersona('novice')">☕ Coffee Novice</button>
+                    <button class="persona-btn" onclick="setPersona('enthusiast')">🏆 Coffee Enthusiast</button>
+                    <button class="persona-btn" onclick="setPersona('expert')">👨‍🍳 Coffee Expert</button>
+                    <button class="persona-btn" onclick="setPersona('barista')">☕ Professional Barista</button>
+                </div>
+            </div>
 
-            </gmp-map>
-            <script
-    src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key | default('YOUR_API_KEY' ) }}&loading=async&libraries=maps,marker&v=beta" defer>
-</script>
-        {% endif %}
+            <!-- Chat Container -->
+            <div id="chat-container" class="chat-container">
+                <div class="message assistant">
+                    <strong>AI Coffee Expert:</strong> Hello! I'm your personal coffee expert powered by Oracle 23AI and Google Vertex AI. 
+                    Ask me about coffee recommendations, brewing methods, or help finding the perfect coffee near you! 
+                    Try saying something like "I want a mild, sweet coffee" or "What's the best espresso?"
+                </div>
+                <!-- Messages will be added here via HTMX -->
+            </div>
+
+            <!-- Chat Form -->
+            <form class="chat-form" 
+                  hx-post="{{ url_for('ocw.get') }}"
+                  hx-target="#chat-container" 
+                  hx-swap="beforeend"
+                  hx-indicator="#loading">
+                {{ csrf_input | safe }}
+                <input type="hidden" id="persona" name="persona" value="enthusiast">
+                <input class="chat-input" 
+                       id="message" 
+                       name="message" 
+                       placeholder="Ask me about coffee..." 
+                       required 
+                       autocomplete="off">
+                <button type="submit" class="send-btn" id="send-btn">
+                    <span id="loading" class="htmx-indicator">Thinking...</span>
+                    <span id="send-text">Send ☕</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Performance Metrics Panel -->
+        <div class="metrics-panel" id="metrics-panel" style="display: none;">
+            <h4 style="margin-top: 0; color: var(--coffee-dark);">Performance Metrics</h4>
+            <div class="metrics-grid" id="metrics-grid">
+                <!-- Metrics will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Map Container (will be populated by HTMX responses) -->
+        <div id="map-container" style="margin-top: 20px;">
+            <!-- Maps will appear here when locations are found -->
+        </div>
     </div>
+
+    <!-- JavaScript for interactivity -->
+    <script>
+        // Demo persona management
+        let currentPersona = 'enthusiast';
+        
+        function setPersona(persona) {
+            currentPersona = persona;
+            document.getElementById('persona').value = persona;
+            
+            // Update UI to show active persona
+            document.querySelectorAll('.persona-btn').forEach(btn => {
+                btn.style.backgroundColor = 'var(--coffee-light)';
+                btn.style.color = 'var(--coffee-dark)';
+            });
+            event.target.style.backgroundColor = 'var(--coffee-medium)';
+            event.target.style.color = 'white';
+            
+            // Add persona message to chat
+            const personaMessages = {
+                'novice': "I'm new to coffee. Please explain things simply and recommend beginner-friendly options.",
+                'enthusiast': "I enjoy good coffee and want to learn more about different beans and brewing methods.",
+                'expert': "I'm a coffee connoisseur. I want detailed information about origins, processing, and tasting notes.",
+                'barista': "I'm a professional barista looking for technical brewing advice and commercial insights."
+            };
+            
+            addSystemMessage(`Persona set to: ${persona.charAt(0).toUpperCase() + persona.slice(1)}. ${personaMessages[persona]}`);
+        }
+        
+        function addSystemMessage(message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.innerHTML = `<strong>System:</strong> ${message}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Auto-scroll chat to bottom
+        function scrollChatToBottom() {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // HTMX event listeners
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            scrollChatToBottom();
+            
+            // Reset form
+            if (evt.detail.elt.classList.contains('chat-form') || evt.detail.elt.closest('.chat-form')) {
+                document.getElementById('message').value = '';
+                document.getElementById('message').focus();
+            }
+        });
+        
+        // Load metrics on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show metrics panel
+            setTimeout(() => {
+                document.getElementById('metrics-panel').style.display = 'block';
+                loadMetrics();
+            }, 2000);
+        });
+        
+        function loadMetrics() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    const metricsGrid = document.getElementById('metrics-grid');
+                    metricsGrid.innerHTML = `
+                        <div class="metric-item">
+                            <div class="metric-value">${data.total_searches || 0}</div>
+                            <div class="metric-label">Total Searches</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${Math.round(data.avg_search_time_ms || 0)}ms</div>
+                            <div class="metric-label">Avg Response Time</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${Math.round(data.avg_oracle_time_ms || 0)}ms</div>
+                            <div class="metric-label">Oracle Vector Time</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${(data.avg_similarity_score || 0).toFixed(2)}</div>
+                            <div class="metric-label">Avg Similarity</div>
+                        </div>
+                    `;
+                })
+                .catch(err => console.log('Metrics not available:', err));
+        }
+        
+        // Refresh metrics every 30 seconds
+        setInterval(loadMetrics, 30000);
+    </script>
 </body>
 
 </html>

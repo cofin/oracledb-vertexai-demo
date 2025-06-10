@@ -38,6 +38,7 @@ def mock_cache_service():
 class TestVertexAIService:
     """Test cases for VertexAIService."""
 
+    @pytest.mark.asyncio
     async def test_generate_content_success(self, vertex_ai_service):
         """Test successful content generation."""
         # Mock the model response
@@ -50,6 +51,7 @@ class TestVertexAIService:
 
         assert result == "This is a great coffee recommendation!"
 
+    @pytest.mark.asyncio
     async def test_generate_content_with_cache_hit(self, vertex_ai_service, mock_cache_service):
         """Test content generation with cache hit."""
         # Setup cache hit
@@ -63,6 +65,7 @@ class TestVertexAIService:
         assert result == "Cached response"
         mock_cache_service.get_cached_response.assert_called_once()
 
+    @pytest.mark.asyncio
     async def test_generate_content_with_cache_miss(self, vertex_ai_service, mock_cache_service):
         """Test content generation with cache miss."""
         mock_cache_service.get_cached_response.return_value = None
@@ -78,6 +81,7 @@ class TestVertexAIService:
         assert result == "Fresh response"
         mock_cache_service.cache_response.assert_called_once()
 
+    @pytest.mark.asyncio
     async def test_create_embedding(self, vertex_ai_service):
         """Test embedding creation."""
         mock_embeddings = [0.1] * 768
@@ -94,6 +98,7 @@ class TestVertexAIService:
         assert result == mock_embeddings
         assert len(result) == 768
 
+    @pytest.mark.asyncio
     async def test_stream_content(self, vertex_ai_service):
         """Test streaming content generation."""
         mock_chunks = [
@@ -122,6 +127,7 @@ class TestOracleVectorSearchService:
         mock.repository.session = AsyncMock()
         return mock
 
+    @pytest.mark.asyncio
     async def test_similarity_search(self, vertex_ai_service, mock_product_service):
         """Test Oracle vector similarity search."""
         vector_search = OracleVectorSearchService(mock_product_service, vertex_ai_service)
@@ -148,6 +154,7 @@ class TestOracleVectorSearchService:
         assert results[0]["distance"] == 0.1
         assert results[1]["name"] == "Coffee B"
 
+    @pytest.mark.asyncio
     async def test_similarity_search_empty_results(self, vertex_ai_service, mock_product_service):
         """Test vector search with no results."""
         vector_search = OracleVectorSearchService(mock_product_service, vertex_ai_service)
@@ -162,6 +169,7 @@ class TestOracleVectorSearchService:
 
         assert results == []
 
+    @pytest.mark.asyncio
     async def test_similarity_search_error_handling(self, vertex_ai_service, mock_product_service):
         """Test vector search error handling."""
         vector_search = OracleVectorSearchService(mock_product_service, vertex_ai_service)

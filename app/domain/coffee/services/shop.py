@@ -7,39 +7,38 @@ from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Shop
+from app.db import models as m
 
 
-class ShopService(SQLAlchemyAsyncRepositoryService[Shop]):
+class ShopService(SQLAlchemyAsyncRepositoryService[m.Shop]):
     """Handles database operations for shops."""
 
-    class Repo(SQLAlchemyAsyncSlugRepository[Shop]):
+    class Repo(SQLAlchemyAsyncSlugRepository[m.Shop]):
         """Shop repository with slug support."""
-        model_type = Shop
+        model_type = m.Shop
 
     repository_type = Repo
     match_fields = ["name"]
 
-    async def get_by_slug(self, slug: str) -> Shop | None:
+    async def get_by_slug(self, slug: str) -> m.Shop | None:
         """Get shop by slug."""
         return await self.get_one_or_none(slug=slug)
 
-    async def get_with_inventory(self, shop_id: int) -> Shop | None:
+    async def get_with_inventory(self, shop_id: int) -> m.Shop | None:
         """Get shop with inventory loaded."""
         stmt = (
-            select(Shop)
-            .where(Shop.id == shop_id)
-            .options(selectinload(Shop.inventory))
+            select(m.Shop)
+            .where(m.Shop.id == shop_id)
+            .options(selectinload(m.Shop.inventory))
         )
         result = await self.repository.session.execute(stmt)
         shop = result.scalar_one_or_none()
         return shop
 
-    async def find_by_location(self, latitude: float, longitude: float, radius_km: float = 10) -> Sequence[Shop]:
+    async def find_by_location(self, latitude: float, longitude: float, radius_km: float = 10) -> Sequence[m.Shop]:
         """Find shops within radius of location."""
         # Simple implementation - in production you'd use spatial queries
-        stmt = select(Shop).limit(10)
+        stmt = select(m.Shop).limit(10)
         result = await self.repository.session.execute(stmt)
         shops = list(result.scalars().all())
         return shops
-

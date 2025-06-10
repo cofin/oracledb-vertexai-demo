@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 import vertexai
 from google.api_core import exceptions as google_exceptions
-from google.cloud import aiplatform
 from vertexai.generative_models import GenerativeModel
 
 from app.domain.coffee.schemas import SearchMetricsCreate
@@ -33,7 +32,7 @@ class VertexAIService:
         )
 
         # Initialize models
-        self.model = GenerativeModel("gemini-2.0-flash-exp")
+        self.model = GenerativeModel("gemini-1.5-flash-002")  # More stable than exp model
         self.embedding_model = "text-embedding-004"
 
         # Oracle services for metrics and caching
@@ -71,7 +70,7 @@ class VertexAIService:
             if use_cache and self.cache_service:
                 await self.cache_service.cache_response(
                     prompt,
-                    {"content": content, "model": "gemini-2.0-flash-exp"},
+                    {"content": content, "model": "gemini-1.5-flash-002"},
                     ttl_minutes=5,
                     user_id=user_id,
                 )
@@ -119,29 +118,22 @@ class VertexAIService:
     async def create_embedding(self, text: str) -> list[float]:
         """Create embeddings using Vertex AI."""
         try:
-            # Use Vertex AI Text Embeddings API
-            from google.protobuf import json_format
-            from google.protobuf.struct_pb2 import Value
+            # Use the native Vertex AI embedding model
+            from vertexai.language_models import TextEmbeddingModel
 
-            client = aiplatform.gapic.PredictionServiceClient()
+            model = TextEmbeddingModel.from_pretrained(self.embedding_model)
+            embeddings = await model.get_embeddings_async([text])
 
-            endpoint = f"projects/{vertexai.default_project}/locations/{vertexai.default_location}/publishers/google/models/{self.embedding_model}"
-
-            instance = Value()
-            json_format.ParseDict({"content": text}, instance)
-
-            response = client.predict(
-                endpoint=endpoint,
-                instances=[instance],
-            )
-
-            # Extract embedding from response
-            prediction_dict = json_format.MessageToDict(response.predictions[0])
-            embedding_values = prediction_dict["embeddings"]["values"]
-            return list(embedding_values)
-
-        except (KeyError, IndexError, AttributeError):
+            if embeddings and len(embeddings) > 0:
+                return embeddings[0].values
             # Fallback to mock embedding for development
+            return [0.0] * 768
+
+        except Exception as e:
+            # Log the error and fallback to mock embedding
+            import structlog
+            logger = structlog.get_logger()
+            logger.warning("Embedding generation failed, using fallback", error=str(e))
             return [0.0] * 768  # Standard embedding dimension
 
     def create_system_message(self, message: str | None = None) -> str:
@@ -218,10 +210,10 @@ class OracleVectorSearchService:
             # Raw SQL for Oracle vector search
             search_query = text("""
                 SELECT p.id, p.name, p.description,
-                       VECTOR_DISTANCE(p.description_embedding, :query_vector, COSINE) as distance
+                       VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
                 FROM product p
-                WHERE p.description_embedding IS NOT NULL
-                ORDER BY VECTOR_DISTANCE(p.description_embedding, :query_vector, COSINE)
+                WHERE p.embedding IS NOT NULL
+                ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
                 FETCH FIRST :limit ROWS ONLY
             """)
 

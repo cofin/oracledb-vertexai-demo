@@ -4,14 +4,15 @@ import uuid
 from collections.abc import AsyncGenerator, Sequence
 from typing import TYPE_CHECKING, Any
 
+import msgspec
+import structlog
+
 if TYPE_CHECKING:
     from app.domain.coffee.services import ProductService, ShopService
-
-import structlog
 from advanced_alchemy.filters import CollectionFilter, LimitOffset
 from sqlalchemy import select
 
-from app.db.models import Inventory, Shop
+from app.db import models as m
 from app.domain.coffee.schemas import ChatMessage, CoffeeChatReply, PointsOfInterest
 from app.domain.coffee.services.account import (
     ChatConversationService,
@@ -225,9 +226,9 @@ class RecommendationService:
         if any(word in query_lower for word in location_keywords) and matched_product_ids:
             # Find shops that have these products
             shops_with_products = await self.shops_service.list(
-                Shop.id.in_(
-                    select(Inventory.shop_id).where(
-                        Inventory.product_id.in_(matched_product_ids),
+                m.Shop.id.in_(
+                    select(m.Inventory.shop_id).where(
+                        m.Inventory.product_id.in_(matched_product_ids),
                     ),
                 ),
                 LimitOffset(4, 0),
@@ -245,7 +246,7 @@ class RecommendationService:
                 for shop in shops_with_products
             ]
 
-            chat_metadata["locations"] = [loc.__dict__ for loc in locations]
+            chat_metadata["locations"] = [msgspec.to_builtins(loc) for loc in locations]
             return chat_metadata, len(shops_with_products)
 
         return chat_metadata, 0

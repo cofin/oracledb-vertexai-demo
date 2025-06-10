@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 class CoffeeChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Chat message input DTO."""
     message: str
+    persona: str = "enthusiast"
 
 
 # Oracle-specific DTOs
