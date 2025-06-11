@@ -266,14 +266,12 @@ class AppSettings:
     GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
     """Google Project ID"""
     # AI Model Configuration
-    GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
+    GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash-preview-05-20"))
     """Gemini model identifier - defaults to latest 2.5 Flash"""
-    GEMINI_MODEL_FALLBACK: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL_FALLBACK", "gemini-1.5-flash-001"))
+    GEMINI_MODEL_FALLBACK: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL_FALLBACK", "gemini-2.0-flash"))
     """Fallback Gemini model if primary model fails"""
     EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
     """Text embedding model identifier"""
-    # Legacy field for backward compatibility
-    EMBEDDING_MODEL_TYPE: str = "textembedding-gecko@003"
 
     @property
     def slug(self) -> str:
