@@ -217,7 +217,7 @@
             min-height: 100px;
             transition: opacity 0.3s ease;
         }
-        
+
         .metrics-panel.loading {
             opacity: 0.6;
         }
@@ -233,6 +233,7 @@
             padding: 10px;
             background-color: white;
             border-radius: 8px;
+            border: 1px solid var(--coffee-light);
         }
 
         .metric-value {
@@ -346,11 +347,13 @@
     <div class="container">
         <!-- Header -->
         <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: start; margin-bottom: 30px;">
-            <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur"
-                style="max-height: 80px; justify-self: start;">
+            <div>
+                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur"
+                    style="max-height: 100px;">
+                <p style="color: var(--coffee-medium); margin-top: 10px; margin-bottom: 0; white-space: nowrap; font-size: 1.1rem;">Powered by Oracle 23AI + Google Vertex AI</p>
+            </div>
             <div style="text-align: center;">
-                <h1 style="margin: 0;">Connoisseur</h1>
-                <p style="color: var(--coffee-medium); margin-top: 10px; margin-bottom: 0;">Powered by Oracle 23AI + Google Vertex AI</p>
+                <h1 style="margin: 0; font-size: 3.5rem; font-weight: 400; letter-spacing: 3px; color: var(--coffee-dark);">Connoisseur</h1>
             </div>
             <div></div> <!-- Empty cell for balance -->
         </div>
@@ -472,7 +475,7 @@
         function loadMetrics() {
             const metricsPanel = document.getElementById('metrics-panel');
             const metricsGrid = document.getElementById('metrics-grid');
-            
+
             fetch('/metrics')
                 .then(response => response.json())
                 .then(data => {
