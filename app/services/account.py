@@ -214,7 +214,7 @@ class SearchMetricsService(SQLAlchemyAsyncRepositoryService[m.SearchMetrics]):
 
     async def record_search(self, metrics_data: SearchMetricsCreate) -> m.SearchMetrics:
         """Record search performance metrics."""
-        return await self.create(metrics_data)
+        return await self.create(metrics_data, auto_commit=True, auto_expunge=True)
 
     async def get_performance_stats(self, hours: int = 24) -> dict:
         """Get performance statistics."""
