@@ -12,8 +12,8 @@ from google.api_core import exceptions as google_exceptions
 from sqlalchemy import text
 from vertexai.generative_models import GenerativeModel
 
-from app.schemas import SearchMetricsCreate
 from app.lib.settings import get_settings
+from app.schemas import SearchMetricsCreate
 
 logger = structlog.get_logger()
 
@@ -35,9 +35,26 @@ class VertexAIService:
             location="us-central1",
         )
 
-        # Initialize models
-        self.model = GenerativeModel("gemini-1.5-flash-002")  # More stable than exp model
-        self.embedding_model = "text-embedding-004"
+        # Initialize models with intelligent fallback for tech demo
+        self.primary_model_name = settings.app.GEMINI_MODEL
+        self.fallback_model_name = settings.app.GEMINI_MODEL_FALLBACK
+        self.embedding_model = settings.app.EMBEDDING_MODEL
+
+        # Try to initialize the primary model (Gemini 2.5 Flash)
+        try:
+            self.model = GenerativeModel(self.primary_model_name)
+            logger.info(f"Successfully initialized primary model: {self.primary_model_name}")
+        except Exception as e:
+            logger.warning(f"Failed to initialize primary model {self.primary_model_name}: {e}")
+            logger.info(f"Falling back to: {self.fallback_model_name}")
+            try:
+                self.model = GenerativeModel(self.fallback_model_name)
+                logger.info(f"Successfully initialized fallback model: {self.fallback_model_name}")
+            except Exception as fallback_e:
+                logger.error(f"Failed to initialize fallback model {self.fallback_model_name}: {fallback_e}")
+                # Last resort - use the most stable model available
+                self.model = GenerativeModel("gemini-1.5-flash-001")
+                logger.info("Using last resort stable model: gemini-1.5-flash-001")
 
         # Oracle services for metrics and caching
         self.metrics_service: SearchMetricsService | None = None
@@ -47,6 +64,20 @@ class VertexAIService:
         """Inject Oracle services."""
         self.metrics_service = metrics_service
         self.cache_service = cache_service
+
+    def get_model_info(self) -> dict[str, str]:
+        """Get information about the currently active model."""
+        # Extract just the model name from the full path
+        active_model_full = self.model._model_name
+        active_model_name = active_model_full.split("/")[-1] if "/" in active_model_full else active_model_full
+
+        return {
+            "active_model": active_model_name,
+            "active_model_full": active_model_full,
+            "primary_model": self.primary_model_name,
+            "fallback_model": self.fallback_model_name,
+            "embedding_model": self.embedding_model,
+        }
 
     async def generate_content(
         self,

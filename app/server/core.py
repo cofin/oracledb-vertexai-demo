@@ -147,13 +147,18 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     def on_cli_init(self, cli: Group) -> None:
         from advanced_alchemy.extensions.litestar.cli import database_group
 
-        from app.cli import load_fixtures, load_vectors, recommend
+        from app.cli import bulk_embed, embed_new, load_fixtures, load_vectors, model_info, recommend
         from app.lib.settings import get_settings
 
         settings = get_settings()
         self.app_slug = settings.app.slug
         cli.add_command(recommend, name="recommend")
+        cli.add_command(model_info, name="model-info")
 
         # Add our custom database commands
         database_group.add_command(load_fixtures, name="load-fixtures")  # type: ignore[arg-type]
         database_group.add_command(load_vectors, name="load-vectors")  # type: ignore[arg-type]
+
+        # Add bulk embedding commands
+        database_group.add_command(bulk_embed, name="bulk-embed")  # type: ignore[arg-type]
+        database_group.add_command(embed_new, name="embed-new")  # type: ignore[arg-type]

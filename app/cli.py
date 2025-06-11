@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from app.services import RecommendationService
 
 
-__all__ = ["load_fixtures", "load_vectors", "recommend", "version_callback"]
+__all__ = ["bulk_embed", "embed_new", "load_fixtures", "load_vectors", "model_info", "recommend", "version_callback"]
 
 logger = structlog.get_logger()
 
@@ -182,6 +182,115 @@ def load_vectors() -> None:
     from app.db.utils import _load_vectors
 
     anyio.run(_load_vectors)
+
+
+@click.command()
+def bulk_embed() -> None:
+    """Run bulk embedding job for all products using Vertex AI Batch Prediction (50% discount)."""
+
+    async def _run_bulk_embed() -> None:
+        from app.config import alchemy
+        from app.server.deps import provide_product_service
+        from app.services.bulk_embedding import BulkEmbeddingService
+
+        console = get_console()
+        console.print("[bold cyan]🚀 Starting bulk embedding job...[/bold cyan]")
+
+        async with alchemy.get_session() as db_session:
+            products_service = await anext(provide_product_service(db_session))
+            bulk_service = BulkEmbeddingService(products_service)
+
+            # Run the complete bulk embedding pipeline
+            result = await bulk_service.run_bulk_embedding_job()
+
+            if result["status"] == "completed":
+                console.print("[bold green]✓ Bulk embedding completed![/bold green]")
+                console.print(f"Products exported: {result['products_exported']}")
+                console.print(f"Embeddings processed: {result['embeddings_processed']}")
+                console.print(f"Job ID: {result['job_id']}")
+            elif result["status"] == "skipped":
+                console.print(f"[yellow]⚠ {result['reason']}[/yellow]")
+            else:
+                console.print(f"[bold red]✗ Bulk embedding failed: {result['error']}[/bold red]")
+
+    anyio.run(_run_bulk_embed)
+
+
+@click.command()
+@click.option(
+    "--limit",
+    default=200,
+    help="Maximum number of products to process in this batch (default: 200)"
+)
+def embed_new(limit: int) -> None:
+    """Process new/updated products using online embedding API for real-time updates."""
+
+    async def _embed_new_products() -> None:
+        from app.config import alchemy
+        from app.server.deps import provide_product_service
+        from app.services.bulk_embedding import OnlineEmbeddingService
+        from app.services.vertex_ai import VertexAIService
+
+        console = get_console()
+        console.print(f"[bold cyan]🔄 Processing up to {limit} new products...[/bold cyan]")
+
+        async with alchemy.get_session() as db_session:
+            products_service = await anext(provide_product_service(db_session))
+            vertex_ai_service = VertexAIService()
+            online_service = OnlineEmbeddingService(vertex_ai_service)
+
+            # Process new products
+            processed_count = await online_service.process_new_products(products_service)
+
+            if processed_count > 0:
+                console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
+            else:
+                console.print("[yellow]ℹ No new products to process[/yellow]")
+
+    anyio.run(_embed_new_products)
+
+
+@click.command()
+def model_info() -> None:
+    """Show information about currently configured AI models."""
+
+    def _show_model_info() -> None:
+        from app.lib.settings import get_settings
+        from app.services.vertex_ai import VertexAIService
+
+        console = get_console()
+        console.print("[bold cyan]🤖 AI Model Configuration[/bold cyan]")
+
+        # Show settings
+        settings = get_settings()
+        console.print(f"[bold]Primary Model:[/bold] {settings.app.GEMINI_MODEL}")
+        console.print(f"[bold]Fallback Model:[/bold] {settings.app.GEMINI_MODEL_FALLBACK}")
+        console.print(f"[bold]Embedding Model:[/bold] {settings.app.EMBEDDING_MODEL}")
+        console.print(f"[bold]Google Project:[/bold] {settings.app.GOOGLE_PROJECT_ID}")
+
+        # Test model initialization
+        console.print("\n[bold cyan]🔍 Testing Model Initialization...[/bold cyan]")
+        try:
+            vertex_service = VertexAIService()
+            model_info = vertex_service.get_model_info()
+
+            console.print("[bold green]✓ Successfully initialized![/bold green]")
+            console.print(f"[bold]Active Model:[/bold] {model_info['active_model']}")
+
+            if model_info["active_model"] == model_info["primary_model"]:
+                console.print("[bold green]✓ Using primary model (latest Gemini 2.5 Flash!)[/bold green]")
+            elif model_info["active_model"] == model_info["fallback_model"]:
+                console.print("[bold yellow]⚠ Using fallback model[/bold yellow]")
+            else:
+                console.print("[bold red]⚠ Using emergency fallback[/bold red]")
+
+            # Show additional details
+            console.print(f"[dim]Full model path: {model_info['active_model_full']}[/dim]")
+
+        except Exception as e:
+            console.print(f"[bold red]✗ Model initialization failed: {e}[/bold red]")
+
+    _show_model_info()
 
 
 # Functions are exported and added to Litestar CLI by the plugin in server/core.py
