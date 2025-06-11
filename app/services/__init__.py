@@ -7,6 +7,7 @@ from app.services.account import (
     UserSessionService,
 )
 from app.services.company import CompanyService
+from app.services.intent_router import IntentRouter
 from app.services.inventory import InventoryService
 from app.services.product import ProductService
 from app.services.recommendation import RecommendationService
@@ -16,6 +17,7 @@ from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 __all__ = [
     "ChatConversationService",
     "CompanyService",
+    "IntentRouter",
     "InventoryService",
     "OracleVectorSearchService",
     "ProductService",

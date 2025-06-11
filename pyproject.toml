@@ -23,6 +23,7 @@ dependencies = [
     "google-generativeai>=0.3.2",
     "vertexai",
     "numpy",
+    "scikit-learn",
     "prompt-toolkit",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
@@ -225,6 +226,8 @@ module = [
     "nodeenv",
     "vertexai",
     "vertexai.*",
+    "sklearn",
+    "sklearn.*",
 ]
 
 [[tool.mypy.overrides]]

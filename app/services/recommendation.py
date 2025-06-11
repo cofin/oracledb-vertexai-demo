@@ -20,6 +20,7 @@ from app.services.account import (
     SearchMetricsService,
     UserSessionService,
 )
+from app.services.intent_router import IntentRouter
 from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 logger = structlog.get_logger()
@@ -49,6 +50,9 @@ class RecommendationService:
         self.cache_service = cache_service
         self.metrics_service = metrics_service
         self.user_id = user_id
+
+        # Initialize intent router
+        self.intent_router = IntentRouter(vertex_ai_service)
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
@@ -140,43 +144,31 @@ class RecommendationService:
         query: str,
         chat_metadata: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], Sequence[int]]:
-        """Route question through product matching."""
+        """Route question through semantic intent detection and product matching."""
 
         chat_metadata = chat_metadata or {}
-        query_lower = query.lower()
 
-        # Check if this is a coffee recommendation query
-        recommend_keywords = {
-            "coffee",
-            "recommend",
-            "looking",
-            "latte",
-            "cap",
-            "americano",
-            "caffeine",
-            "beans",
-            "need",
-            "want",
-            "show",
-            "where",
-            "give me",
-            "gimme",
+        # Use semantic intent detection
+        intent, confidence, exemplar = await self.intent_router.route_intent(query)
+
+        # Log the routing decision for analysis
+        logger.info(
+            "Intent routing decision",
+            query=query,
+            intent=intent,
+            confidence=confidence,
+            exemplar=exemplar,
+        )
+
+        # Add routing metadata for transparency
+        chat_metadata["intent_routing"] = {
+            "detected_intent": intent,
+            "confidence": confidence,
+            "matched_exemplar": exemplar,
         }
 
-        location_keywords = {
-            "where",
-            "find",
-            "locations",
-            "show me",
-            "near",
-            "looking",
-            "need",
-            "want",
-            "give me",
-            "gimme",
-        }
-
-        if any(word in query_lower for word in recommend_keywords.union(location_keywords)):
+        # Only perform vector search for product-related intents
+        if intent == "PRODUCT_RAG":
             # Perform vector search using Oracle
             matched_documents = await self.vector_search.similarity_search(query=query, k=4)
             matched_product_ids = [match["metadata"]["id"] for match in matched_documents]
@@ -203,35 +195,32 @@ class RecommendationService:
         matched_product_ids: Sequence[int] | None = None,
         chat_metadata: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], int]:
-        """Route question through location matching."""
+        """Route question through location matching based on intent."""
 
-        query_lower = query.lower()
         matched_product_ids = matched_product_ids or []
         chat_metadata = chat_metadata or {}
 
-        location_keywords = {
-            "where",
-            "find",
-            "locations",
-            "show me",
-            "near",
-            "looking",
-            "need",
-            "want",
-            "give me",
-            "gimme",
-        }
+        # Check if the intent indicates location query
+        intent_routing = chat_metadata.get("intent_routing", {})
+        intent = intent_routing.get("detected_intent", "")
 
-        if any(word in query_lower for word in location_keywords) and matched_product_ids:
-            # Find shops that have these products
-            shops_with_products = await self.shops_service.list(
-                m.Shop.id.in_(
-                    select(m.Inventory.shop_id).where(
-                        m.Inventory.product_id.in_(matched_product_ids),
+        # Handle location queries
+        if intent == "LOCATION_RAG":
+            if matched_product_ids:
+                # Find shops that have these specific products
+                shops_with_products = await self.shops_service.list(
+                    m.Shop.id.in_(
+                        select(m.Inventory.shop_id).where(
+                            m.Inventory.product_id.in_(matched_product_ids),
+                        ),
                     ),
-                ),
-                LimitOffset(4, 0),
-            )
+                    LimitOffset(4, 0),
+                )
+            else:
+                # If no specific products, just list some shops
+                shops_with_products = await self.shops_service.list(
+                    LimitOffset(4, 0),
+                )
 
             # Store shop information for context
             chat_metadata["shop_locations"] = [
