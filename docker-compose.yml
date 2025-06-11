@@ -22,10 +22,10 @@ services:
       ORACLE_SYSTEM_PASSWORD: ${ORACLE_SYSTEM_PASSWORD:-super-secret}
       ORACLE_PASSWORD: ${ORACLE_SYSTEM_PASSWORD:-super-secret}
       APP_USER_PASSWORD: ${ORACLE_PASSWORD:-super-secret}
-      APP_USER: ${ORACLE_USER:-app}
+      APP_USER: ${ORACLE_USER:-app} 
     volumes:
       - db-data:/opt/oracle/oradata
-      - ./tools/deploy/oracle/db-init.sql:/container-entrypoint-initdb.d/db-init.sql:ro
+      - ./tools/deploy/oracle/db_init.sql:/container-entrypoint-initdb.d/db_init.sql:z
     restart: unless-stopped
     logging:
       options:
