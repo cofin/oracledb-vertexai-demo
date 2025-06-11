@@ -109,6 +109,32 @@
             margin-bottom: 20px;
         }
 
+        /* Custom scrollbar styling */
+        .chat-container::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--cream);
+            border-radius: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--coffee-light);
+            border-radius: 10px;
+            border: 2px solid var(--cream);
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: var(--coffee-medium);
+        }
+
+        /* Firefox scrollbar styling */
+        .chat-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--coffee-light) var(--cream);
+        }
+
         .message {
             margin-bottom: 15px;
             padding: 12px 15px;
@@ -139,6 +165,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-direction: row;
         }
 
         .chat-input {
@@ -158,13 +185,18 @@
         .send-btn {
             background-color: var(--coffee-medium);
             color: white;
-            padding: 12px 20px;
+            padding: 12px 16px;
             border: none;
             border-radius: 25px;
             cursor: pointer;
             font-weight: 600;
             transition: background-color 0.3s ease;
-            min-width: 100px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
 
         .send-btn:hover {
@@ -182,6 +214,12 @@
             background-color: var(--cream);
             border-radius: 10px;
             border: 1px solid var(--coffee-light);
+            min-height: 100px;
+            transition: opacity 0.3s ease;
+        }
+        
+        .metrics-panel.loading {
+            opacity: 0.6;
         }
 
         .metrics-grid {
@@ -217,7 +255,7 @@
             letter-spacing: 2px;
         }
 
-        form {
+        form:not(.chat-form) {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -307,11 +345,14 @@
 <body class="font-sans antialiased h-full">
     <div class="container">
         <!-- Header -->
-        <div class="text-center">
+        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: start; margin-bottom: 30px;">
             <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur"
-                style="max-height: 80px; margin-bottom: 10px;">
-            <h1>Coffee Connoisseur</h1>
-            <p style="color: var(--coffee-medium); margin-bottom: 30px;">Powered by Oracle 23AI + Google Vertex AI</p>
+                style="max-height: 80px; justify-self: start;">
+            <div style="text-align: center;">
+                <h1 style="margin: 0;">Connoisseur</h1>
+                <p style="color: var(--coffee-medium); margin-top: 10px; margin-bottom: 0;">Powered by Oracle 23AI + Google Vertex AI</p>
+            </div>
+            <div></div> <!-- Empty cell for balance -->
         </div>
 
         <!-- Chat Section -->
@@ -353,10 +394,12 @@
         </div>
 
         <!-- Performance Metrics Panel -->
-        <div class="metrics-panel" id="metrics-panel" style="display: none;">
+        <div class="metrics-panel loading" id="metrics-panel">
             <h4 style="margin-top: 0; color: var(--coffee-dark);">Performance Metrics</h4>
             <div class="metrics-grid" id="metrics-grid">
-                <!-- Metrics will be loaded here -->
+                <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
+                    <div class="typing-indicator">Loading metrics...</div>
+                </div>
             </div>
         </div>
 
@@ -422,18 +465,17 @@
 
         // Load metrics on page load
         document.addEventListener('DOMContentLoaded', function () {
-            // Show metrics panel
-            setTimeout(() => {
-                document.getElementById('metrics-panel').style.display = 'block';
-                loadMetrics();
-            }, 2000);
+            // Load metrics immediately
+            loadMetrics();
         });
 
         function loadMetrics() {
+            const metricsPanel = document.getElementById('metrics-panel');
+            const metricsGrid = document.getElementById('metrics-grid');
+            
             fetch('/metrics')
                 .then(response => response.json())
                 .then(data => {
-                    const metricsGrid = document.getElementById('metrics-grid');
                     metricsGrid.innerHTML = `
                         <div class="metric-item">
                             <div class="metric-value">${data.total_searches || 0}</div>
@@ -452,8 +494,18 @@
                             <div class="metric-label">Avg Similarity</div>
                         </div>
                     `;
+                    // Remove loading class after data is loaded
+                    metricsPanel.classList.remove('loading');
                 })
-                .catch(err => console.log('Metrics not available:', err));
+                .catch(err => {
+                    console.log('Metrics not available:', err);
+                    metricsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
+                            <small>Metrics will appear after first search</small>
+                        </div>
+                    `;
+                    metricsPanel.classList.remove('loading');
+                });
         }
 
         // Refresh metrics every 30 seconds
