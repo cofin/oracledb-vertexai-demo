@@ -8,19 +8,20 @@ from typing import TYPE_CHECKING
 from sqlalchemy.orm import selectinload
 
 from app.db import models as m
-from app.domain.coffee.services.account import (
+from app.lib.deps import create_service_provider
+from app.services import (
     ChatConversationService,
+    CompanyService,
+    InventoryService,
+    OracleVectorSearchService,
+    ProductService,
+    RecommendationService,
     ResponseCacheService,
     SearchMetricsService,
+    ShopService,
     UserSessionService,
+    VertexAIService,
 )
-from app.domain.coffee.services.company import CompanyService
-from app.domain.coffee.services.inventory import InventoryService
-from app.domain.coffee.services.product import ProductService
-from app.domain.coffee.services.recommendation import RecommendationService
-from app.domain.coffee.services.shop import ShopService
-from app.domain.coffee.services.vertex_ai import OracleVectorSearchService, VertexAIService
-from app.lib.deps import create_service_provider
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

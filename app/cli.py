@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from rich.console import Console
 
-    from app.domain.coffee.services import RecommendationService
+    from app.services import RecommendationService
 
 
 __all__ = ["load_fixtures", "load_vectors", "recommend", "version_callback"]
@@ -61,20 +61,20 @@ def recommend() -> None:
         from rich import get_console
 
         from app.config import alchemy
-        from app.domain.coffee.deps import (
+        from app.server.deps import (
             provide_product_service,
             provide_shop_service,
         )
-        from app.domain.coffee.services import (
+        from app.services import (
             RecommendationService,
         )
-        from app.domain.coffee.services.account import (
+        from app.services.account import (
             ChatConversationService,
             ResponseCacheService,
             SearchMetricsService,
             UserSessionService,
         )
-        from app.domain.coffee.services.vertex_ai import (
+        from app.services.vertex_ai import (
             OracleVectorSearchService,
             VertexAIService,
         )
@@ -93,7 +93,7 @@ def recommend() -> None:
             metrics_service = SearchMetricsService(session=db_session)
 
             vector_search_service = OracleVectorSearchService(
-                product_service=products_service,
+                products_service=products_service,
                 vertex_ai_service=vertex_ai_service,
             )
 
@@ -145,6 +145,7 @@ async def query_recommendation(
     panel: bool = True,
 ) -> None:
     """Execute the recommendation"""
+
     class NoPadding:
         def __init__(self, renderable: Any) -> None:
             self.renderable = renderable

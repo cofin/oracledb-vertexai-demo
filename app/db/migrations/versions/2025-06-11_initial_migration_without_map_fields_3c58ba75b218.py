@@ -2,7 +2,7 @@
 """Initial migration without map fields
 
 Revision ID: 3c58ba75b218
-Revises: 
+Revises:
 Create Date: 2025-06-11 14:22:31.836729+00:00
 
 """

@@ -104,7 +104,7 @@ tests/
 from unittest.mock import AsyncMock
 import pytest
 
-from app.domain.coffee.services.company import CompanyService
+from app.services.company import CompanyService
 from app.db import models as m
 
 
@@ -136,7 +136,7 @@ class TestCompanyService:
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.coffee.services.company import CompanyService
+from app.services.company import CompanyService
 from app.db import models as m
 
 
@@ -227,8 +227,8 @@ async def create_company(self, data: schemas.CompanyCreate) -> schemas.Company:
 Import services directly for dependency injection:
 
 ```python
-from app.domain.coffee.services.company import CompanyService
-from app.domain.coffee.services.vertex_ai import VertexAIService
+from app.services.company import CompanyService
+from app.services.vertex_ai import VertexAIService
 ```
 
 ## 🔗 Dependency Injection (Mandatory)
@@ -240,7 +240,7 @@ Use `create_service_provider` for consistent service injection:
 ```python
 # In deps.py
 from app.lib.deps import create_service_provider
-from app.domain.coffee.services.company import CompanyService
+from app.services.company import CompanyService
 from app.db import models as m
 
 provide_company_service = create_service_provider(
@@ -302,8 +302,8 @@ Each domain should have a `deps.py` file:
 """Coffee domain dependency providers."""
 
 from app.lib.deps import create_service_provider
-from app.domain.coffee.services.company import CompanyService
-from app.domain.coffee.services.product import ProductService
+from app.services.company import CompanyService
+from app.services.product import ProductService
 from app.db import models as m
 
 provide_company_service = create_service_provider(CompanyService)
@@ -549,6 +549,8 @@ Real-time interface without build complexity:
 from litestar import Controller, get, post
 from litestar.response import Template, Stream
 
+from app import schemas
+
 @Controller(path="/coffee")
 class CoffeeController:
     """Coffee recommendation controller with HTMX."""
@@ -556,7 +558,7 @@ class CoffeeController:
     @post("/chat/send")
     async def send_message(
         self,
-        data: CoffeeChatMessage,
+        data: schemas.CoffeeChatMessage,
         recommendation_service: NativeRecommendationService,
     ) -> Template:
         """Send chat message with Oracle session tracking."""

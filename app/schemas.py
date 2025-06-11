@@ -14,32 +14,77 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import msgspec
 
 if TYPE_CHECKING:
     from datetime import datetime
-
-if TYPE_CHECKING:
     from uuid import UUID
+
+__all__ = (
+    "BaseStruct",
+    "CamelizedBaseSchema",
+    "CamelizedBaseStruct",
+    "ChatConversationCreate",
+    "ChatConversationRead",
+    "ChatMessage",
+    "CoffeeChatMessage",
+    "CoffeeChatReply",
+    "HistoryMeta",
+    "Message",
+    "SearchMetricsCreate",
+    "UserSessionCreate",
+    "UserSessionRead",
+    "camel_case",
+)
+
+
+class BaseStruct(msgspec.Struct):
+    def to_dict(self) -> dict[str, Any]:
+        return {f: getattr(self, f) for f in self.__struct_fields__ if getattr(self, f, None) != msgspec.UNSET}
+
+
+class CamelizedBaseStruct(BaseStruct, rename="camel"):
+    """Camelized Base Struct"""
+
+
+class Message(CamelizedBaseStruct):
+    message: str
+
+
+def camel_case(string: str) -> str:
+    """Convert a string to camel case.
+
+    Args:
+        string (str): The string to convert
+
+    Returns:
+        str: The string converted to camel case
+    """
+    return "".join(word if index == 0 else word.capitalize() for index, word in enumerate(string.split("_")))
+
 
 class CoffeeChatMessage(msgspec.Struct):
     """Chat message input DTO."""
+
     message: str
     persona: str = "enthusiast"
 
 
 # Oracle-specific DTOs
 
+
 class UserSessionCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Session creation payload."""
+
     user_id: str
     data: dict = {}
 
 
 class UserSessionRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Session response payload."""
+
     id: UUID
     session_id: str
     user_id: str
@@ -50,6 +95,7 @@ class UserSessionRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
 
 class ChatConversationCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Conversation creation payload."""
+
     session_id: UUID
     user_id: str
     role: str  # 'user' | 'assistant' | 'system'
@@ -59,6 +105,7 @@ class ChatConversationCreate(msgspec.Struct, gc=False, array_like=True, omit_def
 
 class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Conversation response payload."""
+
     id: UUID
     user_id: str
     role: str
@@ -69,6 +116,7 @@ class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defau
 
 class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True, kw_only=True):
     """Metrics creation payload."""
+
     query_id: str
     user_id: str | None = None
     search_time_ms: float
@@ -78,16 +126,16 @@ class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaul
     result_count: int
 
 
-
-
 class ChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Individual chat message."""
+
     message: str
     source: str  # 'human' | 'ai' | 'system'
 
 
 class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Complete chat response."""
+
     message: str
     messages: list[ChatMessage]
     answer: str
@@ -98,5 +146,6 @@ class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
 # Legacy TypedDict for compatibility (to be removed)
 class HistoryMeta(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """History metadata."""
+
     conversation_id: str
     user_id: str

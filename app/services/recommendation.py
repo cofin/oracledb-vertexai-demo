@@ -7,19 +7,20 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
-    from app.domain.coffee.services import ProductService, ShopService
+    from app.services.product import ProductService
+    from app.services.shop import ShopService
 from advanced_alchemy.filters import CollectionFilter, LimitOffset
 from sqlalchemy import select
 
+from app import schemas
 from app.db import models as m
-from app.domain.coffee.schemas import ChatMessage, CoffeeChatReply
-from app.domain.coffee.services.account import (
+from app.services.account import (
     ChatConversationService,
     ResponseCacheService,
     SearchMetricsService,
     UserSessionService,
 )
-from app.domain.coffee.services.vertex_ai import OracleVectorSearchService, VertexAIService
+from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 logger = structlog.get_logger()
 
@@ -52,7 +53,7 @@ class RecommendationService:
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
 
-    async def get_recommendation(self, query: str, session_id: str | None = None) -> CoffeeChatReply:
+    async def get_recommendation(self, query: str, session_id: str | None = None) -> schemas.CoffeeChatReply:
         """Get coffee recommendation with Oracle integration."""
 
         query_id = str(uuid.uuid4())
@@ -123,11 +124,11 @@ class RecommendationService:
         )
 
         # Format response
-        return CoffeeChatReply(
+        return schemas.CoffeeChatReply(
             message=query,
             messages=[
-                ChatMessage(message=query, source="human"),
-                ChatMessage(message=ai_response, source="ai"),
+                schemas.ChatMessage(message=query, source="human"),
+                schemas.ChatMessage(message=ai_response, source="ai"),
             ],
             answer=ai_response,
             query_id=query_id,

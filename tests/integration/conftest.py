@@ -63,11 +63,10 @@ async def _seed_db(  # noqa: PLR0915
         if (fixtures_dir / "company.json").exists():
             import json
 
-            from aiofiles import open as aio_open
+            import anyio
 
-            async with aio_open(fixtures_dir / "company.json") as f:
-                content = await f.read()
-                companies_data = json.loads(content)
+            content = await anyio.Path(fixtures_dir / "company.json").read_text()
+            companies_data = json.loads(content)
 
         companies = []
         for company_data in companies_data:
@@ -82,11 +81,10 @@ async def _seed_db(  # noqa: PLR0915
         if (fixtures_dir / "shop.json").exists():
             import json
 
-            from aiofiles import open as aio_open
+            import anyio
 
-            async with aio_open(fixtures_dir / "shop.json") as f:
-                content = await f.read()
-                shops_data = json.loads(content)
+            content = await anyio.Path(fixtures_dir / "shop.json").read_text()
+            shops_data = json.loads(content)
 
         shops = []
         for shop_data in shops_data:
@@ -101,11 +99,10 @@ async def _seed_db(  # noqa: PLR0915
         if (fixtures_dir / "product.json").exists():
             import json
 
-            from aiofiles import open as aio_open
+            import anyio
 
-            async with aio_open(fixtures_dir / "product.json") as f:
-                content = await f.read()
-                products_data = json.loads(content)
+            content = await anyio.Path(fixtures_dir / "product.json").read_text()
+            products_data = json.loads(content)
 
         products = []
         for product_data in products_data:
@@ -123,11 +120,10 @@ async def _seed_db(  # noqa: PLR0915
         if (fixtures_dir / "inventory.json").exists():
             import json
 
-            from aiofiles import open as aio_open
+            import anyio
 
-            async with aio_open(fixtures_dir / "inventory.json") as f:
-                content = await f.read()
-                inventory_data = json.loads(content)
+            content = await anyio.Path(fixtures_dir / "inventory.json").read_text()
+            inventory_data = json.loads(content)
 
         for inv_data in inventory_data:
             if shops and products:

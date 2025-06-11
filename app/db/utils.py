@@ -26,8 +26,8 @@ async def load_database_fixtures() -> None:
     """Import/Synchronize Database Fixtures."""
 
     from app.config import alchemy
-    from app.domain.coffee.services import CompanyService, InventoryService, ProductService, ShopService
     from app.lib.settings import get_settings
+    from app.services import CompanyService, InventoryService, ProductService, ShopService
 
     settings = get_settings()
 
@@ -52,8 +52,8 @@ async def load_database_fixtures() -> None:
 
 async def _load_vectors() -> None:
     from app.config import alchemy
-    from app.domain.coffee.deps import provide_product_service
-    from app.domain.coffee.services.vertex_ai import VertexAIService
+    from app.server.deps import provide_product_service
+    from app.services.vertex_ai import VertexAIService
 
     async with alchemy.get_session() as db_session:
         products_service = await anext(provide_product_service(db_session))

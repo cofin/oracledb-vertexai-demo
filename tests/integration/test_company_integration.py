@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.coffee.services.company import CompanyService
+from app.services.company import CompanyService
 
 
 @pytest.mark.anyio

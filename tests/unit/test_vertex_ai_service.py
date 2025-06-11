@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.domain.coffee.services.vertex_ai import OracleVectorSearchService, VertexAIService
+from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 
 @pytest.fixture
@@ -143,9 +143,7 @@ class TestOracleVectorSearchService:
                 MagicMock(id=2, name="Coffee B", description="Good coffee", distance=0.2),
             ]
 
-            mock_product_service.repository.session.execute = AsyncMock(
-                return_value=mock_result
-            )
+            mock_product_service.repository.session.execute = AsyncMock(return_value=mock_result)
 
             results = await vector_search.similarity_search("best coffee", k=2)
 

@@ -28,7 +28,7 @@ from app.db import models as m
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from app.domain.coffee.schemas import SearchMetricsCreate
+    from app.schemas import SearchMetricsCreate
 
 
 class UserSessionService(SQLAlchemyAsyncRepositoryService[m.UserSession]):

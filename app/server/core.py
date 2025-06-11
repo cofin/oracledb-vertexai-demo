@@ -17,8 +17,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from litestar.openapi import OpenAPIConfig
-from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
 
 if TYPE_CHECKING:
@@ -32,16 +30,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     This class is responsible for configuring the main Litestar application with our routes, guards, and various plugins
     """
 
-    __slots__ = ("app_slug",)
-    app_slug: str
-
-    def __init__(self) -> None:
-        """Initialize ``ApplicationConfigurator``.
-
-        Args:
-            config: configure and start SAQ.
-        """
-
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
         """Configure application
 
@@ -53,16 +41,20 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.connection import Request
         from litestar.datastructures import State
         from litestar.enums import RequestEncodingType
+        from litestar.openapi import OpenAPIConfig
+        from litestar.openapi.plugins import ScalarRenderPlugin
         from litestar.params import Body
         from litestar.static_files import create_static_files_router
         from litestar_htmx import HTMXRequest
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
-        from app import config
+        from app import config, schemas, services
         from app.db import models as m
-        from app.domain.coffee.controllers import CoffeeChatController
-        from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
-        from app.domain.coffee.services import (
+        from app.lib import log
+        from app.lib.settings import BASE_DIR, get_settings
+        from app.server import plugins
+        from app.server.controllers import CoffeeChatController
+        from app.services import (
             ChatConversationService,
             CompanyService,
             InventoryService,
@@ -75,12 +67,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             UserSessionService,
             VertexAIService,
         )
-        from app.lib import log
-        from app.lib.settings import BASE_DIR, get_settings
-        from app.server import plugins
 
         settings = get_settings()
-        self.app_slug = settings.app.slug
 
         app_config.middleware.insert(0, config.session.middleware)
         # logging
@@ -117,7 +105,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 CoffeeChatController,
                 create_static_files_router(
                     path="/static",
-                    directories=[str(BASE_DIR / "static")],
+                    directories=[str(BASE_DIR / "server" / "static")],
                     name="static",
                 ),
             ],
@@ -136,6 +124,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
                 "m": m,
+                "schemas": schemas,
+                "services": services,
                 # Service types
                 "ProductService": ProductService,
                 "ShopService": ShopService,
@@ -148,8 +138,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "ChatConversationService": ChatConversationService,
                 "ResponseCacheService": ResponseCacheService,
                 "SearchMetricsService": SearchMetricsService,
-                "CoffeeChatMessage": CoffeeChatMessage,
-                "CoffeeChatReply": CoffeeChatReply,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
             },
@@ -157,14 +145,15 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli import recommend, load_fixtures, load_vectors
-        from app.lib.settings import get_settings
         from advanced_alchemy.extensions.litestar.cli import database_group
+
+        from app.cli import load_fixtures, load_vectors, recommend
+        from app.lib.settings import get_settings
 
         settings = get_settings()
         self.app_slug = settings.app.slug
         cli.add_command(recommend, name="recommend")
-        
+
         # Add our custom database commands
-        database_group.add_command(load_fixtures, name="load-fixtures")
-        database_group.add_command(load_vectors, name="load-vectors")
+        database_group.add_command(load_fixtures, name="load-fixtures")  # type: ignore[arg-type]
+        database_group.add_command(load_vectors, name="load-vectors")  # type: ignore[arg-type]

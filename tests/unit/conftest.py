@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from litestar import Litestar
-    from litestar.types import HTTPResponseStartEvent, HTTPScope
+    from litestar.types import HTTPResponseStartEvent
 
 
 @pytest.fixture
@@ -39,9 +39,11 @@ def state() -> dict[str, Any]:
 
 
 @pytest.fixture
-def http_scope(state: dict[str, Any]) -> HTTPScope:
+def http_scope(state: dict[str, Any]) -> Any:
+    from litestar.enums import ScopeType
+
     return {
-        "type": "http",
+        "type": ScopeType.HTTP,
         "asgi": {"version": "3.0", "spec_version": "2.1"},
         "http_version": "1.1",
         "method": "GET",
@@ -58,11 +60,11 @@ def http_scope(state: dict[str, Any]) -> HTTPScope:
 
 
 @pytest.fixture
-def connection(http_scope: HTTPScope) -> ASGIConnection[Any, Any, Any]:
+def connection(http_scope: Any) -> Any:
     async def receive() -> Any:
         return {"type": "http.request", "body": b"", "more_body": False}
 
     async def send(message: Any) -> None:
         pass
 
-    return ASGIConnection[Any, Any, Any](scope=http_scope, receive=receive, send=send)
+    return ASGIConnection(scope=http_scope, receive=receive, send=send)

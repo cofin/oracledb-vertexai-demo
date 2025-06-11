@@ -12,7 +12,7 @@ from google.api_core import exceptions as google_exceptions
 from sqlalchemy import text
 from vertexai.generative_models import GenerativeModel
 
-from app.domain.coffee.schemas import SearchMetricsCreate
+from app.schemas import SearchMetricsCreate
 from app.lib.settings import get_settings
 
 logger = structlog.get_logger()
@@ -20,7 +20,7 @@ logger = structlog.get_logger()
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from app.domain.coffee.services.account import ResponseCacheService, SearchMetricsService
+    from app.services.account import ResponseCacheService, SearchMetricsService
 
 
 class VertexAIService:

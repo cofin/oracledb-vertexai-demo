@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.domain.coffee.schemas import SearchMetricsCreate
-from app.domain.coffee.services.account import (
+from app.schemas import SearchMetricsCreate
+from app.services.account import (
     ChatConversationService,
     ResponseCacheService,
     SearchMetricsService,
@@ -22,11 +22,11 @@ class TestUserSessionService:
     def session_service(self) -> UserSessionService:
         """Create a UserSessionService instance."""
         service = UserSessionService(MagicMock(), MagicMock())  # type: ignore[misc]
-        service.create = AsyncMock()  # type: ignore[method-assign]  # type: ignore[method-assign]
-        service.get_one_or_none = AsyncMock()  # type: ignore[method-assign]  # type: ignore[method-assign]
-        service.update = AsyncMock()  # type: ignore[method-assign]  # type: ignore[method-assign]
-        service.repository = MagicMock()  # type: ignore[misc]  # type: ignore[misc]
-        service.repository.session = AsyncMock()  # type: ignore[misc]
+        service.create = AsyncMock()  # type: ignore[method-assign]
+        service.get_one_or_none = AsyncMock()  # type: ignore[method-assign]
+        service.update = AsyncMock()  # type: ignore[method-assign]
+        service.repository = MagicMock()  # type: ignore[misc]
+        service.repository.session = AsyncMock()
         return service
 
     async def test_create_session(self, session_service: UserSessionService) -> None:
@@ -95,7 +95,7 @@ class TestChatConversationService:
         service = ChatConversationService(MagicMock(), MagicMock())  # type: ignore[misc]
         service.create = AsyncMock()  # type: ignore[method-assign]
         service.repository = MagicMock()  # type: ignore[misc]
-        service.repository.session = AsyncMock()  # type: ignore[misc]
+        service.repository.session = AsyncMock()
         return service
 
     async def test_add_message(self, conversation_service: ChatConversationService) -> None:
@@ -124,13 +124,13 @@ class TestChatConversationService:
         """Test getting conversation history."""
         mock_messages = [MagicMock(), MagicMock()]
         mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = mock_messages  # type: ignore[attr-defined]
-        conversation_service.repository.session.execute.return_value = mock_result  # type: ignore[attr-defined]
+        mock_result.scalars.return_value.all.return_value = mock_messages
+        conversation_service.repository.session.execute.return_value = mock_result
 
         result = await conversation_service.get_conversation_history("user123", limit=10)
 
         assert result == mock_messages
-        conversation_service.repository.session.execute.assert_called_once()  # type: ignore[attr-defined]
+        conversation_service.repository.session.execute.assert_called_once()
 
 
 class TestResponseCacheService:
@@ -167,11 +167,11 @@ class TestResponseCacheService:
         result = await cache_service.get_cached_response("test query", "user1")
 
         assert result == {"content": "cached response"}
-        cache_service.update.assert_called_once()  # Should increment hit count  # type: ignore[attr-defined]
+        cache_service.update.assert_called_once()  # type: ignore[attr-defined]
 
     async def test_get_cached_response_miss(self, cache_service: ResponseCacheService) -> None:
         """Test cache miss."""
-        cache_service.get_one_or_none.return_value = None
+        cache_service.get_one_or_none.return_value = None  # type: ignore[attr-defined]
 
         result = await cache_service.get_cached_response("test query", "user1")
 
@@ -179,7 +179,7 @@ class TestResponseCacheService:
 
     async def test_cache_response_new(self, cache_service: ResponseCacheService) -> None:
         """Test caching a new response."""
-        cache_service.get_one_or_none.return_value = None
+        cache_service.get_one_or_none.return_value = None  # type: ignore[attr-defined]
 
         await cache_service.cache_response(
             "test query",
@@ -197,7 +197,7 @@ class TestResponseCacheService:
     async def test_cache_response_update(self, cache_service: ResponseCacheService) -> None:
         """Test updating an existing cache entry."""
         mock_existing = MagicMock(id=uuid.uuid4())
-        cache_service.get_one_or_none.return_value = mock_existing
+        cache_service.get_one_or_none.return_value = mock_existing  # type: ignore[attr-defined]
 
         await cache_service.cache_response(
             "test query",
@@ -225,7 +225,7 @@ class TestSearchMetricsService:
         service = SearchMetricsService(MagicMock(), MagicMock())  # type: ignore[misc]
         service.create = AsyncMock()  # type: ignore[method-assign]
         service.repository = MagicMock()  # type: ignore[misc]
-        service.repository.session = AsyncMock()  # type: ignore[misc]
+        service.repository.session = AsyncMock()
         return service
 
     async def test_record_search(self, metrics_service: SearchMetricsService) -> None:
@@ -256,8 +256,8 @@ class TestSearchMetricsService:
             min_search_time=10.0,
         )
         mock_result = MagicMock()
-        mock_result.first.return_value = mock_row  # type: ignore[attr-defined]
-        metrics_service.repository.session.execute.return_value = mock_result  # type: ignore[attr-defined]
+        mock_result.first.return_value = mock_row
+        metrics_service.repository.session.execute.return_value = mock_result
 
         stats = await metrics_service.get_performance_stats(hours=24)
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.domain.coffee import deps
+from app.server import deps
 
 
 @pytest.mark.anyio

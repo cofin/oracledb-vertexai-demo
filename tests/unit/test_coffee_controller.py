@@ -8,7 +8,7 @@ import pytest
 from litestar.status_codes import HTTP_200_OK
 from litestar.testing import AsyncTestClient
 
-from app.domain.coffee.schemas import CoffeeChatReply, PointsOfInterest
+from app import schemas
 
 if TYPE_CHECKING:
     from litestar import Litestar
@@ -23,19 +23,10 @@ class TestCoffeeChatController:
         service = AsyncMock()
 
         # Default reply
-        service.get_recommendation.return_value = CoffeeChatReply(
+        service.get_recommendation.return_value = schemas.CoffeeChatReply(
             message="Here are some coffee recommendations",
             messages=[],
             answer="I recommend trying our Ethiopian single origin!",
-            points_of_interest=[
-                PointsOfInterest(
-                    id=1,
-                    name="Cymbal Coffee Shop",
-                    address="123 Main St",
-                    latitude=37.7749,
-                    longitude=-122.4194,
-                )
-            ],
             query_id="test-query-123",
             search_metrics={"avg_search_time_ms": 50.0},
         )
@@ -70,26 +61,26 @@ class TestCoffeeChatController:
         from litestar.testing import AsyncTestClient
 
         # Override the dependency
-        app.dependency_providers["recommendation_service"] = lambda: mock_recommendation_service
+        from app.server.deps import provide_recommendation_service
+        app.state.dependency_overrides[provide_recommendation_service] = lambda: mock_recommendation_service
 
         async with AsyncTestClient(app=app) as client:
+            response = await client.post(
+                "/",
+                data={"message": "I want good coffee"},
+                headers={"HX-Request": "true"},
+            )
 
-                response = await client.post(
-                    "/",
-                    data={"message": "I want good coffee"},
-                    headers={"HX-Request": "true"},
-                )
+            assert response.status_code == HTTP_200_OK
+            assert response.headers.get("Content-Type", "").startswith("text/html")
 
-                assert response.status_code == HTTP_200_OK
-                assert response.headers.get("Content-Type", "").startswith("text/html")
-
-                # Check for secure template elements
-                content = response.text
-                assert "You:" in content
-                assert "I want good coffee" in content  # Message should be escaped
-                assert "AI Coffee Expert:" in content
-                assert "Ethiopian single origin" in content
-                assert "Cymbal Coffee Shop" in content
+            # Check for secure template elements
+            content = response.text
+            assert "You:" in content
+            assert "I want good coffee" in content  # Message should be escaped
+            assert "AI Coffee Expert:" in content
+            assert "Ethiopian single origin" in content
+            assert "Cymbal Coffee Shop" in content
 
     @pytest.mark.asyncio
     async def test_non_htmx_chat_request(self, client: AsyncTestClient, mock_recommendation_service: AsyncMock) -> None:
@@ -110,19 +101,10 @@ class TestCoffeeChatController:
     async def test_xss_prevention(self, client: AsyncTestClient, mock_recommendation_service: AsyncMock) -> None:
         """Test XSS prevention in user input."""
         # Set up malicious response
-        mock_recommendation_service.get_recommendation.return_value = CoffeeChatReply(
+        mock_recommendation_service.get_recommendation.return_value = schemas.CoffeeChatReply(
             message="<script>alert('XSS')</script>",
             messages=[],
             answer="<img src=x onerror=alert('XSS')>",
-            points_of_interest=[
-                PointsOfInterest(
-                    id=1,
-                    name="<script>alert('XSS')</script>",
-                    address="<img src=x onerror=alert('XSS')>",
-                    latitude=37.7749,
-                    longitude=-122.4194,
-                )
-            ],
             query_id="test-xss",
             search_metrics={},
         )
@@ -145,26 +127,10 @@ class TestCoffeeChatController:
     async def test_coordinate_validation(self, client: AsyncTestClient, mock_recommendation_service: AsyncMock) -> None:
         """Test that invalid coordinates are filtered out."""
         # Set up response with invalid coordinates
-        mock_recommendation_service.get_recommendation.return_value = CoffeeChatReply(
+        mock_recommendation_service.get_recommendation.return_value = schemas.CoffeeChatReply(
             message="Found locations",
             messages=[],
             answer="Here are the shops",
-            points_of_interest=[
-                PointsOfInterest(
-                    id=1,
-                    name="Valid Shop",
-                    address="123 Main St",
-                    latitude=37.7749,
-                    longitude=-122.4194,
-                ),
-                PointsOfInterest(
-                    id=2,
-                    name="Invalid Shop",
-                    address="456 Oak Ave",
-                    latitude=91.0,  # Invalid
-                    longitude=-181.0,  # Invalid
-                ),
-            ],
             query_id="test-coords",
             search_metrics={},
         )
@@ -205,6 +171,7 @@ class TestCoffeeChatController:
     @pytest.mark.asyncio
     async def test_streaming_endpoint(self, client: AsyncTestClient, mock_recommendation_service: AsyncMock) -> None:
         """Test the SSE streaming endpoint."""
+
         # Mock streaming response
         async def mock_stream() -> AsyncGenerator[str, None]:
             yield "Hello"

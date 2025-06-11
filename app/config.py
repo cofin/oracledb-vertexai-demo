@@ -64,7 +64,7 @@ alchemy = SQLAlchemyAsyncConfig(
         script_location=_settings.db.MIGRATION_PATH,
     ),
 )
-templates = TemplateConfig(directory=BASE_DIR / "domain" / "coffee" / "templates", engine=JinjaTemplateEngine)
+templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
 flasher = FlashConfig(template_config=templates)
 oracle = SyncOracleDatabaseConfig(
     pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
