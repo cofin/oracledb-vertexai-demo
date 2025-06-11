@@ -1,0 +1,59 @@
+{% if results %}
+<h4>Found {{ results|length }} matching products:</h4>
+
+{% for result in results %}
+<div class="similarity-item">
+    <div>
+        <strong>{{ result.name | e }}</strong><br>
+        <small style="color: #666;">{{ result.description | e | truncate(100) }}</small>
+        <div style="margin-top: 5px;">
+            <span style="font-size: 0.8rem; color: var(--coffee-medium);">
+                🏷️ ${{ "{:.2f}".format(result.price) }}
+                {% if result.company %}
+                    | 🏢 {{ result.company | e }}
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    <div class="similarity-score">
+        {{ "{:.1%}".format(result.similarity_score) }}
+    </div>
+</div>
+{% endfor %}
+
+<div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+    <h5 style="margin-top: 0;">🔍 Search Analytics</h5>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 0.9rem;">
+        <div>
+            <strong>Query Time:</strong> {{ "{:.0f}".format(metrics.search_time_ms) }}ms
+        </div>
+        <div>
+            <strong>Embedding Time:</strong> {{ "{:.0f}".format(metrics.embedding_time_ms) }}ms
+        </div>
+        <div>
+            <strong>Oracle Time:</strong> {{ "{:.0f}".format(metrics.oracle_time_ms) }}ms
+        </div>
+        <div>
+            <strong>Result Count:</strong> {{ results|length }}
+        </div>
+    </div>
+
+    {% if debug_info %}
+    <details style="margin-top: 10px;">
+        <summary style="cursor: pointer; color: var(--coffee-medium);">View Embedding Details</summary>
+        <div style="margin-top: 10px; font-family: monospace; font-size: 0.8rem;">
+            <div>Query: "{{ query | e }}"</div>
+            <div>Embedding dimensions: {{ debug_info.embedding_size }}</div>
+            <div>Vector norm: {{ "{:.4f}".format(debug_info.vector_norm) }}</div>
+            <div>Top components: {{ debug_info.top_components | join(', ') }}</div>
+        </div>
+    </details>
+    {% endif %}
+</div>
+
+{% else %}
+<div style="text-align: center; padding: 40px; color: #666;">
+    <p>No products found matching your query.</p>
+    <p style="font-size: 0.9rem;">Try searching for flavor profiles like "fruity", "chocolate", or "nutty".</p>
+</div>
+{% endif %}

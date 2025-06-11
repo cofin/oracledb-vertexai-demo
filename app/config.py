@@ -22,7 +22,6 @@ from advanced_alchemy.extensions.litestar import (
     AlembicAsyncConfig,
     AsyncSessionConfig,
     SQLAlchemyAsyncConfig,
-    async_autocommit_handler_maker,
 )
 from litestar.config.cors import CORSConfig
 from litestar.config.csrf import CSRFConfig
@@ -40,10 +39,8 @@ from litestar.plugins.flash import FlashConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.template import TemplateConfig
 from litestar_oracledb import SyncOracleDatabaseConfig, SyncOraclePoolConfig
-from litestar_vite import ViteConfig
-from litestar_vite.inertia import InertiaConfig
 
-from app.lib.settings import get_settings
+from app.lib.settings import BASE_DIR, get_settings
 
 _settings = get_settings()
 
@@ -58,9 +55,7 @@ cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORI
 
 alchemy = SQLAlchemyAsyncConfig(
     engine_instance=_settings.db.get_engine(),
-    before_send_handler=async_autocommit_handler_maker(  # note: change the session scope key if using multiple engines
-        commit_on_redirect=True,
-    ),
+    before_send_handler="autocommit",
     session_config=AsyncSessionConfig(expire_on_commit=False),
     alembic_config=AlembicAsyncConfig(
         render_as_batch=False,
@@ -69,23 +64,10 @@ alchemy = SQLAlchemyAsyncConfig(
         script_location=_settings.db.MIGRATION_PATH,
     ),
 )
-templates = TemplateConfig(engine=JinjaTemplateEngine(directory=_settings.vite.TEMPLATE_DIR))
+templates = TemplateConfig(directory=BASE_DIR / "domain" / "coffee" / "templates", engine=JinjaTemplateEngine)
 flasher = FlashConfig(template_config=templates)
 oracle = SyncOracleDatabaseConfig(
     pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
-)
-vite = ViteConfig(
-    bundle_dir=_settings.vite.BUNDLE_DIR,
-    resource_dir=_settings.vite.RESOURCE_DIR,
-    use_server_lifespan=_settings.vite.USE_SERVER_LIFESPAN,
-    dev_mode=_settings.vite.DEV_MODE,
-    hot_reload=_settings.vite.HOT_RELOAD,
-    is_react=_settings.vite.ENABLE_REACT_HELPERS,
-    port=_settings.vite.PORT,
-    host=_settings.vite.HOST,
-)
-inertia = InertiaConfig(
-    root_template="index.html.j2",
 )
 session = CookieBackendConfig(secret=_settings.app.SECRET_KEY.encode("utf-8"))
 

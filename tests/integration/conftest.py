@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from litestar import Litestar
+from advanced_alchemy.base import BigIntAuditBase, UUIDAuditBase
 from litestar.testing import AsyncTestClient
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -15,6 +15,7 @@ from app.db.models import Company, Inventory, Product, Shop
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from litestar import Litestar
     from pytest import MonkeyPatch
 
 
@@ -37,12 +38,11 @@ async def sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 
 @pytest.fixture(autouse=True)
-async def _seed_db(
+async def _seed_db(  # noqa: PLR0915
     engine: AsyncEngine,
     sessionmaker: async_sessionmaker[AsyncSession],
 ) -> AsyncGenerator[None, None]:
     """Seed database with test data."""
-    from app.db.models import BigIntAuditBase, UUIDAuditBase
 
     # Drop and recreate all tables
     async with engine.begin() as conn:
@@ -62,8 +62,12 @@ async def _seed_db(
         companies_data = []
         if (fixtures_dir / "company.json").exists():
             import json
-            with open(fixtures_dir / "company.json") as f:
-                companies_data = json.load(f)
+
+            from aiofiles import open as aio_open
+
+            async with aio_open(fixtures_dir / "company.json") as f:
+                content = await f.read()
+                companies_data = json.loads(content)
 
         companies = []
         for company_data in companies_data:
@@ -77,8 +81,12 @@ async def _seed_db(
         shops_data = []
         if (fixtures_dir / "shop.json").exists():
             import json
-            with open(fixtures_dir / "shop.json") as f:
-                shops_data = json.load(f)
+
+            from aiofiles import open as aio_open
+
+            async with aio_open(fixtures_dir / "shop.json") as f:
+                content = await f.read()
+                shops_data = json.loads(content)
 
         shops = []
         for shop_data in shops_data:
@@ -92,8 +100,12 @@ async def _seed_db(
         products_data = []
         if (fixtures_dir / "product.json").exists():
             import json
-            with open(fixtures_dir / "product.json") as f:
-                products_data = json.load(f)
+
+            from aiofiles import open as aio_open
+
+            async with aio_open(fixtures_dir / "product.json") as f:
+                content = await f.read()
+                products_data = json.loads(content)
 
         products = []
         for product_data in products_data:
@@ -110,8 +122,12 @@ async def _seed_db(
         inventory_data = []
         if (fixtures_dir / "inventory.json").exists():
             import json
-            with open(fixtures_dir / "inventory.json") as f:
-                inventory_data = json.load(f)
+
+            from aiofiles import open as aio_open
+
+            async with aio_open(fixtures_dir / "inventory.json") as f:
+                content = await f.read()
+                inventory_data = json.loads(content)
 
         for inv_data in inventory_data:
             if shops and products:
@@ -160,4 +176,5 @@ async def session(sessionmaker: async_sessionmaker[AsyncSession]) -> AsyncGenera
 def app() -> Litestar:
     """Create test app instance."""
     from app.asgi import create_app
+
     return create_app()

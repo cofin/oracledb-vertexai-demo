@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import multiprocessing
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
@@ -24,14 +23,18 @@ import anyio
 import click
 import structlog
 from click import Context
+from rich import get_console
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.prompt import Prompt
+from rich.spinner import Spinner
 
 from app.__metadata__ import __version__
 
 if TYPE_CHECKING:
     from typing import Any
 
-    from asyncpg import Connection
     from rich.console import Console
 
     from app.domain.coffee.services import RecommendationService
@@ -58,9 +61,9 @@ def recommend() -> None:
         from rich import get_console
 
         from app.config import alchemy
-        from app.domain.coffee.dependencies import (
-            provide_products_service,
-            provide_shops_service,
+        from app.domain.coffee.deps import (
+            provide_product_service,
+            provide_shop_service,
         )
         from app.domain.coffee.services import (
             RecommendationService,
@@ -79,21 +82,15 @@ def recommend() -> None:
         console = get_console()
         engine = alchemy.get_engine()
         async with alchemy.get_session() as db_session:
-            shops_service = await anext(provide_shops_service(db_session))
-            products_service = await anext(provide_products_service(db_session))
+            shops_service = await anext(provide_shop_service(db_session))
+            products_service = await anext(provide_product_service(db_session))
 
             # Initialize Vertex AI and Oracle services
             vertex_ai_service = VertexAIService()
-            session_service = UserSessionService.Repo(session=db_session)
-            conversation_service = ChatConversationService.Repo(session=db_session)
-            cache_service = ResponseCacheService.Repo(session=db_session)
-            metrics_service = SearchMetricsService.Repo(session=db_session)
-
-            # Create wrapped services
-            session_service_wrapped = UserSessionService(repository=session_service)
-            conversation_service_wrapped = ChatConversationService(repository=conversation_service)
-            cache_service_wrapped = ResponseCacheService(repository=cache_service)
-            metrics_service_wrapped = SearchMetricsService(repository=metrics_service)
+            session_service = UserSessionService(session=db_session)
+            conversation_service = ChatConversationService(session=db_session)
+            cache_service = ResponseCacheService(session=db_session)
+            metrics_service = SearchMetricsService(session=db_session)
 
             vector_search_service = OracleVectorSearchService(
                 product_service=products_service,
@@ -105,10 +102,10 @@ def recommend() -> None:
                 vector_search_service=vector_search_service,
                 products_service=products_service,
                 shops_service=shops_service,
-                session_service=session_service_wrapped,
-                conversation_service=conversation_service_wrapped,
-                cache_service=cache_service_wrapped,
-                metrics_service=metrics_service_wrapped,
+                session_service=session_service,
+                conversation_service=conversation_service,
+                cache_service=cache_service,
+                metrics_service=metrics_service,
                 user_id="cli-0",
             )
 
@@ -130,7 +127,7 @@ def recommend() -> None:
 
 
 async def _chat_session(
-    service: "RecommendationService",
+    service: RecommendationService,
     console: Any,
 ) -> None:
     """Handle a chat session"""
@@ -143,27 +140,20 @@ async def _chat_session(
 
 
 async def query_recommendation(
-    service: "RecommendationService",
+    service: RecommendationService,
     message: str,
     panel: bool = True,
 ) -> None:
     """Execute the recommendation"""
-    from rich import get_console
-    from rich.live import Live
-    from rich.markdown import Markdown
-    from rich.spinner import Spinner
-
     class NoPadding:
         def __init__(self, renderable: Any) -> None:
             self.renderable = renderable
 
-        def __rich_console__(self, console: "Console", options: Any) -> Any:
+        def __rich_console__(self, console: Console, options: Any) -> Any:
             yield self.renderable
 
     console = get_console()
-    from rich.panel import Panel
 
-    panel_class = Panel if panel is True else NoPadding
     with Live(Spinner("aesthetic"), refresh_per_second=15, console=console, transient=True):
         response = await service.get_recommendation(message)
         text = response.answer
@@ -207,60 +197,38 @@ def load_fixtures() -> None:
     async def _load_fixtures() -> None:
         from pathlib import Path
 
-        import orjson
+        from advanced_alchemy.utils.fixtures import open_fixture_async
 
         from app.config import alchemy
-        from app.db.models import Company, Inventory, Product, Shop
-        from app.domain.coffee.dependencies import (
-            provide_companies_service,
+        from app.domain.coffee.deps import (
+            provide_company_service,
             provide_inventory_service,
-            provide_products_service,
-            provide_shops_service,
+            provide_product_service,
+            provide_shop_service,
         )
 
         async with alchemy.get_session() as db_session:
-            companies_service = await anext(provide_companies_service(db_session))
-            products_service = await anext(provide_products_service(db_session))
-            shops_service = await anext(provide_shops_service(db_session))
+            companies_service = await anext(provide_company_service(db_session))
+            products_service = await anext(provide_product_service(db_session))
+            shops_service = await anext(provide_shop_service(db_session))
             inventory_service = await anext(provide_inventory_service(db_session))
 
             fixture_path = Path("app/db/fixtures")
-
-            # Load companies
-            with Path.open(fixture_path / "company.json", "rb") as f:
-                company_data = orjson.loads(f.read())
-                for company in company_data:
-                    await companies_service.upsert(
-                        Company(**company),
-                        match_fields=["id"],
-                    )
+            data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="company")
+            await companies_service.upsert_many(data, match_fields=["id"])
 
             # Load products
-            with Path.open(fixture_path / "product.json", "rb") as f:
-                products_data = orjson.loads(f.read())
-                for product in products_data:
-                    await products_service.upsert(
-                        Product(**product),
-                        match_fields=["id"],
-                    )
+            products_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="product")
+            await products_service.upsert_many(products_data, match_fields=["id"])
 
             # Load shops
-            with Path.open(fixture_path / "shop.json", "rb") as f:
-                shops_data = orjson.loads(f.read())
-                for shop in shops_data:
-                    await shops_service.upsert(
-                        Shop(**shop),
-                        match_fields=["id"],
-                    )
+            shops_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="shop")
+            await shops_service.upsert_many(shops_data, match_fields=["id"])
 
             # Load inventory
-            with Path.open(fixture_path / "inventory.json", "rb") as f:
-                inventory_data = orjson.loads(f.read())
-                for item in inventory_data:
-                    await inventory_service.upsert(
-                        Inventory(**item),
-                        match_fields=["shop_id", "product_id"],
-                    )
+            inventory_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="inventory")
+            await inventory_service.upsert_many(inventory_data, match_fields=["shop_id", "product_id"])
+            await db_session.commit()
 
         logger.info("Fixtures loaded successfully")
 
@@ -272,11 +240,11 @@ def load_vectors() -> None:
 
     async def _load_vectors() -> None:
         from app.config import alchemy
-        from app.domain.coffee.dependencies import provide_products_service
+        from app.domain.coffee.deps import provide_product_service
         from app.domain.coffee.services.vertex_ai import VertexAIService
 
         async with alchemy.get_session() as db_session:
-            products_service = await anext(provide_products_service(db_session))
+            products_service = await anext(provide_product_service(db_session))
             vertex_ai = VertexAIService()
 
             # Get all products
@@ -304,25 +272,6 @@ def load_vectors() -> None:
 
 
 # Functions are exported and added to Litestar CLI by the plugin in server/core.py
-
-
-async def wait_for_db(db_session: Connection, *, timeout: int = 10) -> None:
-    """Wait for the database to be ready."""
-    import asyncio
-
-    async def _check() -> None:
-        await db_session.fetchrow("SELECT 1")
-
-    for _ in range(timeout * 2):
-        try:
-            await _check()
-        except Exception:  # noqa: BLE001
-            await asyncio.sleep(0.5)
-        else:
-            return
-
-    msg = f"Database did not become ready within {timeout} seconds"
-    raise TimeoutError(msg)
 
 
 # Main execution removed - CLI is handled by Litestar

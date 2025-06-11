@@ -296,49 +296,9 @@ class AppSettings:
 
 
 @dataclass
-class ViteSettings:
-    """Server configurations."""
-
-    DEV_MODE: bool = field(
-        default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES,
-    )
-    """Start `vite` development server."""
-    USE_SERVER_LIFESPAN: bool = field(
-        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "False") in TRUE_VALUES,
-    )
-    """Auto start and stop `vite` processes when running in development mode.."""
-    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
-    """The host the `vite` process will listen on.  Defaults to `0.0.0.0`"""
-    PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
-    """The port to start vite on.  Default to `5173`"""
-    HOT_RELOAD: bool = field(
-        default_factory=lambda: os.getenv("VITE_HOT_RELOAD", "False") in TRUE_VALUES,
-    )
-    """Start `vite` with HMR enabled."""
-    ENABLE_REACT_HELPERS: bool = field(
-        default_factory=lambda: os.getenv("VITE_ENABLE_REACT_HELPERS", "True") in TRUE_VALUES,
-    )
-    """Enable React support in HMR."""
-    BUNDLE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/public"))
-    """Bundle directory"""
-    RESOURCE_DIR: Path = field(default_factory=lambda: Path("resources"))
-    """Resource directory"""
-    TEMPLATE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/templates"))
-    """Template directory."""
-    ASSET_URL: str = field(default_factory=lambda: os.getenv("ASSET_URL", "/static/"))
-    """Base URL for assets"""
-
-    @property
-    def set_static_files(self) -> bool:
-        """Serve static assets."""
-        return self.ASSET_URL.startswith("/")
-
-
-@dataclass
 class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
-    vite: ViteSettings = field(default_factory=ViteSettings)
     server: ServerSettings = field(default_factory=ServerSettings)
     log: LogSettings = field(default_factory=LogSettings)
 

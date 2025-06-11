@@ -1,3 +1,4 @@
+# ruff: noqa: TC003
 # Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,7 +128,7 @@ class UserSession(UUIDAuditBase):
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
 
     # Relationships
-    conversations: Mapped[list["ChatConversation"]] = relationship(
+    conversations: Mapped[list[ChatConversation]] = relationship(
         back_populates="session",
         lazy="selectin",
         cascade="all, delete-orphan",

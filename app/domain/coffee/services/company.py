@@ -11,6 +11,7 @@ class CompanyService(SQLAlchemyAsyncRepositoryService[m.Company]):
 
     class Repo(SQLAlchemyAsyncRepository[m.Company]):
         """Company repository."""
+
         model_type = m.Company
 
     repository_type = Repo

@@ -4,7 +4,6 @@ from collections.abc import Sequence
 
 from advanced_alchemy.repository import SQLAlchemyAsyncRepository
 from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-from sqlalchemy import select
 
 from app.db import models as m
 
@@ -14,6 +13,7 @@ class ProductService(SQLAlchemyAsyncRepositoryService[m.Product]):
 
     class Repo(SQLAlchemyAsyncRepository[m.Product]):
         """Product repository."""
+
         model_type = m.Product
 
     repository_type = Repo
@@ -25,16 +25,8 @@ class ProductService(SQLAlchemyAsyncRepositoryService[m.Product]):
 
     async def get_with_embeddings(self, product_id: int) -> m.Product | None:
         """Get product with embeddings loaded."""
-        stmt = select(m.Product).where(m.Product.id == product_id)
-        result = await self.repository.session.execute(stmt)
-        product = result.scalar_one_or_none()
-        return product
+        return await self.get_one_or_none(m.Product.id == product_id)
 
     async def search_by_description(self, search_term: str) -> Sequence[m.Product]:
         """Search products by description."""
-        stmt = select(m.Product).where(
-            m.Product.description.ilike(f"%{search_term}%"),
-        ).limit(10)
-        result = await self.repository.session.execute(stmt)
-        products = list(result.scalars().all())
-        return products
+        return await self.list(m.Product.description.ilike(f"%{search_term}%"))

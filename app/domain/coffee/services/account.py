@@ -19,8 +19,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-import msgspec
-
 from advanced_alchemy.repository import SQLAlchemyAsyncRepository
 from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 from sqlalchemy import delete, func, select
@@ -214,25 +212,25 @@ class SearchMetricsService(SQLAlchemyAsyncRepositoryService[m.SearchMetrics]):
 
     repository_type = Repo
 
-    async def record_search(self, metrics_data: "SearchMetricsCreate") -> m.SearchMetrics:
+    async def record_search(self, metrics_data: SearchMetricsCreate) -> m.SearchMetrics:
         """Record search performance metrics."""
-        return await self.create(msgspec.to_builtins(metrics_data))
+        return await self.create(metrics_data)
 
     async def get_performance_stats(self, hours: int = 24) -> dict:
         """Get performance statistics."""
         since = datetime.now(UTC) - timedelta(hours=hours)
 
-        stmt = select(
-            func.count(m.SearchMetrics.id).label("total_searches"),
-            func.avg(m.SearchMetrics.search_time_ms).label("avg_search_time"),
-            func.avg(m.SearchMetrics.embedding_time_ms).label("avg_embedding_time"),
-            func.avg(m.SearchMetrics.oracle_time_ms).label("avg_oracle_time"),
-            func.avg(m.SearchMetrics.similarity_score).label("avg_similarity"),
-            func.max(m.SearchMetrics.search_time_ms).label("max_search_time"),
-            func.min(m.SearchMetrics.search_time_ms).label("min_search_time"),
-        ).where(m.SearchMetrics.created_at > since)
-
-        result = await self.repository.session.execute(stmt)
+        result = await self.repository.session.execute(
+            select(
+                func.count(m.SearchMetrics.id).label("total_searches"),
+                func.avg(m.SearchMetrics.search_time_ms).label("avg_search_time"),
+                func.avg(m.SearchMetrics.embedding_time_ms).label("avg_embedding_time"),
+                func.avg(m.SearchMetrics.oracle_time_ms).label("avg_oracle_time"),
+                func.avg(m.SearchMetrics.similarity_score).label("avg_similarity"),
+                func.max(m.SearchMetrics.search_time_ms).label("max_search_time"),
+                func.min(m.SearchMetrics.search_time_ms).label("min_search_time"),
+            ).where(m.SearchMetrics.created_at > since)
+        )
         row = result.first()
 
         return {

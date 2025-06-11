@@ -154,8 +154,6 @@ install-pdm.py
 .memory.db
 
 demo.py
-static/
-templates/
 CLAUDE.md
 CLAUDE.*.md
 .tmp

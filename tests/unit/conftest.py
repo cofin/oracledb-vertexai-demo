@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from litestar import Litestar
 from litestar.connection import ASGIConnection
 from litestar.testing import AsyncTestClient
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from litestar.types import ASGIApp, HTTPResponseStartEvent, HTTPScope, Receive, Scope, Send
+    from litestar import Litestar
+    from litestar.types import HTTPResponseStartEvent, HTTPScope
 
 
 @pytest.fixture

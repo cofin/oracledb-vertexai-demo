@@ -46,7 +46,6 @@ repos:
           - "advanced-alchemy[uuid]"
           - "litestar-saq>=0.1.3"
           - "litestar-oracledb"
-          - "litestar-vite[nodeenv]"
           - "litestar-granian"
           - "httptools"
           - "pwdlib[argon2]>=0.2.0"

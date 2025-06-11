@@ -1,0 +1,68 @@
+<!-- User message -->
+<div class="message user">
+    <strong>You:</strong> {{ user_message }}
+</div>
+
+<!-- AI response -->
+<div class="message assistant">
+    <strong>AI Coffee Expert:</strong> {{ ai_response }}
+</div>
+
+<!-- Map integration if locations are provided -->
+{% if points_of_interest %}
+<div id="map-container" style="margin-top: 15px; border-radius: 10px; overflow: hidden;">
+    <h4 style="margin: 10px 0; color: var(--coffee-dark);">📍 Found {{ points_of_interest|length }} location(s) for you:</h4>
+
+    {% if points_of_interest %}
+    <gmp-map
+        center="{{ points_of_interest[0].latitude }},{{ points_of_interest[0].longitude }}"
+        zoom="12"
+        map-id="COFFEE_MAPS"
+        style="height: 300px; width: 100%; border-radius: 8px;">
+
+        {% for location in points_of_interest %}
+        <gmp-advanced-marker
+            position="{{ location.latitude }},{{ location.longitude }}"
+            title="{{ location.name }}"
+        >
+            <div style="background: var(--coffee-medium); color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px; font-weight: bold;">
+                {{ location.name }}
+            </div>
+        </gmp-advanced-marker>
+        {% endfor %}
+    </gmp-map>
+
+    <!-- Location list -->
+    <div style="margin-top: 10px; max-height: 150px; overflow-y: auto;">
+        {% for location in points_of_interest %}
+        <div style="padding: 8px; margin: 5px 0; background: white; border-radius: 8px; border-left: 3px solid var(--coffee-medium);">
+            <strong>{{ location.name }}</strong><br>
+            <small style="color: var(--coffee-medium);">{{ location.address }}</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Load Google Maps script if not already loaded -->
+<script>
+if (typeof google === 'undefined') {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key | default('YOUR_API_KEY') }}&loading=async&libraries=maps,marker&v=beta`;
+    script.defer = true;
+    document.head.appendChild(script);
+}
+</script>
+{% endif %}
+
+<!-- Performance metrics update -->
+{% if query_id %}
+<script>
+// Update metrics after each response
+setTimeout(() => {
+    if (typeof loadMetrics === 'function') {
+        loadMetrics();
+    }
+}, 1000);
+</script>
+{% endif %}

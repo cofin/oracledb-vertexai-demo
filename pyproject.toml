@@ -14,18 +14,16 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "litestar[jinja,jwt,redis,cryptography,structlog,pydantic,sqlalchemy]",
+    "litestar[jinja,jwt,cryptography,structlog,sqlalchemy]",
+    "litestar-htmx",
     "litestar-oracledb",
     "litestar-granian[uvloop]",
-    "litestar-vite[nodeenv]",
     "python-dotenv",
-    "httptools",
     "google-cloud-aiplatform>=1.38.0",
     "google-generativeai>=0.3.2",
     "vertexai",
     "numpy",
     "prompt-toolkit",
-    "aiosqlite",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
@@ -62,6 +60,7 @@ dev = [
 extras = []
 lint = ["mypy", "pre-commit", "pyright", "ruff", "slotscheck", "types-click"]
 test = [
+    "aiofiles",
     "anyio",
     "coverage",
     "pytest",
@@ -102,53 +101,51 @@ src = ["."]
 target-version = "py311"
 
 [tool.ruff.lint]
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 fixable = ["ALL"]
 ignore = [
-    "E501",
-    "D100",
-    "D101",
-    "D102",
-    "D103",
-    "D104",
-    "D105",
-    "D106",
-    "D107",
-    "D202",
-    "D205",
-    "D415",
-    "UP037",
-    "A003",
-    "B010",
-    "B008",
-    "RUF012",
+    "A003",    # flake8-builtins - class attribute {name} is shadowing a python builtin
+    "A005",    # flake8-builtins - module {name} shadows a Python standard-library module
+    "B010",    # flake8-bugbear - do not call setattr with a constant attribute value
+    "D100",    # pydocstyle - missing docstring in public module
+    "D101",    # pydocstyle - missing docstring in public class
+    "D102",    # pydocstyle - missing docstring in public method
+    "D103",    # pydocstyle - missing docstring in public function
+    "D104",    # pydocstyle - missing docstring in public package
+    "D105",    # pydocstyle - missing docstring in magic method
+    "D106",    # pydocstyle - missing docstring in public nested class
+    "D107",    # pydocstyle - missing docstring in __init__
+    "D202",    # pydocstyle - no blank lines allowed after function docstring
+    "D205",    # pydocstyle - 1 blank line required between summary line and description
+    "D415",    # pydocstyle - first line should end with a period, question mark, or exclamation point
+    "E501",    # pydocstyle line too long, handled by black
+    "PLW2901", # pylint - for loop variable overwritten by assignment target
+    "RUF012",  # Ruff-specific rule - annotated with classvar
     "ANN401",
-    "ANN102",
-    "ANN101",
-    "PLR0913",
-    "PLR2004",
-    "FBT001",
-    "FBT002",
-    "FBT003",
-    "ARG002",
-    "ARG001",
-    "TD002",
-    "TD003",
-    "FIX002",
-    "PGH003",
-    "RUF006",
-    "SLF001",
-    "PT007",
-    "PT004",
-    "PT005",
-    "S603",
-    "PLW2901",
     "FBT",
+    "PLR0913", # too many arguments
     "PT",
     "TD",
-    "PERF203",
+    "ARG001",  # ignore for now; investigate
+    "ARG002",  # ignore for now; investigate
+    "ARG003",  # ignore for now; investigate
+    "PERF203", # ignore for now; investigate
+    "PD011",   # pandas
+    "PLR0912",
+    "ISC001",
+    "COM812",
+    "CPY001",
+    "PGH003",
+    "FA100",
+    "PLC0415", # import should be at the top of the file
+    "PLR0904", # too many public methods
+    "PLR0917",
+    "PLC2701",
+    "PLW3201",
+    "PLR6301",
 ]
 select = ["ALL"]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -168,14 +165,14 @@ classmethod-decorators = [
 known-first-party = ["tests", "app", "config"]
 
 [tool.ruff.lint.per-file-ignores]
-"*/migrations/*.py" = ["D104", "D103", "D205", "D212"]
 "__init__.py" = ["F401", "D104"]
 "app/db/migrations/versions/*.py" = ["ANN201", "INP001"]
-"docs/**/*.*" = ["S", "B", "DTZ", "A", "TCH", "ERA", "D", "RET", "E731", "RUF012", "FA100", "ARG001"]
+"docs/**/*.*" = ["S", "B", "DTZ", "A", "ERA", "D", "RET", "E731", "RUF012", "FA100", "ARG001"]
 "docs/conf.py" = ["FIX002", "ARG001", "INP001"]
-"scripts/*.py" = ["INP001", "ERA001"]
-"scripts/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001"]
-"tests/*.py" = ["D103", "S101", "D104"]
+"tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"tools/*.py" = ["INP001", "ERA001", "N999"]
+"tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001", "S603", "S404", "PLR0915"]
 
 [tool.slotscheck]
 strict-imports = false
@@ -226,6 +223,8 @@ module = [
     "uvloop",
     "uvloop.*",
     "nodeenv",
+    "vertexai",
+    "vertexai.*",
 ]
 
 [[tool.mypy.overrides]]

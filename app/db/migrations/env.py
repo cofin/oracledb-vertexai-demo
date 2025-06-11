@@ -70,7 +70,7 @@ def order_columns(
         columns,
         schema=op.schema,
         # Remove when https://github.com/sqlalchemy/alembic/issues/1193 is fixed
-        _namespace_metadata=op._namespace_metadata,
+        _namespace_metadata=op._namespace_metadata,  # noqa: SLF001
         **op.kw,
     )
 

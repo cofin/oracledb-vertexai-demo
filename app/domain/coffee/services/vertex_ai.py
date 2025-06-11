@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+import structlog
 import vertexai
 from google.api_core import exceptions as google_exceptions
+from sqlalchemy import text
 from vertexai.generative_models import GenerativeModel
 
 from app.domain.coffee.schemas import SearchMetricsCreate
 from app.lib.settings import get_settings
+
+logger = structlog.get_logger()
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -39,7 +43,7 @@ class VertexAIService:
         self.metrics_service: SearchMetricsService | None = None
         self.cache_service: ResponseCacheService | None = None
 
-    def set_services(self, metrics_service: "SearchMetricsService", cache_service: "ResponseCacheService") -> None:
+    def set_services(self, metrics_service: SearchMetricsService, cache_service: ResponseCacheService) -> None:
         """Inject Oracle services."""
         self.metrics_service = metrics_service
         self.cache_service = cache_service
@@ -79,7 +83,7 @@ class VertexAIService:
             # Handle API errors gracefully
             return f"I apologize, but I'm experiencing technical difficulties. Please try again. Error: {e!s}"
         else:
-            return content
+            return cast("str", content)
 
         finally:
             # Record metrics
@@ -125,16 +129,15 @@ class VertexAIService:
             embeddings = await model.get_embeddings_async([text])
 
             if embeddings and len(embeddings) > 0:
-                return embeddings[0].values
+                return cast("list[float]", embeddings[0].values)
             # Fallback to mock embedding for development
-            return [0.0] * 768
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             # Log the error and fallback to mock embedding
-            import structlog
-            logger = structlog.get_logger()
             logger.warning("Embedding generation failed, using fallback", error=str(e))
             return [0.0] * 768  # Standard embedding dimension
+        else:
+            return [0.0] * 768
 
     def create_system_message(self, message: str | None = None) -> str:
         """Create system message for coffee recommendations."""
@@ -187,8 +190,8 @@ When providing locations, only provide responses that utilize the count of store
 class OracleVectorSearchService:
     """Oracle vector search without LangChain."""
 
-    def __init__(self, product_service: Any, vertex_ai_service: VertexAIService) -> None:
-        self.product_service = product_service
+    def __init__(self, products_service: Any, vertex_ai_service: VertexAIService) -> None:
+        self.products_service = products_service
         self.vertex_ai_service = vertex_ai_service
 
     async def similarity_search(self, query: str, k: int = 4) -> list[dict]:
@@ -205,8 +208,6 @@ class OracleVectorSearchService:
             oracle_start = time.time()
 
             # Use Oracle VECTOR_DISTANCE function
-            from sqlalchemy import text
-
             # Raw SQL for Oracle vector search
             search_query = text("""
                 SELECT p.id, p.name, p.description,
@@ -218,7 +219,7 @@ class OracleVectorSearchService:
             """)
 
             # Execute search
-            result = await self.product_service.repository.session.execute(
+            result = await self.products_service.repository.session.execute(
                 search_query,
                 {
                     "query_vector": query_embedding,
@@ -256,9 +257,6 @@ class OracleVectorSearchService:
 
         except (KeyError, AttributeError) as e:
             # Return empty results on error, but log it
-            import structlog
-
-            logger = structlog.get_logger()
             logger.exception("Vector search error", error=str(e))
             return []
         else:

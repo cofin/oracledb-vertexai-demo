@@ -1,6 +1,7 @@
 """Tests for recommendation service."""
 
 import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -12,7 +13,7 @@ class TestRecommendationService:
     """Test cases for RecommendationService."""
 
     @pytest.fixture
-    def mock_services(self):
+    def mock_services(self) -> dict[str, AsyncMock]:
         """Create mock services for testing."""
         return {
             "vertex_ai": AsyncMock(),
@@ -26,9 +27,9 @@ class TestRecommendationService:
         }
 
     @pytest.fixture
-    def recommendation_service(self, mock_services):
+    def recommendation_service(self, mock_services: dict[str, AsyncMock]) -> RecommendationService:
         """Create a RecommendationService instance."""
-        service = RecommendationService(
+        return RecommendationService(
             vertex_ai_service=mock_services["vertex_ai"],
             vector_search_service=mock_services["vector_search"],
             products_service=mock_services["products_service"],
@@ -39,14 +40,15 @@ class TestRecommendationService:
             metrics_service=mock_services["metrics_service"],
             user_id="test_user",
         )
-        return service
 
     @pytest.mark.asyncio
-    async def test_get_recommendation_basic(self, recommendation_service, mock_services):
+    async def test_get_recommendation_basic(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test basic recommendation flow."""
         # Setup mocks
         mock_session = MagicMock(id=uuid.uuid4(), session_id="test-session")
-        mock_services["session_service"].create_session.return_value = mock_session
+        mock_services["session_service"].create_session.return_value = mock_session  # type: ignore[attr-defined]
 
         # Mock vector search results
         mock_services["vector_search"].similarity_search.return_value = [
@@ -72,7 +74,7 @@ class TestRecommendationService:
         mock_services["vertex_ai"].chat_with_history.return_value = "Here are some great coffee recommendations!"
 
         # Mock metrics
-        mock_services["metrics_service"].get_performance_stats.return_value = {
+        mock_services["metrics_service"].get_performance_stats.return_value = {  # type: ignore[attr-defined]
             "avg_search_time_ms": 50.0,
         }
 
@@ -95,7 +97,9 @@ class TestRecommendationService:
         mock_services["conversation_service"].add_message.assert_called()
 
     @pytest.mark.asyncio
-    async def test_route_products_question_with_matches(self, recommendation_service, mock_services):
+    async def test_route_products_question_with_matches(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test product routing with matches."""
         # Mock vector search
         mock_services["vector_search"].similarity_search.return_value = [
@@ -110,7 +114,7 @@ class TestRecommendationService:
         ]
         mock_services["products_service"].list.return_value = mock_products
 
-        metadata, product_ids = await recommendation_service._route_products_question(
+        metadata, product_ids = await recommendation_service._route_products_question(  # noqa: SLF001  # noqa: SLF001
             "I want coffee recommendations",
         )
 
@@ -120,9 +124,11 @@ class TestRecommendationService:
         assert "Ethiopian Coffee" in metadata["product_matches"][0]
 
     @pytest.mark.asyncio
-    async def test_route_products_question_no_matches(self, recommendation_service, mock_services):
+    async def test_route_products_question_no_matches(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test product routing without coffee keywords."""
-        metadata, product_ids = await recommendation_service._route_products_question(
+        metadata, product_ids = await recommendation_service._route_products_question(  # noqa: SLF001
             "hello how are you",
         )
 
@@ -131,7 +137,9 @@ class TestRecommendationService:
         mock_services["vector_search"].similarity_search.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_route_locations_question_with_matches(self, recommendation_service, mock_services):
+    async def test_route_locations_question_with_matches(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test location routing with matches."""
         mock_shops = [
             MagicMock(
@@ -151,7 +159,7 @@ class TestRecommendationService:
         ]
         mock_services["shops_service"].list.return_value = mock_shops
 
-        metadata, location_count = await recommendation_service._route_locations_question(
+        metadata, location_count = await recommendation_service._route_locations_question(  # noqa: SLF001
             "where can I find coffee",
             matched_product_ids=[1, 2],
             chat_metadata={},
@@ -163,9 +171,11 @@ class TestRecommendationService:
         assert metadata["locations"][0]["name"] == "Coffee House A"
 
     @pytest.mark.asyncio
-    async def test_route_locations_question_no_products(self, recommendation_service, mock_services):
+    async def test_route_locations_question_no_products(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test location routing without product matches."""
-        metadata, location_count = await recommendation_service._route_locations_question(
+        metadata, location_count = await recommendation_service._route_locations_question(  # noqa: SLF001
             "where can I find coffee",
             matched_product_ids=[],
             chat_metadata={},
@@ -176,7 +186,7 @@ class TestRecommendationService:
         mock_services["shops_service"].list.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_format_context(self, recommendation_service):
+    async def test_format_context(self, recommendation_service: RecommendationService) -> None:
         """Test context formatting."""
         metadata = {
             "product_matches": [
@@ -186,7 +196,7 @@ class TestRecommendationService:
             "locations": [{"name": "Shop A"}, {"name": "Shop B"}],
         }
 
-        context = recommendation_service._format_context("Find me coffee", metadata)
+        context = recommendation_service._format_context("Find me coffee", metadata)  # noqa: SLF001
 
         assert "# User Query:" in context
         assert "Find me coffee" in context
@@ -196,25 +206,25 @@ class TestRecommendationService:
         assert "2 location(s)" in context
 
     @pytest.mark.asyncio
-    async def test_stream_recommendation(self, recommendation_service, mock_services):
+    async def test_stream_recommendation(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test streaming recommendation."""
         # Setup mocks
         mock_session = MagicMock(id=uuid.uuid4(), session_id="test-session")
-        mock_services["session_service"].create_session.return_value = mock_session
+        mock_services["session_service"].create_session.return_value = mock_session  # type: ignore[attr-defined]
         mock_services["vector_search"].similarity_search.return_value = []
         mock_services["conversation_service"].get_conversation_history.return_value = []
 
         # Mock streaming response
-        async def mock_stream():
+        async def mock_stream() -> AsyncGenerator[str, None]:
             yield "Hello "
             yield "world!"
 
         mock_services["vertex_ai"].stream_content.return_value = mock_stream()
 
         # Execute
-        chunks = []
-        async for chunk in recommendation_service.stream_recommendation("test query"):
-            chunks.append(chunk)
+        chunks = [chunk async for chunk in recommendation_service.stream_recommendation("test query")]
 
         assert chunks == ["Hello ", "world!"]
 
@@ -227,7 +237,9 @@ class TestRecommendationService:
         assert calls[1][1]["message_metadata"]["streamed"] is True
 
     @pytest.mark.asyncio
-    async def test_get_recommendation_with_existing_session(self, recommendation_service, mock_services):
+    async def test_get_recommendation_with_existing_session(
+        self, recommendation_service: RecommendationService, mock_services: dict[str, AsyncMock]
+    ) -> None:
         """Test recommendation with existing session."""
         # Setup existing session
         mock_session = MagicMock(id=uuid.uuid4(), session_id="existing-session")
@@ -237,10 +249,10 @@ class TestRecommendationService:
         mock_services["vector_search"].similarity_search.return_value = []
         mock_services["conversation_service"].get_conversation_history.return_value = []
         mock_services["vertex_ai"].chat_with_history.return_value = "Response"
-        mock_services["metrics_service"].get_performance_stats.return_value = {}
+        mock_services["metrics_service"].get_performance_stats.return_value = {}  # type: ignore[attr-defined]}
 
         # Execute with existing session
-        result = await recommendation_service.get_recommendation(
+        await recommendation_service.get_recommendation(  # pyright: ignore
             "test query",
             session_id="existing-session",
         )

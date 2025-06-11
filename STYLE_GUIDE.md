@@ -79,6 +79,240 @@ app/                              # Main application
     └── deps.py                 # Dependency injection
 ```
 
+## 🧪 Testing Standards (Mandatory)
+
+### Test Structure
+
+Follow litestar-fullstack testing patterns with unit/integration separation:
+
+```
+tests/
+├── conftest.py                    # Main test configuration with anyio
+├── unit/
+│   ├── conftest.py               # Mock-based fixtures for unit tests
+│   └── test_*_unit.py            # Fast unit tests with mocks
+├── integration/
+│   ├── conftest.py               # Database fixtures for integration tests
+│   └── test_*_integration.py     # Full database integration tests
+└── .env.testing                  # Test environment configuration
+```
+
+### Unit Tests Pattern
+
+```python
+"""Unit tests for CompanyService."""
+from unittest.mock import AsyncMock
+import pytest
+
+from app.domain.coffee.services.company import CompanyService
+from app.db import models as m
+
+
+@pytest.mark.anyio
+class TestCompanyService:
+    @pytest.fixture
+    def mock_session(self) -> AsyncMock:
+        return AsyncMock()
+
+    @pytest.fixture
+    def company_service(self, mock_session: AsyncMock) -> CompanyService:
+        return CompanyService(session=mock_session)
+
+    async def test_get_by_name_success(self, company_service: CompanyService) -> None:
+        # Mock the service method
+        expected_company = m.Company(id=1, name="Test Company")
+        company_service.get_one_or_none = AsyncMock(return_value=expected_company)
+
+        result = await company_service.get_by_name("Test Company")
+
+        assert result == expected_company
+        company_service.get_one_or_none.assert_called_once_with(name="Test Company")
+```
+
+### Integration Tests Pattern
+
+```python
+"""Integration tests for CompanyService with real database."""
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.domain.coffee.services.company import CompanyService
+from app.db import models as m
+
+
+@pytest.mark.anyio
+class TestCompanyServiceIntegration:
+    async def test_create_company(self, session: AsyncSession) -> None:
+        service = CompanyService(session=session)
+
+        company_data = {"name": "Test Coffee Co."}
+        company = await service.create(data=company_data)
+
+        assert company.name == "Test Coffee Co."
+        assert company.id is not None
+```
+
+### Test Configuration
+
+**pytest.ini_options in pyproject.toml:**
+
+```toml
+[tool.pytest.ini_options]
+addopts = ["-ra", "--ignore", "app/db/migrations"]
+filterwarnings = [
+    "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:google.*",
+    "ignore::PendingDeprecationWarning",
+]
+testpaths = ["tests"]
+```
+
+**Test Dependencies:**
+
+```toml
+test = [
+    "pytest", "pytest-asyncio", "pytest-cov", "pytest-mock",
+    "pytest-databases[valkey,oracle]", "pytest-sugar", "pytest-xdist"
+]
+```
+
+### Testing Commands
+
+```bash
+# Run unit tests (fast, no database)
+uv run pytest tests/unit/ -v
+
+# Run integration tests (with Oracle database)
+uv run pytest tests/integration/ -v --oracle
+
+# Run all tests
+uv run pytest tests/ -v
+
+# Run with coverage
+uv run pytest tests/ --cov=app --cov-report=html
+```
+
+## 🎯 Import Patterns (Mandatory)
+
+### Models Import Pattern
+
+Always import models using the `m` alias:
+
+```python
+from app.db import models as m
+
+# Usage in services
+class CompanyService(SQLAlchemyAsyncRepositoryService[m.Company]):
+    class Repo(SQLAlchemyAsyncRepository[m.Company]):
+        model_type = m.Company
+
+# Usage in relationships
+user: Mapped[m.User] = relationship(back_populates="sessions")
+```
+
+### Schema Import Pattern
+
+Import schemas directly and use dot notation:
+
+```python
+from app.domain.coffee import schemas
+
+# Usage in controllers
+async def create_company(self, data: schemas.CompanyCreate) -> schemas.Company:
+    # Implementation
+```
+
+### Service Import Pattern
+
+Import services directly for dependency injection:
+
+```python
+from app.domain.coffee.services.company import CompanyService
+from app.domain.coffee.services.vertex_ai import VertexAIService
+```
+
+## 🔗 Dependency Injection (Mandatory)
+
+### Service Provider Pattern
+
+Use `create_service_provider` for consistent service injection:
+
+```python
+# In deps.py
+from app.lib.deps import create_service_provider
+from app.domain.coffee.services.company import CompanyService
+from app.db import models as m
+
+provide_company_service = create_service_provider(
+    CompanyService,
+    load=[
+        selectinload(m.Company.products),
+    ],
+    error_messages={
+        "duplicate_key": "Company already exists.",
+        "integrity": "Company operation failed."
+    },
+)
+```
+
+### Controller Dependencies
+
+Use inline dependency declarations with `deps` naming:
+
+```python
+from litestar import Controller, get, post
+from litestar.di import Provide
+
+from app.domain.coffee import deps, schemas
+
+
+class CompanyController(Controller):
+    """Company management controller."""
+
+    dependencies = {
+        "company_service": Provide(deps.provide_company_service),
+    }
+
+    @get("/companies")
+    async def list_companies(
+        self,
+        company_service: CompanyService,
+    ) -> list[schemas.Company]:
+        """List all companies."""
+        companies = await company_service.list()
+        return [schemas.Company.from_orm(company) for company in companies]
+
+    @post("/companies")
+    async def create_company(
+        self,
+        data: schemas.CompanyCreate,
+        company_service: CompanyService,
+    ) -> schemas.Company:
+        """Create new company."""
+        company = await company_service.create(data.dict())
+        return schemas.Company.from_orm(company)
+```
+
+### Dependencies File Structure
+
+Each domain should have a `deps.py` file:
+
+```python
+# app/domain/coffee/deps.py
+"""Coffee domain dependency providers."""
+
+from app.lib.deps import create_service_provider
+from app.domain.coffee.services.company import CompanyService
+from app.domain.coffee.services.product import ProductService
+from app.db import models as m
+
+provide_company_service = create_service_provider(CompanyService)
+provide_product_service = create_service_provider(
+    ProductService,
+    load=[selectinload(m.Product.company)],
+)
+```
+
 ## 🔑 Critical Patterns
 
 ### Backend Service Layer (Mandatory)
@@ -86,13 +320,14 @@ app/                              # Main application
 All services MUST follow the Advanced Alchemy pattern with inner `Repo` class:
 
 ```python
-from litestar.plugins.sqlalchemy import repository, service
+from advanced_alchemy.repository import SQLAlchemyAsyncRepository
+from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 from app.db import models as m
 
-class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]):
+class UserSessionService(SQLAlchemyAsyncRepositoryService[m.UserSession]):
     """Oracle session management with Advanced Alchemy."""
 
-    class Repo(repository.SQLAlchemyAsyncRepository[m.UserSession]):
+    class Repo(SQLAlchemyAsyncRepository[m.UserSession]):
         """Session repository."""
         model_type = m.UserSession
 
@@ -111,7 +346,7 @@ class UserSessionService(service.SQLAlchemyAsyncRepositoryService[m.UserSession]
             "expires_at": expires_at
         })
 
-    async def get_active_session(self, session_id: str) -> Optional[m.UserSession]:
+    async def get_active_session(self, session_id: str) -> m.UserSession | None:
         """Get session if not expired."""
         session = await self.get_one_or_none(session_id=session_id)
         if session and session.expires_at > datetime.now(timezone.utc):

@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from litestar.openapi import OpenAPIConfig
-from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
+from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
 
 if TYPE_CHECKING:
@@ -50,13 +50,16 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         """
         from litestar import WebSocket
         from litestar.channels import ChannelsPlugin
+        from litestar.connection import Request
         from litestar.datastructures import State
         from litestar.enums import RequestEncodingType
         from litestar.params import Body
-        from litestar_vite.inertia import InertiaRequest
+        from litestar.static_files import create_static_files_router
+        from litestar_htmx import HTMXRequest
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config
+        from app.db import models as m
         from app.domain.coffee.controllers import CoffeeChatController
         from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
         from app.domain.coffee.services import (
@@ -73,7 +76,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             VertexAIService,
         )
         from app.lib import log
-        from app.lib.settings import get_settings
+        from app.lib.settings import BASE_DIR, get_settings
         from app.server import plugins
 
         settings = get_settings()
@@ -95,21 +98,28 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 plugins.oracle,
                 plugins.structlog,
                 plugins.alchemy,
-                plugins.vite,
-                plugins.inertia,
+                plugins.htmx,
             ],
         )
+        # Set HTMXRequest as the default request class
+        app_config.request_class = HTMXRequest
+        app_config.template_config = config.templates
         # openapi
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
-            version="0.2.0",  # Using app version from pyproject.toml
+            version="0.2.0",
             use_handler_docstrings=True,
-            render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
+            render_plugins=[ScalarRenderPlugin(version="latest")],
         )
         # routes
         app_config.route_handlers.extend(
             [
                 CoffeeChatController,
+                create_static_files_router(
+                    path="/static",
+                    directories=[str(BASE_DIR / "static")],
+                    name="static",
+                ),
             ],
         )
         # signatures
@@ -125,6 +135,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
+                "m": m,
                 # Service types
                 "ProductService": ProductService,
                 "ShopService": ShopService,
@@ -139,7 +150,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "SearchMetricsService": SearchMetricsService,
                 "CoffeeChatMessage": CoffeeChatMessage,
                 "CoffeeChatReply": CoffeeChatReply,
-                "Request": InertiaRequest,
+                "Request": Request,
+                "HTMXRequest": HTMXRequest,
             },
         )
         return app_config

@@ -1,0 +1,71 @@
+<!-- Total Searches -->
+<div class="metric-card {{ 'success' if metrics.total_searches > 1000 else '' }}">
+    <div class="metric-label">Total Searches</div>
+    <div class="metric-value">{{ "{:,}".format(metrics.total_searches) }}</div>
+    <div class="metric-trend {{ 'trend-up' if metrics.searches_trend > 0 else 'trend-down' if metrics.searches_trend < 0 else 'trend-neutral' }}">
+        {% if metrics.searches_trend > 0 %}
+            ↑ {{ metrics.searches_trend }}% from last hour
+        {% elif metrics.searches_trend < 0 %}
+            ↓ {{ abs(metrics.searches_trend) }}% from last hour
+        {% else %}
+            → No change
+        {% endif %}
+    </div>
+</div>
+
+<!-- Average Response Time -->
+<div class="metric-card {{ 'success' if metrics.avg_response_time < 100 else 'warning' if metrics.avg_response_time < 200 else 'danger' }}">
+    <div class="metric-label">Avg Response Time</div>
+    <div class="metric-value">{{ "{:.0f}".format(metrics.avg_response_time) }}ms</div>
+    <div class="metric-trend {{ 'trend-down' if metrics.response_time_trend < 0 else 'trend-up' if metrics.response_time_trend > 0 else 'trend-neutral' }}">
+        {% if metrics.response_time_trend < 0 %}
+            ↓ {{ abs(metrics.response_time_trend) }}% faster
+        {% elif metrics.response_time_trend > 0 %}
+            ↑ {{ metrics.response_time_trend }}% slower
+        {% else %}
+            → Stable
+        {% endif %}
+    </div>
+</div>
+
+<!-- Oracle Vector Time -->
+<div class="metric-card {{ 'success' if metrics.avg_oracle_time < 50 else 'warning' if metrics.avg_oracle_time < 100 else 'danger' }}">
+    <div class="metric-label">Oracle Vector Time</div>
+    <div class="metric-value">{{ "{:.0f}".format(metrics.avg_oracle_time) }}ms</div>
+    <div class="metric-trend">
+        <span style="color: #666;">{{ "{:.1f}".format(metrics.oracle_percentage) }}% of total time</span>
+    </div>
+</div>
+
+<!-- Cache Hit Rate -->
+<div class="metric-card {{ 'success' if metrics.cache_hit_rate > 80 else 'warning' if metrics.cache_hit_rate > 50 else 'danger' }}">
+    <div class="metric-label">Cache Hit Rate</div>
+    <div class="metric-value">{{ "{:.0f}".format(metrics.cache_hit_rate) }}%</div>
+    <div class="metric-trend {{ 'trend-up' if metrics.cache_trend > 0 else 'trend-down' if metrics.cache_trend < 0 else 'trend-neutral' }}">
+        {% if metrics.cache_trend > 0 %}
+            ↑ {{ metrics.cache_trend }}% improvement
+        {% elif metrics.cache_trend < 0 %}
+            ↓ {{ abs(metrics.cache_trend) }}% decrease
+        {% else %}
+            → Consistent
+        {% endif %}
+    </div>
+</div>
+
+<!-- Active Sessions -->
+<div class="metric-card">
+    <div class="metric-label">Active Sessions</div>
+    <div class="metric-value">{{ metrics.active_sessions }}</div>
+    <div class="metric-trend">
+        <span style="color: #666;">{{ metrics.unique_users }} unique users today</span>
+    </div>
+</div>
+
+<!-- Vector Search Accuracy -->
+<div class="metric-card {{ 'success' if metrics.avg_similarity_score > 0.8 else 'warning' if metrics.avg_similarity_score > 0.6 else '' }}">
+    <div class="metric-label">Avg Similarity Score</div>
+    <div class="metric-value">{{ "{:.2f}".format(metrics.avg_similarity_score) }}</div>
+    <div class="metric-trend">
+        <span style="color: #666;">{{ metrics.successful_searches }}% successful matches</span>
+    </div>
+</div>
