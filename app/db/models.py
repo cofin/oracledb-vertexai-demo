@@ -19,7 +19,8 @@ from datetime import datetime
 from uuid import UUID
 
 from advanced_alchemy.base import BigIntAuditBase, UUIDAuditBase
-from sqlalchemy import JSON, ForeignKey, Index, String, Text
+from advanced_alchemy.types import ORA_JSONB
+from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -46,8 +47,6 @@ class Shop(BigIntAuditBase):
 
     name: Mapped[str] = mapped_column(String(255))
     address: Mapped[str] = mapped_column(String(1000))
-    latitude: Mapped[float]
-    longitude: Mapped[float]
     # -----------
     # ORM Relationships
     # ------------
@@ -108,8 +107,6 @@ class Inventory(UUIDAuditBase):
     shop: Mapped[Shop] = relationship(back_populates="inventory", innerjoin=True, uselist=False, lazy="joined")
     shop_name: AssociationProxy[str] = association_proxy("shop", "name")
     shop_address: AssociationProxy[str] = association_proxy("shop", "address")
-    shop_latitude: AssociationProxy[str] = association_proxy("shop", "latitude")
-    shop_longitude: AssociationProxy[str] = association_proxy("shop", "longitude")
     product: Mapped[Product] = relationship(back_populates="inventory", innerjoin=True, uselist=False, lazy="joined")
     product_name: AssociationProxy[str] = association_proxy("product", "name")
     current_price: AssociationProxy[str] = association_proxy("product", "current_price")
@@ -124,7 +121,7 @@ class UserSession(UUIDAuditBase):
 
     session_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    data: Mapped[dict] = mapped_column(ORA_JSONB, nullable=False, default=dict)
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
 
     # Relationships
@@ -152,7 +149,7 @@ class ChatConversation(UUIDAuditBase):
     user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # 'user' | 'assistant' | 'system'
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    message_metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    message_metadata: Mapped[dict] = mapped_column(ORA_JSONB, nullable=False, default=dict)
 
     # Relationships
     session: Mapped[UserSession] = relationship(
@@ -173,7 +170,7 @@ class ResponseCache(UUIDAuditBase):
 
     cache_key: Mapped[str] = mapped_column(String(256), unique=True, index=True)
     query_text: Mapped[str] = mapped_column(String(4000), nullable=True)
-    response: Mapped[dict] = mapped_column(JSON, nullable=False)
+    response: Mapped[dict] = mapped_column(ORA_JSONB, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
     hit_count: Mapped[int] = mapped_column(default=0)
 
@@ -208,7 +205,7 @@ class AppConfig(UUIDAuditBase):
     __tablename__ = "app_config"
 
     key: Mapped[str] = mapped_column(String(256), unique=True, index=True)
-    value: Mapped[dict] = mapped_column(JSON, nullable=False)
+    value: Mapped[dict] = mapped_column(ORA_JSONB, nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (

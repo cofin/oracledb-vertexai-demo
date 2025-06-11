@@ -162,111 +162,23 @@ async def query_recommendation(
             console.print(Panel(Markdown(text), title="🤖 Cymbal AI", title_align="left"))
         else:
             console.print(NoPadding(Markdown(text)))
-        poi_template = dedent("""
-        [{name}](https://www.google.com/maps/place/{latitude},{longitude}/@{latitude},{longitude},17z)
-        {address}
-        """)
-        locations = [
-            poi_template.format(
-                name=poi.name,
-                address=poi.address,
-                latitude=poi.latitude,
-                longitude=poi.longitude,
-            )
-            for poi in response.points_of_interest
-        ]
-
-        if panel:
-            console.print(
-                Panel(
-                    Markdown("  \n".join(locations)) if locations else "No locations found.",
-                    title="📍 Locations",
-                    title_align="left",
-                ),
-            )
-        else:
-            console.print(NoPadding(Markdown("  \n".join(locations)) if locations else "No locations found."))
 
 
 # Individual CLI functions - these will be added to Litestar's CLI by the plugin
 
 
+@click.command()
 def load_fixtures() -> None:
     """Load coffee demo fixture data."""
+    from app.db.utils import load_database_fixtures
 
-    async def _load_fixtures() -> None:
-        from pathlib import Path
-
-        from advanced_alchemy.utils.fixtures import open_fixture_async
-
-        from app.config import alchemy
-        from app.domain.coffee.deps import (
-            provide_company_service,
-            provide_inventory_service,
-            provide_product_service,
-            provide_shop_service,
-        )
-
-        async with alchemy.get_session() as db_session:
-            companies_service = await anext(provide_company_service(db_session))
-            products_service = await anext(provide_product_service(db_session))
-            shops_service = await anext(provide_shop_service(db_session))
-            inventory_service = await anext(provide_inventory_service(db_session))
-
-            fixture_path = Path("app/db/fixtures")
-            data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="company")
-            await companies_service.upsert_many(data, match_fields=["id"])
-
-            # Load products
-            products_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="product")
-            await products_service.upsert_many(products_data, match_fields=["id"])
-
-            # Load shops
-            shops_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="shop")
-            await shops_service.upsert_many(shops_data, match_fields=["id"])
-
-            # Load inventory
-            inventory_data = await open_fixture_async(fixtures_path=fixture_path, fixture_name="inventory")
-            await inventory_service.upsert_many(inventory_data, match_fields=["shop_id", "product_id"])
-            await db_session.commit()
-
-        logger.info("Fixtures loaded successfully")
-
-    anyio.run(_load_fixtures)
+    anyio.run(load_database_fixtures)
 
 
+@click.command()
 def load_vectors() -> None:
     """Generate and load vector embeddings for products."""
-
-    async def _load_vectors() -> None:
-        from app.config import alchemy
-        from app.domain.coffee.deps import provide_product_service
-        from app.domain.coffee.services.vertex_ai import VertexAIService
-
-        async with alchemy.get_session() as db_session:
-            products_service = await anext(provide_product_service(db_session))
-            vertex_ai = VertexAIService()
-
-            # Get all products
-            products = await products_service.list()
-
-            for product in products:
-                # Generate embedding for product description
-                embedding = await vertex_ai.create_embedding(product.description)
-
-                # Update product with embedding
-                await products_service.update({
-                    "id": product.id,
-                    "embedding": embedding,
-                })
-
-                logger.info(
-                    "Generated embedding for product",
-                    product_id=product.id,
-                    product_name=product.name,
-                )
-
-        logger.info("Vector embeddings loaded successfully")
+    from app.db.utils import _load_vectors
 
     anyio.run(_load_vectors)
 

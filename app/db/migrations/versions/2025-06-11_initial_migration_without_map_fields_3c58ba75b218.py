@@ -1,9 +1,9 @@
 # type: ignore
-"""Add all models including Oracle AI tables
+"""Initial migration without map fields
 
-Revision ID: 3ec85aff96e3
-Revises:
-Create Date: 2025-06-08 22:11:16.852609+00:00
+Revision ID: 3c58ba75b218
+Revises: 
+Create Date: 2025-06-11 14:22:31.836729+00:00
 
 """
 from __future__ import annotations
@@ -15,8 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 from advanced_alchemy.types import EncryptedString, EncryptedText, GUID, ORA_JSONB, DateTimeUTC
 from sqlalchemy import Text  # noqa: F401
-from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
-
+from sqlalchemy.dialects import oracle
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -29,7 +28,7 @@ sa.EncryptedString = EncryptedString
 sa.EncryptedText = EncryptedText
 
 # revision identifiers, used by Alembic.
-revision = '3ec85aff96e3'
+revision = '3c58ba75b218'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -113,8 +112,6 @@ def schema_upgrades() -> None:
     sa.Column('id', sa.BigInteger().with_variant(sa.Integer(), 'sqlite'), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('address', sa.String(length=1000), nullable=False),
-    sa.Column('latitude', sa.Float(), nullable=False),
-    sa.Column('longitude', sa.Float(), nullable=False),
     sa.Column('created_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_shop'))
@@ -161,7 +158,7 @@ def schema_upgrades() -> None:
     sa.Column('current_price', sa.Float(), nullable=False),
     sa.Column('size', sa.String(length=50), nullable=False),
     sa.Column('description', sa.String(length=2000), nullable=False),
-    sa.Column('embedding', VECTOR(dim=768, storage_format=VectorStorageFormat.FLOAT32), nullable=True),
+    sa.Column('embedding', oracle.VECTOR(dim=768), nullable=True),
     sa.Column('created_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['company_id'], ['company.id'], name=op.f('fk_product_company_id_company'), ondelete='cascade'),

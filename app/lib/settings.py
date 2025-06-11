@@ -265,8 +265,6 @@ class AppSettings:
     """CSRF Secure Cookie"""
     GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
     """Google Project ID"""
-    GOOGLE_API_KEY: str = field(default_factory=lambda: os.getenv("GOOGLE_API_KEY", ""))
-    """Google API Key"""
     EMBEDDING_MODEL_TYPE: str = "textembedding-gecko@003"
 
     @property

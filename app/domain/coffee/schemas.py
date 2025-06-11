@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 if TYPE_CHECKING:
     from uuid import UUID
 
-class CoffeeChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class CoffeeChatMessage(msgspec.Struct):
     """Chat message input DTO."""
     message: str
     persona: str = "enthusiast"
@@ -78,13 +78,6 @@ class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaul
     result_count: int
 
 
-class PointsOfInterest(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
-    """Location data for map display."""
-    id: int
-    name: str
-    address: str
-    latitude: float
-    longitude: float
 
 
 class ChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
@@ -94,11 +87,10 @@ class ChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True)
 
 
 class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
-    """Complete chat response with locations."""
+    """Complete chat response."""
     message: str
     messages: list[ChatMessage]
     answer: str
-    points_of_interest: list[PointsOfInterest]
     query_id: str
     search_metrics: dict = {}
 

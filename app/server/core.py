@@ -157,9 +157,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli import recommend
+        from app.cli import recommend, load_fixtures, load_vectors
         from app.lib.settings import get_settings
+        from advanced_alchemy.extensions.litestar.cli import database_group
 
         settings = get_settings()
         self.app_slug = settings.app.slug
         cli.add_command(recommend, name="recommend")
+        
+        # Add our custom database commands
+        database_group.add_command(load_fixtures, name="load-fixtures")
+        database_group.add_command(load_vectors, name="load-vectors")

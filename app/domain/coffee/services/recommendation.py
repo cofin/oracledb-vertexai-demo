@@ -4,7 +4,6 @@ import uuid
 from collections.abc import AsyncGenerator, Sequence
 from typing import TYPE_CHECKING, Any
 
-import msgspec
 import structlog
 
 if TYPE_CHECKING:
@@ -13,7 +12,7 @@ from advanced_alchemy.filters import CollectionFilter, LimitOffset
 from sqlalchemy import select
 
 from app.db import models as m
-from app.domain.coffee.schemas import ChatMessage, CoffeeChatReply, PointsOfInterest
+from app.domain.coffee.schemas import ChatMessage, CoffeeChatReply
 from app.domain.coffee.services.account import (
     ChatConversationService,
     ResponseCacheService,
@@ -131,7 +130,6 @@ class RecommendationService:
                 ChatMessage(message=ai_response, source="ai"),
             ],
             answer=ai_response,
-            points_of_interest=chat_metadata.get("locations", []),
             query_id=query_id,
             search_metrics=await self.metrics_service.get_performance_stats(hours=1),
         )
@@ -234,19 +232,10 @@ class RecommendationService:
                 LimitOffset(4, 0),
             )
 
-            # Convert to points of interest
-            locations = [
-                PointsOfInterest(
-                    id=shop.id,
-                    name=shop.name,
-                    address=shop.address,
-                    latitude=float(shop.latitude) if shop.latitude else 0.0,
-                    longitude=float(shop.longitude) if shop.longitude else 0.0,
-                )
-                for shop in shops_with_products
+            # Store shop information for context
+            chat_metadata["shop_locations"] = [
+                {"name": shop.name, "address": shop.address} for shop in shops_with_products
             ]
-
-            chat_metadata["locations"] = [msgspec.to_builtins(loc) for loc in locations]
             return chat_metadata, len(shops_with_products)
 
         return chat_metadata, 0
@@ -260,8 +249,8 @@ class RecommendationService:
             products_text = "\n".join(chat_metadata["product_matches"])
             formatted_parts.append(f"# Matching coffee products (if applicable):\n{products_text}")
 
-        if chat_metadata.get("product_matches") and chat_metadata.get("locations"):
-            location_count = len(chat_metadata["locations"])
+        if chat_metadata.get("product_matches") and chat_metadata.get("shop_locations"):
+            location_count = len(chat_metadata["shop_locations"])
             formatted_parts.append(
                 f"# Product Availability:\nThere are {location_count} location(s) with these products",
             )
