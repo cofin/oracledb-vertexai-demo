@@ -51,6 +51,8 @@ async def load_database_fixtures() -> None:
 
 
 async def _load_vectors() -> None:
+    import array
+
     from app.config import alchemy
     from app.server.deps import provide_product_service
     from app.services.vertex_ai import VertexAIService
@@ -66,10 +68,13 @@ async def _load_vectors() -> None:
             # Generate embedding for product description
             embedding = await vertex_ai.create_embedding(product.description)
 
+            # Convert to Oracle VECTOR format
+            oracle_vector = array.array("f", embedding)
+
             # Update product with embedding
             await products_service.update({
                 "id": product.id,
-                "embedding": embedding,
+                "embedding": oracle_vector,
             })
 
             logger.info(

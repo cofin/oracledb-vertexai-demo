@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import array
 import asyncio
 import json
 import uuid
@@ -9,15 +10,20 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from google.cloud import aiplatform, storage
-from google.cloud.aiplatform import BatchPredictionJob
 
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
+    from google.cloud.aiplatform import BatchPredictionJob
 
     from app.services.product import ProductService
 
 logger = structlog.get_logger()
+
+
+def convert_to_oracle_vector(embedding: list[float]) -> array.array:
+    """Convert a Python list of floats to Oracle VECTOR format."""
+    return array.array("f", embedding)
 
 
 class BulkEmbeddingService:
@@ -44,10 +50,7 @@ class BulkEmbeddingService:
         try:
             bucket = self.storage_client.bucket(self.bucket_name)
             if not bucket.exists():
-                bucket = self.storage_client.create_bucket(
-                    self.bucket_name,
-                    location="us-central1"
-                )
+                bucket = self.storage_client.create_bucket(self.bucket_name, location="us-central1")
                 await logger.ainfo(f"Created storage bucket: {self.bucket_name}")
             else:
                 await logger.ainfo(f"Using existing storage bucket: {self.bucket_name}")
@@ -57,11 +60,13 @@ class BulkEmbeddingService:
 
     async def export_products_to_jsonl(self, output_path: str) -> int:
         """Export products without embeddings to JSONL format for batch processing."""
-        # Get products that need embeddings
-        products = await self.product_service.list(
-            # Add filter for products without embeddings
-            # This assumes you have an embedding column in your Product model
-        )
+        from sqlalchemy import select
+        from app.db.models import Product
+        
+        # Get products that need embeddings (where embedding is NULL)
+        stmt = select(Product).where(Product.embedding.is_(None))
+        result = await self.product_service.repository.session.execute(stmt)
+        products = result.scalars().all()
 
         batch_data = []
         for product in products:
@@ -74,7 +79,7 @@ class BulkEmbeddingService:
                 "task_type": "RETRIEVAL_DOCUMENT",
                 "title": product.name,
                 # Include product ID for mapping results back
-                "metadata": {"product_id": str(product.id)}
+                "metadata": {"product_id": str(product.id)},
             }
             batch_data.append(request_data)
 
@@ -89,10 +94,7 @@ class BulkEmbeddingService:
         return len(batch_data)
 
     async def submit_batch_embedding_job(
-        self,
-        input_path: str,
-        output_path: str,
-        job_display_name: str | None = None
+        self, input_path: str, output_path: str, job_display_name: str | None = None
     ) -> BatchPredictionJob:
         """Submit a batch prediction job for embeddings."""
         if job_display_name is None:
@@ -123,11 +125,7 @@ class BulkEmbeddingService:
         await logger.ainfo(f"Batch job submitted with ID: {job.resource_name}")
         return job
 
-    async def wait_for_job_completion(
-        self,
-        job: BatchPredictionJob,
-        check_interval: int = 60
-    ) -> None:
+    async def wait_for_job_completion(self, job: BatchPredictionJob, check_interval: int = 60) -> None:
         """Wait for batch job to complete with periodic status checks."""
         await logger.ainfo(f"Waiting for job completion: {job.display_name}")
 
@@ -192,12 +190,9 @@ class BulkEmbeddingService:
                 return
 
             # Update product in database
-            # Note: This assumes you have an embedding column in your Product model
-            # You may need to modify your Product model to include embedding storage
-            await self.product_service.update(
-                product_id,
-                {"embedding": embedding}
-            )
+            # Convert to Oracle VECTOR format
+            oracle_vector = convert_to_oracle_vector(embedding)
+            await self.product_service.update(product_id, {"embedding": oracle_vector})
 
             await logger.adebug(f"Updated embedding for product {product_id}")
 
@@ -230,11 +225,7 @@ class BulkEmbeddingService:
                 )
 
             # Step 3: Submit batch job
-            job = await self.submit_batch_embedding_job(
-                input_path,
-                output_path,
-                f"bulk-embeddings-{job_id}"
-            )
+            job = await self.submit_batch_embedding_job(input_path, output_path, f"bulk-embeddings-{job_id}")
 
             # Step 4: Wait for completion
             await self.wait_for_job_completion(job)
@@ -247,16 +238,12 @@ class BulkEmbeddingService:
                 "job_id": job_id,
                 "products_exported": product_count,
                 "embeddings_processed": processed_count,
-                "job_resource_name": job.resource_name
+                "job_resource_name": job.resource_name,
             }
 
         except Exception as e:
             await logger.aerror(f"Bulk embedding job failed: {e}")
-            return {
-                "status": "failed",
-                "job_id": job_id,
-                "error": str(e)
-            }
+            return {"status": "failed", "job_id": job_id, "error": str(e)}
 
 
 class OnlineEmbeddingService:
@@ -277,12 +264,15 @@ class OnlineEmbeddingService:
             logger.error(f"Failed to generate embedding for product {product_id}: {e}")
             raise
 
-    async def process_new_products(self, product_service: ProductService) -> int:
+    async def process_new_products(self, product_service: ProductService, limit: int = 200) -> int:
         """Process products that need embeddings using online API."""
+        from sqlalchemy import select
+        from app.db.models import Product
+        
         # Get products without embeddings (limit to reasonable batch size)
-        products = await product_service.list(
-            # Add filter for products without embeddings, limit to ~100-200
-        )
+        stmt = select(Product).where(Product.embedding.is_(None)).limit(limit)
+        result = await product_service.repository.session.execute(stmt)
+        products = result.scalars().all()
 
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
@@ -293,7 +283,8 @@ class OnlineEmbeddingService:
                 embedding = await self.embed_single_product(product.id, text_content)
 
                 if embedding:
-                    await product_service.update(product.id, {"embedding": embedding})
+                    oracle_vector = convert_to_oracle_vector(embedding)
+                    await product_service.update(product.id, {"embedding": oracle_vector})
                     return 1
                 return 0
 

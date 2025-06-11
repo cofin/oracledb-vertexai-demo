@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import array
 import time
 import uuid
 from typing import TYPE_CHECKING, Any, cast
@@ -11,6 +12,7 @@ import vertexai
 from google.api_core import exceptions as google_exceptions
 from sqlalchemy import text
 from vertexai.generative_models import GenerativeModel
+from vertexai.language_models import TextEmbeddingModel
 
 from app.lib.settings import get_settings
 from app.schemas import SearchMetricsCreate
@@ -68,7 +70,7 @@ class VertexAIService:
     def get_model_info(self) -> dict[str, str]:
         """Get information about the currently active model."""
         # Extract just the model name from the full path
-        active_model_full = self.model._model_name
+        active_model_full = self.model._model_name  # noqa: SLF001
         active_model_name = active_model_full.split("/")[-1] if "/" in active_model_full else active_model_full
 
         return {
@@ -154,7 +156,6 @@ class VertexAIService:
         """Create embeddings using Vertex AI."""
         try:
             # Use the native Vertex AI embedding model
-            from vertexai.language_models import TextEmbeddingModel
 
             model = TextEmbeddingModel.from_pretrained(self.embedding_model)
             embeddings = await model.get_embeddings_async([text])
@@ -238,6 +239,11 @@ class OracleVectorSearchService:
             # Perform Oracle vector search
             oracle_start = time.time()
 
+            # Convert embedding to Oracle VECTOR format
+
+            # Convert to float32 array for Oracle VECTOR
+            vector_array = array.array("f", query_embedding)
+
             # Use Oracle VECTOR_DISTANCE function
             # Raw SQL for Oracle vector search
             search_query = text("""
@@ -253,7 +259,7 @@ class OracleVectorSearchService:
             result = await self.products_service.repository.session.execute(
                 search_query,
                 {
-                    "query_vector": query_embedding,
+                    "query_vector": vector_array,
                     "limit": k,
                 },
             )

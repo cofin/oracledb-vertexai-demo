@@ -22,8 +22,13 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="session")
 async def engine(oracle_service: Any) -> AsyncGenerator[AsyncEngine, None]:
     """Create async engine with Oracle database."""
+    # Build connection string from oracle_service attributes
+    connection_string = (
+        f"oracle+oracledb://{oracle_service.user}:{oracle_service.password}"
+        f"@{oracle_service.host}:{oracle_service.port}/{oracle_service.service_name}"
+    )
     engine = create_async_engine(
-        oracle_service.get_connection_string(),
+        connection_string,
         echo=False,
         poolclass=NullPool,
     )
@@ -149,9 +154,8 @@ async def _patch_db(
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Patch database configuration for tests."""
-    # Mock database functions in the app
-    monkeypatch.setattr("app.db.utils.create_session", lambda: sessionmaker())
-    monkeypatch.setattr("app.db.utils.get_engine", lambda: engine)
+    # These functions don't exist in the current setup, so no patching needed
+    pass
 
 
 @pytest.fixture

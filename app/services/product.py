@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 
+from advanced_alchemy.filters import LimitOffset
 from advanced_alchemy.repository import SQLAlchemyAsyncRepository
 from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
 
@@ -30,3 +31,21 @@ class ProductService(SQLAlchemyAsyncRepositoryService[m.Product]):
     async def search_by_description(self, search_term: str) -> Sequence[m.Product]:
         """Search products by description."""
         return await self.list(m.Product.description.ilike(f"%{search_term}%"))
+
+    async def get_products_without_embeddings(
+        self, limit: int = 100, offset: int = 0
+    ) -> tuple[Sequence[m.Product], int]:
+        """Get products that have null embeddings with pagination.
+        
+        Args:
+            limit: Maximum number of records to return
+            offset: Number of records to skip
+            
+        Returns:
+            Tuple of (products, total_count)
+        """
+        limit_offset = LimitOffset(limit=limit, offset=offset)
+        return await self.list_and_count(
+            m.Product.embedding.is_(None),
+            limit_offset
+        )

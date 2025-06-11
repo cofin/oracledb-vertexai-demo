@@ -1,9 +1,9 @@
 # type: ignore
-"""Initial migration without map fields
+"""Initial migration with embedding generated on field
 
-Revision ID: 3c58ba75b218
-Revises:
-Create Date: 2025-06-11 14:22:31.836729+00:00
+Revision ID: a127028a473a
+Revises: 
+Create Date: 2025-06-11 19:20:42.214775+00:00
 
 """
 from __future__ import annotations
@@ -16,6 +16,7 @@ from alembic import op
 from advanced_alchemy.types import EncryptedString, EncryptedText, GUID, ORA_JSONB, DateTimeUTC
 from sqlalchemy import Text  # noqa: F401
 from sqlalchemy.dialects import oracle
+from sqlalchemy.dialects.oracle import VectorStorageFormat
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -28,7 +29,7 @@ sa.EncryptedString = EncryptedString
 sa.EncryptedText = EncryptedText
 
 # revision identifiers, used by Alembic.
-revision = '3c58ba75b218'
+revision = 'a127028a473a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -158,7 +159,8 @@ def schema_upgrades() -> None:
     sa.Column('current_price', sa.Float(), nullable=False),
     sa.Column('size', sa.String(length=50), nullable=False),
     sa.Column('description', sa.String(length=2000), nullable=False),
-    sa.Column('embedding', oracle.VECTOR(dim=768), nullable=True),
+    sa.Column('embedding', oracle.VECTOR(dim=768, storage_format=VectorStorageFormat.FLOAT32), nullable=True),
+    sa.Column('embedding_generated_on', sa.DateTimeUTC(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTimeUTC(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['company_id'], ['company.id'], name=op.f('fk_product_company_id_company'), ondelete='cascade'),

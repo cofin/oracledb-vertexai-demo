@@ -19,7 +19,7 @@ from datetime import datetime
 from uuid import UUID
 
 from advanced_alchemy.base import BigIntAuditBase, UUIDAuditBase
-from advanced_alchemy.types import ORA_JSONB
+from advanced_alchemy.types import ORA_JSONB, DateTimeUTC
 from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.dialects.oracle import VECTOR, VectorStorageFormat
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
@@ -71,6 +71,7 @@ class Product(BigIntAuditBase):
         VECTOR(dim=768, storage_format=VectorStorageFormat.FLOAT32),  # type: ignore[no-untyped-call]
         nullable=True,
     )
+    embedding_generated_on: Mapped[datetime | None] = mapped_column(DateTimeUTC, nullable=True)
     # -----------
     # ORM Relationships
     # ------------
@@ -113,6 +114,7 @@ class Inventory(UUIDAuditBase):
 
 
 # Oracle-specific models for AI features
+
 
 class UserSession(UUIDAuditBase):
     """Oracle-native session storage with JSON data."""
@@ -208,6 +210,4 @@ class AppConfig(UUIDAuditBase):
     value: Mapped[dict] = mapped_column(ORA_JSONB, nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
 
-    __table_args__ = (
-        Index("ix_config_key", "key"),
-    )
+    __table_args__ = (Index("ix_config_key", "key"),)
