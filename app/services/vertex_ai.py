@@ -37,26 +37,13 @@ class VertexAIService:
             location="us-central1",
         )
 
-        # Initialize models with intelligent fallback for tech demo
-        self.primary_model_name = settings.app.GEMINI_MODEL
-        self.fallback_model_name = settings.app.GEMINI_MODEL_FALLBACK
+        # Initialize models from settings
+        self.model_name = settings.app.GEMINI_MODEL
         self.embedding_model = settings.app.EMBEDDING_MODEL
 
-        # Try to initialize the primary model (Gemini 2.5 Flash)
-        try:
-            self.model = GenerativeModel(self.primary_model_name)
-            logger.info(f"Successfully initialized primary model: {self.primary_model_name}")
-        except Exception as e:
-            logger.warning(f"Failed to initialize primary model {self.primary_model_name}: {e}")
-            logger.info(f"Falling back to: {self.fallback_model_name}")
-            try:
-                self.model = GenerativeModel(self.fallback_model_name)
-                logger.info(f"Successfully initialized fallback model: {self.fallback_model_name}")
-            except Exception as fallback_e:
-                logger.error(f"Failed to initialize fallback model {self.fallback_model_name}: {fallback_e}")
-                # Last resort - use the most stable model available
-                self.model = GenerativeModel("gemini-1.5-flash-001")
-                logger.info("Using last resort stable model: gemini-1.5-flash-001")
+        # Initialize the model
+        self.model = GenerativeModel(self.model_name)
+        logger.info("Initialized model", model=self.model_name)
 
         # Oracle services for metrics and caching
         self.metrics_service: SearchMetricsService | None = None
@@ -76,8 +63,7 @@ class VertexAIService:
         return {
             "active_model": active_model_name,
             "active_model_full": active_model_full,
-            "primary_model": self.primary_model_name,
-            "fallback_model": self.fallback_model_name,
+            "configured_model": self.model_name,
             "embedding_model": self.embedding_model,
         }
 
@@ -107,7 +93,7 @@ class VertexAIService:
             if use_cache and self.cache_service:
                 await self.cache_service.cache_response(
                     prompt,
-                    {"content": content, "model": "gemini-1.5-flash-002"},
+                    {"content": content, "model": self.model_name},
                     ttl_minutes=5,
                     user_id=user_id,
                 )
@@ -164,9 +150,9 @@ class VertexAIService:
                 return cast("list[float]", embeddings[0].values)
             # Fallback to mock embedding for development
 
-        except Exception as e:  # noqa: BLE001
+        except Exception:
             # Log the error and fallback to mock embedding
-            logger.warning("Embedding generation failed, using fallback", error=str(e))
+            logger.exception("Embedding generation failed, using fallback")
             return [0.0] * 768  # Standard embedding dimension
         else:
             return [0.0] * 768
@@ -174,13 +160,17 @@ class VertexAIService:
     def create_system_message(self, message: str | None = None) -> str:
         """Create system message for coffee recommendations."""
         default_message = """
-You are a helpful AI assistant specializing in coffee recommendations.
-Given a user's chat history and the latest user query and a list of matching coffees from a database, provide an engaging and informative response.
-If the user is asking about coffee recommendations and locations, provide the information and finish the response with "the map below displays the locations where you can find the coffee."
-If the user is asking a general question or making a statement, respond appropriately without using the database.
-Your responses should be as concise as possible.
+You are a helpful AI assistant specializing in coffee recommendations for The Coffee Connection.
+Given a user's chat history, the latest user query, and relevant context about our products and locations, provide an engaging and informative response.
 
-When providing locations, only provide responses that utilize the count of stores found that match the product selection. The Locations will be provided separately by another component of the user interface.
+When shop locations are provided in the context:
+- List the actual shop names and addresses clearly
+- Always use specific numbers and details from the context provided
+- If multiple locations are available, mention them naturally (e.g., "You can find this at our Downtown Roasters location on 123 Main St")
+- Focus on the conversation content only, without referring to any external UI elements
+
+If no shops are found with the requested products, state that clearly.
+Keep your responses concise and conversational.
         """.strip()
 
         return message or default_message

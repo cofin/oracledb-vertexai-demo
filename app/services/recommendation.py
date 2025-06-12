@@ -75,7 +75,8 @@ class RecommendationService:
                 session_id = session.session_id
 
         # Route the question through product and location matching
-        chat_metadata, matched_product_ids = await self._route_products_question(query)
+        chat_metadata: dict[str, Any] = {}
+        chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
         chat_metadata, location_count = await self._route_locations_question(
             query,
             matched_product_ids,
@@ -239,11 +240,27 @@ class RecommendationService:
             products_text = "\n".join(chat_metadata["product_matches"])
             formatted_parts.append(f"# Matching coffee products (if applicable):\n{products_text}")
 
-        if chat_metadata.get("product_matches") and chat_metadata.get("shop_locations"):
-            location_count = len(chat_metadata["shop_locations"])
-            formatted_parts.append(
-                f"# Product Availability:\nThere are {location_count} location(s) with these products",
-            )
+        if chat_metadata.get("shop_locations"):
+            shops = chat_metadata["shop_locations"]
+            location_count = len(shops)
+
+            # Limit to first 5 shops for token management
+            max_shops_in_context = 5
+            if location_count > max_shops_in_context:
+                shops = shops[:max_shops_in_context]
+                formatted_parts.append(f"# Product Availability:\nFound at {location_count} locations. Here are {max_shops_in_context} of them:")
+            else:
+                formatted_parts.append(f"# Product Availability:\nAvailable at the following {location_count} location(s):")
+
+            # Add shop details with basic sanitization
+            shop_list = []
+            for shop in shops:
+                # Basic sanitization - remove potential prompt injection attempts
+                name = shop["name"].replace("\n", " ").replace("\r", " ")[:100]
+                address = shop["address"].replace("\n", " ").replace("\r", " ")[:200]
+                shop_list.append(f"- {name}: {address}")
+
+            formatted_parts.append("\n".join(shop_list))
 
         return "\n\n".join(formatted_parts)
 
@@ -263,7 +280,8 @@ class RecommendationService:
                 session_id = session.session_id
 
         # Route the question (same as regular recommendation)
-        chat_metadata, matched_product_ids = await self._route_products_question(query)
+        chat_metadata: dict[str, Any] = {}
+        chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
         chat_metadata, location_count = await self._route_locations_question(
             query,
             matched_product_ids,

@@ -6,19 +6,25 @@ import array
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 import structlog
 from google.cloud import aiplatform, storage
+from sqlalchemy import select
 
+from app.db.models import Product
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform import BatchPredictionJob
 
     from app.services.product import ProductService
+    from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
+
+# Constants
+RECOMMENDED_BATCH_SIZE: Final[int] = 25000
 
 
 def convert_to_oracle_vector(embedding: list[float]) -> array.array:
@@ -50,19 +56,20 @@ class BulkEmbeddingService:
         try:
             bucket = self.storage_client.bucket(self.bucket_name)
             if not bucket.exists():
-                bucket = self.storage_client.create_bucket(self.bucket_name, location="us-central1")
+                bucket = self.storage_client.create_bucket(
+                    self.bucket_name,
+                    location="us-central1"
+                )
                 await logger.ainfo(f"Created storage bucket: {self.bucket_name}")
             else:
                 await logger.ainfo(f"Using existing storage bucket: {self.bucket_name}")
-        except Exception as e:
-            await logger.aerror(f"Failed to create/access storage bucket: {e}")
+        except Exception:
+            await logger.aerror("Failed to create/access storage bucket", exc_info=True)
             raise
 
     async def export_products_to_jsonl(self, output_path: str) -> int:
         """Export products without embeddings to JSONL format for batch processing."""
-        from sqlalchemy import select
-        from app.db.models import Product
-        
+
         # Get products that need embeddings (where embedding is NULL)
         stmt = select(Product).where(Product.embedding.is_(None))
         result = await self.product_service.repository.session.execute(stmt)
@@ -116,10 +123,6 @@ class BulkEmbeddingService:
             predictions_format="jsonl",
             gcs_source=input_uri,
             gcs_destination_prefix=output_uri,
-            # Enable 50% discount for batch processing
-            manual_batch_tuning_parameters=aiplatform.ManualBatchTuningParameters(
-                batch_size=1000  # Optimize batch size for embeddings
-            ),
         )
 
         await logger.ainfo(f"Batch job submitted with ID: {job.resource_name}")
@@ -130,8 +133,9 @@ class BulkEmbeddingService:
         await logger.ainfo(f"Waiting for job completion: {job.display_name}")
 
         while True:
-            # Refresh job state
-            job.refresh()
+            # Get current job state - BatchPredictionJob doesn't have refresh method
+            # Instead, we need to fetch the job again
+            job = aiplatform.BatchPredictionJob.get(job.resource_name)
             state = job.state.name
 
             await logger.ainfo(f"Job state: {state}")
@@ -176,6 +180,7 @@ class BulkEmbeddingService:
 
     async def _update_product_embedding(self, result: dict[str, Any]) -> None:
         """Update a single product with its embedding."""
+        product_id: str | None = None
         try:
             # Extract product ID from metadata
             product_id = result.get("metadata", {}).get("product_id")
@@ -192,12 +197,12 @@ class BulkEmbeddingService:
             # Update product in database
             # Convert to Oracle VECTOR format
             oracle_vector = convert_to_oracle_vector(embedding)
-            await self.product_service.update(product_id, {"embedding": oracle_vector})
+            await self.product_service.update(int(product_id), {"embedding": oracle_vector})
 
             await logger.adebug(f"Updated embedding for product {product_id}")
 
-        except Exception as e:
-            await logger.aerror(f"Failed to update product embedding: {e}")
+        except Exception:
+            await logger.aerror("Failed to update product embedding", product_id=product_id, exc_info=True)
             # Don't raise - continue processing other results
 
     async def run_bulk_embedding_job(self) -> dict[str, Any]:
@@ -218,10 +223,12 @@ class BulkEmbeddingService:
                 return {"status": "skipped", "reason": "no_products_to_process"}
 
             # Check minimum batch size recommendation
-            if product_count < 25000:
+            if product_count < RECOMMENDED_BATCH_SIZE:
                 await logger.awarn(
-                    f"Product count ({product_count}) is below recommended minimum (25,000) "
-                    "for batch processing. Consider using online API for smaller batches."
+                    "Product count is below recommended minimum for batch processing",
+                    product_count=product_count,
+                    recommended_minimum=RECOMMENDED_BATCH_SIZE,
+                    suggestion="Consider using online API for smaller batches",
                 )
 
             # Step 3: Submit batch job
@@ -233,6 +240,11 @@ class BulkEmbeddingService:
             # Step 5: Process results
             processed_count = await self.process_embedding_results(output_path)
 
+        except Exception as e:
+            await logger.aerror("Bulk embedding job failed", job_id=job_id, exc_info=True)
+            return {"status": "failed", "job_id": job_id, "error": str(e)}
+
+        else:
             return {
                 "status": "completed",
                 "job_id": job_id,
@@ -241,34 +253,27 @@ class BulkEmbeddingService:
                 "job_resource_name": job.resource_name,
             }
 
-        except Exception as e:
-            await logger.aerror(f"Bulk embedding job failed: {e}")
-            return {"status": "failed", "job_id": job_id, "error": str(e)}
-
 
 class OnlineEmbeddingService:
     """Service for real-time embedding operations for new/updated products."""
 
-    def __init__(self, vertex_ai_service) -> None:
+    def __init__(self, vertex_ai_service: VertexAIService) -> None:
         """Initialize with existing Vertex AI service."""
         self.vertex_ai_service = vertex_ai_service
 
     async def embed_single_product(self, product_id: str, text_content: str) -> list[float]:
         """Generate embedding for a single product using online API."""
         try:
-            # Use your existing vertex AI service method
-            embedding = await self.vertex_ai_service.get_embeddings([text_content])
-            return embedding[0] if embedding else []
+            # Use the correct vertex AI service method
+            return await self.vertex_ai_service.create_embedding(text_content)
 
-        except Exception as e:
-            logger.error(f"Failed to generate embedding for product {product_id}: {e}")
+        except Exception:
+            logger.exception("Failed to generate embedding for product", product_id=product_id)
             raise
 
     async def process_new_products(self, product_service: ProductService, limit: int = 200) -> int:
         """Process products that need embeddings using online API."""
-        from sqlalchemy import select
-        from app.db.models import Product
-        
+
         # Get products without embeddings (limit to reasonable batch size)
         stmt = select(Product).where(Product.embedding.is_(None)).limit(limit)
         result = await product_service.repository.session.execute(stmt)
@@ -277,10 +282,10 @@ class OnlineEmbeddingService:
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
 
-        async def process_product(product):
+        async def process_product(product: Product) -> int:
             async with semaphore:
                 text_content = f"{product.name}: {product.description}"
-                embedding = await self.embed_single_product(product.id, text_content)
+                embedding = await self.embed_single_product(str(product.id), text_content)
 
                 if embedding:
                     oracle_vector = convert_to_oracle_vector(embedding)

@@ -186,7 +186,7 @@ def load_vectors() -> None:
 
 @click.command()
 def bulk_embed() -> None:
-    """Run bulk embedding job for all products using Vertex AI Batch Prediction (50% discount)."""
+    """Run bulk embedding job for all products using Vertex AI Batch Prediction."""
 
     async def _run_bulk_embed() -> None:
         from app.config import alchemy
@@ -217,11 +217,7 @@ def bulk_embed() -> None:
 
 
 @click.command()
-@click.option(
-    "--limit",
-    default=200,
-    help="Maximum number of products to process in this batch (default: 200)"
-)
+@click.option("--limit", default=200, help="Maximum number of products to process in this batch (default: 200)")
 def embed_new(limit: int) -> None:
     """Process new/updated products using online embedding API for real-time updates."""
 
@@ -245,7 +241,7 @@ def embed_new(limit: int) -> None:
             if processed_count > 0:
                 console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
             else:
-                console.print("[yellow]ℹ No new products to process[/yellow]")
+                console.print("[yellow]No new products to process[/yellow]")
 
     anyio.run(_embed_new_products)
 
@@ -263,8 +259,7 @@ def model_info() -> None:
 
         # Show settings
         settings = get_settings()
-        console.print(f"[bold]Primary Model:[/bold] {settings.app.GEMINI_MODEL}")
-        console.print(f"[bold]Fallback Model:[/bold] {settings.app.GEMINI_MODEL_FALLBACK}")
+        console.print(f"[bold]Configured Model:[/bold] {settings.app.GEMINI_MODEL}")
         console.print(f"[bold]Embedding Model:[/bold] {settings.app.EMBEDDING_MODEL}")
         console.print(f"[bold]Google Project:[/bold] {settings.app.GOOGLE_PROJECT_ID}")
 
@@ -277,17 +272,10 @@ def model_info() -> None:
             console.print("[bold green]✓ Successfully initialized![/bold green]")
             console.print(f"[bold]Active Model:[/bold] {model_info['active_model']}")
 
-            if model_info["active_model"] == model_info["primary_model"]:
-                console.print("[bold green]✓ Using primary model (latest Gemini 2.5 Flash!)[/bold green]")
-            elif model_info["active_model"] == model_info["fallback_model"]:
-                console.print("[bold yellow]⚠ Using fallback model[/bold yellow]")
-            else:
-                console.print("[bold red]⚠ Using emergency fallback[/bold red]")
-
             # Show additional details
             console.print(f"[dim]Full model path: {model_info['active_model_full']}[/dim]")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             console.print(f"[bold red]✗ Model initialization failed: {e}[/bold red]")
 
     _show_model_info()
