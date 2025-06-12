@@ -25,9 +25,9 @@ from app.server.core import ApplicationCore
 
 settings = get_settings()
 app_config = ApplicationCore()
-oracle = OracleDatabasePlugin(config=config.oracle)
+oracle = OracleDatabasePlugin(config=config.oracle_async)
 granian = GranianPlugin()
 flasher = FlashPlugin(config=config.flasher)
 alchemy = SQLAlchemyPlugin(config=config.alchemy)
 structlog = StructlogPlugin(config=config.log)
-htmx = HTMXPlugin( )
+htmx = HTMXPlugin()

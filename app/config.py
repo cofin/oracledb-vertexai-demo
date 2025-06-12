@@ -39,7 +39,12 @@ from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.plugins.flash import FlashConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.template import TemplateConfig
-from litestar_oracledb import SyncOracleDatabaseConfig, SyncOraclePoolConfig
+from litestar_oracledb import (
+    AsyncOracleDatabaseConfig,
+    AsyncOraclePoolConfig,
+    SyncOracleDatabaseConfig,
+    SyncOraclePoolConfig,
+)
 
 from app.lib.settings import BASE_DIR, get_settings
 
@@ -67,8 +72,11 @@ alchemy = SQLAlchemyAsyncConfig(
 )
 templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
 flasher = FlashConfig(template_config=templates)
-oracle = SyncOracleDatabaseConfig(
+oracle_sync = SyncOracleDatabaseConfig(
     pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
+)
+oracle_async = AsyncOracleDatabaseConfig(
+    pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
 )
 session = CookieBackendConfig(secret=_settings.app.SECRET_KEY.encode("utf-8"))
 
