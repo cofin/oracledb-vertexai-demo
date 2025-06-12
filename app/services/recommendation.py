@@ -20,6 +20,7 @@ from app.services.account import (
     SearchMetricsService,
     UserSessionService,
 )
+from app.services.intent_exemplar import IntentExemplarService
 from app.services.intent_router import IntentRouter
 from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
@@ -39,6 +40,7 @@ class RecommendationService:
         conversation_service: ChatConversationService,
         cache_service: ResponseCacheService,
         metrics_service: SearchMetricsService,
+        exemplar_service: IntentExemplarService | None = None,
         user_id: str = "default",
     ) -> None:
         self.vertex_ai = vertex_ai_service
@@ -49,10 +51,11 @@ class RecommendationService:
         self.conversation_service = conversation_service
         self.cache_service = cache_service
         self.metrics_service = metrics_service
+        self.exemplar_service = exemplar_service
         self.user_id = user_id
 
-        # Initialize intent router
-        self.intent_router = IntentRouter(vertex_ai_service)
+        # Initialize intent router with exemplar service
+        self.intent_router = IntentRouter(vertex_ai_service, exemplar_service)
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)

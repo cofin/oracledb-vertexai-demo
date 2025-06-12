@@ -66,16 +66,13 @@ def recommend() -> None:
             provide_shop_service,
         )
         from app.services import (
-            RecommendationService,
-        )
-        from app.services.account import (
             ChatConversationService,
+            IntentExemplarService,
+            OracleVectorSearchService,
+            RecommendationService,
             ResponseCacheService,
             SearchMetricsService,
             UserSessionService,
-        )
-        from app.services.vertex_ai import (
-            OracleVectorSearchService,
             VertexAIService,
         )
 
@@ -91,6 +88,7 @@ def recommend() -> None:
             conversation_service = ChatConversationService(session=db_session)
             cache_service = ResponseCacheService(session=db_session)
             metrics_service = SearchMetricsService(session=db_session)
+            exemplar_service = IntentExemplarService(session=db_session)
 
             vector_search_service = OracleVectorSearchService(
                 products_service=products_service,
@@ -106,6 +104,7 @@ def recommend() -> None:
                 conversation_service=conversation_service,
                 cache_service=cache_service,
                 metrics_service=metrics_service,
+                exemplar_service=exemplar_service,
                 user_id="cli-0",
             )
 

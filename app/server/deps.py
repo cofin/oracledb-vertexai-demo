@@ -22,6 +22,7 @@ from app.services import (
     UserSessionService,
     VertexAIService,
 )
+from app.services.intent_exemplar import IntentExemplarService
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -102,6 +103,14 @@ provide_search_metrics_service = create_service_provider(
     },
 )
 
+provide_intent_exemplar_service = create_service_provider(
+    IntentExemplarService,
+    error_messages={
+        "duplicate_key": "Exemplar already exists.",
+        "integrity": "Exemplar operation failed.",
+    },
+)
+
 # Non-repository service providers
 
 
@@ -128,6 +137,7 @@ async def provide_recommendation_service(
     conversation_service: ChatConversationService,
     cache_service: ResponseCacheService,
     metrics_service: SearchMetricsService,
+    exemplar_service: IntentExemplarService,
 ) -> AsyncGenerator[RecommendationService, None]:
     """Provide recommendation service with Oracle integration."""
     # if hasattr(request, "user") and request.user.is_authenticated:
@@ -144,5 +154,6 @@ async def provide_recommendation_service(
         conversation_service=conversation_service,
         cache_service=cache_service,
         metrics_service=metrics_service,
+        exemplar_service=exemplar_service,
         user_id=user_id,
     )

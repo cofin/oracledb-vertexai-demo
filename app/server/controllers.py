@@ -25,7 +25,6 @@ from litestar.exceptions import ValidationException
 from litestar.response import File, Stream
 from litestar_htmx import HTMXRequest, HTMXTemplate
 
-from app import schemas
 from app.server import deps
 
 if TYPE_CHECKING:
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
+    from app import schemas
     from app.services.account import SearchMetricsService
     from app.services.recommendation import RecommendationService
 
@@ -50,6 +50,7 @@ class CoffeeChatController(Controller):
         "conversation_service": Provide(deps.provide_chat_conversation_service),
         "cache_service": Provide(deps.provide_response_cache_service),
         "metrics_service": Provide(deps.provide_search_metrics_service),
+        "exemplar_service": Provide(deps.provide_intent_exemplar_service),
         "recommendation_service": Provide(deps.provide_recommendation_service),
     }
 

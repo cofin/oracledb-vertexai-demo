@@ -64,7 +64,7 @@ class Product(BigIntAuditBase):
     company_id: Mapped[int] = mapped_column(ForeignKey("company.id", ondelete="cascade"), nullable=False)
     name: Mapped[str] = mapped_column(String(255))
     current_price: Mapped[float]
-    size: Mapped[str] = mapped_column(String(50))
+    size: Mapped[str] = mapped_column("SIZE", String(50))
     description: Mapped[str] = mapped_column(String(2000))
     # Oracle 23AI vector field for embeddings
     embedding: Mapped[list[float] | None] = mapped_column(
@@ -211,3 +211,18 @@ class AppConfig(UUIDAuditBase):
     description: Mapped[str] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (Index("ix_config_key", "key"),)
+
+
+class IntentExemplar(BigIntAuditBase):
+    """Cache for intent router exemplar embeddings."""
+
+    __tablename__ = "intent_exemplar"
+
+    intent: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    phrase: Mapped[str] = mapped_column(String(500), nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(
+        VECTOR(dim=768, storage_format=VectorStorageFormat.FLOAT32),  # type: ignore[no-untyped-call]
+        nullable=True,
+    )
+
+    __table_args__ = (Index("ix_intent_phrase", "intent", "phrase", unique=True),)

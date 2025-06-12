@@ -464,7 +464,11 @@
             const metricsPanel = document.getElementById('metrics-panel');
             const metricsGrid = document.getElementById('metrics-grid');
 
-            fetch('/metrics')
+            fetch('/metrics', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
                 .then(response => response.json())
                 .then(data => {
                     metricsGrid.innerHTML = `

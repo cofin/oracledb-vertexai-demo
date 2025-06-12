@@ -56,10 +56,7 @@ class BulkEmbeddingService:
         try:
             bucket = self.storage_client.bucket(self.bucket_name)
             if not bucket.exists():
-                bucket = self.storage_client.create_bucket(
-                    self.bucket_name,
-                    location="us-central1"
-                )
+                bucket = self.storage_client.create_bucket(self.bucket_name, location="us-central1")
                 await logger.ainfo(f"Created storage bucket: {self.bucket_name}")
             else:
                 await logger.ainfo(f"Using existing storage bucket: {self.bucket_name}")
@@ -135,7 +132,7 @@ class BulkEmbeddingService:
         while True:
             # Get current job state - BatchPredictionJob doesn't have refresh method
             # Instead, we need to fetch the job again
-            job = aiplatform.BatchPredictionJob.get(job.resource_name)
+            job = aiplatform.BatchPredictionJob.get(job.resource_name)  # type: ignore[attr-defined]
             state = job.state.name
 
             await logger.ainfo(f"Job state: {state}")
@@ -197,7 +194,7 @@ class BulkEmbeddingService:
             # Update product in database
             # Convert to Oracle VECTOR format
             oracle_vector = convert_to_oracle_vector(embedding)
-            await self.product_service.update(int(product_id), {"embedding": oracle_vector})
+            await self.product_service.update({"embedding": oracle_vector}, item_id=int(product_id))
 
             await logger.adebug(f"Updated embedding for product {product_id}")
 
@@ -289,7 +286,7 @@ class OnlineEmbeddingService:
 
                 if embedding:
                     oracle_vector = convert_to_oracle_vector(embedding)
-                    await product_service.update(product.id, {"embedding": oracle_vector})
+                    await product_service.update({"embedding": oracle_vector}, item_id=product.id)
                     return 1
                 return 0
 

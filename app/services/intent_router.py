@@ -5,10 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import structlog
 from sklearn.metrics.pairwise import cosine_similarity
 
 if TYPE_CHECKING:
+    from app.services.intent_exemplar import IntentExemplarService
     from app.services.vertex_ai import VertexAIService
+
+logger = structlog.get_logger()
 
 
 class IntentRouter:
@@ -66,26 +70,75 @@ class IntentRouter:
         ],
     }
 
-    def __init__(self, vertex_ai_service: VertexAIService) -> None:
-        """Initialize with a Vertex AI service instance."""
+    def __init__(
+        self,
+        vertex_ai_service: VertexAIService,
+        exemplar_service: IntentExemplarService | None = None,
+    ) -> None:
+        """Initialize with a Vertex AI service instance and optional exemplar service."""
         self.vertex_ai = vertex_ai_service
+        self.exemplar_service = exemplar_service
         self.exemplar_embeddings: dict[str, np.ndarray] = {}
+        self.exemplar_phrases: dict[str, list[str]] = {}
         self._initialized = False
 
     async def initialize(self) -> None:
-        """Pre-compute embeddings for all exemplars."""
+        """Load cached embeddings or compute them if not cached."""
         if self._initialized:
             return
 
-        for intent, phrases in self.INTENT_EXEMPLARS.items():
-            embeddings = []
+        if self.exemplar_service:
+            # Try to load from cache first
+            logger.info("Loading cached intent exemplar embeddings...")
+            cached_data = await self.exemplar_service.get_exemplars_with_phrases()
 
-            # Process phrases in batches for efficiency
-            for phrase in phrases:
-                embedding = await self.vertex_ai.create_embedding(phrase)
-                embeddings.append(embedding)
+            if cached_data:
+                # Use cached embeddings
+                for intent, phrase_embeddings in cached_data.items():
+                    phrases = []
+                    embeddings = []
+                    for phrase, embedding in phrase_embeddings:
+                        phrases.append(phrase)
+                        embeddings.append(embedding)
 
-            self.exemplar_embeddings[intent] = np.array(embeddings)
+                    self.exemplar_phrases[intent] = phrases
+                    self.exemplar_embeddings[intent] = np.array(embeddings)
+
+                logger.info("Loaded %d cached embeddings", sum(len(v) for v in self.exemplar_embeddings.values()))
+                self._initialized = True
+                return
+
+            # Cache is empty, populate it
+            logger.info("Populating intent exemplar cache...")
+            await self.exemplar_service.populate_cache(
+                self.INTENT_EXEMPLARS,
+                self.vertex_ai,
+            )
+
+            # Load the newly cached data
+            cached_data = await self.exemplar_service.get_exemplars_with_phrases()
+            for intent, phrase_embeddings in cached_data.items():
+                phrases = []
+                embeddings = []
+                for phrase, embedding in phrase_embeddings:
+                    phrases.append(phrase)
+                    embeddings.append(embedding)
+
+                self.exemplar_phrases[intent] = phrases
+                self.exemplar_embeddings[intent] = np.array(embeddings)
+        else:
+            # No cache service, compute embeddings directly (fallback)
+            logger.warning("No exemplar cache service provided, computing embeddings on demand")
+            for intent, phrases in self.INTENT_EXEMPLARS.items():
+                embeddings = []
+                self.exemplar_phrases[intent] = phrases
+
+                # Process phrases in batches for efficiency
+                for phrase in phrases:
+                    embedding = await self.vertex_ai.create_embedding(phrase)
+                    embeddings.append(embedding)
+
+                self.exemplar_embeddings[intent] = np.array(embeddings)
 
         self._initialized = True
 
@@ -121,7 +174,11 @@ class IntentRouter:
             if max_score > best_score:
                 best_score = max_score
                 best_intent = intent
-                best_exemplar = self.INTENT_EXEMPLARS[intent][max_idx]
+                # Use stored phrases if available, otherwise fall back to INTENT_EXEMPLARS
+                if intent in self.exemplar_phrases:
+                    best_exemplar = self.exemplar_phrases[intent][max_idx]
+                else:
+                    best_exemplar = self.INTENT_EXEMPLARS[intent][max_idx]
 
         # Apply threshold - if below threshold, default to general conversation
         if best_score < threshold:

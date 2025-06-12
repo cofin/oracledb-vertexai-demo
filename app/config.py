@@ -26,6 +26,7 @@ from advanced_alchemy.extensions.litestar import (
 from litestar.config.cors import CORSConfig
 from litestar.config.csrf import CSRFConfig
 from litestar.contrib.jinja import JinjaTemplateEngine
+from litestar.exceptions import NotFoundException
 from litestar.logging.config import (
     LoggingConfig,
     StructLoggingConfig,
@@ -82,6 +83,7 @@ log_level = getattr(logging, _settings.log.LEVEL)
 log = StructlogConfig(
     enable_middleware_logging=False,
     structlog_logging_config=StructLoggingConfig(
+        disable_stack_trace={NotFoundException, 404},
         log_exceptions="always",
         processors=_structlog_processors,
         logger_factory=default_logger_factory(as_json=not _is_tty()),
