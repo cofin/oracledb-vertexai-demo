@@ -40,7 +40,16 @@ if TYPE_CHECKING:
     from app.services import RecommendationService
 
 
-__all__ = ["bulk_embed", "embed_new", "load_fixtures", "load_vectors", "model_info", "recommend", "version_callback"]
+__all__ = (
+    "bulk_embed",
+    "clear_cache",
+    "embed_new",
+    "load_fixtures",
+    "load_vectors",
+    "model_info",
+    "recommend",
+    "version_callback",
+)
 
 logger = structlog.get_logger()
 
@@ -281,6 +290,104 @@ def model_info() -> None:
 
 
 # Functions are exported and added to Litestar CLI by the plugin in server/core.py
+
+
+@click.command(name="clear-cache")
+@click.option(
+    "--keep-intent-exemplar",
+    is_flag=True,
+    help="Keep intent exemplar cache (recommended to avoid re-computing embeddings)",
+)
+@click.option(
+    "--keep-response-cache",
+    is_flag=True,
+    help="Keep response cache",
+)
+@click.option(
+    "--keep-search-metrics",
+    is_flag=True,
+    help="Keep search metrics",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+def clear_cache(
+    keep_intent_exemplar: bool,
+    keep_response_cache: bool,
+    keep_search_metrics: bool,
+    force: bool,
+) -> None:
+    """Clear cache tables in the database."""
+    console = get_console()
+
+    # Determine which tables to clear
+    tables_to_clear = []
+    if not keep_intent_exemplar:
+        tables_to_clear.append("intent_exemplar")
+    if not keep_response_cache:
+        tables_to_clear.append("response_cache")
+    if not keep_search_metrics:
+        tables_to_clear.append("search_metrics")
+
+    if not tables_to_clear:
+        console.print("[yellow]No tables selected for clearing. Use --help to see options.[/yellow]")
+        return
+
+    # Show what will be cleared
+    console.print("[bold]Tables to clear:[/bold]")
+    for table in tables_to_clear:
+        console.print(f"  • {table}")
+
+    # Confirmation prompt
+    if not force:
+        confirm = Prompt.ask(
+            "\n[bold red]Are you sure you want to clear these tables?[/bold red]",
+            choices=["y", "n"],
+            default="n",
+        )
+        if confirm.lower() != "y":
+            console.print("[yellow]Operation cancelled.[/yellow]")
+            return
+
+    async def _clear_cache() -> None:
+        """Clear cache tables."""
+        from sqlalchemy import delete, func, select
+
+        from app.config import alchemy
+        from app.db import models as m
+
+        async with alchemy.get_session() as db:
+            with console.status("[bold green]Clearing cache tables...") as status:
+                for table_name in tables_to_clear:
+                    status.update(f"Clearing {table_name}...")
+
+                    if table_name == "intent_exemplar":
+                        # Count and delete intent exemplar records
+                        count_result = await db.execute(select(func.count()).select_from(m.IntentExemplar))
+                        count = count_result.scalar()
+                        await db.execute(delete(m.IntentExemplar))
+                        console.print(f"[green]✓ Cleared {count} records from intent_exemplar[/green]")
+
+                    elif table_name == "response_cache":
+                        # Count and delete response cache records
+                        count_result = await db.execute(select(func.count()).select_from(m.ResponseCache))
+                        count = count_result.scalar()
+                        await db.execute(delete(m.ResponseCache))
+                        console.print(f"[green]✓ Cleared {count} records from response_cache[/green]")
+
+                    elif table_name == "search_metrics":
+                        # Count and delete search metrics records
+                        count_result = await db.execute(select(func.count()).select_from(m.SearchMetrics))
+                        count = count_result.scalar()
+                        await db.execute(delete(m.SearchMetrics))
+                        console.print(f"[green]✓ Cleared {count} records from search_metrics[/green]")
+                await db.commit()
+                console.print("\n[bold green]Cache clearing complete![/bold green]")
+
+    anyio.run(_clear_cache)
 
 
 # Main execution removed - CLI is handled by Litestar

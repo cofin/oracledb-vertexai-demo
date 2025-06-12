@@ -69,7 +69,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         )
 
         settings = get_settings()
-
         app_config.middleware.insert(0, config.session.middleware)
         # logging
         app_config.middleware.insert(0, log.StructlogMiddleware)
@@ -147,7 +146,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     def on_cli_init(self, cli: Group) -> None:
         from advanced_alchemy.extensions.litestar.cli import database_group
 
-        from app.cli import bulk_embed, embed_new, load_fixtures, load_vectors, model_info, recommend
+        from app.cli import bulk_embed, clear_cache, embed_new, load_fixtures, load_vectors, model_info, recommend
         from app.lib.settings import get_settings
 
         settings = get_settings()
@@ -162,3 +161,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # Add bulk embedding commands
         database_group.add_command(bulk_embed, name="bulk-embed")  # type: ignore[arg-type]
         database_group.add_command(embed_new, name="embed-new")  # type: ignore[arg-type]
+
+        # Add cache management command
+        database_group.add_command(clear_cache, name="clear-cache")  # type: ignore[arg-type]

@@ -16,8 +16,7 @@ make start-infra
 
 # Initialize database
 uv run app database upgrade
-uv run app database load-fixtures
-uv run app database load-vectors
+uv run app database load-fixtures # this will also load the vectors for the demo
 
 # Start the application
 uv run app run
