@@ -124,7 +124,7 @@ def schema_upgrades() -> None:
         )
     """)
     
-    # Create intent_exemplar table with Oracle 23AI vector support
+    # Create intent_exemplar table with Oracle 23AI vector support and In-Memory option
     op.execute("""
         CREATE TABLE intent_exemplar (
             id NUMBER(19) DEFAULT intent_exemplar_id_seq.NEXTVAL NOT NULL,
@@ -134,14 +134,14 @@ def schema_upgrades() -> None:
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
             CONSTRAINT pk_intent_exemplar PRIMARY KEY (id)
-        )
+        ) INMEMORY PRIORITY HIGH
     """)
     
     # Create indexes for intent_exemplar
     op.execute("CREATE INDEX ix_intent_exemplar_intent ON intent_exemplar (intent)")
     op.execute("CREATE UNIQUE INDEX ix_intent_phrase ON intent_exemplar (intent, phrase)")
     
-    # Create response_cache table with Oracle JSON support
+    # Create response_cache table with Oracle JSON support and In-Memory option
     op.execute("""
         CREATE TABLE response_cache (
             id RAW(16) DEFAULT SYS_GUID() NOT NULL,
@@ -156,7 +156,7 @@ def schema_upgrades() -> None:
             CONSTRAINT pk_response_cache PRIMARY KEY (id),
             CONSTRAINT uq_response_cache_key UNIQUE (cache_key),
             CONSTRAINT chk_response_json CHECK (response IS JSON)
-        )
+        ) INMEMORY PRIORITY HIGH
     """)
     
     # Create indexes for response_cache

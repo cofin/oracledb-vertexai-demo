@@ -160,7 +160,7 @@ class VertexAIService:
     def create_system_message(self, message: str | None = None) -> str:
         """Create system message for coffee recommendations."""
         default_message = """
-You are a helpful AI assistant specializing in coffee recommendations for The Coffee Connection.
+You are a helpful AI assistant specializing in coffee recommendations for Cymbal Coffee Connoisseur.
 Given a user's chat history, the latest user query, and relevant context about our products and locations, provide an engaging and informative response.
 
 When shop locations are provided in the context:

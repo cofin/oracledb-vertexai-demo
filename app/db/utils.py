@@ -65,8 +65,10 @@ async def _load_vectors() -> None:
         products = await products_service.list()
 
         for product in products:
-            # Generate embedding for product description
-            embedding = await vertex_ai.create_embedding(product.description)
+            # Generate embedding for combined name and description
+            # This matches the bulk embedding approach for consistency
+            text_content = f"{product.name}: {product.description}"
+            embedding = await vertex_ai.create_embedding(text_content)
 
             # Convert to Oracle VECTOR format
             oracle_vector = array.array("f", embedding)
@@ -83,4 +85,6 @@ async def _load_vectors() -> None:
                 product_name=product.name,
             )
 
+        # Commit all updates
+        await db_session.commit()
         logger.info("Vector embeddings loaded successfully")

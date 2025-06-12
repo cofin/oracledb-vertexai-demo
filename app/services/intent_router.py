@@ -14,61 +14,103 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+# Intent exemplars for semantic matching
+INTENT_EXEMPLARS = {
+    "PRODUCT_RAG": [
+        # Formal queries
+        "What coffee do you recommend?",
+        "Tell me about your espresso options",
+        "I'm looking for a decaf drink",
+        "What's your strongest coffee?",
+        "Something sweet for the afternoon",
+        "What pairs well with breakfast?",
+        "Tell me about your seasonal drinks",
+        "I need something with lots of caffeine",
+        "What's the difference between a latte and cappuccino?",
+        "Do you have any cold brew options?",
+        "I want something with chocolate",
+        "What's your most popular drink?",
+        "Tell me about your coffee beans",
+        "What's good for someone who doesn't like coffee?",
+        "Do you have any sugar-free options?",
+        # Casual/idiomatic expressions
+        "I need something bold",
+        "I need something strong",
+        "caffeine please",
+        "gimme anything",
+        "what's good here?",
+        "surprise me",
+        "I'm tired, help",
+        "need my fix",
+        "hook me up",
+        "what's brewing?",
+        "hit me with your best shot",
+        "I need to wake up",
+        "something to get me going",
+        "dealer's choice",
+        "I'll take whatever",
+        "just give me coffee",
+        "anything with a kick",
+        "make it strong",
+        "double shot of anything",
+        "I'm dragging today",
+        "need some rocket fuel",
+        "what's fresh?",
+        "what do you got?",
+        "coffee me",
+        "bean juice please",
+    ],
+    "LOCATION_RAG": [
+        "Where are your coffee shops?",
+        "Find a store near downtown",
+        "What are your hours?",
+        "Is there a location on Main Street?",
+        "Which shops have parking?",
+        "Closest cafe to the university",
+        "Are you open on weekends?",
+        "Do you have outdoor seating?",
+        "Which location is biggest?",
+        "Find me the nearest store",
+        "What time do you close?",
+        "Are there any 24-hour locations?",
+    ],
+    "GENERAL_CONVERSATION": [
+        "How are you today?",
+        "Tell me a coffee joke",
+        "What's your name?",
+        "Thanks for your help",
+        "That sounds great",
+        "Can you help me?",
+        "Hello",
+        "Good morning",
+        "Goodbye",
+        "What can you do?",
+        "Tell me about yourself",
+        "That's interesting",
+        "I see",
+        "Never mind",
+        "Sorry",
+        # Casual greetings
+        "hey",
+        "sup",
+        "yo",
+        "what's up",
+        "howdy",
+        "hi",
+        "hi there",
+        "thanks",
+        "cool",
+        "awesome",
+        "bye",
+        "see ya",
+        "later",
+        "cheers",
+    ],
+}
+
 
 class IntentRouter:
     """Routes user queries to appropriate handlers using semantic similarity."""
-
-    # Intent exemplars for semantic matching
-    INTENT_EXEMPLARS = {
-        "PRODUCT_RAG": [
-            "What coffee do you recommend?",
-            "Tell me about your espresso options",
-            "I'm looking for a decaf drink",
-            "What's your strongest coffee?",
-            "Something sweet for the afternoon",
-            "What pairs well with breakfast?",
-            "Tell me about your seasonal drinks",
-            "I need something with lots of caffeine",
-            "What's the difference between a latte and cappuccino?",
-            "Do you have any cold brew options?",
-            "I want something with chocolate",
-            "What's your most popular drink?",
-            "Tell me about your coffee beans",
-            "What's good for someone who doesn't like coffee?",
-            "Do you have any sugar-free options?",
-        ],
-        "LOCATION_RAG": [
-            "Where are your coffee shops?",
-            "Find a store near downtown",
-            "What are your hours?",
-            "Is there a location on Main Street?",
-            "Which shops have parking?",
-            "Closest cafe to the university",
-            "Are you open on weekends?",
-            "Do you have outdoor seating?",
-            "Which location is biggest?",
-            "Find me the nearest store",
-            "What time do you close?",
-            "Are there any 24-hour locations?",
-        ],
-        "GENERAL_CONVERSATION": [
-            "How are you today?",
-            "Tell me a coffee joke",
-            "What's your name?",
-            "Thanks for your help",
-            "That sounds great",
-            "Can you help me?",
-            "Hello",
-            "Good morning",
-            "Goodbye",
-            "What can you do?",
-            "Tell me about yourself",
-            "That's interesting",
-            "I see",
-            "Never mind",
-            "Sorry",
-        ],
-    }
 
     def __init__(
         self,
@@ -111,7 +153,7 @@ class IntentRouter:
             # Cache is empty, populate it
             logger.info("Populating intent exemplar cache...")
             await self.exemplar_service.populate_cache(
-                self.INTENT_EXEMPLARS,
+                INTENT_EXEMPLARS,
                 self.vertex_ai,
             )
 
@@ -129,7 +171,7 @@ class IntentRouter:
         else:
             # No cache service, compute embeddings directly (fallback)
             logger.warning("No exemplar cache service provided, computing embeddings on demand")
-            for intent, phrases in self.INTENT_EXEMPLARS.items():
+            for intent, phrases in INTENT_EXEMPLARS.items():
                 embeddings = []
                 self.exemplar_phrases[intent] = phrases
 
@@ -142,7 +184,7 @@ class IntentRouter:
 
         self._initialized = True
 
-    async def route_intent(self, query: str, threshold: float = 0.75) -> tuple[str, float, str]:
+    async def route_intent(self, query: str, threshold: float = 0.70) -> tuple[str, float, str]:
         """Route a query to an intent based on semantic similarity.
 
         Args:
@@ -178,7 +220,7 @@ class IntentRouter:
                 if intent in self.exemplar_phrases:
                     best_exemplar = self.exemplar_phrases[intent][max_idx]
                 else:
-                    best_exemplar = self.INTENT_EXEMPLARS[intent][max_idx]
+                    best_exemplar = INTENT_EXEMPLARS[intent][max_idx]
 
         # Apply threshold - if below threshold, default to general conversation
         if best_score < threshold:
