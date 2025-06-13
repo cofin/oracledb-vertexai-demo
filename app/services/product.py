@@ -1,61 +1,15 @@
-"""Product service with both SQLAlchemy and raw SQL implementations."""
+"""Product service using raw Oracle SQL."""
 
 from __future__ import annotations
 
+import array
 from typing import TYPE_CHECKING, Any
 
-from advanced_alchemy.filters import LimitOffset
-from advanced_alchemy.repository import SQLAlchemyAsyncRepository
-from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-
-from app.db import models as m
-
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import oracledb
 
 
-class ProductService(SQLAlchemyAsyncRepositoryService[m.Product]):
-    """Handles database operations for products using SQLAlchemy."""
-
-    class Repo(SQLAlchemyAsyncRepository[m.Product]):
-        """Product repository."""
-
-        model_type = m.Product
-
-    repository_type = Repo
-    match_fields = ["name"]
-
-    async def get_by_name(self, name: str) -> m.Product | None:
-        """Get product by name."""
-        return await self.get_one_or_none(name=name)
-
-    async def get_with_embeddings(self, product_id: int) -> m.Product | None:
-        """Get product with embeddings loaded."""
-        return await self.get_one_or_none(m.Product.id == product_id)
-
-    async def search_by_description(self, search_term: str) -> Sequence[m.Product]:
-        """Search products by description."""
-        return await self.list(m.Product.description.ilike(f"%{search_term}%"))
-
-    async def get_products_without_embeddings(
-        self, limit: int = 100, offset: int = 0
-    ) -> tuple[Sequence[m.Product], int]:
-        """Get products that have null embeddings with pagination.
-
-        Args:
-            limit: Maximum number of records to return
-            offset: Number of records to skip
-
-        Returns:
-            Tuple of (products, total_count)
-        """
-        limit_offset = LimitOffset(limit=limit, offset=offset)
-        return await self.list_and_count(m.Product.embedding.is_(None), limit_offset)
-
-
-class RawProductService:
+class ProductService:
     """Handles database operations for products using raw SQL."""
 
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
@@ -66,23 +20,9 @@ class RawProductService:
         """Get all products with company information."""
         cursor = self.connection.cursor()
         try:
-            await cursor.execute("""
-                SELECT
-                    p.id,
-                    p.name,
-                    p.current_price,
-                    p."SIZE" as size,
-                    p.description,
-                    p.embedding,
-                    p.embedding_generated_on,
-                    p.created_at,
-                    p.updated_at,
-                    p.company_id,
-                    c.name as company_name
-                FROM product p
-                INNER JOIN company c ON p.company_id = c.id
-                ORDER BY p.name
-            """)
+            await cursor.execute(
+                """SELECT p.id, p.name, p.current_price, p.product_size, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id ORDER BY p.name"""
+            )
 
             products = [
                 {
@@ -110,23 +50,7 @@ class RawProductService:
         cursor = self.connection.cursor()
         try:
             await cursor.execute(
-                """
-                SELECT
-                    p.id,
-                    p.name,
-                    p.current_price,
-                    p."SIZE" as size,
-                    p.description,
-                    p.embedding,
-                    p.embedding_generated_on,
-                    p.created_at,
-                    p.updated_at,
-                    p.company_id,
-                    c.name as company_name
-                FROM product p
-                INNER JOIN company c ON p.company_id = c.id
-                WHERE p.id = :id
-            """,
+                """SELECT p.id, p.name, p.current_price, p.product_size, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id WHERE p.id = :id""",
                 {"id": product_id},
             )
 
@@ -159,7 +83,7 @@ class RawProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -168,7 +92,7 @@ class RawProductService:
                     p.company_id,
                     c.name as company_name
                 FROM product p
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN company c ON p.company_id = c.id
                 WHERE p.name = :name
             """,
                 {"name": name},
@@ -203,7 +127,7 @@ class RawProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -212,7 +136,7 @@ class RawProductService:
                     p.company_id,
                     c.name as company_name
                 FROM product p
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN company c ON p.company_id = c.id
                 WHERE UPPER(p.description) LIKE UPPER(:search_term)
                 ORDER BY p.name
             """,
@@ -258,7 +182,7 @@ class RawProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -267,7 +191,7 @@ class RawProductService:
                     p.company_id,
                     c.name as company_name
                 FROM product p
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN company c ON p.company_id = c.id
                 WHERE p.embedding IS NULL
                 ORDER BY p.id
                 OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
@@ -302,6 +226,9 @@ class RawProductService:
         """Search products by vector similarity using Oracle 23AI."""
         cursor = self.connection.cursor()
         try:
+            # Convert Python list to Oracle VECTOR format
+            oracle_vector = array.array("f", query_embedding)
+
             # Oracle 23AI vector similarity search
             await cursor.execute(
                 """
@@ -309,7 +236,7 @@ class RawProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -319,14 +246,14 @@ class RawProductService:
                     c.name as company_name,
                     VECTOR_DISTANCE(p.embedding, :query_embedding, COSINE) as similarity_score
                 FROM product p
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN company c ON p.company_id = c.id
                 WHERE p.embedding IS NOT NULL
                 AND VECTOR_DISTANCE(p.embedding, :query_embedding, COSINE) <= :threshold
                 ORDER BY similarity_score
                 FETCH FIRST :limit ROWS ONLY
             """,
                 {
-                    "query_embedding": query_embedding,
+                    "query_embedding": oracle_vector,
                     "threshold": 1 - similarity_threshold,  # Convert similarity to distance
                     "limit": limit,
                 },
@@ -356,15 +283,17 @@ class RawProductService:
         """Update product embedding."""
         cursor = self.connection.cursor()
         try:
+            # Convert Python list to Oracle VECTOR format
+            oracle_vector = array.array("f", embedding)
+
             await cursor.execute(
                 """
                 UPDATE product
                 SET embedding = :embedding,
-                    embedding_generated_on = SYSTIMESTAMP,
-                    updated_at = SYSTIMESTAMP
+                    embedding_generated_on = SYSTIMESTAMP
                 WHERE id = :id
             """,
-                {"id": product_id, "embedding": embedding},
+                {"id": product_id, "embedding": oracle_vector},
             )
 
             await self.connection.commit()
@@ -384,33 +313,34 @@ class RawProductService:
         """Create a new product."""
         cursor = self.connection.cursor()
         try:
-            # Get next ID from sequence
-            await cursor.execute("SELECT product_id_seq.NEXTVAL FROM dual")
-            product_id = (await cursor.fetchone())[0]
+            # Convert Python list to Oracle VECTOR format if provided
+            oracle_vector = array.array("f", embedding) if embedding else None
 
             await cursor.execute(
                 """
                 INSERT INTO product (
-                    id, company_id, name, current_price, "SIZE",
+                    company_id, name, current_price, product_size,
                     description, embedding, embedding_generated_on
                 ) VALUES (
-                    :id, :company_id, :name, :current_price, :size,
+                    :company_id, :name, :current_price, :size,
                     :description, :embedding,
                     CASE WHEN :embedding2 IS NOT NULL THEN SYSTIMESTAMP ELSE NULL END
                 )
+                RETURNING id INTO :id
             """,
                 {
-                    "id": product_id,
                     "company_id": company_id,
                     "name": name,
                     "current_price": current_price,
                     "size": size,
                     "description": description,
-                    "embedding": embedding,
-                    "embedding2": embedding,
+                    "embedding": oracle_vector,
+                    "embedding2": oracle_vector,
+                    "id": cursor.var(int),
                 },
             )
 
+            product_id = cursor.bindvars["id"].getvalue()  # type: ignore[call-overload]
             await self.connection.commit()
 
             # Return the created product
@@ -426,7 +356,7 @@ class RawProductService:
             field_mapping = {
                 "name": "name = :name",
                 "current_price": "current_price = :current_price",
-                "size": '"SIZE" = :size',
+                "size": "product_size = :size",
                 "description": "description = :description",
             }
 
@@ -441,7 +371,6 @@ class RawProductService:
             if not set_clauses:
                 return await self.get_by_id(product_id)
 
-            set_clauses.append("updated_at = SYSTIMESTAMP")
             sql = f"UPDATE product SET {', '.join(set_clauses)} WHERE id = :id"  # noqa: S608
 
             await cursor.execute(sql, params)

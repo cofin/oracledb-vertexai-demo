@@ -9,19 +9,13 @@ import structlog
 if TYPE_CHECKING:
     from app.services.product import ProductService
     from app.services.shop import ShopService
-from advanced_alchemy.filters import CollectionFilter, LimitOffset
-from sqlalchemy import select
-
 from app import schemas
-from app.db import models as m
-from app.services.account import (
-    ChatConversationService,
-    ResponseCacheService,
-    SearchMetricsService,
-    UserSessionService,
-)
+from app.services.chat_conversation import ChatConversationService
 from app.services.intent_exemplar import IntentExemplarService
 from app.services.intent_router import IntentRouter
+from app.services.response_cache import ResponseCacheService
+from app.services.search_metrics import SearchMetricsService
+from app.services.user_session import UserSessionService
 from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 logger = structlog.get_logger()
@@ -68,14 +62,14 @@ class RecommendationService:
         # Get or create session
         if not session_id:
             session = await self.session_service.create_session(self.user_id)
-            session_id = session.session_id
+            session_id = session["session_id"]
         else:
             active_session = await self.session_service.get_active_session(session_id)
             if active_session:
                 session = active_session
             else:
                 session = await self.session_service.create_session(self.user_id)
-                session_id = session.session_id
+                session_id = session["session_id"]
 
         # Route the question through product and location matching
         chat_metadata: dict[str, Any] = {}
@@ -90,12 +84,12 @@ class RecommendationService:
         conversation_history = await self.conversation_service.get_conversation_history(
             self.user_id,
             limit=10,
-            session_id=session.id,
+            session_id=session["id"],
         )
 
         # Format conversation history for Vertex AI
         history_for_ai = [
-            {"role": msg.role, "content": msg.content}
+            {"role": msg["role"], "content": msg["content"]}
             for msg in reversed(conversation_history)  # Reverse to get chronological order
         ]
 
@@ -112,7 +106,7 @@ class RecommendationService:
 
         # Save conversation to Oracle
         await self.conversation_service.add_message(
-            session_id=session.id,
+            session_id=session["id"],
             user_id=self.user_id,
             role="user",
             content=query,
@@ -120,7 +114,7 @@ class RecommendationService:
         )
 
         await self.conversation_service.add_message(
-            session_id=session.id,
+            session_id=session["id"],
             user_id=self.user_id,
             role="assistant",
             content=ai_response,
@@ -178,16 +172,16 @@ class RecommendationService:
             matched_product_ids = [match["metadata"]["id"] for match in matched_documents]
 
             if matched_product_ids:
-                # Get product details
-                similar_products = await self.products_service.list(
-                    CollectionFilter[int](
-                        field_name="id",
-                        values=matched_product_ids,
-                    ),
-                    LimitOffset(2, 0),
-                )
+                # Get product details using our new service
+                similar_products = []
+                for product_id in matched_product_ids[:2]:  # Limit to 2 products
+                    product = await self.products_service.get_by_id(product_id)
+                    if product:
+                        similar_products.append(product)
 
-                chat_metadata["product_matches"] = [f"- {obj.name}: {obj.description}" for obj in similar_products]
+                chat_metadata["product_matches"] = [
+                    f"- {product['name']}: {product['description']}" for product in similar_products
+                ]
 
                 return chat_metadata, matched_product_ids
 
@@ -210,25 +204,30 @@ class RecommendationService:
 
         # Handle location queries
         if intent == "LOCATION_RAG":
+            shops_with_products = []
+
             if matched_product_ids:
                 # Find shops that have these specific products
-                shops_with_products = await self.shops_service.list(
-                    m.Shop.id.in_(
-                        select(m.Inventory.shop_id).where(
-                            m.Inventory.product_id.in_(matched_product_ids),
-                        ),
-                    ),
-                    LimitOffset(4, 0),
-                )
+                # Get all shops and check their inventory
+                all_shops = await self.shops_service.get_all()
+
+                for shop in all_shops[:10]:  # Check first 10 shops
+                    shop_inventory = await self.shops_service.get_with_inventory(shop["id"])
+                    if shop_inventory and shop_inventory.get("inventory"):
+                        # Check if this shop has any of the matched products
+                        inventory_product_ids = [item["product_id"] for item in shop_inventory["inventory"]]
+                        if any(pid in matched_product_ids for pid in inventory_product_ids):
+                            shops_with_products.append(shop)
+                            if len(shops_with_products) >= 4:  # noqa: PLR2004
+                                break
             else:
                 # If no specific products, just list some shops
-                shops_with_products = await self.shops_service.list(
-                    LimitOffset(4, 0),
-                )
+                all_shops = await self.shops_service.get_all()
+                shops_with_products = all_shops[:4]
 
             # Store shop information for context
             chat_metadata["shop_locations"] = [
-                {"name": shop.name, "address": shop.address} for shop in shops_with_products
+                {"name": shop["name"], "address": shop["address"]} for shop in shops_with_products
             ]
             return chat_metadata, len(shops_with_products)
 
@@ -251,9 +250,13 @@ class RecommendationService:
             max_shops_in_context = 5
             if location_count > max_shops_in_context:
                 shops = shops[:max_shops_in_context]
-                formatted_parts.append(f"# Product Availability:\nFound at {location_count} locations. Here are {max_shops_in_context} of them:")
+                formatted_parts.append(
+                    f"# Product Availability:\nFound at {location_count} locations. Here are {max_shops_in_context} of them:"
+                )
             else:
-                formatted_parts.append(f"# Product Availability:\nAvailable at the following {location_count} location(s):")
+                formatted_parts.append(
+                    f"# Product Availability:\nAvailable at the following {location_count} location(s):"
+                )
 
             # Add shop details with basic sanitization
             shop_list = []
@@ -273,14 +276,14 @@ class RecommendationService:
         # Get or create session
         if not session_id:
             session = await self.session_service.create_session(self.user_id)
-            session_id = session.session_id
+            session_id = session["session_id"]
         else:
             active_session = await self.session_service.get_active_session(session_id)
             if active_session:
                 session = active_session
             else:
                 session = await self.session_service.create_session(self.user_id)
-                session_id = session.session_id
+                session_id = session["session_id"]
 
         # Route the question (same as regular recommendation)
         chat_metadata: dict[str, Any] = {}
@@ -295,11 +298,11 @@ class RecommendationService:
         conversation_history = await self.conversation_service.get_conversation_history(
             self.user_id,
             limit=10,
-            session_id=session.id,
+            session_id=session["id"],
         )
 
         # Format conversation history for Vertex AI
-        history_for_ai = [{"role": msg.role, "content": msg.content} for msg in reversed(conversation_history)]
+        history_for_ai = [{"role": msg["role"], "content": msg["content"]} for msg in reversed(conversation_history)]
 
         # Build context and prompt
         context = self._format_context(query, chat_metadata)
@@ -329,7 +332,7 @@ class RecommendationService:
         query_id = str(uuid.uuid4())
 
         await self.conversation_service.add_message(
-            session_id=session.id,
+            session_id=session["id"],
             user_id=self.user_id,
             role="user",
             content=query,
@@ -337,7 +340,7 @@ class RecommendationService:
         )
 
         await self.conversation_service.add_message(
-            session_id=session.id,
+            session_id=session["id"],
             user_id=self.user_id,
             role="assistant",
             content=full_response,

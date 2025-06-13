@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 import structlog
 from google.cloud import aiplatform, storage
-from sqlalchemy import select
 
-from app.db.models import Product
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
@@ -68,24 +66,31 @@ class BulkEmbeddingService:
         """Export products without embeddings to JSONL format for batch processing."""
 
         # Get products that need embeddings (where embedding is NULL)
-        stmt = select(Product).where(Product.embedding.is_(None))
-        result = await self.product_service.repository.session.execute(stmt)
-        products = result.scalars().all()
+        cursor = self.product_service.connection.cursor()
+        try:
+            await cursor.execute("""
+                SELECT id, name, description
+                FROM product
+                WHERE embedding IS NULL
+            """)
 
-        batch_data = []
-        for product in products:
-            # Combine product name and description for embedding
-            text_content = f"{product.name}: {product.description}"
+            batch_data = []
+            async for row in cursor:
+                product_id, name, description = row
+                # Combine product name and description for embedding
+                text_content = f"{name}: {description}"
 
-            # Format for Vertex AI batch prediction
-            request_data = {
-                "content": text_content,
-                "task_type": "RETRIEVAL_DOCUMENT",
-                "title": product.name,
-                # Include product ID for mapping results back
-                "metadata": {"product_id": str(product.id)},
-            }
-            batch_data.append(request_data)
+                # Format for Vertex AI batch prediction
+                request_data = {
+                    "content": text_content,
+                    "task_type": "RETRIEVAL_DOCUMENT",
+                    "title": name,
+                    # Include product ID for mapping results back
+                    "metadata": {"product_id": str(product_id)},
+                }
+                batch_data.append(request_data)
+        finally:
+            cursor.close()
 
         # Write to JSONL file
         bucket = self.storage_client.bucket(self.bucket_name)
@@ -178,29 +183,39 @@ class BulkEmbeddingService:
     async def _update_product_embedding(self, result: dict[str, Any]) -> None:
         """Update a single product with its embedding."""
         product_id: str | None = None
+
+        # Extract product ID from metadata
+        product_id = result.get("metadata", {}).get("product_id")
+        if not product_id:
+            await logger.awarn("No product_id found in result metadata")
+            return
+
+        # Extract embedding vector
+        embedding = result.get("embeddings", {}).get("values", [])
+        if not embedding:
+            await logger.awarn(f"No embedding found for product {product_id}")
+            return
+
+        # Update product in database
+        # Convert to Oracle VECTOR format
+        oracle_vector = convert_to_oracle_vector(embedding)
+
+        # Use raw SQL to update product
+        cursor = self.product_service.connection.cursor()
         try:
-            # Extract product ID from metadata
-            product_id = result.get("metadata", {}).get("product_id")
-            if not product_id:
-                await logger.awarn("No product_id found in result metadata")
-                return
+            await cursor.execute(
+                """
+                UPDATE product
+                SET embedding = :embedding
+                WHERE id = :id
+                """,
+                {"embedding": oracle_vector, "id": int(product_id)},
+            )
+            await self.product_service.connection.commit()
+        finally:
+            cursor.close()
 
-            # Extract embedding vector
-            embedding = result.get("embeddings", {}).get("values", [])
-            if not embedding:
-                await logger.awarn(f"No embedding found for product {product_id}")
-                return
-
-            # Update product in database
-            # Convert to Oracle VECTOR format
-            oracle_vector = convert_to_oracle_vector(embedding)
-            await self.product_service.update({"embedding": oracle_vector}, item_id=int(product_id))
-
-            await logger.adebug(f"Updated embedding for product {product_id}")
-
-        except Exception:
-            await logger.aerror("Failed to update product embedding", product_id=product_id, exc_info=True)
-            # Don't raise - continue processing other results
+        await logger.adebug(f"Updated embedding for product {product_id}")
 
     async def run_bulk_embedding_job(self) -> dict[str, Any]:
         """Run a complete bulk embedding job from start to finish."""
@@ -237,7 +252,7 @@ class BulkEmbeddingService:
             # Step 5: Process results
             processed_count = await self.process_embedding_results(output_path)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             await logger.aerror("Bulk embedding job failed", job_id=job_id, exc_info=True)
             return {"status": "failed", "job_id": job_id, "error": str(e)}
 
@@ -272,22 +287,47 @@ class OnlineEmbeddingService:
         """Process products that need embeddings using online API."""
 
         # Get products without embeddings (limit to reasonable batch size)
-        stmt = select(Product).where(Product.embedding.is_(None)).limit(limit)
-        result = await product_service.repository.session.execute(stmt)
-        products = result.scalars().all()
+        cursor = product_service.connection.cursor()
+        try:
+            await cursor.execute(
+                """
+                SELECT id, name, description
+                FROM product
+                WHERE embedding IS NULL
+                FETCH FIRST :limit ROWS ONLY
+            """,
+                {"limit": limit},
+            )
+
+            products = [{"id": row[0], "name": row[1], "description": row[2]} async for row in cursor]
+        finally:
+            cursor.close()
 
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
 
-        async def process_product(product: Product) -> int:
+        async def process_product(product: dict) -> int:
             async with semaphore:
-                text_content = f"{product.name}: {product.description}"
-                embedding = await self.embed_single_product(str(product.id), text_content)
+                text_content = f"{product['name']}: {product['description']}"
+                embedding = await self.embed_single_product(str(product["id"]), text_content)
 
                 if embedding:
                     oracle_vector = convert_to_oracle_vector(embedding)
-                    await product_service.update({"embedding": oracle_vector}, item_id=product.id)
-                    return 1
+                    # Update product with embedding
+                    cursor = product_service.connection.cursor()
+                    try:
+                        await cursor.execute(
+                            """
+                            UPDATE product
+                            SET embedding = :embedding
+                            WHERE id = :id
+                            """,
+                            {"embedding": oracle_vector, "id": product["id"]},
+                        )
+                        await product_service.connection.commit()
+                        return 1
+                    finally:
+                        cursor.close()
                 return 0
 
         # Process all products concurrently

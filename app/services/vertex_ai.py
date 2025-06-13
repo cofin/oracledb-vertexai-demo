@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, cast
 import structlog
 import vertexai
 from google.api_core import exceptions as google_exceptions
-from sqlalchemy import text
 from vertexai.generative_models import GenerativeModel
 from vertexai.language_models import TextEmbeddingModel
 
@@ -22,7 +21,8 @@ logger = structlog.get_logger()
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from app.services.account import ResponseCacheService, SearchMetricsService
+    from app.services.response_cache import ResponseCacheService
+    from app.services.search_metrics import SearchMetricsService
 
 
 class VertexAIService:
@@ -234,39 +234,39 @@ class OracleVectorSearchService:
             # Convert to float32 array for Oracle VECTOR
             vector_array = array.array("f", query_embedding)
 
-            # Use Oracle VECTOR_DISTANCE function
-            # Raw SQL for Oracle vector search
-            search_query = text("""
-                SELECT p.id, p.name, p.description,
-                       VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
-                FROM product p
-                WHERE p.embedding IS NOT NULL
-                ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-                FETCH FIRST :limit ROWS ONLY
-            """)
+            # Execute search using raw Oracle SQL
+            cursor = self.products_service.connection.cursor()
+            try:
+                await cursor.execute(
+                    """
+                    SELECT p.id, p.name, p.description,
+                           VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
+                    FROM product p
+                    WHERE p.embedding IS NOT NULL
+                    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+                    FETCH FIRST :limit ROWS ONLY
+                    """,
+                    {
+                        "query_vector": vector_array,
+                        "limit": k,
+                    },
+                )
 
-            # Execute search
-            result = await self.products_service.repository.session.execute(
-                search_query,
-                {
-                    "query_vector": vector_array,
-                    "limit": k,
-                },
-            )
+                oracle_time = (time.time() - oracle_start) * 1000
 
-            oracle_time = (time.time() - oracle_start) * 1000
-
-            # Format results
-            products = [
-                {
-                    "id": row.id,
-                    "name": row.name,
-                    "description": row.description,
-                    "distance": row.distance,
-                    "metadata": {"id": row.id},
-                }
-                for row in result
-            ]
+                # Format results
+                products = [
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "description": row[2],
+                        "distance": row[3],
+                        "metadata": {"id": row[0]},
+                    }
+                    async for row in cursor
+                ]
+            finally:
+                cursor.close()
 
             # Record metrics
             if self.vertex_ai_service.metrics_service:

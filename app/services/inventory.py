@@ -1,53 +1,14 @@
-"""Inventory service with both SQLAlchemy and raw SQL implementations."""
+"""Inventory service using raw Oracle SQL."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from advanced_alchemy.repository import SQLAlchemyAsyncRepository
-from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-from sqlalchemy import and_
-
-from app.db import models as m
-
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import oracledb
 
 
-class InventoryService(SQLAlchemyAsyncRepositoryService[m.Inventory]):
-    """Handles database operations for inventory."""
-
-    class Repo(SQLAlchemyAsyncRepository[m.Inventory]):
-        """Inventory repository."""
-
-        model_type = m.Inventory
-
-    repository_type = Repo
-
-    async def get_by_shop_and_product(self, shop_id: int, product_id: int) -> m.Inventory | None:
-        """Get inventory by shop and product."""
-
-        return await self.get_one_or_none(and_(m.Inventory.shop_id == shop_id, m.Inventory.product_id == product_id))
-
-    async def get_products_in_shop(self, shop_id: int) -> Sequence[m.Inventory]:
-        """Get all products available in a shop."""
-        return await self.list(m.Inventory.shop_id == shop_id)
-
-    async def get_shops_with_product(self, product_id: int) -> Sequence[m.Inventory]:
-        """Get all shops that have a product."""
-        return await self.list(m.Inventory.product_id == product_id)
-
-    async def update_stock(self, shop_id: int, product_id: int) -> m.Inventory | None:
-        """Update stock for a product in a shop."""
-        inventory = await self.get_by_shop_and_product(shop_id, product_id)
-        if inventory:
-            return inventory
-        return None
-
-
-class RawInventoryService:
+class InventoryService:
     """Handles database operations for inventory using raw SQL."""
 
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
@@ -67,15 +28,15 @@ class RawInventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
                     i.updated_at
                 FROM inventory i
-                INNER JOIN shop s ON i.shop_id = s.id
-                INNER JOIN product p ON i.product_id = p.id
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN shop s ON i.shop_id = s.id
+                JOIN product p ON i.product_id = p.id
+                JOIN company c ON p.company_id = c.id
                 ORDER BY s.name, p.name
             """)
 
@@ -113,15 +74,15 @@ class RawInventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
                     i.updated_at
                 FROM inventory i
-                INNER JOIN shop s ON i.shop_id = s.id
-                INNER JOIN product p ON i.product_id = p.id
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN shop s ON i.shop_id = s.id
+                JOIN product p ON i.product_id = p.id
+                JOIN company c ON p.company_id = c.id
                 WHERE i.shop_id = :shop_id AND i.product_id = :product_id
                 """,
                 {"shop_id": shop_id, "product_id": product_id},
@@ -161,15 +122,15 @@ class RawInventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
                     i.updated_at
                 FROM inventory i
-                INNER JOIN shop s ON i.shop_id = s.id
-                INNER JOIN product p ON i.product_id = p.id
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN shop s ON i.shop_id = s.id
+                JOIN product p ON i.product_id = p.id
+                JOIN company c ON p.company_id = c.id
                 WHERE i.shop_id = :shop_id
                 ORDER BY p.name
                 """,
@@ -210,15 +171,15 @@ class RawInventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
                     i.updated_at
                 FROM inventory i
-                INNER JOIN shop s ON i.shop_id = s.id
-                INNER JOIN product p ON i.product_id = p.id
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN shop s ON i.shop_id = s.id
+                JOIN product p ON i.product_id = p.id
+                JOIN company c ON p.company_id = c.id
                 WHERE i.product_id = :product_id
                 ORDER BY s.name
                 """,
@@ -315,8 +276,7 @@ class RawInventoryService:
                 """
                 UPDATE inventory
                 SET shop_id = :shop_id,
-                    product_id = :product_id,
-                    updated_at = SYSTIMESTAMP
+                    product_id = :product_id
                 WHERE id = :id
                 """,
                 {"id": inventory_id, "shop_id": shop_id, "product_id": product_id},

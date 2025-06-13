@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from litestar.plugins.flash import FlashPlugin
-from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
+from litestar.plugins.htmx import HTMXPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
-from litestar_htmx import HTMXPlugin
 from litestar_oracledb import OracleDatabasePlugin
 
 from app import config
@@ -27,7 +25,5 @@ settings = get_settings()
 app_config = ApplicationCore()
 oracle = OracleDatabasePlugin(config=config.oracle_async)
 granian = GranianPlugin()
-flasher = FlashPlugin(config=config.flasher)
-alchemy = SQLAlchemyPlugin(config=config.alchemy)
 structlog = StructlogPlugin(config=config.log)
 htmx = HTMXPlugin()

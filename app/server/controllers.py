@@ -22,8 +22,8 @@ from google.api_core import exceptions as google_exceptions
 from litestar import Controller, get, post
 from litestar.di import Provide
 from litestar.exceptions import ValidationException
+from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.response import File, Stream
-from litestar_htmx import HTMXRequest, HTMXTemplate
 
 from app.server import deps
 
@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     from litestar.params import Body
 
     from app import schemas
-    from app.services.account import SearchMetricsService
     from app.services.recommendation import RecommendationService
+    from app.services.search_metrics import SearchMetricsService
 
 
 class CoffeeChatController(Controller):
@@ -205,6 +205,26 @@ class CoffeeChatController(Controller):
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",  # Disable Nginx buffering
                 "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @get(path="/dashboard", name="performance_dashboard")
+    async def performance_dashboard(self, metrics_service: SearchMetricsService) -> HTMXTemplate:
+        """Display performance dashboard."""
+        # Get metrics for dashboard
+        metrics = await metrics_service.get_performance_stats(hours=24)
+
+        return HTMXTemplate(
+            template_name="performance_dashboard.html.j2",
+            context={
+                "metrics": metrics,
+                "csp_nonce": self.generate_csp_nonce(),
+            },
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "X-XSS-Protection": "1; mode=block",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
             },
         )
 

@@ -13,10 +13,8 @@ cp .env.example .env  # Edit with your API keys
 
 # Start Oracle 23AI
 make start-infra
-
-# Initialize database
-uv run app database upgrade
-uv run app database load-fixtures # this will also load the vectors for the demo
+uv run app load-fixtures
+uv run app load-vectors  # Generate embeddings for demo
 
 # Start the application
 uv run app run
@@ -26,12 +24,12 @@ Visit [http://localhost:5006](http://localhost:5006) to try the demo!
 
 ## 📚 Documentation
 
-For complete implementation and development guides, see the [`todo/`](todo/) directory:
+For complete implementation and development guides, see the [`docs/system/`](docs/system/) directory:
 
-- **[Quick Start Guide](todo/01-QUICK-START.md)** - Get running in 15 minutes
-- **[Implementation Guide](todo/03-IMPLEMENTATION-PHASES-AA.md)** - Advanced Alchemy patterns
-- **[Oracle Architecture](todo/ORACLE-ARCHITECTURE.md)** - Oracle 23AI features
-- **[Conference Prep](todo/05-CONFERENCE-PREP.md)** - Demo presentation guide
+- **[Technical Overview](docs/system/01-technical-overview.md)** - High-level technical concepts
+- **[Oracle Architecture](docs/system/02-oracle-architecture.md)** - Oracle 23AI unified platform
+- **[Implementation Guide](docs/system/05-implementation-guide.md)** - Step-by-step build guide
+- **[Demo Scenarios](docs/system/07-demo-scenarios.md)** - Live demonstration scripts
 
 ## 🏗️ Architecture
 
@@ -39,7 +37,7 @@ This demo uses:
 
 - **Oracle 23AI** - Complete data platform with native vector search
 - **Vertex AI** - Google's generative AI platform for embeddings and chat
-- **Advanced Alchemy** - Modern SQLAlchemy 2.0 patterns with repository pattern
+- **Raw SQL** - Direct Oracle database access for clarity and performance
 - **Litestar** - High-performance async Python framework
 - **HTMX** - Real-time UI updates without JavaScript complexity
 
@@ -57,10 +55,10 @@ This implementation is designed for conference demonstration with:
 
 ```bash
 # Database operations
-uv run app database upgrade      # Apply migrations
-uv run app database load-fixtures # Load sample data
-uv run app database load-vectors  # Generate embeddings
-uv run app database drop-all     # Drop all tables
+uv run app load-fixtures        # Load sample data
+uv run app load-vectors         # Generate embeddings
+uv run app truncate-tables      # Reset all data
+uv run app clear-cache          # Clear response cache
 
 # Development
 uv run app run                 # Start the application
@@ -76,7 +74,7 @@ uv run app recommend           # Interactive coffee chat in terminal
 - [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Background story
 - [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation
 - [Litestar Documentation](https://docs.litestar.dev) - Framework documentation
-- [Advanced Alchemy Guide](https://docs.advanced-alchemy.litestar.org/) - Repository patterns
+- [System Documentation](docs/system/) - Complete technical guides
 
 ---
 

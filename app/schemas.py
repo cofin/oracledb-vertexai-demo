@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 __all__ = (
     "BaseStruct",
-    "CamelizedBaseSchema",
     "CamelizedBaseStruct",
     "ChatConversationCreate",
     "ChatConversationRead",

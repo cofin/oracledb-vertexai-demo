@@ -38,12 +38,12 @@ async def _upsert_companies(conn: oracledb.AsyncConnection, data: list[dict[str,
                 USING (SELECT :name AS name FROM dual) src
                 ON (c.name = src.name)
                 WHEN MATCHED THEN
-                    UPDATE SET updated_at = SYSTIMESTAMP
+                    UPDATE SET id = c.id  -- Dummy update to trigger updated_at
                 WHEN NOT MATCHED THEN
-                    INSERT (id, name)
-                    VALUES (:id, :name2)
+                    INSERT (name)
+                    VALUES (:name2)
                 """,
-                {"id": company["id"], "name": company["name"], "name2": company["name"]},
+                {"name": company["name"], "name2": company["name"]},
             )
         await conn.commit()
     finally:
@@ -62,14 +62,12 @@ async def _upsert_shops(conn: oracledb.AsyncConnection, data: list[dict[str, Any
                 ON (s.name = src.name)
                 WHEN MATCHED THEN
                     UPDATE SET
-                        address = :address,
-                        updated_at = SYSTIMESTAMP
+                        address = :address
                 WHEN NOT MATCHED THEN
-                    INSERT (id, name, address)
-                    VALUES (:id, :name2, :address2)
+                    INSERT (name, address)
+                    VALUES (:name2, :address2)
                 """,
                 {
-                    "id": shop["id"],
                     "name": shop["name"],
                     "name2": shop["name"],
                     "address": shop["address"],
@@ -83,12 +81,26 @@ async def _upsert_shops(conn: oracledb.AsyncConnection, data: list[dict[str, Any
 
 async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
     """Upsert product records using raw SQL."""
+    import array
+
     cursor = conn.cursor()
     try:
+        # Get mapping of company IDs
+        await cursor.execute("SELECT id FROM company ORDER BY id")
+        company_ids = [row[0] async for row in cursor]
+
+        # Map fixture company IDs (1,2,3...) to actual IDs
+        company_id_map = {i + 1: company_ids[i] for i in range(len(company_ids))}
+
         for product in data:
-            # Convert embedding list to array if present
+            # Convert embedding list to Oracle array if present
             embedding = product.get("embedding")
             embedding_date = product.get("embedding_generated_on")
+
+            oracle_embedding = array.array("f", embedding) if embedding else None
+
+            # Map fixture company_id to actual ID
+            actual_company_id = company_id_map.get(product["company_id"], product["company_id"])
 
             await cursor.execute(
                 """
@@ -99,31 +111,29 @@ async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, 
                     UPDATE SET
                         company_id = :company_id,
                         current_price = :current_price,
-                        "SIZE" = :size,
+                        product_size = :product_size,
                         description = :description,
                         embedding = :embedding,
-                        embedding_generated_on = :embedding_generated_on,
-                        updated_at = SYSTIMESTAMP
+                        embedding_generated_on = :embedding_generated_on
                 WHEN NOT MATCHED THEN
-                    INSERT (id, company_id, name, current_price, "SIZE",
-                            description, embedding, embedding_generated_on)
-                    VALUES (:id, :company_id2, :name2, :current_price2, :size2,
-                            :description2, :embedding2, :embedding_generated_on2)
+                    INSERT (company_id, name, current_price, product_size, description,
+                            embedding, embedding_generated_on)
+                    VALUES (:company_id2, :name2, :current_price2, :product_size2, :description2,
+                            :embedding2, :embedding_generated_on2)
                 """,
                 {
-                    "id": product["id"],
-                    "company_id": product["company_id"],
-                    "company_id2": product["company_id"],
+                    "company_id": actual_company_id,
+                    "company_id2": actual_company_id,
                     "name": product["name"],
                     "name2": product["name"],
                     "current_price": product["current_price"],
                     "current_price2": product["current_price"],
-                    "size": product["size"],
-                    "size2": product["size"],
+                    "product_size": product["product_size"],
+                    "product_size2": product["product_size"],
                     "description": product["description"],
                     "description2": product["description"],
-                    "embedding": embedding,
-                    "embedding2": embedding,
+                    "embedding": oracle_embedding,
+                    "embedding2": oracle_embedding,
                     "embedding_generated_on": embedding_date,
                     "embedding_generated_on2": embedding_date,
                 },
@@ -137,25 +147,60 @@ async def _upsert_inventory(conn: oracledb.AsyncConnection, data: list[dict[str,
     """Upsert inventory records using raw SQL."""
     cursor = conn.cursor()
     try:
+        # Create a mapping of old IDs to actual IDs
+        # First, get all products and shops with their IDs
+        await cursor.execute("SELECT id, name FROM product ORDER BY id")
+        products = {row[0]: row[1] async for row in cursor}
+
+        await cursor.execute("SELECT id, name FROM shop ORDER BY id")
+        shops = {row[0]: row[1] async for row in cursor}
+
+        # For the fixtures, we'll use a simple mapping based on order
+        # The fixtures use IDs starting from 1 for shops and specific IDs for products
+        shop_id_map = {i + 1: list(shops.keys())[i] for i in range(len(shops))}
+
+        # For products, we have 216 products with fixture IDs 1-216
+        # Map them 1:1 to the actual IDENTITY column values
+        product_list = list(products.keys())
+        product_id_map = {}
+        if product_list:
+            # Map fixture product IDs 1-216 to actual sequential IDs
+            for i, fixture_id in enumerate(range(1, 217)):
+                if i < len(product_list):
+                    product_id_map[fixture_id] = product_list[i]
+
         for inventory in data:
-            await cursor.execute(
-                """
-                MERGE INTO inventory i
-                USING (SELECT :shop_id AS shop_id, :product_id AS product_id FROM dual) src
-                ON (i.shop_id = src.shop_id AND i.product_id = src.product_id)
-                WHEN MATCHED THEN
-                    UPDATE SET updated_at = SYSTIMESTAMP
-                WHEN NOT MATCHED THEN
-                    INSERT (shop_id, product_id)
-                    VALUES (:shop_id2, :product_id2)
-                """,
-                {
-                    "shop_id": inventory["shop_id"],
-                    "shop_id2": inventory["shop_id"],
-                    "product_id": inventory["product_id"],
-                    "product_id2": inventory["product_id"],
-                },
-            )
+            fixture_shop_id = inventory["shop_id"]
+            fixture_product_id = inventory["product_id"]
+
+            # Map fixture IDs to actual IDs
+            actual_shop_id = shop_id_map.get(fixture_shop_id)
+            actual_product_id = product_id_map.get(fixture_product_id)
+
+            if actual_shop_id and actual_product_id:
+                await cursor.execute(
+                    """
+                    MERGE INTO inventory i
+                    USING (SELECT :shop_id AS shop_id, :product_id AS product_id FROM dual) src
+                    ON (i.shop_id = src.shop_id AND i.product_id = src.product_id)
+                    WHEN MATCHED THEN
+                        UPDATE SET id = i.id  -- Dummy update to trigger updated_at
+                    WHEN NOT MATCHED THEN
+                        INSERT (shop_id, product_id)
+                        VALUES (:shop_id2, :product_id2)
+                    """,
+                    {
+                        "shop_id": actual_shop_id,
+                        "shop_id2": actual_shop_id,
+                        "product_id": actual_product_id,
+                        "product_id2": actual_product_id,
+                    },
+                )
+            else:
+                logger.warning(
+                    "Skipping inventory - could not map shop %s or product %s", fixture_shop_id, fixture_product_id
+                )
+
         await conn.commit()
     finally:
         cursor.close()
@@ -223,8 +268,7 @@ async def _load_vectors() -> None:
                     """
                     UPDATE product
                     SET embedding = :embedding,
-                        embedding_generated_on = SYSTIMESTAMP,
-                        updated_at = SYSTIMESTAMP
+                        embedding_generated_on = SYSTIMESTAMP
                     WHERE id = :id
                     """,
                     {"id": product["id"], "embedding": oracle_vector},

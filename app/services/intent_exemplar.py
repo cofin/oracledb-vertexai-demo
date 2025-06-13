@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+import array
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 import structlog
-from advanced_alchemy.repository import SQLAlchemyAsyncRepository
-from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-
-from app.db import models
 
 if TYPE_CHECKING:
     import oracledb
@@ -39,94 +36,7 @@ class IntentExemplarServiceProtocol(Protocol):
         ...
 
 
-class IntentExemplarService(SQLAlchemyAsyncRepositoryService[models.IntentExemplar]):
-    """Service for managing intent exemplar embeddings using SQLAlchemy."""
-
-    class Repo(SQLAlchemyAsyncRepository[models.IntentExemplar]):
-        """Intent exemplar repository."""
-
-        model_type = models.IntentExemplar
-
-    repository_type = Repo
-
-    def __init__(self, **repo_kwargs: Any) -> None:
-        """Initialize with custom repository options."""
-        super().__init__(**repo_kwargs)
-
-    async def load_all_exemplars(self) -> dict[str, np.ndarray]:
-        """Load all cached exemplar embeddings grouped by intent."""
-        exemplars = await self.list()
-
-        result: dict[str, list[list[float]]] = {}
-        for exemplar in exemplars:
-            if exemplar.embedding:
-                # Convert from list to numpy array
-                if exemplar.intent not in result:
-                    result[exemplar.intent] = []
-                result[exemplar.intent].append(exemplar.embedding)
-
-        # Convert lists to numpy arrays
-        numpy_result: dict[str, np.ndarray] = {}
-        for intent, embeddings_list in result.items():
-            numpy_result[intent] = np.array(embeddings_list)
-
-        return numpy_result
-
-    async def cache_exemplar(
-        self,
-        intent: str,
-        phrase: str,
-        embedding: list[float],
-    ) -> models.IntentExemplar:
-        """Cache a single exemplar embedding."""
-        obj, _inserted = await self.get_or_upsert(
-            intent=intent, phrase=phrase, embedding=embedding, match_fields=["intent", "phrase"]
-        )
-        return obj
-
-    async def populate_cache(
-        self,
-        exemplars: dict[str, list[str]],
-        vertex_ai_service: VertexAIService,
-    ) -> int:
-        """Populate cache with all exemplars. Returns count of embeddings created."""
-        count = 0
-
-        for intent, phrases in exemplars.items():
-            for phrase in phrases:
-                # Check if already cached
-                existing = await self.repository.get_one_or_none(
-                    intent=intent,
-                    phrase=phrase,
-                )
-
-                if not existing or not existing.embedding:
-                    # Generate embedding
-                    embedding = await vertex_ai_service.create_embedding(phrase)
-                    await self.cache_exemplar(intent, phrase, embedding)
-                    count += 1
-
-                    if count % 10 == 0:
-                        logger.info("Cached %d exemplar embeddings...", count)
-
-        logger.info("Populated cache with %d new exemplar embeddings", count)
-        return count
-
-    async def get_exemplars_with_phrases(self) -> dict[str, list[tuple[str, list[float]]]]:
-        """Get all exemplars with their phrases and embeddings."""
-        exemplars = await self.list()
-
-        result: dict[str, list[tuple[str, list[float]]]] = {}
-        for exemplar in exemplars:
-            if exemplar.embedding:
-                if exemplar.intent not in result:
-                    result[exemplar.intent] = []
-                result[exemplar.intent].append((exemplar.phrase, exemplar.embedding))
-
-        return result
-
-
-class RawIntentExemplarService:
+class IntentExemplarService:
     """Service for managing intent exemplar embeddings using raw Oracle SQL."""
 
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
@@ -197,6 +107,9 @@ class RawIntentExemplarService:
         """Cache a single exemplar embedding."""
         cursor = self.connection.cursor()
         try:
+            # Convert Python list to Oracle VECTOR format
+            oracle_vector = array.array("f", embedding)
+
             await cursor.execute(
                 """
                 MERGE INTO intent_exemplar ie
@@ -204,8 +117,7 @@ class RawIntentExemplarService:
                 ON (ie.intent = src.intent AND ie.phrase = src.phrase)
                 WHEN MATCHED THEN
                     UPDATE SET
-                        embedding = :embedding,
-                        updated_at = SYSTIMESTAMP
+                        embedding = :embedding
                 WHEN NOT MATCHED THEN
                     INSERT (intent, phrase, embedding)
                     VALUES (:intent2, :phrase2, :embedding2)
@@ -213,10 +125,10 @@ class RawIntentExemplarService:
                 {
                     "intent": intent,
                     "phrase": phrase,
-                    "embedding": embedding,
+                    "embedding": oracle_vector,
                     "intent2": intent,
                     "phrase2": phrase,
-                    "embedding2": embedding,
+                    "embedding2": oracle_vector,
                 },
             )
 

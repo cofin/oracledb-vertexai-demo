@@ -48,6 +48,7 @@ __all__ = (
     "load_vectors",
     "model_info",
     "recommend",
+    "truncate_tables",
     "version_callback",
 )
 
@@ -69,57 +70,54 @@ def recommend() -> None:
     async def _get_recommendations() -> None:
         from rich import get_console
 
-        from app.config import alchemy
         from app.server.deps import (
+            provide_chat_conversation_service,
+            provide_intent_exemplar_service,
             provide_product_service,
+            provide_response_cache_service,
+            provide_search_metrics_service,
             provide_shop_service,
+            provide_user_session_service,
         )
         from app.services import (
-            ChatConversationService,
-            IntentExemplarService,
             OracleVectorSearchService,
             RecommendationService,
-            ResponseCacheService,
-            SearchMetricsService,
-            UserSessionService,
             VertexAIService,
         )
 
         console = get_console()
-        engine = alchemy.get_engine()
-        async with alchemy.get_session() as db_session:
-            shops_service = await anext(provide_shop_service(db_session))
-            products_service = await anext(provide_product_service(db_session))
 
-            # Initialize Vertex AI and Oracle services
-            vertex_ai_service = VertexAIService()
-            session_service = UserSessionService(session=db_session)
-            conversation_service = ChatConversationService(session=db_session)
-            cache_service = ResponseCacheService(session=db_session)
-            metrics_service = SearchMetricsService(session=db_session)
-            exemplar_service = IntentExemplarService(session=db_session)
+        # Get all services using their providers
+        shops_service = await anext(provide_shop_service())
+        products_service = await anext(provide_product_service())
+        session_service = await anext(provide_user_session_service())
+        conversation_service = await anext(provide_chat_conversation_service())
+        cache_service = await anext(provide_response_cache_service())
+        metrics_service = await anext(provide_search_metrics_service())
+        exemplar_service = await anext(provide_intent_exemplar_service())
 
-            vector_search_service = OracleVectorSearchService(
-                products_service=products_service,
-                vertex_ai_service=vertex_ai_service,
-            )
+        # Initialize Vertex AI and Oracle services
+        vertex_ai_service = VertexAIService()
 
-            service = RecommendationService(
-                vertex_ai_service=vertex_ai_service,
-                vector_search_service=vector_search_service,
-                products_service=products_service,
-                shops_service=shops_service,
-                session_service=session_service,
-                conversation_service=conversation_service,
-                cache_service=cache_service,
-                metrics_service=metrics_service,
-                exemplar_service=exemplar_service,
-                user_id="cli-0",
-            )
+        vector_search_service = OracleVectorSearchService(
+            products_service=products_service,
+            vertex_ai_service=vertex_ai_service,
+        )
 
-            await _chat_session(service=service, console=console)
+        service = RecommendationService(
+            vertex_ai_service=vertex_ai_service,
+            vector_search_service=vector_search_service,
+            products_service=products_service,
+            shops_service=shops_service,
+            session_service=session_service,
+            conversation_service=conversation_service,
+            cache_service=cache_service,
+            metrics_service=metrics_service,
+            exemplar_service=exemplar_service,
+            user_id="cli-0",
+        )
 
-        await engine.dispose()
+        await _chat_session(service=service, console=console)
 
     console = get_console()
     console.print(
@@ -197,29 +195,27 @@ def bulk_embed() -> None:
     """Run bulk embedding job for all products using Vertex AI Batch Prediction."""
 
     async def _run_bulk_embed() -> None:
-        from app.config import alchemy
         from app.server.deps import provide_product_service
         from app.services.bulk_embedding import BulkEmbeddingService
 
         console = get_console()
         console.print("[bold cyan]🚀 Starting bulk embedding job...[/bold cyan]")
 
-        async with alchemy.get_session() as db_session:
-            products_service = await anext(provide_product_service(db_session))
-            bulk_service = BulkEmbeddingService(products_service)
+        products_service = await anext(provide_product_service())
+        bulk_service = BulkEmbeddingService(products_service)
 
-            # Run the complete bulk embedding pipeline
-            result = await bulk_service.run_bulk_embedding_job()
+        # Run the complete bulk embedding pipeline
+        result = await bulk_service.run_bulk_embedding_job()
 
-            if result["status"] == "completed":
-                console.print("[bold green]✓ Bulk embedding completed![/bold green]")
-                console.print(f"Products exported: {result['products_exported']}")
-                console.print(f"Embeddings processed: {result['embeddings_processed']}")
-                console.print(f"Job ID: {result['job_id']}")
-            elif result["status"] == "skipped":
-                console.print(f"[yellow]⚠ {result['reason']}[/yellow]")
-            else:
-                console.print(f"[bold red]✗ Bulk embedding failed: {result['error']}[/bold red]")
+        if result["status"] == "completed":
+            console.print("[bold green]✓ Bulk embedding completed![/bold green]")
+            console.print(f"Products exported: {result['products_exported']}")
+            console.print(f"Embeddings processed: {result['embeddings_processed']}")
+            console.print(f"Job ID: {result['job_id']}")
+        elif result["status"] == "skipped":
+            console.print(f"[yellow]⚠ {result['reason']}[/yellow]")
+        else:
+            console.print(f"[bold red]✗ Bulk embedding failed: {result['error']}[/bold red]")
 
     anyio.run(_run_bulk_embed)
 
@@ -230,7 +226,6 @@ def embed_new(limit: int) -> None:
     """Process new/updated products using online embedding API for real-time updates."""
 
     async def _embed_new_products() -> None:
-        from app.config import alchemy
         from app.server.deps import provide_product_service
         from app.services.bulk_embedding import OnlineEmbeddingService
         from app.services.vertex_ai import VertexAIService
@@ -238,18 +233,17 @@ def embed_new(limit: int) -> None:
         console = get_console()
         console.print(f"[bold cyan]🔄 Processing up to {limit} new products...[/bold cyan]")
 
-        async with alchemy.get_session() as db_session:
-            products_service = await anext(provide_product_service(db_session))
-            vertex_ai_service = VertexAIService()
-            online_service = OnlineEmbeddingService(vertex_ai_service)
+        products_service = await anext(provide_product_service())
+        vertex_ai_service = VertexAIService()
+        online_service = OnlineEmbeddingService(vertex_ai_service)
 
-            # Process new products
-            processed_count = await online_service.process_new_products(products_service)
+        # Process new products
+        processed_count = await online_service.process_new_products(products_service, limit)
 
-            if processed_count > 0:
-                console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
-            else:
-                console.print("[yellow]No new products to process[/yellow]")
+        if processed_count > 0:
+            console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
+        else:
+            console.print("[yellow]No new products to process[/yellow]")
 
     anyio.run(_embed_new_products)
 
@@ -354,40 +348,178 @@ def clear_cache(
 
     async def _clear_cache() -> None:
         """Clear cache tables."""
-        from sqlalchemy import delete, func, select
+        from app.config import oracle_async
 
-        from app.config import alchemy
-        from app.db import models as m
+        async with oracle_async.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                with console.status("[bold green]Clearing cache tables...") as status:
+                    for table_name in tables_to_clear:
+                        status.update(f"Clearing {table_name}...")
 
-        async with alchemy.get_session() as db:
-            with console.status("[bold green]Clearing cache tables...") as status:
-                for table_name in tables_to_clear:
-                    status.update(f"Clearing {table_name}...")
+                        # Validate table name to prevent SQL injection
+                        if table_name not in ["intent_exemplar", "response_cache", "search_metrics"]:
+                            console.print(f"[red]✗ Invalid table name: {table_name}[/red]")
+                            continue
 
-                    if table_name == "intent_exemplar":
-                        # Count and delete intent exemplar records
-                        count_result = await db.execute(select(func.count()).select_from(m.IntentExemplar))
-                        count = count_result.scalar()
-                        await db.execute(delete(m.IntentExemplar))
-                        console.print(f"[green]✓ Cleared {count} records from intent_exemplar[/green]")
+                        # Count records first
+                        await cursor.execute(f"SELECT COUNT(*) FROM {table_name}")  # noqa: S608
+                        count = (await cursor.fetchone())[0]
 
-                    elif table_name == "response_cache":
-                        # Count and delete response cache records
-                        count_result = await db.execute(select(func.count()).select_from(m.ResponseCache))
-                        count = count_result.scalar()
-                        await db.execute(delete(m.ResponseCache))
-                        console.print(f"[green]✓ Cleared {count} records from response_cache[/green]")
+                        # Delete all records
+                        await cursor.execute(f"DELETE FROM {table_name}")  # noqa: S608
+                        await conn.commit()
 
-                    elif table_name == "search_metrics":
-                        # Count and delete search metrics records
-                        count_result = await db.execute(select(func.count()).select_from(m.SearchMetrics))
-                        count = count_result.scalar()
-                        await db.execute(delete(m.SearchMetrics))
-                        console.print(f"[green]✓ Cleared {count} records from search_metrics[/green]")
-                await db.commit()
-                console.print("\n[bold green]Cache clearing complete![/bold green]")
+                        console.print(f"[green]✓ Cleared {count} records from {table_name}[/green]")
+
+                    console.print("\n[bold green]Cache clearing complete![/bold green]")
+            finally:
+                cursor.close()
 
     anyio.run(_clear_cache)
+
+
+def _get_tables_to_truncate(skip_cache: bool, skip_session: bool, skip_data: bool) -> list[str]:
+    """Get list of tables to truncate based on flags."""
+    cache_tables = ["intent_exemplar", "response_cache", "search_metrics"]
+    session_tables = ["chat_conversation", "user_session"]  # Order matters for FKs
+    data_tables = ["inventory", "product", "shop", "company"]  # Order matters for FKs
+
+    tables = []
+    if not skip_cache:
+        tables.extend(cache_tables)
+    if not skip_session:
+        tables.extend(session_tables)
+    if not skip_data:
+        tables.extend(data_tables)
+    return tables
+
+
+def _display_tables(console: Console, tables: list[str]) -> None:
+    """Display tables that will be truncated."""
+    console.print("[bold]Tables to truncate:[/bold]")
+    for table in tables:
+        console.print(f"  • {table}")
+
+
+def _confirm_truncate(console: Console) -> bool:
+    """Confirm truncation with user."""
+    console.print("\n[bold red]⚠️  WARNING: This will remove ALL data from the selected tables![/bold red]")
+    confirm = Prompt.ask(
+        "[bold red]Are you absolutely sure?[/bold red]",
+        choices=["y", "n"],
+        default="n",
+    )
+    if confirm.lower() != "y":
+        console.print("[yellow]Operation cancelled.[/yellow]")
+        return False
+    return True
+
+
+@click.command(name="truncate-tables")
+@click.option(
+    "--skip-cache",
+    is_flag=True,
+    help="Skip cache tables (intent_exemplar, response_cache, search_metrics)",
+)
+@click.option(
+    "--skip-session",
+    is_flag=True,
+    help="Skip session tables (user_session, chat_conversation)",
+)
+@click.option(
+    "--skip-data",
+    is_flag=True,
+    help="Skip data tables (company, shop, product, inventory)",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+def truncate_tables(
+    skip_cache: bool,
+    skip_session: bool,
+    skip_data: bool,
+    force: bool,
+) -> None:
+    """Truncate all tables in the database (faster than DELETE for resetting data)."""
+    console = get_console()
+
+    # Get tables to truncate
+    tables = _get_tables_to_truncate(skip_cache, skip_session, skip_data)
+    if not tables:
+        console.print("[yellow]No tables selected for truncation. Use --help to see options.[/yellow]")
+        return
+
+    # Show tables and confirm
+    _display_tables(console, tables)
+    if not force and not _confirm_truncate(console):
+        return
+
+    async def _truncate_tables() -> None:
+        """Truncate tables."""
+        from app.config import oracle_async
+
+        async with oracle_async.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                with console.status("[bold green]Truncating tables...") as status:
+                    # Disable FK constraints temporarily for truncation
+                    status.update("Disabling foreign key constraints...")
+
+                    # Get all foreign key constraints
+                    await cursor.execute("""
+                        SELECT constraint_name, table_name
+                        FROM user_constraints
+                        WHERE constraint_type = 'R'
+                        AND status = 'ENABLED'
+                    """)
+                    constraints = await cursor.fetchall()
+
+                    # Disable constraints
+                    for constraint_name, table_name in constraints:
+                        await cursor.execute(f"ALTER TABLE {table_name} DISABLE CONSTRAINT {constraint_name}")
+
+                    # Truncate tables
+                    for table_name in tables:
+                        status.update(f"Truncating {table_name}...")
+
+                        # Validate table name
+                        valid_tables = [
+                            "intent_exemplar",
+                            "response_cache",
+                            "search_metrics",
+                            "chat_conversation",
+                            "user_session",
+                            "inventory",
+                            "product",
+                            "shop",
+                            "company",
+                            "app_config",
+                        ]
+                        if table_name not in valid_tables:
+                            console.print(f"[red]✗ Invalid table name: {table_name}[/red]")
+                            continue
+
+                        try:
+                            await cursor.execute(f"TRUNCATE TABLE {table_name}")
+                            console.print(f"[green]✓ Truncated {table_name}[/green]")
+                        except Exception as e:  # noqa: BLE001
+                            console.print(f"[red]✗ Failed to truncate {table_name}: {e}[/red]")
+
+                    # Re-enable constraints
+                    status.update("Re-enabling foreign key constraints...")
+                    for constraint_name, table_name in constraints:
+                        await cursor.execute(f"ALTER TABLE {table_name} ENABLE CONSTRAINT {constraint_name}")
+
+                    await conn.commit()
+                    console.print("\n[bold green]Table truncation complete![/bold green]")
+            finally:
+                cursor.close()
+
+    anyio.run(_truncate_tables)
 
 
 # Main execution removed - CLI is handled by Litestar

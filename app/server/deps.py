@@ -5,10 +5,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy.orm import selectinload
-
-from app.db import models as m
-from app.lib.deps import create_service_provider
+from app import config
 from app.services import (
     ChatConversationService,
     CompanyService,
@@ -28,90 +25,112 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from litestar import Request
+    from oracledb import AsyncConnection
+
 
 # Service providers for dependency injection
-provide_company_service = create_service_provider(
-    CompanyService,
-    load=[selectinload(m.Company.products)],
-    error_messages={
-        "duplicate_key": "Company already exists.",
-        "integrity": "Company operation failed.",
-    },
-)
 
-provide_product_service = create_service_provider(
-    ProductService,
-    load=[selectinload(m.Product.company)],
-    error_messages={
-        "duplicate_key": "Product already exists.",
-        "integrity": "Product operation failed.",
-    },
-)
 
-provide_shop_service = create_service_provider(
-    ShopService,
-    load=[selectinload(m.Shop.inventory).selectinload(m.Inventory.product)],
-    error_messages={
-        "duplicate_key": "Shop already exists.",
-        "integrity": "Shop operation failed.",
-    },
-)
+async def provide_company_service(db_connection: AsyncConnection | None = None) -> AsyncGenerator[CompanyService, None]:
+    """Provide Company service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield CompanyService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield CompanyService(conn)
 
-provide_inventory_service = create_service_provider(
-    InventoryService,
-    load=[
-        selectinload(m.Inventory.shop),
-        selectinload(m.Inventory.product).selectinload(m.Product.company),
-    ],
-    error_messages={
-        "duplicate_key": "Inventory item already exists.",
-        "integrity": "Inventory operation failed.",
-    },
-)
 
-provide_user_session_service = create_service_provider(
-    UserSessionService,
-    load=[selectinload(m.UserSession.conversations)],
-    error_messages={
-        "duplicate_key": "Session already exists.",
-        "integrity": "Session operation failed.",
-    },
-)
+async def provide_product_service(db_connection: AsyncConnection | None = None) -> AsyncGenerator[ProductService, None]:
+    """Provide Product service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield ProductService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield ProductService(conn)
 
-provide_chat_conversation_service = create_service_provider(
-    ChatConversationService,
-    load=[selectinload(m.ChatConversation.session)],
-    error_messages={
-        "duplicate_key": "Conversation already exists.",
-        "integrity": "Conversation operation failed.",
-    },
-)
 
-provide_response_cache_service = create_service_provider(
-    ResponseCacheService,
-    error_messages={
-        "duplicate_key": "Cache entry already exists.",
-        "integrity": "Cache operation failed.",
-    },
-)
+async def provide_shop_service(db_connection: AsyncConnection | None = None) -> AsyncGenerator[ShopService, None]:
+    """Provide Shop service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield ShopService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield ShopService(conn)
 
-provide_search_metrics_service = create_service_provider(
-    SearchMetricsService,
-    error_messages={
-        "duplicate_key": "Metrics entry already exists.",
-        "integrity": "Metrics operation failed.",
-    },
-)
 
-provide_intent_exemplar_service = create_service_provider(
-    IntentExemplarService,
-    error_messages={
-        "duplicate_key": "Exemplar already exists.",
-        "integrity": "Exemplar operation failed.",
-    },
-)
+async def provide_inventory_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[InventoryService, None]:
+    """Provide Inventory service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield InventoryService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield InventoryService(conn)
 
-# Non-repository service providers
+
+async def provide_user_session_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[UserSessionService, None]:
+    """Provide User Session service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield UserSessionService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield UserSessionService(conn)
+
+
+async def provide_chat_conversation_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[ChatConversationService, None]:
+    """Provide Chat Conversation service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield ChatConversationService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield ChatConversationService(conn)
+
+
+async def provide_response_cache_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[ResponseCacheService, None]:
+    """Provide Response Cache service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield ResponseCacheService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield ResponseCacheService(conn)
+
+
+async def provide_search_metrics_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[SearchMetricsService, None]:
+    """Provide Search Metrics service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield SearchMetricsService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield SearchMetricsService(conn)
+
+
+async def provide_intent_exemplar_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[IntentExemplarService, None]:
+    """Provide Intent Exemplar service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield IntentExemplarService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield IntentExemplarService(conn)
 
 
 async def provide_vertex_ai_service() -> AsyncGenerator[VertexAIService, None]:

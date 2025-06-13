@@ -14,8 +14,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "litestar[jinja,jwt,cryptography,structlog,sqlalchemy]",
-    "litestar-htmx",
+    "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-oracledb",
     "litestar-granian[uvloop]",
     "python-dotenv",

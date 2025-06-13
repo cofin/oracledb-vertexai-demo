@@ -1,39 +1,14 @@
-"""Company service with both SQLAlchemy and raw SQL implementations."""
+"""Company service using raw Oracle SQL."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from advanced_alchemy.repository import SQLAlchemyAsyncRepository
-from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-
-from app.db import models as m
-
 if TYPE_CHECKING:
     import oracledb
 
 
-class CompanyService(SQLAlchemyAsyncRepositoryService[m.Company]):
-    """Handles database operations for companies using SQLAlchemy."""
-
-    class Repo(SQLAlchemyAsyncRepository[m.Company]):
-        """Company repository."""
-
-        model_type = m.Company
-
-    repository_type = Repo
-    match_fields = ["name"]
-
-    async def get_by_name(self, name: str) -> m.Company | None:
-        """Get company by name."""
-        return await self.get_one_or_none(name=name)
-
-    async def exists_by_name(self, name: str) -> bool:
-        """Check if company exists by name."""
-        return await self.exists(name=name)
-
-
-class RawCompanyService:
+class CompanyService:
     """Handles database operations for companies using raw SQL."""
 
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
@@ -140,7 +115,7 @@ class RawCompanyService:
                     id,
                     name,
                     current_price,
-                    "SIZE" as size,
+                    product_size,
                     description,
                     embedding,
                     embedding_generated_on,
@@ -193,18 +168,16 @@ class RawCompanyService:
         """Create a new company."""
         cursor = self.connection.cursor()
         try:
-            # Get next ID from sequence
-            await cursor.execute("SELECT company_id_seq.NEXTVAL FROM dual")
-            company_id = (await cursor.fetchone())[0]
-
             await cursor.execute(
                 """
-                INSERT INTO company (id, name)
-                VALUES (:id, :name)
+                INSERT INTO company (name)
+                VALUES (:name)
+                RETURNING id INTO :id
                 """,
-                {"id": company_id, "name": name},
+                {"name": name, "id": cursor.var(int)},
             )
 
+            company_id = cursor.bindvars["id"].getvalue()  # type: ignore[call-overload]
             await self.connection.commit()
 
             # Return the created company
@@ -219,8 +192,7 @@ class RawCompanyService:
             await cursor.execute(
                 """
                 UPDATE company
-                SET name = :name,
-                    updated_at = SYSTIMESTAMP
+                SET name = :name
                 WHERE id = :id
                 """,
                 {"id": company_id, "name": name},
@@ -248,22 +220,18 @@ class RawCompanyService:
         """Insert or update company by name using MERGE."""
         cursor = self.connection.cursor()
         try:
-            # Get next ID in case we need to insert
-            await cursor.execute("SELECT company_id_seq.NEXTVAL FROM dual")
-            next_id = (await cursor.fetchone())[0]
-
             await cursor.execute(
                 """
                 MERGE INTO company c
                 USING (SELECT :name AS name FROM dual) src
                 ON (c.name = src.name)
                 WHEN MATCHED THEN
-                    UPDATE SET updated_at = SYSTIMESTAMP
+                    UPDATE SET name = src.name  -- Triggers updated_at
                 WHEN NOT MATCHED THEN
-                    INSERT (id, name)
-                    VALUES (:id, :name2)
+                    INSERT (name)
+                    VALUES (:name2)
                 """,
-                {"name": name, "name2": name, "id": next_id},
+                {"name": name, "name2": name},
             )
 
             await self.connection.commit()

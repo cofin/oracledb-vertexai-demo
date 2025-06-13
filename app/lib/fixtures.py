@@ -37,4 +37,3 @@ async def open_fixture_async(fixtures_path: Path | AsyncPath, fixture_name: str)
         return decode_json(f_data)
     msg = f"Could not find the {fixture_name} fixture"
     raise FileNotFoundError(msg)
-

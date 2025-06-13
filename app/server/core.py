@@ -44,15 +44,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
         from litestar.params import Body
+        from litestar.plugins.htmx import HTMXRequest
         from litestar.static_files import create_static_files_router
-        from litestar_htmx import HTMXRequest
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config, schemas, services
-        from app.db import models as m
         from app.lib import log
         from app.lib.settings import BASE_DIR, get_settings
-        from app.server import plugins
+        from app.server import plugins, startup
         from app.server.controllers import CoffeeChatController
         from app.services import (
             ChatConversationService,
@@ -69,7 +68,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         )
 
         settings = get_settings()
-        app_config.middleware.insert(0, config.session.middleware)
         # logging
         app_config.middleware.insert(0, log.StructlogMiddleware)
         app_config.after_exception.append(log.after_exception_hook_handler)
@@ -80,11 +78,9 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # plugins
         app_config.plugins.extend(
             [
-                plugins.flasher,
                 plugins.granian,
                 plugins.oracle,
                 plugins.structlog,
-                plugins.alchemy,
                 plugins.htmx,
             ],
         )
@@ -109,6 +105,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 ),
             ],
         )
+        # startup hooks
+        app_config.on_startup.append(startup.on_startup)
         # signatures
         app_config.signature_namespace.update(
             {
@@ -122,7 +120,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
-                "m": m,
                 "schemas": schemas,
                 "services": services,
                 # Service types
@@ -144,23 +141,24 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from advanced_alchemy.extensions.litestar.cli import database_group
+        from app.cli import (
+            bulk_embed,
+            clear_cache,
+            embed_new,
+            load_fixtures,
+            load_vectors,
+            model_info,
+            recommend,
+            truncate_tables,
+        )
 
-        from app.cli import bulk_embed, clear_cache, embed_new, load_fixtures, load_vectors, model_info, recommend
-        from app.lib.settings import get_settings
-
-        settings = get_settings()
-        self.app_slug = settings.app.slug
         cli.add_command(recommend, name="recommend")
         cli.add_command(model_info, name="model-info")
 
-        # Add our custom database commands
-        database_group.add_command(load_fixtures, name="load-fixtures")  # type: ignore[arg-type]
-        database_group.add_command(load_vectors, name="load-vectors")  # type: ignore[arg-type]
-
-        # Add bulk embedding commands
-        database_group.add_command(bulk_embed, name="bulk-embed")  # type: ignore[arg-type]
-        database_group.add_command(embed_new, name="embed-new")  # type: ignore[arg-type]
-
-        # Add cache management command
-        database_group.add_command(clear_cache, name="clear-cache")  # type: ignore[arg-type]
+        # Add database-related commands directly to CLI
+        cli.add_command(load_fixtures, name="load-fixtures")
+        cli.add_command(load_vectors, name="load-vectors")
+        cli.add_command(bulk_embed, name="bulk-embed")
+        cli.add_command(embed_new, name="embed-new")
+        cli.add_command(clear_cache, name="clear-cache")
+        cli.add_command(truncate_tables, name="truncate-tables")

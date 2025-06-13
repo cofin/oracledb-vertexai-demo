@@ -1,48 +1,14 @@
-"""Shop service with both SQLAlchemy and raw SQL implementations."""
+"""Shop service using raw Oracle SQL."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from advanced_alchemy.filters import LimitOffset
-from advanced_alchemy.repository import SQLAlchemyAsyncSlugRepository
-from advanced_alchemy.service import SQLAlchemyAsyncRepositoryService
-from sqlalchemy.orm import selectinload
-
-from app.db import models as m
-
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     import oracledb
 
 
-class ShopService(SQLAlchemyAsyncRepositoryService[m.Shop]):
-    """Handles database operations for shops."""
-
-    class Repo(SQLAlchemyAsyncSlugRepository[m.Shop]):
-        """Shop repository with slug support."""
-
-        model_type = m.Shop
-
-    repository_type = Repo
-    match_fields = ["name"]
-
-    async def get_by_slug(self, slug: str) -> m.Shop | None:
-        """Get shop by slug."""
-        return await self.get_one_or_none(slug=slug)
-
-    async def get_with_inventory(self, shop_id: int) -> m.Shop | None:
-        """Get shop with inventory loaded."""
-        return await self.get_one_or_none(m.Shop.id == shop_id, load=[selectinload(m.Shop.inventory)])
-
-    async def find_by_location(self, latitude: float, longitude: float, radius_km: float = 10) -> Sequence[m.Shop]:
-        """Find shops within radius of location."""
-        # Simple implementation - in production you'd use spatial queries
-        return await self.list(LimitOffset(limit=10, offset=0))
-
-
-class RawShopService:
+class ShopService:
     """Handles database operations for shops using raw SQL."""
 
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
@@ -156,14 +122,14 @@ class RawShopService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p."SIZE" as size,
+                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
                     i.updated_at
                 FROM inventory i
-                INNER JOIN product p ON i.product_id = p.id
-                INNER JOIN company c ON p.company_id = c.id
+                JOIN product p ON i.product_id = p.id
+                JOIN company c ON p.company_id = c.id
                 WHERE i.shop_id = :shop_id
                 ORDER BY p.name
                 """,
@@ -194,18 +160,16 @@ class RawShopService:
         """Create a new shop."""
         cursor = self.connection.cursor()
         try:
-            # Get next ID from sequence
-            await cursor.execute("SELECT shop_id_seq.NEXTVAL FROM dual")
-            shop_id = (await cursor.fetchone())[0]
-
             await cursor.execute(
                 """
-                INSERT INTO shop (id, name, address)
-                VALUES (:id, :name, :address)
+                INSERT INTO shop (name, address)
+                VALUES (:name, :address)
+                RETURNING id INTO :id
                 """,
-                {"id": shop_id, "name": name, "address": address},
+                {"name": name, "address": address, "id": cursor.var(int)},
             )
 
+            shop_id = cursor.bindvars["id"].getvalue()  # type: ignore[call-overload]
             await self.connection.commit()
 
             # Return the created shop
@@ -234,7 +198,6 @@ class RawShopService:
             if not set_clauses:
                 return await self.get_by_id(shop_id)
 
-            set_clauses.append("updated_at = SYSTIMESTAMP")
             sql = f"UPDATE shop SET {', '.join(set_clauses)} WHERE id = :id"  # noqa: S608
 
             await cursor.execute(sql, params)
@@ -260,10 +223,6 @@ class RawShopService:
         """Insert or update shop by name using MERGE."""
         cursor = self.connection.cursor()
         try:
-            # Get next ID in case we need to insert
-            await cursor.execute("SELECT shop_id_seq.NEXTVAL FROM dual")
-            next_id = (await cursor.fetchone())[0]
-
             await cursor.execute(
                 """
                 MERGE INTO shop s
@@ -271,18 +230,16 @@ class RawShopService:
                 ON (s.name = src.name)
                 WHEN MATCHED THEN
                     UPDATE SET
-                        address = :address,
-                        updated_at = SYSTIMESTAMP
+                        address = :address
                 WHEN NOT MATCHED THEN
-                    INSERT (id, name, address)
-                    VALUES (:id, :name2, :address2)
+                    INSERT (name, address)
+                    VALUES (:name2, :address2)
                 """,
                 {
                     "name": name,
                     "name2": name,
                     "address": address,
                     "address2": address,
-                    "id": next_id,
                 },
             )
 
