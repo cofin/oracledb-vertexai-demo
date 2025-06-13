@@ -418,6 +418,6 @@ class CoffeeChatController(Controller):
     def favicon(self) -> File:
         """Serve favicon with security headers."""
         return File(
-            path="app/static/favicon.ico",
+            path="app/server/static/favicon.ico",
             headers={"Cache-Control": "public, max-age=31536000", "X-Content-Type-Options": "nosniff"},
         )

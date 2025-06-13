@@ -1,8 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', file_path='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', file_path='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', file_path='favicon-16x16.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', file_path='favicon.ico') }}">
+    <link rel="manifest" href="{{ url_for('static', file_path='site.webmanifest') }}">
+    <link rel="mask-icon" href="{{ url_for('static', file_path='safari-pinned-tab.svg') }}" color="#5bbad5">
+    <meta name="apple-mobile-web-app-title" content="Cymbal Coffee">
+    <meta name="application-name" content="Cymbal Coffee">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
     <title>Performance Dashboard - Cymbal Coffee</title>
 
     <!-- Chart.js for visualizations -->
@@ -83,9 +97,17 @@
             background: var(--coffee-medium);
         }
 
-        .metric-card.success::before { background: var(--success); }
-        .metric-card.warning::before { background: var(--warning); }
-        .metric-card.danger::before { background: var(--danger); }
+        .metric-card.success::before {
+            background: var(--success);
+        }
+
+        .metric-card.warning::before {
+            background: var(--warning);
+        }
+
+        .metric-card.danger::before {
+            background: var(--danger);
+        }
 
         .metric-value {
             font-size: 2.5rem;
@@ -109,9 +131,17 @@
             gap: 5px;
         }
 
-        .trend-up { color: var(--success); }
-        .trend-down { color: var(--danger); }
-        .trend-neutral { color: #666; }
+        .trend-up {
+            color: var(--success);
+        }
+
+        .trend-down {
+            color: var(--danger);
+        }
+
+        .trend-neutral {
+            color: #666;
+        }
 
         .chart-container {
             background: white;
@@ -152,7 +182,9 @@
         }
 
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .vector-demo {
@@ -319,6 +351,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="dashboard-header">
         <h1>🎯 Performance Dashboard</h1>
@@ -327,10 +360,7 @@
 
     <div class="dashboard-container">
         <!-- Key Metrics Cards -->
-        <div class="metrics-grid"
-             hx-get="/api/metrics/summary"
-             hx-trigger="load, every 10s"
-             hx-swap="innerHTML">
+        <div class="metrics-grid" hx-get="/api/metrics/summary" hx-trigger="load, every 10s" hx-swap="innerHTML">
             <!-- Loading state -->
             <div class="metric-card">
                 <div class="metric-label">Total Searches</div>
@@ -384,16 +414,11 @@
             <h3>🔍 Vector Search Demonstration</h3>
             <p>Try searching for coffee products using natural language:</p>
 
-            <form hx-post="/api/vector-demo"
-                  hx-target="#vector-results"
-                  hx-indicator="#vector-loading"
-                  class="vector-search-form">
+            <form hx-post="/api/vector-demo" hx-target="#vector-results" hx-indicator="#vector-loading"
+                class="vector-search-form">
                 {{ csrf_input | safe }}
-                <input type="text"
-                       name="query"
-                       class="vector-input"
-                       placeholder="e.g., 'fruity coffee with chocolate notes'"
-                       required>
+                <input type="text" name="query" class="vector-input"
+                    placeholder="e.g., 'fruity coffee with chocolate notes'" required>
                 <button type="submit" class="vector-submit-btn">
                     Search Products
                     <span id="vector-loading" class="htmx-indicator">
@@ -410,12 +435,9 @@
         <div class="refresh-info">
             Dashboard updates automatically every 10 seconds
         </div>
-        
+
         <!-- Hidden div for chart data updates -->
-        <div hx-get="/api/metrics/charts" 
-             hx-trigger="load, every 30s" 
-             hx-swap="none"
-             style="display: none;"></div>
+        <div hx-get="/api/metrics/charts" hx-trigger="load, every 30s" hx-swap="none" style="display: none;"></div>
     </div>
 
     <script>
@@ -439,7 +461,7 @@
         let performanceBreakdownChart;
 
         // Initialize charts when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             initializeCharts();
             loadChartData();
         });
@@ -585,7 +607,7 @@
         setInterval(loadChartData, 30000);
 
         // Handle HTMX chart data updates
-        document.body.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
             if (evt.detail.pathInfo.requestPath === '/api/metrics/charts') {
                 const data = JSON.parse(evt.detail.xhr.responseText);
                 updateCharts(data);
@@ -593,7 +615,7 @@
         });
 
         // HTMX event handlers
-        document.body.addEventListener('htmx:afterRequest', function(evt) {
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
             // Handle vector search results
             if (evt.detail.target.id === 'vector-results') {
                 // Animate results appearance
@@ -611,4 +633,5 @@
         });
     </script>
 </body>
+
 </html>
