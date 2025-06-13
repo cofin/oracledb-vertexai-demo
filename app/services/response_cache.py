@@ -173,3 +173,41 @@ class ResponseCacheService:
             return cursor.rowcount
         finally:
             cursor.close()
+
+    async def get_cache_stats(self, hours: int = 24) -> dict:
+        """Get cache hit rate and statistics."""
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        cursor = self.connection.cursor()
+
+        try:
+            # Get total cache hits and entries
+            await cursor.execute(
+                """
+                SELECT
+                    COUNT(*) as total_entries,
+                    SUM(hit_count) as total_hits,
+                    AVG(hit_count) as avg_hits_per_entry
+                FROM response_cache
+                WHERE created_at > :since
+                """,
+                {"since": since},
+            )
+
+            row = await cursor.fetchone()
+            total_entries = row[0] or 0
+            total_hits = row[1] or 0
+
+            # Calculate hit rate
+            # Hit rate = hits / (hits + misses)
+            # Where misses = entries (each entry represents at least one miss)
+            total_requests = total_entries + total_hits
+            hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
+
+            return {
+                "cache_hit_rate": round(hit_rate, 1),
+                "total_cached_queries": total_entries,
+                "total_cache_hits": int(total_hits),
+                "avg_hits_per_entry": round(row[2] or 0, 1),
+            }
+        finally:
+            cursor.close()

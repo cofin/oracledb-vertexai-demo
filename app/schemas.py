@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 __all__ = (
     "BaseStruct",
     "CamelizedBaseStruct",
+    "ChartDataResponse",
     "ChatConversationCreate",
     "ChatConversationRead",
     "ChatMessage",
@@ -32,9 +33,14 @@ __all__ = (
     "CoffeeChatReply",
     "HistoryMeta",
     "Message",
+    "MetricCard",
+    "MetricsSummaryResponse",
     "SearchMetricsCreate",
+    "TimeSeriesData",
     "UserSessionCreate",
     "UserSessionRead",
+    "VectorDemoRequest",
+    "VectorDemoResult",
     "camel_case",
 )
 
@@ -148,3 +154,56 @@ class HistoryMeta(msgspec.Struct, gc=False, array_like=True, omit_defaults=True)
 
     conversation_id: str
     user_id: str
+
+
+# Dashboard API DTOs
+
+
+class MetricCard(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+    """Metric card data for dashboard."""
+
+    label: str
+    value: str | float
+    trend: str = "neutral"  # up, down, neutral
+    trend_value: float | None = None
+
+
+class MetricsSummaryResponse(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+    """Metrics summary response."""
+
+    total_searches: MetricCard
+    avg_response_time: MetricCard
+    avg_oracle_time: MetricCard
+    cache_hit_rate: MetricCard
+
+
+class TimeSeriesData(msgspec.Struct, gc=False, omit_defaults=True):
+    """Time series data for charts."""
+
+    labels: list[str]
+    total_latency: list[float]
+    oracle_latency: list[float]
+    vertex_latency: list[float]
+
+
+class ChartDataResponse(msgspec.Struct, gc=False, omit_defaults=True):
+    """Chart data response."""
+
+    time_series: TimeSeriesData
+    scatter_data: list[dict[str, float]]
+    breakdown_data: dict[str, Any]
+
+
+class VectorDemoRequest(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+    """Vector search demo request."""
+
+    query: str
+
+
+class VectorDemoResult(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+    """Vector search demo result."""
+
+    product_name: str
+    description: str
+    similarity_score: float
+    search_time_ms: float

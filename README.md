@@ -71,11 +71,7 @@ uv run app recommend           # Interactive coffee chat in terminal
 
 ## 📖 Additional Resources
 
-- [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Background story
+- [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Origin story
 - [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation
 - [Litestar Documentation](https://docs.litestar.dev) - Framework documentation
 - [System Documentation](docs/system/) - Complete technical guides
-
----
-
-**Ready to showcase the power of Oracle 23AI + Vertex AI at your next conference!** 🎯

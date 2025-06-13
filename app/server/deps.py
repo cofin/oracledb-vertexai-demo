@@ -20,6 +20,7 @@ from app.services import (
     VertexAIService,
 )
 from app.services.intent_exemplar import IntentExemplarService
+from app.services.oracle_metrics import OracleMetricsService
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -144,6 +145,18 @@ async def provide_oracle_vector_search_service(
 ) -> AsyncGenerator[OracleVectorSearchService, None]:
     """Provide Oracle vector search service."""
     yield OracleVectorSearchService(products_service, vertex_ai_service)
+
+
+async def provide_oracle_metrics_service(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[OracleMetricsService, None]:
+    """Provide Oracle Metrics service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield OracleMetricsService(db_connection)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield OracleMetricsService(conn)
 
 
 async def provide_recommendation_service(

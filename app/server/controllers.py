@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 import secrets
+import time
+import uuid
 from typing import TYPE_CHECKING, Annotated
 
 from google.api_core import exceptions as google_exceptions
@@ -25,6 +27,7 @@ from litestar.exceptions import ValidationException
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.response import File, Stream
 
+from app import schemas
 from app.server import deps
 
 if TYPE_CHECKING:
@@ -33,9 +36,10 @@ if TYPE_CHECKING:
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
-    from app import schemas
     from app.services.recommendation import RecommendationService
+    from app.services.response_cache import ResponseCacheService
     from app.services.search_metrics import SearchMetricsService
+    from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 
 class CoffeeChatController(Controller):
@@ -52,6 +56,7 @@ class CoffeeChatController(Controller):
         "metrics_service": Provide(deps.provide_search_metrics_service),
         "exemplar_service": Provide(deps.provide_intent_exemplar_service),
         "recommendation_service": Provide(deps.provide_recommendation_service),
+        "oracle_metrics_service": Provide(deps.provide_oracle_metrics_service),
     }
 
     @staticmethod
@@ -247,6 +252,161 @@ class CoffeeChatController(Controller):
             }
         except (ValueError, TypeError):
             return {"total_searches": 0, "avg_search_time_ms": 0, "avg_oracle_time_ms": 0, "avg_similarity_score": 0}
+
+    @get(path="/api/metrics/summary", name="metrics.summary")
+    async def get_metrics_summary(
+        self,
+        metrics_service: SearchMetricsService,
+        cache_service: ResponseCacheService,
+        request: HTMXRequest,
+    ) -> HTMXTemplate:
+        """Get summary metrics for dashboard cards."""
+        # Get performance stats
+        perf_stats = await metrics_service.get_performance_stats(hours=1)
+        cache_stats = await cache_service.get_cache_stats(hours=1)
+
+        # Calculate trends (compare to previous hour)
+        prev_stats = await metrics_service.get_performance_stats(hours=2)
+
+        def calculate_trend(current: float, previous: float) -> tuple[str, float]:
+            if not previous:
+                return "neutral", 0
+            change = ((current - previous) / previous) * 100
+            return ("up" if change > 0 else "down", abs(change))
+
+        # Build metric cards data
+        total_trend, total_change = calculate_trend(
+            perf_stats["total_searches"],
+            prev_stats["total_searches"],
+        )
+
+        metrics_data = {
+            "total_searches": {
+                "label": "Total Searches",
+                "value": f"{perf_stats['total_searches']:,}",
+                "trend": total_trend,
+                "trend_value": f"{total_change:.1f}%",
+            },
+            "avg_response_time": {
+                "label": "Avg Response Time",
+                "value": f"{perf_stats['avg_search_time_ms']:.0f}ms",
+                "trend": "down" if perf_stats["avg_search_time_ms"] < 50 else "up",  # noqa: PLR2004
+                "trend_value": None,
+            },
+            "avg_oracle_time": {
+                "label": "Oracle Vector Time",
+                "value": f"{perf_stats['avg_oracle_time_ms']:.0f}ms",
+                "trend": "neutral",
+                "trend_value": None,
+            },
+            "cache_hit_rate": {
+                "label": "Cache Hit Rate",
+                "value": f"{cache_stats['cache_hit_rate']:.1f}%",
+                "trend": "up" if cache_stats["cache_hit_rate"] > 80 else "down",  # noqa: PLR2004
+                "trend_value": None,
+            },
+        }
+
+        return HTMXTemplate(
+            template_name="partials/_metric_cards.html.j2",
+            context={"metrics": metrics_data},
+        )
+
+    @get(path="/api/metrics/charts", name="metrics.charts")
+    async def get_chart_data(
+        self,
+        metrics_service: SearchMetricsService,
+    ) -> schemas.ChartDataResponse:
+        """Get chart data for dashboard visualizations."""
+        # Get time series data
+        time_series = await metrics_service.get_time_series_data(minutes=60)
+
+        # Get scatter plot data
+        scatter_data = await metrics_service.get_scatter_data(hours=1)
+
+        # Get breakdown data
+        breakdown = await metrics_service.get_performance_breakdown()
+
+        return schemas.ChartDataResponse(
+            time_series=schemas.TimeSeriesData(
+                labels=time_series["labels"],
+                total_latency=time_series["total_latency"],
+                oracle_latency=time_series["oracle_latency"],
+                vertex_latency=time_series["vertex_latency"],
+            ),
+            scatter_data=scatter_data,
+            breakdown_data=breakdown,
+        )
+
+    @post(path="/api/vector-demo", name="vector.demo")
+    async def vector_search_demo(
+        self,
+        data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
+        vertex_ai_service: VertexAIService,
+        vector_search_service: OracleVectorSearchService,
+        metrics_service: SearchMetricsService,
+        request: HTMXRequest,
+    ) -> HTMXTemplate:
+        """Interactive vector search demonstration."""
+        # Validate and sanitize input
+        query = self.validate_message(data.query)
+
+        # Start timing
+        start_time = time.time()
+
+        # Generate embedding
+        embedding_start = time.time()
+        try:
+            # Note: This will use the actual Vertex AI service
+            await vertex_ai_service.create_embedding(query)
+        except Exception:  # noqa: BLE001
+            return HTMXTemplate(
+                template_name="partials/_vector_error.html.j2",
+                context={"error": "Failed to generate embedding"},
+            )
+        embedding_time = (time.time() - embedding_start) * 1000
+
+        # Perform vector search
+        oracle_start = time.time()
+        results = await vector_search_service.similarity_search(query, k=5)
+        oracle_time = (time.time() - oracle_start) * 1000
+
+        # Total time
+        total_time = (time.time() - start_time) * 1000
+
+        # Record metrics
+        await metrics_service.record_search(
+            schemas.SearchMetricsCreate(
+                query_id=str(uuid.uuid4()),
+                user_id="demo_user",
+                search_time_ms=total_time,
+                embedding_time_ms=embedding_time,
+                oracle_time_ms=oracle_time,
+                similarity_score=results[0]["distance"] if results else 0,
+                result_count=len(results),
+            )
+        )
+
+        # Format results for display
+        demo_results = [
+            {
+                "name": r["name"],
+                "description": r["description"],
+                "similarity": f"{(1 - r['distance']) * 100:.1f}%",
+                "distance": r["distance"],
+            }
+            for r in results
+        ]
+
+        return HTMXTemplate(
+            template_name="partials/_vector_results.html.j2",
+            context={
+                "results": demo_results,
+                "search_time": f"{total_time:.0f}ms",
+                "embedding_time": f"{embedding_time:.0f}ms",
+                "oracle_time": f"{oracle_time:.0f}ms",
+            },
+        )
 
     @get(
         path="/favicon.ico",

@@ -1,0 +1,28 @@
+<div class="vector-results-container">
+    <div class="search-stats">
+        <span class="stat-item"><strong>Total:</strong> {{ search_time }}</span>
+        <span class="stat-item"><strong>Embedding:</strong> {{ embedding_time }}</span>
+        <span class="stat-item"><strong>Oracle:</strong> {{ oracle_time }}</span>
+    </div>
+    
+    {% if results %}
+    <h4>Found {{ results|length }} matching products:</h4>
+    
+    {% for result in results %}
+    <div class="similarity-item">
+        <div class="product-info">
+            <h4>{{ result.name }}</h4>
+            <p>{{ result.description }}</p>
+        </div>
+        <div class="similarity-score">
+            {{ result.similarity }}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #666;">
+        <p>No products found matching your query.</p>
+        <p style="font-size: 0.9rem;">Try searching for flavor profiles like "fruity", "chocolate", or "nutty".</p>
+    </div>
+    {% endif %}
+</div>
