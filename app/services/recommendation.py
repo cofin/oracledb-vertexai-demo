@@ -15,6 +15,7 @@ from app.services.chat_conversation import ChatConversationService
 from app.services.embedding_cache import EmbeddingCache
 from app.services.intent_exemplar import IntentExemplarService
 from app.services.intent_router import IntentRouter
+from app.services.persona_manager import PersonaManager
 from app.services.response_cache import ResponseCacheService
 from app.services.search_metrics import SearchMetricsService
 from app.services.user_session import UserSessionService
@@ -59,7 +60,12 @@ class RecommendationService:
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
 
-    async def get_recommendation(self, query: str, session_id: str | None = None) -> schemas.CoffeeChatReply:
+    async def get_recommendation(
+        self,
+        query: str,
+        persona: str = "enthusiast",
+        session_id: str | None = None
+    ) -> schemas.CoffeeChatReply:
         """Get coffee recommendation with Oracle integration."""
 
         query_id = str(uuid.uuid4())
@@ -100,13 +106,14 @@ class RecommendationService:
         # Build context from metadata
         context = self._format_context(query, chat_metadata)
 
-        # Generate AI response with intent-aware system message
+        # Generate AI response with intent-aware system message and persona
         ai_response = await self.vertex_ai.chat_with_history(
             query=query,
             context=context,
             conversation_history=history_for_ai,
             user_id=self.user_id,
             intent=detected_intent,
+            persona=persona,
         )
 
         # Save conversation to Oracle
@@ -204,7 +211,12 @@ class RecommendationService:
 
         return "\n\n".join(formatted_parts)
 
-    async def stream_recommendation(self, query: str, session_id: str | None = None) -> AsyncGenerator[str, None]:
+    async def stream_recommendation(
+        self,
+        query: str,
+        persona: str = "enthusiast",
+        session_id: str | None = None
+    ) -> AsyncGenerator[str, None]:
         """Stream recommendation response."""
 
         # Get or create session
@@ -237,9 +249,9 @@ class RecommendationService:
         intent_routing = chat_metadata.get("intent_routing", {})
         detected_intent = intent_routing.get("detected_intent", "GENERAL_CONVERSATION")
 
-        # Build context and prompt
+        # Build context and prompt with persona
         context = self._format_context(query, chat_metadata)
-        system_msg = self.vertex_ai.create_system_message(intent=detected_intent)
+        system_msg = self.vertex_ai.create_system_message(intent=detected_intent, persona=persona)
 
         prompt_parts = [system_msg]
 
@@ -255,9 +267,12 @@ class RecommendationService:
 
         prompt = "\n".join(prompt_parts)
 
+        # Get temperature from persona
+        temperature = PersonaManager.get_temperature(persona)
+
         # Stream response
         full_response = ""
-        async for chunk in self.vertex_ai.stream_content(prompt, self.user_id):
+        async for chunk in self.vertex_ai.stream_content(prompt, self.user_id, temperature=temperature):
             full_response += chunk
             yield chunk
 

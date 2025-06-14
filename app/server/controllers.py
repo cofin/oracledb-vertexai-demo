@@ -52,6 +52,7 @@ class CoffeeChatController(Controller):
         "shops_service": Provide(deps.provide_shop_service),
         "session_service": Provide(deps.provide_user_session_service),
         "conversation_service": Provide(deps.provide_chat_conversation_service),
+        "embedding_cache": Provide(deps.provide_embedding_cache),
         "cache_service": Provide(deps.provide_response_cache_service),
         "metrics_service": Provide(deps.provide_search_metrics_service),
         "exemplar_service": Provide(deps.provide_intent_exemplar_service),
@@ -121,6 +122,7 @@ class CoffeeChatController(Controller):
         # Validate and sanitize inputs
         try:
             clean_message = self.validate_message(data.message)
+            validated_persona = self.validate_persona(data.persona)
         except ValidationException as e:
             return HTMXTemplate(
                 template_name="partials/chat_response.html.j2",
@@ -132,9 +134,9 @@ class CoffeeChatController(Controller):
                 },
             )
 
-        # Get coffee recommendation
+        # Get coffee recommendation with persona
         try:
-            reply = await recommendation_service.get_recommendation(clean_message)
+            reply = await recommendation_service.get_recommendation(clean_message, persona=validated_persona)
         except (google_exceptions.GoogleAPIError, ValueError):
             # Log the error ly (don't expose internal details to user)
             return HTMXTemplate(

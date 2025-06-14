@@ -15,6 +15,7 @@ from vertexai.language_models import TextEmbeddingModel
 
 from app.lib.settings import get_settings
 from app.schemas import SearchMetricsCreate
+from app.services.persona_manager import PersonaManager
 
 logger = structlog.get_logger()
 
@@ -73,6 +74,7 @@ class VertexAIService:
         prompt: str,
         user_id: str = "default",
         use_cache: bool = True,
+        temperature: float = 0.7,
     ) -> str:
         """Generate content with Oracle caching."""
 
@@ -87,7 +89,12 @@ class VertexAIService:
         start_time = time.time()
 
         try:
-            response = await self.model.generate_content_async(prompt)
+            # Configure generation with temperature
+            generation_config = {"temperature": temperature}
+            response = await self.model.generate_content_async(
+                prompt,
+                generation_config=generation_config
+            )
             content = response.text
 
             # Cache successful response
@@ -124,12 +131,16 @@ class VertexAIService:
         self,
         prompt: str,
         user_id: str = "default",
+        temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         """Stream content generation."""
         try:
+            # Configure generation with temperature
+            generation_config = {"temperature": temperature}
             response = await self.model.generate_content_async(
                 prompt,
                 stream=True,
+                generation_config=generation_config,
             )
 
             async for chunk in response:
@@ -158,10 +169,17 @@ class VertexAIService:
         else:
             return [0.0] * 768
 
-    def create_system_message(self, message: str | None = None, intent: str | None = None) -> str:
-        """Create system message based on detected intent."""
+    def create_system_message(
+        self,
+        message: str | None = None,
+        intent: str | None = None,
+        persona: str = "enthusiast"
+    ) -> str:
+        """Create system message based on detected intent and persona."""
+
+        # Base system message varies by intent
         if intent == "GENERAL_CONVERSATION":
-            default_message = """
+            base_message = """
 You are a friendly AI assistant for Cymbal Coffee. While you specialize in coffee, you can also help with general conversation.
 
 For general queries or greetings:
@@ -169,11 +187,9 @@ For general queries or greetings:
 - If asked about topics unrelated to coffee, politely acknowledge that your expertise is in coffee
 - You can engage in light conversation but gently guide back to how you can help with coffee-related questions
 - Never make up information about coffee products that weren't provided in the context
-
-Keep your responses concise, friendly, and honest.
             """.strip()
         else:
-            default_message = """
+            base_message = """
 You are a helpful AI assistant specializing in coffee recommendations for Cymbal Coffee Connoisseur.
 Given a user's chat history, the latest user query, and relevant context about our products, provide an engaging and informative response.
 
@@ -183,8 +199,6 @@ Focus on:
 - Helping users discover new coffee experiences
 - Answering questions about coffee preparation and brewing methods
 
-Keep your responses concise and conversational.
-
 Format your responses for a chat interface:
 - Use plain text without markdown formatting
 - Keep responses natural and conversational
@@ -192,7 +206,12 @@ Format your responses for a chat interface:
 - Avoid bullet points or special formatting - write in flowing sentences
             """.strip()
 
-        return message or default_message
+        # If a custom message is provided, use it as the base
+        if message:
+            base_message = message
+
+        # Enhance with persona-specific context
+        return PersonaManager.get_system_prompt(persona, base_message)
 
     async def chat_with_history(
         self,
@@ -201,11 +220,12 @@ Format your responses for a chat interface:
         conversation_history: list[dict] | None = None,
         user_id: str = "default",
         intent: str | None = None,
+        persona: str = "enthusiast",
     ) -> str:
         """Chat with conversation history and context."""
 
         # Build prompt with system message, history, and context
-        system_msg = self.create_system_message(intent=intent)
+        system_msg = self.create_system_message(intent=intent, persona=persona)
 
         prompt_parts = [system_msg]
 
@@ -226,7 +246,10 @@ Format your responses for a chat interface:
 
         prompt = "\n".join(prompt_parts)
 
-        return await self.generate_content(prompt, user_id)
+        # Get temperature from persona
+        temperature = PersonaManager.get_temperature(persona)
+
+        return await self.generate_content(prompt, user_id, temperature=temperature)
 
 
 class OracleVectorSearchService:
