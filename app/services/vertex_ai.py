@@ -21,6 +21,7 @@ logger = structlog.get_logger()
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from app.services.embedding_cache import EmbeddingCache
     from app.services.response_cache import ResponseCacheService
     from app.services.search_metrics import SearchMetricsService
 
@@ -231,18 +232,31 @@ Format your responses for a chat interface:
 class OracleVectorSearchService:
     """Oracle vector search without LangChain."""
 
-    def __init__(self, products_service: Any, vertex_ai_service: VertexAIService) -> None:
+    def __init__(
+        self,
+        products_service: Any,
+        vertex_ai_service: VertexAIService,
+        embedding_cache: EmbeddingCache | None = None,
+    ) -> None:
         self.products_service = products_service
         self.vertex_ai_service = vertex_ai_service
+        self.embedding_cache = embedding_cache
 
     async def similarity_search(self, query: str, k: int = 4) -> list[dict]:
         """Perform Oracle vector similarity search."""
         start_time = time.time()
 
         try:
-            # Create embedding for query
+            # Create embedding for query (with caching if available)
             embedding_start = time.time()
-            query_embedding = await self.vertex_ai_service.create_embedding(query)
+
+            if self.embedding_cache:
+                logger.debug("product_search_using_cache", query=query[:50])
+                query_embedding = await self.embedding_cache.get_embedding(query, self.vertex_ai_service)
+            else:
+                logger.debug("product_search_no_cache", query=query[:50])
+                query_embedding = await self.vertex_ai_service.create_embedding(query)
+
             embedding_time = (time.time() - embedding_start) * 1000
 
             # Perform Oracle vector search

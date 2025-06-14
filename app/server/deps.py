@@ -19,6 +19,7 @@ from app.services import (
     UserSessionService,
     VertexAIService,
 )
+from app.services.embedding_cache import EmbeddingCache
 from app.services.intent_exemplar import IntentExemplarService
 from app.services.oracle_metrics import OracleMetricsService
 
@@ -139,12 +140,25 @@ async def provide_vertex_ai_service() -> AsyncGenerator[VertexAIService, None]:
     yield VertexAIService()
 
 
+async def provide_embedding_cache(
+    db_connection: AsyncConnection | None = None,
+) -> AsyncGenerator[EmbeddingCache, None]:
+    """Provide Embedding Cache service with Oracle connection."""
+    if db_connection:
+        # If a specific connection is provided, use it
+        yield EmbeddingCache(db_connection, ttl_hours=24)
+        return
+    async with config.oracle_async.get_connection() as conn:
+        yield EmbeddingCache(conn, ttl_hours=24)
+
+
 async def provide_oracle_vector_search_service(
     products_service: ProductService,
     vertex_ai_service: VertexAIService,
+    embedding_cache: EmbeddingCache,
 ) -> AsyncGenerator[OracleVectorSearchService, None]:
     """Provide Oracle vector search service."""
-    yield OracleVectorSearchService(products_service, vertex_ai_service)
+    yield OracleVectorSearchService(products_service, vertex_ai_service, embedding_cache)
 
 
 async def provide_oracle_metrics_service(
@@ -170,6 +184,7 @@ async def provide_recommendation_service(
     cache_service: ResponseCacheService,
     metrics_service: SearchMetricsService,
     exemplar_service: IntentExemplarService,
+    embedding_cache: EmbeddingCache,
 ) -> AsyncGenerator[RecommendationService, None]:
     """Provide recommendation service with Oracle integration."""
     # if hasattr(request, "user") and request.user.is_authenticated:
@@ -187,5 +202,6 @@ async def provide_recommendation_service(
         cache_service=cache_service,
         metrics_service=metrics_service,
         exemplar_service=exemplar_service,
+        embedding_cache=embedding_cache,
         user_id=user_id,
     )

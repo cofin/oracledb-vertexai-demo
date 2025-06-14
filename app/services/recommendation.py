@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
+    from app.services.embedding_cache import EmbeddingCache
     from app.services.product import ProductService
     from app.services.shop import ShopService
 from app import schemas
 from app.services.chat_conversation import ChatConversationService
+from app.services.embedding_cache import EmbeddingCache
 from app.services.intent_exemplar import IntentExemplarService
 from app.services.intent_router import IntentRouter
 from app.services.response_cache import ResponseCacheService
@@ -35,6 +37,7 @@ class RecommendationService:
         cache_service: ResponseCacheService,
         metrics_service: SearchMetricsService,
         exemplar_service: IntentExemplarService | None = None,
+        embedding_cache: EmbeddingCache | None = None,
         user_id: str = "default",
     ) -> None:
         self.vertex_ai = vertex_ai_service
@@ -46,11 +49,12 @@ class RecommendationService:
         self.cache_service = cache_service
         self.metrics_service = metrics_service
         self.exemplar_service = exemplar_service
+        self.embedding_cache = embedding_cache
         self.user_id = user_id
 
-        # Initialize intent router without exemplar service (will use embedding cache)
+        # Initialize intent router with embedding cache
         # Connection will be passed to route_intent method
-        self.intent_router = IntentRouter(vertex_ai_service)
+        self.intent_router = IntentRouter(vertex_ai_service, embedding_cache)
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
