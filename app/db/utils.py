@@ -203,6 +203,43 @@ async def _upsert_inventory(conn: oracledb.AsyncConnection, data: list[dict[str,
         cursor.close()
 
 
+async def _upsert_intent_exemplars(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
+    """Upsert intent exemplar records using raw SQL."""
+    import array
+
+    cursor = conn.cursor()
+    try:
+        for exemplar in data:
+            # Convert embedding list to Oracle array if present
+            embedding = exemplar.get("embedding")
+            oracle_embedding = array.array("f", embedding) if embedding else None
+
+            await cursor.execute(
+                """
+                MERGE INTO intent_exemplar ie
+                USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
+                ON (ie.intent = src.intent AND ie.phrase = src.phrase)
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        embedding = :embedding
+                WHEN NOT MATCHED THEN
+                    INSERT (intent, phrase, embedding)
+                    VALUES (:intent2, :phrase2, :embedding2)
+                """,
+                {
+                    "intent": exemplar["intent"],
+                    "intent2": exemplar["intent"],
+                    "phrase": exemplar["phrase"],
+                    "phrase2": exemplar["phrase"],
+                    "embedding": oracle_embedding,
+                    "embedding2": oracle_embedding,
+                },
+            )
+        await conn.commit()
+    finally:
+        cursor.close()
+
+
 async def load_database_fixtures() -> None:
     """Import/Synchronize Database Fixtures using raw SQL."""
     from app import config
@@ -227,10 +264,10 @@ async def load_database_fixtures() -> None:
         await _upsert_products(conn, fixture_data)
         await logger.ainfo("loaded products")
 
-        # Load inventory
-        fixture_data = await open_fixture_async(fixtures_path, "inventory")
-        await _upsert_inventory(conn, fixture_data)
-        await logger.ainfo("loaded inventory")
+        # Load exemplars
+        fixture_data = await open_fixture_async(fixtures_path, "intent_exemplar")
+        await _upsert_intent_exemplars(conn, fixture_data)
+        await logger.ainfo("loaded intent exemplars")
 
 
 async def _load_vectors() -> None:
@@ -309,9 +346,12 @@ async def export_table_data(
     try:
         # Validate table name to prevent SQL injection
         valid_tables = [
-            "COMPANY", "SHOP", "PRODUCT", "INVENTORY",
-            "INTENT_EXEMPLAR", "RESPONSE_CACHE", "SEARCH_METRICS",
-            "USER_SESSION", "CHAT_CONVERSATION", "APP_CONFIG"
+            "COMPANY",
+            "SHOP",
+            "PRODUCT",
+            "INVENTORY",
+            "INTENT_EXEMPLAR",
+            "APP_CONFIG",
         ]
         if table_name.upper() not in valid_tables:
             msg = f"Invalid table name: {table_name}"
