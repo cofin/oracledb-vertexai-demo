@@ -60,6 +60,10 @@
             padding-bottom: 15px;
             border-bottom: 2px solid var(--coffee-light);
         }
+        
+        .chat-header h3 {
+            transition: all 0.4s ease;
+        }
 
         .demo-personas {
             display: flex;
@@ -70,17 +74,37 @@
         .persona-btn {
             background-color: var(--coffee-light);
             color: var(--coffee-dark);
-            border: none;
+            border: 2px solid transparent;
             padding: 8px 15px;
             border-radius: 20px;
             cursor: pointer;
             font-size: 0.8rem;
             transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .persona-btn:hover {
             background-color: var(--coffee-medium);
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .persona-btn[aria-pressed="true"] {
+            background-color: var(--coffee-medium);
+            color: white;
+            border-color: var(--coffee-dark);
+            font-weight: 600;
+        }
+        
+        .persona-btn[aria-pressed="true"]::after {
+            content: '✓';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
         }
 
         .chat-container {
@@ -451,10 +475,10 @@
             <div class="chat-header">
                 <h3 style="margin: 0; color: var(--coffee-dark);">Chat with AI Coffee Expert</h3>
                 <div class="demo-personas">
-                    <button class="persona-btn" onclick="setPersona('novice')">☕ Coffee Novice</button>
-                    <button class="persona-btn" onclick="setPersona('enthusiast')">🏆 Coffee Enthusiast</button>
-                    <button class="persona-btn" onclick="setPersona('expert')">👨‍🍳 Coffee Expert</button>
-                    <button class="persona-btn" onclick="setPersona('barista')">☕ Professional Barista</button>
+                    <button class="persona-btn" onclick="setPersona('novice')" title="Simple explanations for beginners">☕ Coffee Novice</button>
+                    <button class="persona-btn" onclick="setPersona('enthusiast')" title="Balanced detail for coffee lovers">🏆 Coffee Enthusiast</button>
+                    <button class="persona-btn" onclick="setPersona('expert')" title="Technical details for connoisseurs">👨‍🍳 Coffee Expert</button>
+                    <button class="persona-btn" onclick="setPersona('barista')" title="Professional guidance for the industry">☕ Professional Barista</button>
                 </div>
             </div>
 
@@ -509,18 +533,16 @@
     <script>
         // Demo persona management
         let currentPersona = 'enthusiast';
+        
+        // Set initial persona button state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePersonaUI('enthusiast');
+        });
 
         function setPersona(persona) {
             currentPersona = persona;
             document.getElementById('persona').value = persona;
-
-            // Update UI to show active persona
-            document.querySelectorAll('.persona-btn').forEach(btn => {
-                btn.style.backgroundColor = 'var(--coffee-light)';
-                btn.style.color = 'var(--coffee-dark)';
-            });
-            event.target.style.backgroundColor = 'var(--coffee-medium)';
-            event.target.style.color = 'white';
+            updatePersonaUI(persona);
 
             // Add persona message to chat
             const personaMessages = {
@@ -531,6 +553,47 @@
             };
 
             addSystemMessage(`Persona set to: ${persona.charAt(0).toUpperCase() + persona.slice(1)}. ${personaMessages[persona]}`);
+        }
+        
+        function updatePersonaUI(persona) {
+            // Update all persona buttons
+            document.querySelectorAll('.persona-btn').forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(persona)) {
+                    btn.style.backgroundColor = 'var(--coffee-medium)';
+                    btn.style.color = 'white';
+                    btn.setAttribute('aria-pressed', 'true');
+                } else {
+                    btn.style.backgroundColor = 'var(--coffee-light)';
+                    btn.style.color = 'var(--coffee-dark)';
+                    btn.setAttribute('aria-pressed', 'false');
+                }
+            });
+            
+            // Update chat header
+            const personaTitles = {
+                'novice': 'Chat with AI Coffee Guide (Beginner Mode)',
+                'enthusiast': 'Chat with AI Coffee Expert',
+                'expert': 'Chat with AI Coffee Sommelier',
+                'barista': 'Chat with AI Barista Trainer'
+            };
+            
+            const headerElement = document.querySelector('.chat-header h3');
+            if (headerElement) {
+                headerElement.textContent = personaTitles[persona] || 'Chat with AI Coffee Expert';
+            }
+            
+            // Update input placeholder
+            const placeholders = {
+                'novice': 'Ask a simple question about coffee...',
+                'enthusiast': 'Ask me about coffee varieties, brewing methods...',
+                'expert': 'Ask about origins, processing, cupping notes...',
+                'barista': 'Ask about equipment, techniques, workflow...'
+            };
+            
+            const chatInput = document.getElementById('message');
+            if (chatInput) {
+                chatInput.placeholder = placeholders[persona] || 'Ask me about coffee...';
+            }
         }
 
         function addSystemMessage(message) {
