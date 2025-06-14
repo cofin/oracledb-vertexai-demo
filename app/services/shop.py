@@ -122,7 +122,6 @@ class ShopService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
@@ -142,11 +141,10 @@ class ShopService:
                     "product_id": row[1],
                     "product_name": row[2],
                     "current_price": row[3],
-                    "size": row[4],
-                    "description": row[5],
-                    "company_name": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
+                    "description": row[4],
+                    "company_name": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
                 }
                 async for row in cursor
             ]

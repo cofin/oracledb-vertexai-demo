@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import array
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 import numpy as np
 import structlog
@@ -14,26 +14,6 @@ if TYPE_CHECKING:
     from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
-
-
-class IntentExemplarServiceProtocol(Protocol):
-    """Protocol for intent exemplar services."""
-
-    async def get_exemplars_with_phrases(self) -> dict[str, list[tuple[str, list[float]]]]:
-        """Get all exemplars with their phrases and embeddings."""
-        ...
-
-    async def load_all_exemplars(self) -> dict[str, np.ndarray]:
-        """Load all cached exemplar embeddings grouped by intent."""
-        ...
-
-    async def populate_cache(
-        self,
-        exemplars: dict[str, list[str]],
-        vertex_ai_service: VertexAIService,
-    ) -> int:
-        """Populate cache with all exemplars. Returns count of embeddings created."""
-        ...
 
 
 class IntentExemplarService:

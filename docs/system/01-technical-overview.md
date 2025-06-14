@@ -135,7 +135,7 @@ CREATE TABLE intent_exemplar (
 ```python
 class ProductService:
     """Direct SQL access for clarity and control"""
-    
+
     async def search_by_embedding(self, embedding: list[float]) -> list[dict]:
         cursor = self.connection.cursor()
         try:
@@ -144,7 +144,7 @@ class ProductService:
                 WHERE VECTOR_DISTANCE(embedding, :embedding, COSINE) < 0.8
                 ORDER BY VECTOR_DISTANCE(embedding, :embedding, COSINE)
             """, {"embedding": embedding})
-            
+
             return [self._row_to_dict(row) async for row in cursor]
         finally:
             cursor.close()
@@ -170,7 +170,7 @@ async def stream_ai_response(query: str):
     # Start streaming immediately
     async for chunk in vertex_ai.generate_stream(prompt):
         yield f"data: {chunk}\n\n"
-    
+
     # Send metrics after completion
     yield f"data: [DONE] {metrics}\n\n"
 ```

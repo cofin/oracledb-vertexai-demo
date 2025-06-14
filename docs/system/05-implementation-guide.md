@@ -139,6 +139,25 @@ uv run app embed-new --limit 200
 # stored in Oracle In-Memory tables for ultra-fast intent detection
 ```
 
+### Step 2.4: Export Data for Faster Demo Startup (Optional)
+
+To avoid regenerating embeddings on each demo reset, you can export all data:
+
+```bash
+# Export all demo tables with embeddings (creates .json.gz files)
+uv run app dump-data
+
+# This exports: COMPANY, INTENT_EXEMPLAR, PRODUCT, SHOP
+# Files are saved to app/db/fixtures/ as UPPERCASE.json.gz
+
+# To export specific tables or customize:
+uv run app dump-data --table product
+uv run app dump-data --path /tmp/backup --no-compress
+
+# The fixture loader automatically prefers UPPERCASE.json.gz files
+# This means next time you run load-fixtures, it uses exported data
+```
+
 ## Phase 3: Core Services Implementation (60 minutes)
 
 ### Step 3.1: Understanding the Service Architecture
@@ -169,7 +188,7 @@ The IntentRouter uses semantic similarity to understand queries:
 # app/services/intent_router.py
 class IntentRouter:
     """Routes queries to appropriate handlers using AI"""
-    
+
     INTENT_EXEMPLARS = {
         "PRODUCT_RAG": [
             "What coffee do you recommend?",
@@ -182,7 +201,7 @@ class IntentRouter:
             "What are your hours?"
         ]
     }
-    
+
     async def route_intent(self, query: str) -> tuple[str, float, str]:
         """Returns (intent_type, confidence, matched_example)"""
         # Uses cached embeddings from database for 75% faster performance!
@@ -194,7 +213,7 @@ class IntentRouter:
 # app/services/vertex_ai.py
 class VertexAIService:
     """Native Google AI integration with fallbacks"""
-    
+
     def __init__(self):
         # Smart initialization with fallback
         try:
@@ -213,19 +232,19 @@ All services now use raw Oracle SQL for clarity and performance:
 # app/services/product.py
 class ProductService:
     """Product management using raw SQL"""
-    
+
     def __init__(self, connection: oracledb.AsyncConnection):
         self.connection = connection
-    
+
     async def get_by_id(self, product_id: int) -> dict | None:
         cursor = self.connection.cursor()
         try:
             await cursor.execute("""
                 SELECT id, name, description, current_price, size
-                FROM product 
+                FROM product
                 WHERE id = :id
             """, {"id": product_id})
-            
+
             row = await cursor.fetchone()
             if row:
                 return {
@@ -252,15 +271,15 @@ from litestar.response import Template, Stream
 @Controller(path="/api/v1")
 class CoffeeController:
     """Main API endpoints"""
-    
+
     @post("/chat")
     async def chat(
-        self, 
+        self,
         data: ChatMessage,
         recommendation_service: RecommendationService
     ) -> ChatResponse:
         """Process user query and return recommendation"""
-        
+
     @get("/stream/{query_id}")
     async def stream_response(self, query_id: str) -> Stream:
         """Stream AI response in real-time"""
@@ -273,7 +292,7 @@ class CoffeeController:
 @Controller(path="/coffee", include_in_schema=False)
 class HTMXController:
     """HTMX-specific endpoints for real-time UI"""
-    
+
     @post("/chat/send")
     async def send_message(self, data: dict) -> Template:
         # Return partial HTML for HTMX
@@ -311,22 +330,22 @@ class HTMXController:
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <h1 class="text-3xl font-bold mb-8">AI Coffee Assistant</h1>
-    
+
     <div id="chat-container" class="bg-gray-100 rounded-lg p-4 h-96 overflow-y-auto">
         <div id="chat-messages">
             <!-- Messages appear here -->
         </div>
     </div>
-    
-    <form hx-post="/coffee/chat/send" 
-          hx-target="#chat-messages" 
+
+    <form hx-post="/coffee/chat/send"
+          hx-target="#chat-messages"
           hx-swap="beforeend"
           class="mt-4">
-        <input type="text" 
-               name="message" 
+        <input type="text"
+               name="message"
                placeholder="Ask me about coffee..."
                class="w-full p-3 rounded-lg border">
-        <button type="submit" 
+        <button type="submit"
                 class="mt-2 bg-blue-500 text-white px-6 py-2 rounded-lg">
             Send ☕
         </button>
@@ -344,8 +363,8 @@ class HTMXController:
     <div class="bg-white p-3 rounded">{{ user_message }}</div>
 </div>
 
-<div class="mb-4" 
-     hx-ext="sse" 
+<div class="mb-4"
+     hx-ext="sse"
      sse-connect="/coffee/stream/{{ query_id }}">
     <div class="font-semibold">AI Assistant:</div>
     <div class="bg-blue-100 p-3 rounded" sse-swap="message">
@@ -378,11 +397,11 @@ from app.services.intent_router import IntentRouter
 @pytest.mark.anyio
 async def test_product_intent_detection():
     router = IntentRouter(mock_vertex_ai)
-    
+
     intent, confidence, _ = await router.route_intent(
         "I want something smooth and chocolatey"
     )
-    
+
     assert intent == "PRODUCT_RAG"
     assert confidence > 0.8
 ```
@@ -397,7 +416,7 @@ async def test_full_recommendation_flow(client, db_session):
         "/api/v1/chat",
         json={"message": "recommend a morning coffee"}
     )
-    
+
     assert response.status_code == 200
     data = response.json()
     assert len(data["products"]) > 0
@@ -482,7 +501,7 @@ services:
 @get("/metrics")
 async def metrics_dashboard() -> Template:
     stats = await db.fetch_one("""
-        SELECT 
+        SELECT
             COUNT(*) as total_queries,
             AVG(search_time_ms) as avg_search_time,
             AVG(similarity_score) as avg_relevance,
@@ -490,7 +509,7 @@ async def metrics_dashboard() -> Template:
         FROM search_metrics
         WHERE created_at > SYSTIMESTAMP - INTERVAL '24' HOUR
     """)
-    
+
     return Template("metrics.html", context={"stats": stats})
 ```
 
@@ -512,9 +531,9 @@ uv run app monitoring export --format=csv
 ### Issue: Slow vector search
 ```sql
 -- Solution: Create optimized index
-CREATE INDEX idx_product_embedding 
-ON products (embedding) 
-INDEXTYPE IS VECTOR 
+CREATE INDEX idx_product_embedding
+ON products (embedding)
+INDEXTYPE IS VECTOR
 PARAMETERS ('TYPE=HNSW, NEIGHBORS=32');
 ```
 

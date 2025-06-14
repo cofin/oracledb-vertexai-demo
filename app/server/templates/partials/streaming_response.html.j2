@@ -9,7 +9,7 @@
      sse-connect="/chat/stream/{{ query_id }}"
      sse-swap="message">
     <strong>AI Coffee Expert:</strong>
-    <div id="streaming-content-{{ query_id }}">
+    <div id="streaming-content-{{ query_id }}" class="ai-response-content">
         <span class="typing-indicator">🤔 Thinking about your coffee request...</span>
     </div>
 </div>
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.chunk) {
                 fullContent += data.chunk;
-                contentDiv.innerHTML = fullContent;
+                contentDiv.textContent = fullContent;
             }
 
             if (data.done) {

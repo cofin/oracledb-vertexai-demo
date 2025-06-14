@@ -115,7 +115,6 @@ class CompanyService:
                     id,
                     name,
                     current_price,
-                    product_size,
                     description,
                     embedding,
                     embedding_generated_on,
@@ -133,12 +132,11 @@ class CompanyService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
-                    "description": row[4],
-                    "embedding": list(row[5]) if row[5] else None,
-                    "embedding_generated_on": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
+                    "description": row[3],
+                    "embedding": list(row[4]) if row[4] else None,
+                    "embedding_generated_on": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
                 }
                 async for row in cursor
             ]

@@ -56,6 +56,7 @@ def _patch_settings(monkeypatch: MonkeyPatch) -> None:
 def app() -> Litestar:
     """Create test app instance."""
     from app.asgi import create_app
+
     return create_app()
 
 

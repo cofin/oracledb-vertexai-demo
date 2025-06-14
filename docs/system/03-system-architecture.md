@@ -8,20 +8,20 @@ graph TB
         A[Web Browser] --> B[HTMX + Tailwind UI]
         B --> C[Server-Sent Events]
     end
-    
+
     subgraph "Application Layer"
         D[Litestar Web Framework]
         E[Intent Router]
         F[Recommendation Service]
         G[Session Manager]
     end
-    
+
     subgraph "AI Layer"
         H[Vertex AI Service]
         I[Gemini 2.5 Flash]
         J[Text Embeddings 004]
     end
-    
+
     subgraph "Data Layer"
         K[Oracle 23AI Database]
         L[Vector Store<br/>HNSW Index]
@@ -29,7 +29,7 @@ graph TB
         N[Response Cache<br/>In-Memory]
         O[Business Data<br/>Products/Shops]
     end
-    
+
     B --> D
     C --> D
     D --> E
@@ -60,15 +60,15 @@ graph TB
 
 ```html
 <!-- Example: Self-updating chat interface -->
-<form hx-post="/coffee/chat/send" 
-      hx-target="#chat-history" 
+<form hx-post="/coffee/chat/send"
+      hx-target="#chat-history"
       hx-swap="beforeend">
     <input name="message" placeholder="Ask about coffee..." />
     <button type="submit">Send ☕</button>
 </form>
 
-<div id="chat-history" 
-     hx-ext="sse" 
+<div id="chat-history"
+     hx-ext="sse"
      sse-connect="/coffee/chat/stream/{query_id}">
     <!-- Messages appear here automatically -->
 </div>
@@ -86,8 +86,8 @@ graph TB
 ```python
 class RecommendationService:
     """Main business logic orchestrator using raw SQL"""
-    
-    def __init__(self, 
+
+    def __init__(self,
                  vertex_ai_service: VertexAIService,
                  products_service: ProductService,
                  shops_service: ShopService,
@@ -104,7 +104,7 @@ class RecommendationService:
 ```python
 class IntentRouter:
     """Semantic understanding of user queries with database-cached embeddings"""
-    
+
     INTENT_EXEMPLARS = {
         "PRODUCT_RAG": [
             "What coffee do you recommend?",
@@ -117,12 +117,12 @@ class IntentRouter:
             "What are your hours?"
         ],
         "GENERAL_CONVERSATION": [
-            "Hello!", 
+            "Hello!",
             "Thanks for the help",
             "Tell me a coffee joke"
         ]
     }
-    
+
     async def initialize(self):
         """Load cached embeddings from database on startup"""
         if self.exemplar_service:
@@ -132,14 +132,14 @@ class IntentRouter:
                 logger.info("Loaded %d cached embeddings from database", len(cached_data))
                 self._initialized = True
                 return
-            
+
             # First run - compute and cache embeddings
             logger.info("Populating intent exemplar cache...")
             await self.exemplar_service.populate_cache(
                 self.INTENT_EXEMPLARS,
                 self.vertex_ai
             )
-    
+
     async def route_intent(self, query: str) -> tuple[str, float, str]:
         # Returns: (intent_type, confidence_score, matched_exemplar)
 ```
@@ -148,7 +148,7 @@ class IntentRouter:
 ```python
 class VertexAIService:
     """Native Google AI integration"""
-    
+
     def __init__(self):
         # Smart model initialization with fallback
         try:
@@ -230,7 +230,7 @@ sequenceDiagram
     participant V as VertexAI
     participant O as Oracle23AI
     participant S as SSE Stream
-    
+
     U->>H: "I want smooth coffee"
     H->>L: POST /coffee/chat/send
     L->>I: Detect intent
@@ -256,16 +256,16 @@ sequenceDiagram
 class CacheStrategy:
     """
     L1: Browser Cache (1 min) - Static assets
-    L2: Oracle In-Memory (5 min) - Common queries  
+    L2: Oracle In-Memory (5 min) - Common queries
     L3: Oracle Disk (24 hrs) - All responses
     """
-    
+
     async def get_or_compute(self, key: str, compute_fn):
         # Check L2 cache first
         cached = await self.oracle_cache.get(key)
         if cached and not cached.expired:
             return cached.value
-            
+
         # Compute and cache
         result = await compute_fn()
         await self.oracle_cache.set(key, result, ttl=300)
@@ -320,7 +320,7 @@ services:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
-      
+
   app:
     build: .
     environment:
@@ -338,22 +338,22 @@ graph LR
     subgraph "Load Balancer"
         LB[Cloud LB]
     end
-    
+
     subgraph "Application Tier"
         A1[App Instance 1]
         A2[App Instance 2]
         A3[App Instance 3]
     end
-    
+
     subgraph "Database Tier"
         O1[Oracle Primary]
         O2[Oracle Standby]
     end
-    
+
     subgraph "External Services"
         V[Vertex AI]
     end
-    
+
     LB --> A1
     LB --> A2
     LB --> A3
@@ -375,7 +375,7 @@ class MetricsCollector:
     async def record_search(self, metrics: SearchMetrics):
         await self.oracle.execute("""
             INSERT INTO search_metrics (
-                query_id, user_id, 
+                query_id, user_id,
                 search_time_ms, embedding_time_ms,
                 oracle_time_ms, similarity_score,
                 result_count, created_at
@@ -417,11 +417,11 @@ class VertexAICircuitBreaker:
         self.failure_threshold = failure_threshold
         self.timeout = timeout
         self.last_failure = None
-        
+
     async def call(self, func, *args, **kwargs):
         if self.is_open():
             return await self.fallback()
-            
+
         try:
             result = await func(*args, **kwargs)
             self.on_success()
@@ -480,7 +480,7 @@ app/
 # Database-cached embeddings eliminate startup delay
 class IntentExemplarService:
     """Manages cached intent exemplar embeddings in Oracle"""
-    
+
     async def populate_cache(self, exemplars: dict, vertex_ai_service):
         """One-time population of exemplar embeddings"""
         count = 0
@@ -510,7 +510,7 @@ async def initialize_intent_router():
 # Process multiple embeddings in one API call
 async def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
     return await vertex_ai.embeddings.create_batch(
-        texts, 
+        texts,
         batch_size=100,
         model="text-embedding-004"
     )
@@ -522,7 +522,7 @@ async def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
 SELECT /*+ LEADING(p) USE_NL(i s) INDEX(p embed_idx) */
     p.*, s.*, i.quantity
 FROM products p
-JOIN inventory i ON p.id = i.product_id  
+JOIN inventory i ON p.id = i.product_id
 JOIN shops s ON i.shop_id = s.id
 WHERE VECTOR_DISTANCE(p.embedding, :vector, COSINE) < 0.8;
 ```
@@ -536,7 +536,7 @@ WHERE VECTOR_DISTANCE(p.embedding, :vector, COSINE) < 0.8;
 
 ### Vertical Scaling
 - Start: 2 CPU, 4GB RAM
-- Growth: 8 CPU, 32GB RAM  
+- Growth: 8 CPU, 32GB RAM
 - Max: 32 CPU, 128GB RAM
 
 ### Cost Optimization

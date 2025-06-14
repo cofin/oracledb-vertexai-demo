@@ -92,3 +92,15 @@ log = StructlogConfig(
         response_log_fields=["status_code"],
     ),
 )
+
+# Intent routing configuration
+INTENT_THRESHOLDS = {
+    "PRODUCT_RAG": 0.60,  # Lower threshold for product queries (more inclusive)
+    "GENERAL_CONVERSATION": 0.70,
+}
+
+# Vector search configuration
+VECTOR_SEARCH_CONFIG = {
+    "min_vector_threshold": 0.5,
+    "final_top_k": 5,
+}

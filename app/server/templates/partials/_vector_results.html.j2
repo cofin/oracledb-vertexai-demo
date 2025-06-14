@@ -4,10 +4,10 @@
         <span class="stat-item"><strong>Embedding:</strong> {{ embedding_time }}</span>
         <span class="stat-item"><strong>Oracle:</strong> {{ oracle_time }}</span>
     </div>
-    
+
     {% if results %}
     <h4>Found {{ results|length }} matching products:</h4>
-    
+
     {% for result in results %}
     <div class="similarity-item">
         <div class="product-info">

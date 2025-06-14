@@ -32,6 +32,12 @@ help: ## Display this help text for Makefile
 # =============================================================================
 # Installation and Environment Setup
 # =============================================================================
+.PHONY: install-uv
+install-uv:                                         ## Install latest version of uv
+	@echo "${INFO} Installing uv..."
+	@curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
+	@echo "${OK} UV installed successfully"
+
 .PHONY: install
 install: destroy clean ## Install the project, dependencies, and pre-commit
 	@echo "${INFO} Starting fresh installation..."

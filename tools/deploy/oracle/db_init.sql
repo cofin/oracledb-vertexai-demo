@@ -6,7 +6,7 @@ ALTER SESSION SET CONTAINER = freepdb1;
 grant select on v_$transaction to app;
 GRANT CONNECT, RESOURCE TO app;
 /* needed for connection pooling */
-GRANT SELECT ON v_$transaction TO app; 
+GRANT SELECT ON v_$transaction TO app;
  /* needed for vector operations */
 GRANT CREATE MINING MODEL TO app;
 GRANT UNLIMITED TABLESPACE TO app;
@@ -61,6 +61,12 @@ CREATE TABLE intent_exemplar (
 -- Create indexes for intent_exemplar
 CREATE INDEX ix_intent_exemplar_intent ON intent_exemplar (intent);
 CREATE UNIQUE INDEX ix_intent_phrase ON intent_exemplar (intent, phrase);
+
+-- Create vector index for similarity search on intent_exemplar
+CREATE VECTOR INDEX idx_intent_exemplar_embedding ON intent_exemplar(embedding)
+ORGANIZATION NEIGHBOR PARTITIONS
+DISTANCE COSINE
+WITH TARGET ACCURACY 95;
 
 -- Create response_cache table with Oracle JSON support and In-Memory option
 CREATE TABLE response_cache (
@@ -149,7 +155,6 @@ CREATE TABLE product (
     company_id NUMBER NOT NULL,
     name VARCHAR2(255 CHAR) NOT NULL,
     current_price BINARY_DOUBLE NOT NULL,
-    product_size VARCHAR2(50 CHAR) NOT NULL,
     description VARCHAR2(2000 CHAR) NOT NULL,
     embedding VECTOR(768, FLOAT32),
     embedding_generated_on TIMESTAMP WITH TIME ZONE,

@@ -1,20 +1,21 @@
-"""Intent detection using semantic similarity with pre-computed exemplar embeddings."""
+"""Intent detection using Oracle 23AI native vector similarity search."""
 
 from __future__ import annotations
 
+import array
 from typing import TYPE_CHECKING
 
-import numpy as np
 import structlog
-from sklearn.metrics.pairwise import cosine_similarity
+
+from app.config import INTENT_THRESHOLDS, VECTOR_SEARCH_CONFIG
 
 if TYPE_CHECKING:
-    from app.services.intent_exemplar import IntentExemplarService
+    import oracledb
+
+    from app.services.embedding_cache import EmbeddingCache
     from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
-
-# Intent exemplars for semantic matching
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": [
         # Formal queries
@@ -59,22 +60,42 @@ INTENT_EXEMPLARS = {
         "what do you got?",
         "coffee me",
         "bean juice please",
-    ],
-    "LOCATION_RAG": [
-        "Where are your coffee shops?",
-        "Find a store near downtown",
-        "What are your hours?",
-        "Is there a location on Main Street?",
-        "Which shops have parking?",
-        "Closest cafe to the university",
-        "Are you open on weekends?",
-        "Do you have outdoor seating?",
-        "Which location is biggest?",
-        "Find me the nearest store",
-        "What time do you close?",
-        "Are there any 24-hour locations?",
+        # Typos and misspellings
+        "coffe recommendations",
+        "expresso options",
+        "whats ur best seller",
+        "capuccino or latte",
+        "cold cofee options",
+        "decaff drinks",
+        # Context-specific
+        "morning pick-me-up suggestions",
+        "something to pair with dessert",
+        "drinks for lactose intolerant",
+        "coffee for studying late",
+        "best drink for a hot day",
+        "warming drinks for winter",
+        # Multi-word entities
+        "flat white vs cortado difference",
+        "iced americano with oat milk",
+        "vanilla latte extra shot",
+        "caramel macchiato decaf",
+        "matcha latte with almond milk",
+        # Indirect queries
+        "I'm sleepy what should I get",
+        "first time here what's good",
+        "help me choose something sweet",
+        "I usually drink tea any suggestions",
+        "not a coffee person what else",
+        # Specific preferences
+        "low calorie coffee options",
+        "keto friendly drinks",
+        "vegan drink options",
+        "protein coffee choices",
+        "organic coffee selections",
+        "i need something light",
     ],
     "GENERAL_CONVERSATION": [
+        # Greetings and pleasantries
         "How are you today?",
         "Tell me a coffee joke",
         "What's your name?",
@@ -90,7 +111,6 @@ INTENT_EXEMPLARS = {
         "I see",
         "Never mind",
         "Sorry",
-        # Casual greetings
         "hey",
         "sup",
         "yo",
@@ -105,148 +125,142 @@ INTENT_EXEMPLARS = {
         "see ya",
         "later",
         "cheers",
+        # Conversational
+        "how's it going",
+        "nice to meet you",
+        "have a great day",
+        "take care",
+        "appreciate it",
+        "sounds good",
+        "got it",
+        "makes sense",
+        # Feedback
+        "that was helpful",
+        "great suggestion",
+        "not what I was looking for",
+        "can you try again",
+        "love this place",
+        # Meta questions
+        "are you a bot",
+        "are you real",
+        "who made you",
+        "how do you work",
     ],
 }
 
 
 class IntentRouter:
-    """Routes user queries to appropriate handlers using semantic similarity."""
+    """Oracle 23AI native vector similarity search for intent routing."""
 
-    def __init__(
-        self,
-        vertex_ai_service: VertexAIService,
-        exemplar_service: IntentExemplarService | None = None,
-    ) -> None:
-        """Initialize with a Vertex AI service instance and optional exemplar service."""
+    def __init__(self, vertex_ai_service: VertexAIService, embedding_cache: EmbeddingCache | None = None) -> None:
+        """Initialize with Vertex AI service and optional embedding cache."""
         self.vertex_ai = vertex_ai_service
-        self.exemplar_service = exemplar_service
-        self.exemplar_embeddings: dict[str, np.ndarray] = {}
-        self.exemplar_phrases: dict[str, list[str]] = {}
-        self._initialized = False
+        self.cache = embedding_cache
 
-    async def initialize(self) -> None:
-        """Load cached embeddings or compute them if not cached."""
-        if self._initialized:
-            return
-
-        if self.exemplar_service:
-            # Try to load from cache first
-            logger.info("Loading cached intent exemplar embeddings...")
-            cached_data = await self.exemplar_service.get_exemplars_with_phrases()
-
-            if cached_data:
-                # Use cached embeddings
-                for intent, phrase_embeddings in cached_data.items():
-                    phrases = []
-                    embeddings = []
-                    for phrase, embedding in phrase_embeddings:
-                        phrases.append(phrase)
-                        embeddings.append(embedding)
-
-                    self.exemplar_phrases[intent] = phrases
-                    self.exemplar_embeddings[intent] = np.array(embeddings)
-
-                logger.info("Loaded %d cached embeddings", sum(len(v) for v in self.exemplar_embeddings.values()))
-                self._initialized = True
-                return
-
-            # Cache is empty, populate it
-            logger.info("Populating intent exemplar cache...")
-            await self.exemplar_service.populate_cache(
-                INTENT_EXEMPLARS,
-                self.vertex_ai,
-            )
-
-            # Load the newly cached data
-            cached_data = await self.exemplar_service.get_exemplars_with_phrases()
-            for intent, phrase_embeddings in cached_data.items():
-                phrases = []
-                embeddings = []
-                for phrase, embedding in phrase_embeddings:
-                    phrases.append(phrase)
-                    embeddings.append(embedding)
-
-                self.exemplar_phrases[intent] = phrases
-                self.exemplar_embeddings[intent] = np.array(embeddings)
-        else:
-            # No cache service, compute embeddings directly (fallback)
-            logger.warning("No exemplar cache service provided, computing embeddings on demand")
-            for intent, phrases in INTENT_EXEMPLARS.items():
-                embeddings = []
-                self.exemplar_phrases[intent] = phrases
-
-                # Process phrases in batches for efficiency
-                for phrase in phrases:
-                    embedding = await self.vertex_ai.create_embedding(phrase)
-                    embeddings.append(embedding)
-
-                self.exemplar_embeddings[intent] = np.array(embeddings)
-
-        self._initialized = True
-
-    async def route_intent(self, query: str, threshold: float = 0.70) -> tuple[str, float, str]:
-        """Route a query to an intent based on semantic similarity.
+    async def route_intent(self, query: str, connection: oracledb.AsyncConnection) -> list[tuple[str, float, str]]:
+        """Route intent using Oracle's native vector similarity search.
 
         Args:
             query: User's input query
-            threshold: Minimum similarity score to consider a match
+            connection: Oracle database connection
 
         Returns:
-            Tuple of (intent, confidence_score, most_similar_exemplar)
+            List of tuples (intent, confidence_score, matched_phrase) sorted by score
         """
-        if not self._initialized:
-            await self.initialize()
+        # Get embedding (with caching if available)
+        if self.cache:
+            query_embedding = await self.cache.get_embedding(query, self.vertex_ai)
+        else:
+            query_embedding = await self.vertex_ai.create_embedding(query)
 
-        # Get embedding for the query
-        query_embedding = await self.vertex_ai.create_embedding(query)
+        oracle_vector = array.array("f", query_embedding)
 
-        best_score = -1
-        best_intent = "GENERAL_CONVERSATION"
-        best_exemplar = ""
+        # Execute pure vector similarity search
+        cursor = connection.cursor()
+        try:
+            await cursor.execute(
+                """
+                SELECT
+                    intent,
+                    phrase,
+                    1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) AS similarity_score
+                FROM intent_exemplar
+                WHERE 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) > :min_threshold
+                ORDER BY similarity_score DESC
+                FETCH FIRST :top_k ROWS ONLY
+                """,
+                {
+                    "query_embedding": oracle_vector,
+                    "min_threshold": VECTOR_SEARCH_CONFIG["min_vector_threshold"],
+                    "top_k": VECTOR_SEARCH_CONFIG["final_top_k"],
+                },
+            )
 
-        # Compare against all exemplars
-        for intent, exemplar_embeddings in self.exemplar_embeddings.items():
-            # Calculate cosine similarity with all exemplars for this intent
-            similarities = cosine_similarity([query_embedding], exemplar_embeddings)[0]  # pyright: ignore
+            results = await cursor.fetchall()
 
-            # Find the best match for this intent
-            max_idx = similarities.argmax()
-            max_score = similarities[max_idx]
+            # Filter by per-intent thresholds and return
+            filtered_results = [
+                (row[0], row[2], row[1])  # (intent, score, phrase)
+                for row in results
+                if row[2] >= INTENT_THRESHOLDS.get(row[0], 0.70)
+            ]
 
-            if max_score > best_score:
-                best_score = max_score
-                best_intent = intent
-                # Use stored phrases if available, otherwise fall back to INTENT_EXEMPLARS
-                if intent in self.exemplar_phrases:
-                    best_exemplar = self.exemplar_phrases[intent][max_idx]
-                else:
-                    best_exemplar = INTENT_EXEMPLARS[intent][max_idx]
+            # Log search results for debugging
+            logger.info(
+                "vector_search_results",
+                query=query,
+                total_results=len(results),
+                filtered_results=len(filtered_results),
+                top_match=filtered_results[0] if filtered_results else None,
+            )
 
-        # Apply threshold - if below threshold, default to general conversation
-        if best_score < threshold:
-            return "GENERAL_CONVERSATION", best_score, best_exemplar
+            return filtered_results
 
-        return best_intent, best_score, best_exemplar
+        finally:
+            cursor.close()
 
-    async def route_with_fallback(
-        self, query: str, high_confidence_threshold: float = 0.9, medium_confidence_threshold: float = 0.7
+    async def route_intent_single(self, query: str, connection: oracledb.AsyncConnection) -> tuple[str, float, str]:
+        """Route to single best intent with fallback to GENERAL_CONVERSATION.
+
+        Args:
+            query: User's input query
+            connection: Oracle database connection
+
+        Returns:
+            Tuple of (intent, confidence_score, matched_phrase)
+        """
+        # Use pure vector similarity search
+        results = await self.route_intent(query, connection)
+
+        if results:
+            return results[0]
+        # No matches above threshold - default to general conversation
+        return "GENERAL_CONVERSATION", 0.0, ""
+
+    async def route_with_llm_fallback(
+        self,
+        query: str,
+        connection: oracledb.AsyncConnection,
+        high_confidence_threshold: float = 0.9,
+        medium_confidence_threshold: float = 0.7,
     ) -> tuple[str, float, str]:
         """Route with LLM fallback for medium-confidence queries.
 
         Args:
             query: User's input query
+            connection: Oracle database connection
             high_confidence_threshold: Threshold for direct routing
             medium_confidence_threshold: Threshold for LLM escalation
 
         Returns:
             Tuple of (intent, confidence_score, method_used)
         """
-        # First, try semantic similarity
-        intent, confidence, exemplar = await self.route_intent(query)
+        # First, try vector similarity search
+        intent, confidence, _ = await self.route_intent_single(query, connection)
 
         if confidence > high_confidence_threshold:
-            # High confidence - use embedding result directly
-            return intent, confidence, "embedding"
+            # High confidence - use vector search result directly
+            return intent, confidence, "vector"
         if confidence > medium_confidence_threshold:
             # Medium confidence - escalate to LLM
             llm_intent = await self._llm_classify(query)
@@ -266,7 +280,6 @@ class IntentRouter:
         prompt = f"""You are an intent classifier for a coffee shop chatbot.
 Classify this query into exactly one category:
 - PRODUCT_RAG: Questions about coffee, drinks, food, menu items, or recommendations
-- LOCATION_RAG: Questions about store locations, hours, addresses, or directions
 - GENERAL_CONVERSATION: Greetings, thanks, general chat, or off-topic questions
 
 Respond with only the category name and nothing else.
@@ -281,11 +294,11 @@ Category:"""
             intent = response.strip().upper()
 
             # Validate the response
-            if intent in ["PRODUCT_RAG", "LOCATION_RAG", "GENERAL_CONVERSATION"]:
+            if intent in ["PRODUCT_RAG", "GENERAL_CONVERSATION"]:
                 return intent
-            # Fallback if LLM doesn't follow instructions
 
-        except Exception:  # noqa: BLE001
-            # On any error, default to general conversation
-            return "GENERAL_CONVERSATION"
+        except Exception:
+            logger.exception("llm_classification_error", query=query)
+
+        # On any error or invalid response, default to general conversation
         return "GENERAL_CONVERSATION"

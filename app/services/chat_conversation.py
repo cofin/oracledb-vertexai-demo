@@ -150,7 +150,11 @@ class ChatConversationService:
                     "user_id": row[2],
                     "role": row[3],
                     "content": row[4],
-                    "message_metadata": row[5] if isinstance(row[5], dict) else msgspec.json.decode(row[5]) if row[5] else {},
+                    "message_metadata": row[5]
+                    if isinstance(row[5], dict)
+                    else msgspec.json.decode(row[5])
+                    if row[5]
+                    else {},
                     "created_at": row[6],
                     "updated_at": row[7],
                 }

@@ -157,21 +157,39 @@ class VertexAIService:
         else:
             return [0.0] * 768
 
-    def create_system_message(self, message: str | None = None) -> str:
-        """Create system message for coffee recommendations."""
-        default_message = """
+    def create_system_message(self, message: str | None = None, intent: str | None = None) -> str:
+        """Create system message based on detected intent."""
+        if intent == "GENERAL_CONVERSATION":
+            default_message = """
+You are a friendly AI assistant for Cymbal Coffee. While you specialize in coffee, you can also help with general conversation.
+
+For general queries or greetings:
+- Be friendly and conversational
+- If asked about topics unrelated to coffee, politely acknowledge that your expertise is in coffee
+- You can engage in light conversation but gently guide back to how you can help with coffee-related questions
+- Never make up information about coffee products that weren't provided in the context
+
+Keep your responses concise, friendly, and honest.
+            """.strip()
+        else:
+            default_message = """
 You are a helpful AI assistant specializing in coffee recommendations for Cymbal Coffee Connoisseur.
-Given a user's chat history, the latest user query, and relevant context about our products and locations, provide an engaging and informative response.
+Given a user's chat history, the latest user query, and relevant context about our products, provide an engaging and informative response.
 
-When shop locations are provided in the context:
-- List the actual shop names and addresses clearly
-- Always use specific numbers and details from the context provided
-- If multiple locations are available, mention them naturally (e.g., "You can find this at our Downtown Roasters location on 123 Main St")
-- Focus on the conversation content only, without referring to any external UI elements
+Focus on:
+- Product recommendations based on user preferences
+- Detailed descriptions of coffee varieties and flavors
+- Helping users discover new coffee experiences
+- Answering questions about coffee preparation and brewing methods
 
-If no shops are found with the requested products, state that clearly.
 Keep your responses concise and conversational.
-        """.strip()
+
+Format your responses for a chat interface:
+- Use plain text without markdown formatting
+- Keep responses natural and conversational
+- Use regular punctuation and spacing
+- Avoid bullet points or special formatting - write in flowing sentences
+            """.strip()
 
         return message or default_message
 
@@ -181,11 +199,12 @@ Keep your responses concise and conversational.
         context: str = "",
         conversation_history: list[dict] | None = None,
         user_id: str = "default",
+        intent: str | None = None,
     ) -> str:
         """Chat with conversation history and context."""
 
         # Build prompt with system message, history, and context
-        system_msg = self.create_system_message()
+        system_msg = self.create_system_message(intent=intent)
 
         prompt_parts = [system_msg]
 

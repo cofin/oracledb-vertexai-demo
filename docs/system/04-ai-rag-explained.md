@@ -27,7 +27,7 @@ That's AI in a nutshell!
 RAG sounds complex, but it's actually simple:
 
 **R**etrieval - Find relevant information
-**A**ugmented - Enhance with that information  
+**A**ugmented - Enhance with that information
 **G**eneration - Create a helpful response
 
 ### Real-World Example
@@ -35,7 +35,7 @@ RAG sounds complex, but it's actually simple:
 Think of RAG like a smart librarian:
 
 1. **You ask**: "What coffee pairs well with chocolate cake?"
-2. **Librarian (RAG) thinks**: 
+2. **Librarian (RAG) thinks**:
    - Let me find books about coffee (Retrieval)
    - Let me find which coffees complement chocolate (Augmented)
    - Let me write you a recommendation (Generation)
@@ -57,7 +57,7 @@ User Query: "I like nutty flavors"
    - Availability
      ↓
 3. GENERATION: Create personalized response
-   "For nutty flavors, I recommend our Brazilian Santos 
+   "For nutty flavors, I recommend our Brazilian Santos
     with its prominent hazelnut notes. It's medium roasted
     for a balanced cup and currently on special at $12.99."
 ```
@@ -133,7 +133,7 @@ INTENT_EXEMPLARS = {
         "What coffee do you recommend?",
         "Tell me about your espresso options",
         "I need something with lots of caffeine",
-        
+
         # Casual/idiomatic expressions (NEW!)
         "I need something bold",
         "caffeine please",
@@ -194,7 +194,7 @@ This represents: high caffeine + medium roast + smooth
 
 **Step 4: Find Matches in Oracle**
 ```sql
-SELECT name, description, 
+SELECT name, description,
        VECTOR_DISTANCE(embedding, :query_vector) as match
 FROM products
 WHERE match < 0.8
@@ -205,9 +205,9 @@ ORDER BY match
 ```
 Found: Colombian Supremo, Vietnamese Robusta, Breakfast Blend
 
-AI Response: "Since you're tired and want something strong but 
-smooth, I recommend our Colombian Supremo. It has 40% more 
-caffeine than average but maintains a smooth, chocolatey 
+AI Response: "Since you're tired and want something strong but
+smooth, I recommend our Colombian Supremo. It has 40% more
+caffeine than average but maintains a smooth, chocolatey
 finish without bitterness."
 ```
 
@@ -217,8 +217,8 @@ finish without bitterness."
 
 **Traditional Database Query:**
 ```sql
-SELECT * FROM products 
-WHERE description LIKE '%strong%' 
+SELECT * FROM products
+WHERE description LIKE '%strong%'
   AND description NOT LIKE '%bitter%'
 ```
 Result: Might miss perfect matches that use different words
@@ -311,7 +311,7 @@ A: Average cost is $0.003 per query. A typical customer journey (5 queries) cost
 async def process_coffee_image(image_path: str):
     # Extract visual features
     visual_embedding = await extract_image_features(image_path)
-    
+
     # Find similar looking coffees
     return await find_similar_by_appearance(visual_embedding)
 
@@ -319,7 +319,7 @@ async def process_coffee_image(image_path: str):
 async def get_personalized_recommendation(user_id: str):
     # Learn from history
     preferences = await analyze_user_history(user_id)
-    
+
     # Predict what they'll love next
     return await predict_next_favorite(preferences)
 ```

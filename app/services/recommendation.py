@@ -48,8 +48,9 @@ class RecommendationService:
         self.exemplar_service = exemplar_service
         self.user_id = user_id
 
-        # Initialize intent router with exemplar service
-        self.intent_router = IntentRouter(vertex_ai_service, exemplar_service)
+        # Initialize intent router without exemplar service (will use embedding cache)
+        # Connection will be passed to route_intent method
+        self.intent_router = IntentRouter(vertex_ai_service)
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
@@ -74,11 +75,10 @@ class RecommendationService:
         # Route the question through product and location matching
         chat_metadata: dict[str, Any] = {}
         chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
-        chat_metadata, location_count = await self._route_locations_question(
-            query,
-            matched_product_ids,
-            chat_metadata,
-        )
+
+        # Get detected intent from metadata
+        intent_routing = chat_metadata.get("intent_routing", {})
+        detected_intent = intent_routing.get("detected_intent", "GENERAL_CONVERSATION")
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
@@ -96,12 +96,13 @@ class RecommendationService:
         # Build context from metadata
         context = self._format_context(query, chat_metadata)
 
-        # Generate AI response
+        # Generate AI response with intent-aware system message
         ai_response = await self.vertex_ai.chat_with_history(
             query=query,
             context=context,
             conversation_history=history_for_ai,
             user_id=self.user_id,
+            intent=detected_intent,
         )
 
         # Save conversation to Oracle
@@ -121,7 +122,6 @@ class RecommendationService:
             message_metadata={
                 "query_id": query_id,
                 "product_matches": len(matched_product_ids),
-                "location_count": location_count,
             },
         )
 
@@ -146,8 +146,10 @@ class RecommendationService:
 
         chat_metadata = chat_metadata or {}
 
-        # Use semantic intent detection
-        intent, confidence, exemplar = await self.intent_router.route_intent(query)
+        # Use semantic intent detection with Oracle connection
+        # Get connection from one of our services (they all use the same connection)
+        connection = self.exemplar_service.connection if self.exemplar_service else self.products_service.connection
+        intent, confidence, exemplar = await self.intent_router.route_intent_single(query, connection)
 
         # Log the routing decision for analysis
         logger.info(
@@ -187,52 +189,6 @@ class RecommendationService:
 
         return chat_metadata, []
 
-    async def _route_locations_question(
-        self,
-        query: str,
-        matched_product_ids: Sequence[int] | None = None,
-        chat_metadata: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], int]:
-        """Route question through location matching based on intent."""
-
-        matched_product_ids = matched_product_ids or []
-        chat_metadata = chat_metadata or {}
-
-        # Check if the intent indicates location query
-        intent_routing = chat_metadata.get("intent_routing", {})
-        intent = intent_routing.get("detected_intent", "")
-
-        # Handle location queries
-        if intent == "LOCATION_RAG":
-            shops_with_products = []
-
-            if matched_product_ids:
-                # Find shops that have these specific products
-                # Get all shops and check their inventory
-                all_shops = await self.shops_service.get_all()
-
-                for shop in all_shops[:10]:  # Check first 10 shops
-                    shop_inventory = await self.shops_service.get_with_inventory(shop["id"])
-                    if shop_inventory and shop_inventory.get("inventory"):
-                        # Check if this shop has any of the matched products
-                        inventory_product_ids = [item["product_id"] for item in shop_inventory["inventory"]]
-                        if any(pid in matched_product_ids for pid in inventory_product_ids):
-                            shops_with_products.append(shop)
-                            if len(shops_with_products) >= 4:  # noqa: PLR2004
-                                break
-            else:
-                # If no specific products, just list some shops
-                all_shops = await self.shops_service.get_all()
-                shops_with_products = all_shops[:4]
-
-            # Store shop information for context
-            chat_metadata["shop_locations"] = [
-                {"name": shop["name"], "address": shop["address"]} for shop in shops_with_products
-            ]
-            return chat_metadata, len(shops_with_products)
-
-        return chat_metadata, 0
-
     def _format_context(self, query: str, chat_metadata: dict[str, Any]) -> str:
         """Format context for AI prompt."""
 
@@ -241,32 +197,6 @@ class RecommendationService:
         if chat_metadata.get("product_matches"):
             products_text = "\n".join(chat_metadata["product_matches"])
             formatted_parts.append(f"# Matching coffee products (if applicable):\n{products_text}")
-
-        if chat_metadata.get("shop_locations"):
-            shops = chat_metadata["shop_locations"]
-            location_count = len(shops)
-
-            # Limit to first 5 shops for token management
-            max_shops_in_context = 5
-            if location_count > max_shops_in_context:
-                shops = shops[:max_shops_in_context]
-                formatted_parts.append(
-                    f"# Product Availability:\nFound at {location_count} locations. Here are {max_shops_in_context} of them:"
-                )
-            else:
-                formatted_parts.append(
-                    f"# Product Availability:\nAvailable at the following {location_count} location(s):"
-                )
-
-            # Add shop details with basic sanitization
-            shop_list = []
-            for shop in shops:
-                # Basic sanitization - remove potential prompt injection attempts
-                name = shop["name"].replace("\n", " ").replace("\r", " ")[:100]
-                address = shop["address"].replace("\n", " ").replace("\r", " ")[:200]
-                shop_list.append(f"- {name}: {address}")
-
-            formatted_parts.append("\n".join(shop_list))
 
         return "\n\n".join(formatted_parts)
 
@@ -288,11 +218,6 @@ class RecommendationService:
         # Route the question (same as regular recommendation)
         chat_metadata: dict[str, Any] = {}
         chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
-        chat_metadata, location_count = await self._route_locations_question(
-            query,
-            matched_product_ids,
-            chat_metadata,
-        )
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
@@ -304,9 +229,13 @@ class RecommendationService:
         # Format conversation history for Vertex AI
         history_for_ai = [{"role": msg["role"], "content": msg["content"]} for msg in reversed(conversation_history)]
 
+        # Get detected intent from metadata
+        intent_routing = chat_metadata.get("intent_routing", {})
+        detected_intent = intent_routing.get("detected_intent", "GENERAL_CONVERSATION")
+
         # Build context and prompt
         context = self._format_context(query, chat_metadata)
-        system_msg = self.vertex_ai.create_system_message()
+        system_msg = self.vertex_ai.create_system_message(intent=detected_intent)
 
         prompt_parts = [system_msg]
 
@@ -347,7 +276,6 @@ class RecommendationService:
             message_metadata={
                 "query_id": query_id,
                 "product_matches": len(matched_product_ids),
-                "location_count": location_count,
                 "streamed": True,
             },
         )

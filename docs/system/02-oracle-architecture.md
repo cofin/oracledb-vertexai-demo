@@ -106,7 +106,7 @@ postgres.execute("INSERT INTO session_audit...")
 INSERT INTO user_sessions (
     session_id, user_id, data, expires_at
 ) VALUES (
-    :session_id, :user_id, :json_data, 
+    :session_id, :user_id, :json_data,
     SYSTIMESTAMP + INTERVAL '1' HOUR
 );
 
@@ -142,10 +142,10 @@ CREATE TABLE intent_exemplar (
 
 -- Smart caching with automatic TTL
 MERGE INTO response_cache USING dual ON (cache_key = :key)
-WHEN MATCHED THEN 
+WHEN MATCHED THEN
     UPDATE SET response = :data, expires_at = SYSTIMESTAMP + INTERVAL '5' MINUTE
-WHEN NOT MATCHED THEN 
-    INSERT (cache_key, response, expires_at) 
+WHEN NOT MATCHED THEN
+    INSERT (cache_key, response, expires_at)
     VALUES (:key, :data, SYSTIMESTAMP + INTERVAL '5' MINUTE);
 ```
 
@@ -155,8 +155,8 @@ WHEN NOT MATCHED THEN
 
 ```sql
 -- Create optimized HNSW index
-CREATE INDEX embed_idx ON products (embedding) 
-INDEXTYPE IS VECTOR 
+CREATE INDEX embed_idx ON products (embedding)
+INDEXTYPE IS VECTOR
 PARAMETERS ('TYPE=HNSW, NEIGHBORS=64');
 
 -- Benchmark results:
@@ -192,18 +192,18 @@ import oracledb
 
 class UnifiedDataService:
     """One service, all capabilities - using raw Oracle SQL"""
-    
+
     def __init__(self, connection: oracledb.AsyncConnection):
         self.connection = connection
-        
+
     async def semantic_search(self, query: str, user_location: tuple):
         """Vector search + geospatial + inventory in ONE query"""
         query_embedding = await self.create_embedding(query)
-        
+
         cursor = self.connection.cursor()
         try:
             await cursor.execute("""
-                SELECT p.*, s.*, 
+                SELECT p.*, s.*,
                        VECTOR_DISTANCE(p.embedding, :embedding, COSINE) as score
                 FROM product p
                 JOIN inventory i ON p.id = i.product_id
@@ -215,7 +215,7 @@ class UnifiedDataService:
             """, {
                 "embedding": query_embedding
             })
-            
+
             return await cursor.fetchall()
         finally:
             cursor.close()
@@ -239,7 +239,7 @@ CREATE TABLE search_metrics (
     id NUMBER,
     query_time TIMESTAMP,
     response_ms NUMBER
-) PARTITION BY RANGE (query_time) 
+) PARTITION BY RANGE (query_time)
 INTERVAL (INTERVAL '1' DAY);
 ```
 
@@ -300,7 +300,7 @@ else:
 -- Cache expensive queries automatically
 ALTER SESSION SET RESULT_CACHE_MODE = FORCE;
 
-SELECT /*+ RESULT_CACHE */ 
+SELECT /*+ RESULT_CACHE */
     category, COUNT(*), AVG(price)
 FROM products
 GROUP BY category;
@@ -317,7 +317,7 @@ ALTER TABLE old_metrics COMPRESS FOR OLTP;
 
 ```sql
 -- Index only what you search
-CREATE INDEX partial_idx ON products (embedding) 
+CREATE INDEX partial_idx ON products (embedding)
 WHERE status = 'ACTIVE';
 ```
 
@@ -364,7 +364,7 @@ WHERE status = 'ACTIVE';
 Oracle 23AI isn't your father's database. It's:
 
 - **A vector database** that beats Pinecone on performance
-- **A cache layer** that's faster than Redis  
+- **A cache layer** that's faster than Redis
 - **A JSON store** more flexible than MongoDB
 - **A search engine** that rivals Elasticsearch
 - **A session store** with built-in TTL

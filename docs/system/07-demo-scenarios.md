@@ -20,13 +20,13 @@ Before demonstrating, ensure:
 
 **AI Response**:
 ```
-I understand you're looking for a gentle introduction to specialty coffee! 
+I understand you're looking for a gentle introduction to specialty coffee!
 For someone who prefers sweet and mild flavors, I recommend:
 
-1. **Vanilla Caramel Latte** - Our house blend with vanilla and caramel, 
+1. **Vanilla Caramel Latte** - Our house blend with vanilla and caramel,
    perfectly balanced and not overwhelming
-   
-2. **Colombian Supremo** - A medium roast with natural chocolate notes 
+
+2. **Colombian Supremo** - A medium roast with natural chocolate notes
    and a smooth, sweet finish
 
 Both are available at our downtown location (shown on the map).
@@ -64,7 +64,7 @@ Excellent choice! For a sophisticated palate seeking Ethiopian naturals:
 - Harvest: December 2023
 - Altitude: 1,950-2,200 masl
 
-We have 12 bags in stock at our Specialty Bar location. 
+We have 12 bags in stock at our Specialty Bar location.
 Would you like me to reserve some for cupping?
 ```
 
@@ -94,7 +94,7 @@ I can help you find delicious options that work with your dietary needs:
 - Almond Milk Cappuccino (light, nutty flavor)
 - Coconut Milk Mocha (rich, tropical notes)
 
-💡 **My Recommendation**: Try our Decaf Colombian with oat milk - 
+💡 **My Recommendation**: Try our Decaf Colombian with oat milk -
 it's smooth, chocolatey, and many customers say it's better than regular!
 ```
 
@@ -121,7 +121,7 @@ Early bird! Here are shops open before 7am near the financial district:
    Opens: 5:30 AM
    ⭐ Features: Drive-through, breakfast menu
 
-Both serve our signature espresso blend. Main Street is closer 
+Both serve our signature espresso blend. Main Street is closer
 but Corner Coffee opens earlier if you need the extra time!
 ```
 
@@ -166,7 +166,7 @@ I'm here to help you find the perfect coffee!
 
 **Disable network** (to show offline mode):
 ```
-I'm currently in offline mode but I can still help! 
+I'm currently in offline mode but I can still help!
 
 Our popular choices include:
 - House Blend: Balanced and smooth
@@ -211,7 +211,7 @@ For rapid demos, use these pre-configured personas:
 uv run app demo persona --name=sarah
 # Preset queries loaded for beginner perspective
 
-# Coffee Expert  
+# Coffee Expert
 uv run app demo persona --name=dr-chen
 # Technical queries ready
 
@@ -266,7 +266,7 @@ A: "Gemini supports 100+ languages out of the box"
 
 ### Full Demo (5 minutes)
 1. Novice scenario
-2. Expert scenario  
+2. Expert scenario
 3. Performance metrics
 4. ROI discussion
 5. Q&A
@@ -287,7 +287,7 @@ uv run app demo attract-mode
 "Here's our implementation guide and architecture documentation..."
 - Point to: [Implementation Guide](06-implementation-guide.md)
 
-### For Business Audience  
+### For Business Audience
 "Let me share our ROI calculator and case studies..."
 - Point to: [Business Value](02-business-value.md)
 

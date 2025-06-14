@@ -28,7 +28,6 @@ class InventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
@@ -49,11 +48,10 @@ class InventoryService:
                     "product_id": row[4],
                     "product_name": row[5],
                     "current_price": row[6],
-                    "size": row[7],
-                    "description": row[8],
-                    "company_name": row[9],
-                    "created_at": row[10],
-                    "updated_at": row[11],
+                    "description": row[7],
+                    "company_name": row[8],
+                    "created_at": row[9],
+                    "updated_at": row[10],
                 }
                 async for row in cursor
             ]
@@ -74,7 +72,6 @@ class InventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
@@ -98,11 +95,10 @@ class InventoryService:
                     "product_id": row[4],
                     "product_name": row[5],
                     "current_price": row[6],
-                    "size": row[7],
-                    "description": row[8],
-                    "company_name": row[9],
-                    "created_at": row[10],
-                    "updated_at": row[11],
+                    "description": row[7],
+                    "company_name": row[8],
+                    "created_at": row[9],
+                    "updated_at": row[10],
                 }
             return None
         finally:
@@ -122,7 +118,6 @@ class InventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
@@ -146,11 +141,10 @@ class InventoryService:
                     "product_id": row[4],
                     "product_name": row[5],
                     "current_price": row[6],
-                    "size": row[7],
-                    "description": row[8],
-                    "company_name": row[9],
-                    "created_at": row[10],
-                    "updated_at": row[11],
+                    "description": row[7],
+                    "company_name": row[8],
+                    "created_at": row[9],
+                    "updated_at": row[10],
                 }
                 async for row in cursor
             ]
@@ -171,7 +165,6 @@ class InventoryService:
                     i.product_id,
                     p.name as product_name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     c.name as company_name,
                     i.created_at,
@@ -195,11 +188,10 @@ class InventoryService:
                     "product_id": row[4],
                     "product_name": row[5],
                     "current_price": row[6],
-                    "size": row[7],
-                    "description": row[8],
-                    "company_name": row[9],
-                    "created_at": row[10],
-                    "updated_at": row[11],
+                    "description": row[7],
+                    "company_name": row[8],
+                    "created_at": row[9],
+                    "updated_at": row[10],
                 }
                 async for row in cursor
             ]

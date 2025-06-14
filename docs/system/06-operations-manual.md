@@ -9,7 +9,7 @@ uv run app health-check              # Full system diagnostic
 uv run app database check-connection # Database connectivity
 uv run app vertex-ai test           # AI service status
 
-# Emergency Procedures  
+# Emergency Procedures
 uv run app emergency offline-mode    # Enable fallback mode
 uv run app cache clear              # Clear all caches
 uv run app database repair-indexes  # Fix vector indexes
@@ -64,7 +64,7 @@ uv run app cache stats
 #### 1. Application Metrics
 ```python
 # Real-time monitoring query
-SELECT 
+SELECT
     DATE_TRUNC('minute', created_at) as minute,
     COUNT(*) as requests,
     AVG(search_time_ms) as avg_search_time,
@@ -79,7 +79,7 @@ ORDER BY minute DESC;
 #### 2. Database Metrics
 ```sql
 -- Vector index health
-SELECT 
+SELECT
     index_name,
     num_rows,
     distinct_keys,
@@ -89,7 +89,7 @@ FROM user_indexes
 WHERE index_type = 'VECTOR';
 
 -- Session usage
-SELECT 
+SELECT
     COUNT(*) as active_sessions,
     COUNT(CASE WHEN expires_at < SYSTIMESTAMP THEN 1 END) as expired,
     AVG(EXTRACT(EPOCH FROM (expires_at - created_at))/3600) as avg_duration_hours
@@ -171,17 +171,39 @@ schedules:
     tables: [response_cache, search_metrics]
     frequency: "0 * * * *"
     retention: 24 hours
-    
+
   - name: daily-full
     tables: all
     frequency: "0 2 * * *"
     retention: 7 days
-    
+
   - name: weekly-archive
     tables: all
     frequency: "0 3 * * 0"
     retention: 90 days
     compression: true
+```
+
+### Manual Data Export/Import
+
+For demo environments or migration scenarios, use the built-in export utility:
+
+```bash
+# Export all tables with embeddings (compressed)
+uv run app dump-data
+
+# Export specific tables
+uv run app dump-data --table intent_exemplar
+uv run app dump-data --table product
+
+# Export to custom location
+uv run app dump-data --path /backup/$(date +%Y%m%d)
+
+# Export without compression
+uv run app dump-data --no-compress
+
+# The exported files are automatically loaded by load-fixtures
+# Priority: UPPERCASE.json.gz > lowercase.json.gz > lowercase.json
 ```
 
 ### Recovery Procedures
@@ -217,13 +239,13 @@ EOF
 #### Monitoring Intent Cache
 ```sql
 -- Check cache status
-SELECT intent, COUNT(*) as pattern_count 
-FROM intent_exemplar 
+SELECT intent, COUNT(*) as pattern_count
+FROM intent_exemplar
 GROUP BY intent;
 
 -- Verify In-Memory status
-SELECT segment_name, inmemory_size, bytes_not_populated 
-FROM v$im_segments 
+SELECT segment_name, inmemory_size, bytes_not_populated
+FROM v$im_segments
 WHERE segment_name IN ('INTENT_EXEMPLAR', 'RESPONSE_CACHE');
 ```
 
@@ -233,8 +255,8 @@ WHERE segment_name IN ('INTENT_EXEMPLAR', 'RESPONSE_CACHE');
 ```sql
 -- Rebuild vector index
 DROP INDEX idx_product_embedding;
-CREATE INDEX idx_product_embedding ON products (embedding) 
-INDEXTYPE IS VECTOR 
+CREATE INDEX idx_product_embedding ON products (embedding)
+INDEXTYPE IS VECTOR
 PARAMETERS ('TYPE=HNSW, NEIGHBORS=64');
 
 -- Verify index health
@@ -281,16 +303,16 @@ PERFORMANCE_SETTINGS = {
     "db_pool_size": 20,
     "db_pool_timeout": 30,
     "db_pool_recycle": 3600,
-    
+
     # Caching
     "cache_ttl_seconds": 300,
     "cache_max_size": 10000,
-    
+
     # AI Service
     "embedding_batch_size": 100,
     "ai_timeout_seconds": 10,
     "ai_max_retries": 3,
-    
+
     # Rate limiting
     "rate_limit_per_minute": 100,
     "burst_size": 20
@@ -353,8 +375,8 @@ spec:
 ALTER SYSTEM SET cluster_database=TRUE SCOPE=SPFILE;
 
 -- Add read replicas for vector searches
-CREATE DATABASE LINK vector_replica 
-CONNECT TO coffee_app IDENTIFIED BY password 
+CREATE DATABASE LINK vector_replica
+CONNECT TO coffee_app IDENTIFIED BY password
 USING 'oracle-replica:1521/VECTORDB';
 ```
 
@@ -367,13 +389,13 @@ USING 'oracle-replica:1521/VECTORDB';
 async def rotate_api_keys():
     # Generate new keys
     new_keys = await generate_secure_keys()
-    
+
     # Update configuration
     await update_config(new_keys)
-    
+
     # Grace period for old keys
     await schedule_key_deprecation(hours=24)
-    
+
     # Audit log
     await log_security_event("API_KEY_ROTATION", new_keys)
 ```
@@ -385,15 +407,15 @@ async def rotate_api_keys():
 CREATE OR REPLACE PROCEDURE purge_old_data AS
 BEGIN
     -- Remove old search metrics
-    DELETE FROM search_metrics 
+    DELETE FROM search_metrics
     WHERE created_at < SYSTIMESTAMP - INTERVAL '90' DAY;
-    
+
     -- Anonymize old sessions
-    UPDATE user_sessions 
+    UPDATE user_sessions
     SET user_id = 'ANONYMOUS-' || id,
         data = JSON_OBJECT('anonymized' VALUE 'true')
     WHERE created_at < SYSTIMESTAMP - INTERVAL '30' DAY;
-    
+
     COMMIT;
 END;
 /
@@ -494,7 +516,7 @@ echo "Maintenance completed - $(date)"
 # Track and optimize AI costs
 async def analyze_ai_costs():
     costs = await db.fetch_one("""
-        SELECT 
+        SELECT
             COUNT(*) as total_requests,
             SUM(CASE WHEN cache_hit THEN 0 ELSE 1 END) as api_calls,
             AVG(token_count) as avg_tokens,
@@ -502,7 +524,7 @@ async def analyze_ai_costs():
         FROM ai_usage_metrics
         WHERE created_at > CURRENT_DATE - INTERVAL '30 days'
     """)
-    
+
     return {
         "monthly_cost": costs["estimated_cost_usd"],
         "cache_savings": costs["total_requests"] - costs["api_calls"],
@@ -514,7 +536,7 @@ async def analyze_ai_costs():
 
 ```sql
 -- Implement compression for historical data
-ALTER TABLE search_metrics 
+ALTER TABLE search_metrics
 COMPRESS FOR OLTP
 PARTITION BY RANGE (created_at) (
     PARTITION p_current VALUES LESS THAN (SYSTIMESTAMP),
@@ -537,12 +559,12 @@ async def audit_middleware(request: Request, call_next):
         "path": request.url.path,
         "ip_address": request.client.host
     }
-    
+
     response = await call_next(request)
-    
+
     audit_entry["status_code"] = response.status_code
     audit_entry["duration_ms"] = response.headers.get("X-Process-Time")
-    
+
     await audit_logger.log(audit_entry)
     return response
 ```

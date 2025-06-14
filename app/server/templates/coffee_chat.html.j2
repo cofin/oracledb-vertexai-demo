@@ -22,27 +22,18 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
 
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- Shared Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', file_path='css/cymbal-theme.css') }}">
+
     <style>
-        h1 {
-            text-align: center;
-        }
-
-        :root {
-            --coffee-dark: #3C2A21;
-            --coffee-medium: #967259;
-            --coffee-light: #D7B19D;
-            --cream: #FFF3E4;
-        }
-
+        /* Coffee Chat specific styles */
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--cream);
-            color: var(--coffee-dark);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -50,13 +41,6 @@
         }
 
         .container {
-            max-width: 1000px;
-            width: 95%;
-            margin: 20px auto;
-            padding: 30px;
-            background-color: #fff;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             display: grid;
             grid-template-columns: 1fr;
             gap: 20px;
@@ -156,6 +140,56 @@
             border: 1px solid var(--coffee-light);
         }
 
+        /* Markdown content styling */
+        .ai-response-content {
+            display: block;
+            margin-top: 8px;
+        }
+
+        .ai-response-content p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .ai-response-content p:first-child {
+            margin-top: 0;
+        }
+
+        .ai-response-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .ai-response-content strong {
+            color: var(--coffee-medium);
+            font-weight: 600;
+        }
+
+        .ai-response-content ul, .ai-response-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+
+        .ai-response-content li {
+            margin: 6px 0;
+            line-height: 1.5;
+        }
+
+        .ai-response-content code {
+            background-color: var(--cream);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .ai-response-content blockquote {
+            border-left: 3px solid var(--coffee-light);
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #666;
+            font-style: italic;
+        }
+
         .typing-indicator {
             color: var(--coffee-medium);
             font-style: italic;
@@ -185,18 +219,19 @@
         .send-btn {
             background-color: var(--coffee-medium);
             color: white;
-            padding: 12px 16px;
+            padding: 12px 20px;
             border: none;
             border-radius: 25px;
             cursor: pointer;
             font-weight: 600;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
             flex-shrink: 0;
             white-space: nowrap;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 5px;
+            min-width: 100px;
         }
 
         .send-btn:hover {
@@ -206,6 +241,65 @@
         .send-btn:disabled {
             background-color: var(--coffee-light);
             cursor: not-allowed;
+        }
+
+        /* Loading state styles */
+        .send-btn.htmx-request {
+            min-width: 115px;
+        }
+
+        .send-btn.htmx-request #send-text {
+            display: none;
+        }
+
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .loading-container {
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .send-btn.htmx-request .loading-container {
+            display: flex;
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .loading-dots span {
+            width: 3px;
+            height: 3px;
+            background-color: white;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0s;
         }
 
         .metrics-panel {
@@ -337,17 +431,18 @@
 
 <body class="font-sans antialiased h-full">
     <div class="container">
-        <!-- Header -->
-        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: start; margin-bottom: 30px;">
-            <div>
-                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur"
-                    style="max-height: 100px;">
-                <p style="color: var(--coffee-medium); margin-top: 10px; margin-bottom: 0; white-space: nowrap; font-size: 1.1rem;">Powered by Oracle 23AI + Google Vertex AI</p>
+        <!-- Cymbal Header -->
+        <div class="cymbal-header">
+            <div class="logo-section">
+                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur">
+                <p>Powered by Oracle 23AI + Google Vertex AI</p>
             </div>
-            <div style="text-align: center;">
-                <h1 style="margin: 0; font-size: 3.5rem; font-weight: 400; letter-spacing: 3px; color: var(--coffee-dark);">Connoisseur</h1>
+            <div class="title-section">
+                <h1>Connoisseur</h1>
             </div>
-            <div></div> <!-- Empty cell for balance -->
+            <div class="nav-section">
+                <!-- Future navigation items can go here -->
+            </div>
         </div>
 
         <!-- Chat Section -->
@@ -373,13 +468,20 @@
 
             <!-- Chat Form -->
             <form class="chat-form" hx-post="{{ url_for('coffee_chat.get') }}" hx-target="#chat-container"
-                hx-swap="beforeend" hx-indicator="#loading">
+                hx-swap="beforeend">
                 {{ csrf_input | safe }}
                 <input type="hidden" id="persona" name="persona" value="enthusiast">
                 <input class="chat-input" id="message" name="message" placeholder="Ask me about coffee..." required
                     autocomplete="off">
                 <button type="submit" class="send-btn" id="send-btn">
-                    <span id="loading" class="htmx-indicator">Thinking...</span>
+                    <div class="loading-container">
+                        <span class="loading-text">Thinking</span>
+                        <div class="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
                     <span id="send-text">Send ☕</span>
                 </button>
             </form>
@@ -387,7 +489,13 @@
 
         <!-- Performance Metrics Panel -->
         <div class="metrics-panel loading" id="metrics-panel">
-            <h4 style="margin-top: 0; color: var(--coffee-dark);">Performance Metrics</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: var(--coffee-dark);">Performance Metrics</h4>
+                <a href="/dashboard" style="font-size: 0.85rem; color: var(--coffee-medium); text-decoration: none; transition: color 0.3s ease;"
+                   onmouseover="this.style.color='var(--coffee-dark)'" onmouseout="this.style.color='var(--coffee-medium)'">
+                    View Full Dashboard →
+                </a>
+            </div>
             <div class="metrics-grid" id="metrics-grid">
                 <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
                     <div class="typing-indicator">Loading metrics...</div>
@@ -441,13 +549,24 @@
         }
 
         // HTMX event listeners
+        document.body.addEventListener('htmx:beforeRequest', function (evt) {
+            if (evt.detail.elt.classList.contains('chat-form') || evt.detail.elt.closest('.chat-form')) {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.classList.add('htmx-request');
+                sendBtn.disabled = true;
+            }
+        });
+
         document.body.addEventListener('htmx:afterRequest', function (evt) {
             scrollChatToBottom();
 
-            // Reset form
+            // Reset form and button
             if (evt.detail.elt.classList.contains('chat-form') || evt.detail.elt.closest('.chat-form')) {
                 document.getElementById('message').value = '';
                 document.getElementById('message').focus();
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.classList.remove('htmx-request');
+                sendBtn.disabled = false;
             }
         });
 

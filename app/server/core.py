@@ -122,7 +122,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "WebSocket": WebSocket,
                 "schemas": schemas,
                 "services": services,
-                # Service types
                 "ProductService": ProductService,
                 "ShopService": ShopService,
                 "RecommendationService": RecommendationService,
@@ -144,21 +143,19 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.cli import (
             bulk_embed,
             clear_cache,
+            dump_data,
             embed_new,
             load_fixtures,
             load_vectors,
             model_info,
-            recommend,
             truncate_tables,
         )
 
-        cli.add_command(recommend, name="recommend")
         cli.add_command(model_info, name="model-info")
-
-        # Add database-related commands directly to CLI
         cli.add_command(load_fixtures, name="load-fixtures")
         cli.add_command(load_vectors, name="load-vectors")
         cli.add_command(bulk_embed, name="bulk-embed")
         cli.add_command(embed_new, name="embed-new")
         cli.add_command(clear_cache, name="clear-cache")
         cli.add_command(truncate_tables, name="truncate-tables")
+        cli.add_command(dump_data, name="dump-data")

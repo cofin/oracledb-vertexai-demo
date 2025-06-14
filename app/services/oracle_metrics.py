@@ -85,10 +85,11 @@ class OracleMetricsService:
                     "status": row[2],
                     "priority": row[3],
                 }
-            return stats
         except Exception:  # noqa: BLE001
             # V$ views might not be accessible, return empty stats
             return {}
+        else:
+            return stats
         finally:
             cursor.close()
 
@@ -114,9 +115,11 @@ class OracleMetricsService:
                     "active_sessions": row[1] or 0,
                     "inactive_sessions": row[2] or 0,
                 }
-            return {"total_sessions": 0, "active_sessions": 0, "inactive_sessions": 0}
+
         except Exception:  # noqa: BLE001
             # V$ views might not be accessible
+            return {"total_sessions": 0, "active_sessions": 0, "inactive_sessions": 0}
+        else:
             return {"total_sessions": 0, "active_sessions": 0, "inactive_sessions": 0}
         finally:
             cursor.close()

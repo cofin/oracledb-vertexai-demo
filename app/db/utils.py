@@ -283,3 +283,156 @@ async def _load_vectors() -> None:
             logger.info("Vector embeddings loaded successfully")
         finally:
             cursor.close()
+
+
+async def export_table_data(
+    conn: oracledb.AsyncConnection,
+    table_name: str,
+    export_path: Path,
+    compress: bool = True,
+) -> int:
+    """Export a single table to JSON file with optional compression.
+
+    Args:
+        conn: Database connection
+        table_name: Name of table to export
+        export_path: Directory to export to
+        compress: Whether to gzip the output
+
+    Returns:
+        Number of records exported
+    """
+    import array
+    import gzip
+    from datetime import datetime
+
+    import msgspec
+
+    cursor = conn.cursor()
+    try:
+        # Validate table name to prevent SQL injection
+        valid_tables = [
+            "COMPANY", "SHOP", "PRODUCT", "INVENTORY",
+            "INTENT_EXEMPLAR", "RESPONSE_CACHE", "SEARCH_METRICS",
+            "USER_SESSION", "CHAT_CONVERSATION", "APP_CONFIG"
+        ]
+        if table_name.upper() not in valid_tables:
+            msg = f"Invalid table name: {table_name}"
+            raise ValueError(msg)
+
+        # Get all data from the table
+        # TODO: Consider using streaming/pagination for very large tables
+        await cursor.execute(f"SELECT * FROM {table_name}")  # noqa: S608
+
+        # Get column names
+        columns = [col[0].lower() for col in cursor.description]
+
+        # Fetch all rows and convert to dictionaries
+        # TODO: Stream rows to file instead of loading all into memory for large tables
+        rows = []
+        async for row in cursor:
+            row_dict = {}
+            for i, value in enumerate(row):
+                col_name = columns[i]
+
+                # Handle special Oracle types
+                if isinstance(value, array.array):
+                    # Convert Oracle VECTOR to list
+                    row_dict[col_name] = list(value)
+                elif isinstance(value, datetime):
+                    # Convert datetime to ISO format
+                    row_dict[col_name] = value.isoformat()  # type: ignore[assignment]
+                elif value is None:
+                    # Skip None values for cleaner JSON
+                    continue
+                else:
+                    row_dict[col_name] = value
+
+            rows.append(row_dict)
+
+        # Serialize with msgspec
+        # TODO: Consider streaming JSON encoder for very large datasets
+        json_data = msgspec.json.encode(rows)
+
+        # Write to file
+        export_path.mkdir(parents=True, exist_ok=True)
+        file_name = f"{table_name}.json"
+        if compress:
+            file_name += ".gz"
+
+        file_path = export_path / file_name
+
+        if compress:
+            # Write compressed
+            with gzip.open(file_path, "wb") as f:
+                f.write(json_data)
+        else:
+            # Write uncompressed
+            file_path.write_bytes(json_data)
+
+        logger.info("Exported %d records from %s to %s", len(rows), table_name, file_path)
+        return len(rows)
+
+    finally:
+        cursor.close()
+
+
+async def dump_database_data(
+    export_path: Path | str = "exported_data",
+    tables: str | list[str] = "*",
+    compress: bool = True,
+) -> dict[str, int]:
+    """Export database tables to JSON files.
+
+    Args:
+        export_path: Directory to export files to
+        tables: Table name(s) to export, or "*" for all tables
+        compress: Whether to gzip the output files
+
+    Returns:
+        Dictionary mapping table names to record counts
+    """
+    from app import config
+
+    export_path = Path(export_path)
+
+    async with config.oracle_async.get_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            # Get list of tables to export
+            if tables == "*":
+                # Get all user tables
+                # TODO: Consider caching table list or making configurable
+                # For demo purposes, only export essential tables
+                # TODO: Remove this filter for production use to export all tables
+                await cursor.execute("""
+                    SELECT table_name
+                    FROM user_tables
+                    WHERE table_name IN ('COMPANY', 'INTENT_EXEMPLAR', 'PRODUCT', 'SHOP')
+                    ORDER BY table_name
+                """)
+                table_list = [row[0] for row in await cursor.fetchall()]
+            elif isinstance(tables, str):
+                table_list = [tables.upper()]
+            else:
+                table_list = [t.upper() for t in tables]
+
+            # Export each table
+            # TODO: Consider parallel exports for multiple tables
+            results = {}
+            for table_name in table_list:
+                try:
+                    count = await export_table_data(conn, table_name, export_path, compress)
+                    results[table_name] = count
+                except ValueError:
+                    logger.exception("Invalid table name: %s", table_name)
+                    results[table_name] = -1
+                except Exception:
+                    logger.exception("Failed to export table: %s", table_name)
+                    results[table_name] = -1
+
+            logger.info("Export complete. Exported %d tables to %s", len(results), export_path)
+            return results
+
+        finally:
+            cursor.close()

@@ -25,50 +25,34 @@
     <!-- HTMX for real-time updates -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
+    <!-- Tippy.js for tooltips -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
+    <!-- Shared Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', file_path='css/cymbal-theme.css') }}">
+
     <style>
-        :root {
-            --coffee-dark: #3C2A21;
-            --coffee-medium: #967259;
-            --coffee-light: #D7B19D;
-            --cream: #FFF3E4;
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-        }
-
+        /* Dashboard-specific styles */
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--cream);
-            color: var(--coffee-dark);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
+            background-color: #f8f9fa;
         }
 
-        .dashboard-header {
-            background-color: var(--coffee-dark);
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .dashboard-header h1 {
-            margin: 0;
-            font-size: 2rem;
-        }
-
-        .dashboard-header p {
-            margin: 5px 0 0 0;
-            opacity: 0.8;
+        .dashboard-header-section {
+            background-color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
         }
 
         .dashboard-container {
             max-width: 1400px;
-            margin: 20px auto;
-            padding: 0 20px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
         }
 
         .metrics-grid {
@@ -76,25 +60,6 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
-        }
-
-        .metric-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 4px;
-            height: 100%;
-            background: var(--coffee-medium);
         }
 
         .metric-card.success::before {
@@ -169,6 +134,82 @@
             color: #666;
             font-size: 0.9rem;
             margin-top: 20px;
+        }
+
+        /* Help icon styles */
+        .help-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background-color: var(--coffee-light);
+            color: var(--coffee-dark);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .help-icon:hover {
+            background-color: var(--coffee-medium);
+            color: white;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h3 {
+            margin: 0;
+        }
+
+        /* Tippy tooltip theme */
+        .tippy-box[data-theme~='light-border'] {
+            background-color: white;
+            color: var(--coffee-dark);
+            border: 1px solid var(--coffee-light);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {
+            border-top-color: white;
+        }
+
+        .tippy-box[data-theme~='light-border'] .tippy-content {
+            padding: 10px 14px;
+        }
+
+        /* Metric tip styles */
+        .metric-tip {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .tip-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background-color: var(--cream);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-size: 14px;
+            cursor: help;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tip-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
         .loading-indicator {
@@ -353,12 +394,30 @@
 </head>
 
 <body>
-    <div class="dashboard-header">
-        <h1>🎯 Performance Dashboard</h1>
-        <p>Oracle 23AI + Google Vertex AI Real-time Metrics</p>
+    <!-- Header Section -->
+    <div class="dashboard-header-section">
+        <div class="cymbal-header" style="max-width: 1400px; margin: 0 auto;">
+            <div class="logo-section">
+                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Cymbal Coffee">
+                <p>Powered by Oracle 23AI + Google Vertex AI</p>
+            </div>
+            <div class="title-section">
+                <h1 style="font-size: 2.5rem;">Performance Dashboard</h1>
+            </div>
+            <div class="nav-section">
+                <a href="/" class="nav-link">← Back to Chat</a>
+            </div>
+        </div>
     </div>
 
+    <!-- Dashboard Content -->
     <div class="dashboard-container">
+        <!-- Key Metrics Section -->
+        <div class="section-header">
+            <h3>Key Performance Metrics</h3>
+            <span class="help-icon" data-tippy-content="Real-time metrics showing the overall performance of the Oracle 23AI Vector Search and Google Vertex AI integration. These update every 10 seconds.">?</span>
+        </div>
+
         <!-- Key Metrics Cards -->
         <div class="metrics-grid" hx-get="/api/metrics/summary" hx-trigger="load, every 10s" hx-swap="innerHTML">
             <!-- Loading state -->
@@ -388,30 +447,47 @@
             </div>
         </div>
 
-        <!-- Charts -->
+        <!-- Charts Section -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h3>Performance Analytics</h3>
+            <span class="help-icon" data-tippy-content="Visual representations of system performance over time, updated every 30 seconds">?</span>
+        </div>
+
         <div class="charts-grid">
             <!-- Response Time Chart -->
             <div class="chart-container">
-                <h3>Response Time Trends (Last 24 Hours)</h3>
+                <div class="section-header">
+                    <h3>Response Time Trends (Last 24 Hours)</h3>
+                    <span class="help-icon" data-tippy-content="Shows the average, minimum, and maximum response times over the past 24 hours. Helps identify performance patterns and peak usage periods">?</span>
+                </div>
                 <canvas id="responseTimeChart"></canvas>
             </div>
 
             <!-- Vector Search Performance -->
             <div class="chart-container">
-                <h3>Vector Search Performance</h3>
+                <div class="section-header">
+                    <h3>Vector Search Performance</h3>
+                    <span class="help-icon" data-tippy-content="Compares Oracle 23AI vector search time vs. total processing time, showing the efficiency of the vector similarity search operations">?</span>
+                </div>
                 <canvas id="vectorPerformanceChart"></canvas>
             </div>
         </div>
 
         <!-- Detailed Metrics -->
         <div class="chart-container">
-            <h3>System Performance Breakdown</h3>
+            <div class="section-header">
+                <h3>System Performance Breakdown</h3>
+                <span class="help-icon" data-tippy-content="Detailed breakdown of time spent in each system component: embedding generation, vector search, AI processing, and caching">?</span>
+            </div>
             <canvas id="performanceBreakdownChart" style="max-height: 300px;"></canvas>
         </div>
 
         <!-- Vector Search Demo -->
         <div class="vector-demo">
-            <h3>🔍 Vector Search Demonstration</h3>
+            <div class="section-header">
+                <h3>🔍 Vector Search Demonstration</h3>
+                <span class="help-icon" data-tippy-content="Interactive demo of Oracle 23AI's vector similarity search. Natural language queries are converted to embeddings and matched against product vectors stored in the database">?</span>
+            </div>
             <p>Try searching for coffee products using natural language:</p>
 
             <form hx-post="/api/vector-demo" hx-target="#vector-results" hx-indicator="#vector-loading"
@@ -464,6 +540,30 @@
         document.addEventListener('DOMContentLoaded', function () {
             initializeCharts();
             loadChartData();
+
+            // Initialize tooltips
+            tippy('[data-tippy-content]', {
+                theme: 'light-border',
+                placement: 'top',
+                arrow: true,
+                animation: 'scale',
+                duration: [200, 150],
+                maxWidth: 350,
+                interactive: true
+            });
+        });
+
+        // Re-initialize tooltips after HTMX content updates
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            tippy('[data-tippy-content]', {
+                theme: 'light-border',
+                placement: 'top',
+                arrow: true,
+                animation: 'scale',
+                duration: [200, 150],
+                maxWidth: 350,
+                interactive: true
+            });
         });
 
         function initializeCharts() {

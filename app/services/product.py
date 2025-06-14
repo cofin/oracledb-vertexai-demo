@@ -21,7 +21,7 @@ class ProductService:
         cursor = self.connection.cursor()
         try:
             await cursor.execute(
-                """SELECT p.id, p.name, p.current_price, p.product_size, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id ORDER BY p.name"""
+                """SELECT p.id, p.name, p.current_price, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id ORDER BY p.name"""
             )
 
             products = [
@@ -29,14 +29,13 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
-                    "description": row[4],
-                    "embedding": list(row[5]) if row[5] else None,
-                    "embedding_generated_on": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
-                    "company_id": row[9],
-                    "company_name": row[10],
+                    "description": row[3],
+                    "embedding": list(row[4]) if row[4] else None,
+                    "embedding_generated_on": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                    "company_id": row[8],
+                    "company_name": row[9],
                 }
                 async for row in cursor
             ]
@@ -50,7 +49,7 @@ class ProductService:
         cursor = self.connection.cursor()
         try:
             await cursor.execute(
-                """SELECT p.id, p.name, p.current_price, p.product_size, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id WHERE p.id = :id""",
+                """SELECT p.id, p.name, p.current_price, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id WHERE p.id = :id""",
                 {"id": product_id},
             )
 
@@ -60,14 +59,13 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
-                    "description": row[4],
-                    "embedding": list(row[5]) if row[5] else None,
-                    "embedding_generated_on": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
-                    "company_id": row[9],
-                    "company_name": row[10],
+                    "description": row[3],
+                    "embedding": list(row[4]) if row[4] else None,
+                    "embedding_generated_on": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                    "company_id": row[8],
+                    "company_name": row[9],
                 }
             return None
         finally:
@@ -83,7 +81,6 @@ class ProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -104,14 +101,13 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
-                    "description": row[4],
-                    "embedding": list(row[5]) if row[5] else None,
-                    "embedding_generated_on": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
-                    "company_id": row[9],
-                    "company_name": row[10],
+                    "description": row[3],
+                    "embedding": list(row[4]) if row[4] else None,
+                    "embedding_generated_on": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                    "company_id": row[8],
+                    "company_name": row[9],
                 }
             return None
         finally:
@@ -127,7 +123,6 @@ class ProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -148,14 +143,13 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
-                    "description": row[4],
-                    "embedding": list(row[5]) if row[5] else None,
-                    "embedding_generated_on": row[6],
-                    "created_at": row[7],
-                    "updated_at": row[8],
-                    "company_id": row[9],
-                    "company_name": row[10],
+                    "description": row[3],
+                    "embedding": list(row[4]) if row[4] else None,
+                    "embedding_generated_on": row[5],
+                    "created_at": row[6],
+                    "updated_at": row[7],
+                    "company_id": row[8],
+                    "company_name": row[9],
                 }
                 async for row in cursor
             ]
@@ -182,7 +176,6 @@ class ProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -204,7 +197,6 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
                     "description": row[4],
                     "embedding": None,
                     "embedding_generated_on": row[6],
@@ -236,7 +228,6 @@ class ProductService:
                     p.id,
                     p.name,
                     p.current_price,
-                    p.product_size,
                     p.description,
                     p.embedding,
                     p.embedding_generated_on,
@@ -264,7 +255,6 @@ class ProductService:
                     "id": row[0],
                     "name": row[1],
                     "current_price": row[2],
-                    "size": row[3],
                     "description": row[4],
                     "embedding": list(row[5]) if row[5] else None,
                     "embedding_generated_on": row[6],

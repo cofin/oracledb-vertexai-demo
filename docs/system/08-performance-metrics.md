@@ -81,7 +81,7 @@ LOAD_TEST_RESULTS = {
 Dataset Size | Index Type | Build Time | Search Time | Memory Usage
 -------------|------------|------------|-------------|-------------
 100K         | HNSW       | 3 min      | 12ms       | 1.2GB
-1M           | HNSW       | 28 min     | 25ms       | 8.5GB  
+1M           | HNSW       | 28 min     | 25ms       | 8.5GB
 10M          | HNSW       | 4.5 hrs    | 45ms       | 74GB
 100M         | HNSW       | 2 days     | 85ms       | 680GB
 ```
@@ -91,11 +91,11 @@ Dataset Size | Index Type | Build Time | Search Time | Memory Usage
 ```sql
 -- Complex hybrid query performance
 SELECT /* Real-world query combining vectors, location, and inventory */
-    p.name, s.address, 
+    p.name, s.address,
     VECTOR_DISTANCE(p.embedding, :query_vec, COSINE) as similarity
 FROM products p
 JOIN inventory i ON p.id = i.product_id
-JOIN shops s ON i.shop_id = s.id  
+JOIN shops s ON i.shop_id = s.id
 WHERE VECTOR_DISTANCE(p.embedding, :query_vec, COSINE) < 0.8
   AND ST_DWithin(s.location, :user_location, 5000)
   AND i.quantity > 0
@@ -140,7 +140,7 @@ GEMINI_PERFORMANCE = {
 ### Cache Hit Rates by Query Type
 
 ```
-Product Queries:     89% ████████████████████░░ 
+Product Queries:     89% ████████████████████░░
 Location Queries:    94% █████████████████████░
 General Chat:        76% █████████████████░░░░░
 Overall:            87% ███████████████████░░░
@@ -167,7 +167,7 @@ SCALING_RESULTS = {
         "avg_latency": 89,
         "monthly_cost": 120
     },
-    "medium": {  # 4 CPU, 16GB RAM  
+    "medium": {  # 4 CPU, 16GB RAM
         "max_qps": 167,
         "avg_latency": 45,
         "monthly_cost": 320
@@ -235,7 +235,7 @@ async def initialize_old():
 async def initialize_new():
     cached_data = await exemplar_service.get_exemplars_with_phrases()  # 12ms total
     # Total startup time: 12ms (52x faster!)
-    
+
 # First-run population happens once
 await exemplar_service.populate_cache(INTENT_EXEMPLARS, vertex_ai)
 ```
@@ -245,11 +245,11 @@ await exemplar_service.populate_cache(INTENT_EXEMPLARS, vertex_ai)
 ```sql
 -- Before optimization: 312ms
 SELECT * FROM products p, inventory i, shops s
-WHERE p.id = i.product_id 
+WHERE p.id = i.product_id
   AND i.shop_id = s.id
   AND VECTOR_DISTANCE(p.embedding, :vec, COSINE) < 0.8;
 
--- After optimization: 47ms  
+-- After optimization: 47ms
 SELECT /*+ LEADING(p) USE_NL(i s) INDEX(p embed_idx) */
     p.id, p.name, s.address
 FROM products p
@@ -273,7 +273,7 @@ CACHE_PATTERNS = {
 async def warm_cache_intelligently():
     current_hour = datetime.now().hour
     current_day = datetime.now().weekday()
-    
+
     patterns = select_patterns(current_hour, current_day)
     await parallel_warm(patterns)
 ```
@@ -285,7 +285,7 @@ async def warm_cache_intelligently():
 async def generate_embeddings_batch(texts: list[str]):
     # Single request: 15ms × 100 = 1500ms
     # Batch request: 187ms total (8x faster!)
-    
+
     chunks = [texts[i:i+100] for i in range(0, len(texts), 100)]
     embeddings = await asyncio.gather(*[
         vertex_ai.embed_batch(chunk) for chunk in chunks
@@ -395,7 +395,7 @@ Recovery Time: 4 minutes
 
 ### 2025 Goals
 - Sub-30ms average latency
-- 1M QPS capability  
+- 1M QPS capability
 - $0.001 cost per query
 - 99.99% availability
 

@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import anyio
@@ -24,30 +23,22 @@ import click
 import structlog
 from click import Context
 from rich import get_console
-from rich.live import Live
-from rich.markdown import Markdown
-from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.spinner import Spinner
 
 from app.__metadata__ import __version__
 
 if TYPE_CHECKING:
-    from typing import Any
-
     from rich.console import Console
-
-    from app.services import RecommendationService
 
 
 __all__ = (
     "bulk_embed",
     "clear_cache",
+    "dump_data",
     "embed_new",
     "load_fixtures",
     "load_vectors",
     "model_info",
-    "recommend",
     "truncate_tables",
     "version_callback",
 )
@@ -59,116 +50,6 @@ def version_callback(ctx: Context, _: click.Parameter, value: bool) -> None:
     if value and not ctx.resilient_parsing:
         click.echo(f"{__version__}")
         ctx.exit()
-
-
-@click.command(name="recommend", help="Find a coffee.")
-def recommend() -> None:
-    """Execute the recommendation engine from the CLI"""
-    import anyio
-    from rich import get_console
-
-    async def _get_recommendations() -> None:
-        from rich import get_console
-
-        from app.server.deps import (
-            provide_chat_conversation_service,
-            provide_intent_exemplar_service,
-            provide_product_service,
-            provide_response_cache_service,
-            provide_search_metrics_service,
-            provide_shop_service,
-            provide_user_session_service,
-        )
-        from app.services import (
-            OracleVectorSearchService,
-            RecommendationService,
-            VertexAIService,
-        )
-
-        console = get_console()
-
-        # Get all services using their providers
-        shops_service = await anext(provide_shop_service())
-        products_service = await anext(provide_product_service())
-        session_service = await anext(provide_user_session_service())
-        conversation_service = await anext(provide_chat_conversation_service())
-        cache_service = await anext(provide_response_cache_service())
-        metrics_service = await anext(provide_search_metrics_service())
-        exemplar_service = await anext(provide_intent_exemplar_service())
-
-        # Initialize Vertex AI and Oracle services
-        vertex_ai_service = VertexAIService()
-
-        vector_search_service = OracleVectorSearchService(
-            products_service=products_service,
-            vertex_ai_service=vertex_ai_service,
-        )
-
-        service = RecommendationService(
-            vertex_ai_service=vertex_ai_service,
-            vector_search_service=vector_search_service,
-            products_service=products_service,
-            shops_service=shops_service,
-            session_service=session_service,
-            conversation_service=conversation_service,
-            cache_service=cache_service,
-            metrics_service=metrics_service,
-            exemplar_service=exemplar_service,
-            user_id="cli-0",
-        )
-
-        await _chat_session(service=service, console=console)
-
-    console = get_console()
-    console.print(
-        dedent(
-            """
-    [bold cyan]🚀 Welcome to the Cymbal Coffee Recommendation Engine! 🚀[/bold cyan]
-    Type your questions about coffee below.
-    Type [bold red]"/stop"[/bold red] to exit.
-    """,
-        ),
-    )
-    anyio.run(_get_recommendations)
-
-
-async def _chat_session(
-    service: RecommendationService,
-    console: Any,
-) -> None:
-    """Handle a chat session"""
-    while True:
-        message = Prompt.ask("[bold cyan]You[/bold cyan]")
-        if message == "/stop":
-            break
-        console.print("[bold magenta]Cymbal AI[/bold magenta]: thinking...")
-        await query_recommendation(service, message)
-
-
-async def query_recommendation(
-    service: RecommendationService,
-    message: str,
-    panel: bool = True,
-) -> None:
-    """Execute the recommendation"""
-
-    class NoPadding:
-        def __init__(self, renderable: Any) -> None:
-            self.renderable = renderable
-
-        def __rich_console__(self, console: Console, options: Any) -> Any:
-            yield self.renderable
-
-    console = get_console()
-
-    with Live(Spinner("aesthetic"), refresh_per_second=15, console=console, transient=True):
-        response = await service.get_recommendation(message)
-        text = response.answer
-        console.print_json(data={"answer": response.answer, "query_id": response.query_id})
-        if panel:
-            console.print(Panel(Markdown(text), title="🤖 Cymbal AI", title_align="left"))
-        else:
-            console.print(NoPadding(Markdown(text)))
 
 
 # Individual CLI functions - these will be added to Litestar's CLI by the plugin
@@ -520,6 +401,64 @@ def truncate_tables(
                 cursor.close()
 
     anyio.run(_truncate_tables)
+
+
+@click.command(name="dump-data")
+@click.option(
+    "--table",
+    "-t",
+    default="*",
+    help="Table name to export, or '*' for all tables",
+)
+@click.option(
+    "--path",
+    "-p",
+    default="app/db/fixtures",
+    help="Directory to export to",
+)
+@click.option(
+    "--no-compress",
+    is_flag=True,
+    help="Export uncompressed JSON (default is gzipped)",
+)
+def dump_data(table: str, path: str, no_compress: bool) -> None:
+    """Export database tables to JSON files."""
+    from pathlib import Path
+
+    from app.db.utils import dump_database_data
+
+    console = get_console()
+
+    async def _dump_data() -> None:
+        """Execute the data dump."""
+        export_path = Path(path)
+        compress = not no_compress
+
+        # Show what will be exported
+        if table == "*":
+            console.print("[bold]Exporting all tables...[/bold]")
+        else:
+            console.print(f"[bold]Exporting table: {table}[/bold]")
+
+        console.print(f"Export path: {export_path}")
+        console.print(f"Compression: {'enabled' if compress else 'disabled'}")
+
+        with console.status("[bold green]Exporting data..."):
+            results = await dump_database_data(export_path, table, compress)
+
+        # Display results
+        console.print("\n[bold]Export Results:[/bold]")
+        total_records = 0
+        for table_name, count in sorted(results.items()):
+            if count >= 0:
+                console.print(f"  ✓ {table_name}: {count} records")
+                total_records += count
+            else:
+                console.print(f"  ✗ {table_name}: [red]Failed[/red]")
+
+        console.print(f"\n[bold green]Total records exported: {total_records}[/bold green]")
+
+    anyio.run(_dump_data)
 
 
 # Main execution removed - CLI is handled by Litestar
