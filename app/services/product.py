@@ -309,11 +309,9 @@ class ProductService:
             await cursor.execute(
                 """
                 INSERT INTO product (
-                    company_id, name, current_price, product_size,
-                    description, embedding, embedding_generated_on
+                    company_id, name, current_price, description, embedding, embedding_generated_on
                 ) VALUES (
-                    :company_id, :name, :current_price, :size,
-                    :description, :embedding,
+                    :company_id, :name, :current_price, :description, :embedding,
                     CASE WHEN :embedding2 IS NOT NULL THEN SYSTIMESTAMP ELSE NULL END
                 )
                 RETURNING id INTO :id
@@ -322,7 +320,6 @@ class ProductService:
                     "company_id": company_id,
                     "name": name,
                     "current_price": current_price,
-                    "size": size,
                     "description": description,
                     "embedding": oracle_vector,
                     "embedding2": oracle_vector,
@@ -346,7 +343,6 @@ class ProductService:
             field_mapping = {
                 "name": "name = :name",
                 "current_price": "current_price = :current_price",
-                "size": "product_size = :size",
                 "description": "description = :description",
             }
 

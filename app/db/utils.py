@@ -111,14 +111,13 @@ async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, 
                     UPDATE SET
                         company_id = :company_id,
                         current_price = :current_price,
-                        product_size = :product_size,
                         description = :description,
                         embedding = :embedding,
                         embedding_generated_on = :embedding_generated_on
                 WHEN NOT MATCHED THEN
-                    INSERT (company_id, name, current_price, product_size, description,
+                    INSERT (company_id, name, current_price, description,
                             embedding, embedding_generated_on)
-                    VALUES (:company_id2, :name2, :current_price2, :product_size2, :description2,
+                    VALUES (:company_id2, :name2, :current_price2, :description2,
                             :embedding2, :embedding_generated_on2)
                 """,
                 {
@@ -128,8 +127,6 @@ async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, 
                     "name2": product["name"],
                     "current_price": product["current_price"],
                     "current_price2": product["current_price"],
-                    "product_size": product["product_size"],
-                    "product_size2": product["product_size"],
                     "description": product["description"],
                     "description2": product["description"],
                     "embedding": oracle_embedding,

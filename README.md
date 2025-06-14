@@ -44,7 +44,7 @@ This demo uses:
 
 - **Oracle 23AI** - Complete data platform with native vector search
 - **Vertex AI** - Google's generative AI platform for embeddings and chat
-- **Minimal Abstractions** - Direct Oracle database access for clarity (and performance).  No ORM
+- **Minimal Abstractions** - Direct Oracle database access for clarity (and performance). No ORM
 - **Litestar** - High-performance async Python framework
 - **HTMX** - Real-time UI updates without JavaScript complexity
 
