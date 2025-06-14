@@ -244,3 +244,4 @@ testpaths = ["tests"]
 [tool.pyright]
 exclude = ["scripts", "docs"]
 include = ["app", "tests"]
+reportMissingImports = "information"
