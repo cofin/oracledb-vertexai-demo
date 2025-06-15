@@ -71,10 +71,8 @@ cp .env.example .env
 
 # 3. Start Oracle 23AI (3 minutes)
 make start-infra
-
-# 4. Initialize database (2 minutes)
-uv run app database upgrade
-uv run app database load-fixtures
+ 
+uv run app load-fixtures
 
 # 5. Launch application (1 minute)
 uv run app run
@@ -98,22 +96,6 @@ Visit <http://localhost:5005> and start chatting about coffee!
 - **AI response**: Starts streaming in <500ms
 - **Total interaction**: Under 2 seconds
 
-### Enterprise Ready
-
-- **Automatic failover** to cached responses
-- **Rate limiting** and circuit breakers
-- **Comprehensive audit logging**
-- **GDPR-compliant** data handling
-
-## 📊 Live System Metrics
-
-Our production system handles:
-
-- **10,000+ queries/day** with 99.9% uptime
-- **45ms average** vector search time
-- **92% cache hit rate** for common queries
-- **$0.003 per query** total cost
-
 ## 🎪 See It In Action
 
 Try these queries to see the magic:
@@ -133,5 +115,3 @@ Each demonstrates different AI capabilities - all running on Oracle!
 - **Everyone**: Try the [Live Demo Scenarios](08-demo-scenarios.md)
 
 ---
-
-*This system proves that the future of AI isn't about adding more complexity - it's about making powerful technology simple, reliable, and accessible. Welcome to the age of intelligent databases!*

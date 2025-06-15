@@ -34,29 +34,10 @@ async def oracle_connection(oracle_service: Any) -> AsyncGenerator[oracledb.Asyn
 @pytest.fixture(autouse=True)
 async def _setup_test_db(oracle_connection: oracledb.AsyncConnection) -> AsyncGenerator[None, None]:
     """Setup test database with schema and sample data."""
-    # todo: make it load fixtures
     cursor = oracle_connection.cursor()
 
     try:
-        # Clean up any existing test data
-        await cursor.execute("TRUNCATE TABLE inventory")
-        await cursor.execute("TRUNCATE TABLE product")
-        await cursor.execute("TRUNCATE TABLE shop")
-        await cursor.execute("TRUNCATE TABLE company")
-        await oracle_connection.commit()
-
-        # Create test company
-        await cursor.execute("INSERT INTO company (name) VALUES (:name)", {"name": "Test Coffee Co."})
-        await oracle_connection.commit()
-
         yield
-
-        # Cleanup after test
-        await cursor.execute("TRUNCATE TABLE inventory")
-        await cursor.execute("TRUNCATE TABLE product")
-        await cursor.execute("TRUNCATE TABLE shop")
-        await cursor.execute("TRUNCATE TABLE company")
-        await oracle_connection.commit()
 
     finally:
         cursor.close()

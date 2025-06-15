@@ -58,8 +58,7 @@ graph TB
 
 **Technology Stack:**
 
-- **HTMX 1.9.10**: Handles all dynamic updates
-- **Tailwind CSS**: Utility-first styling via CDN
+- **HTMX**: Handles all dynamic updates
 - **Server-Sent Events**: Real-time streaming responses
 - **Jinja2 Templates**: Server-side rendering
 
@@ -198,13 +197,6 @@ class PersonaManager:
         config = cls.PERSONAS[persona]
         return f"{base_prompt}\n\n{config.system_prompt_addon}"
 ```
-
-**UI Integration:**
-
-- Dynamic header updates based on persona
-- Persistent visual state with checkmarks
-- Context-aware input placeholders
-- Smooth transitions between personas
 
 ### 5. Data Layer (Oracle 23AI)
 
@@ -461,45 +453,6 @@ async def health_check(
     }
 ```
 
-## Error Handling & Resilience
-
-### Circuit Breaker Pattern
-
-```python
-class VertexAICircuitBreaker:
-    def __init__(self, failure_threshold=5, timeout=60):
-        self.failure_count = 0
-        self.failure_threshold = failure_threshold
-        self.timeout = timeout
-        self.last_failure = None
-
-    async def call(self, func, *args, **kwargs):
-        if self.is_open():
-            return await self.fallback()
-
-        try:
-            result = await func(*args, **kwargs)
-            self.on_success()
-            return result
-        except Exception as e:
-            self.on_failure()
-            if self.is_open():
-                return await self.fallback()
-            raise
-```
-
-### Graceful Degradation
-
-```python
-# Priority levels for fallback
-FALLBACK_CHAIN = [
-    lambda: vertex_ai.generate_content(prompt),      # Primary
-    lambda: get_cached_response(prompt_hash),        # Cache
-    lambda: get_static_response(intent_type),        # Static
-    lambda: "I'm having trouble right now. Please try again."  # Final
-]
-```
-
 ## Development Workflow
 
 ### Local Development
@@ -508,11 +461,8 @@ FALLBACK_CHAIN = [
 # 1. Start infrastructure
 make start-infra
 
-# 2. Run with hot reload
-uv run app run --reload
-
-# 3. Run tests in watch mode
-ptw tests/ --now
+# 2. Run  
+uv run app run 
 ```
 
 ### Code Organization
@@ -587,35 +537,3 @@ JOIN inventory i ON p.id = i.product_id
 JOIN shops s ON i.shop_id = s.id
 WHERE VECTOR_DISTANCE(p.embedding, :vector, COSINE) < 0.8;
 ```
-
-## Scaling Considerations
-
-### Horizontal Scaling
-
-- Stateless application design
-- Session affinity not required
-- Oracle RAC for database scaling
-
-### Vertical Scaling
-
-- Start: 2 CPU, 4GB RAM
-- Growth: 8 CPU, 32GB RAM
-- Max: 32 CPU, 128GB RAM
-
-### Cost Optimization
-
-- Use spot instances for workers
-- Schedule heavy jobs off-peak
-- Implement request coalescing
-
-## Next Steps
-
-Ready to dive deeper?
-
-- **[AI & RAG Explained](05-ai-rag-explained.md)** - Understand the AI magic
-- **[Implementation Guide](06-implementation-guide.md)** - Build it yourself
-- **[Operations Manual](07-operations-manual.md)** - Run it in production
-
----
-
-*"The best architecture is the one that solves your problem with the least complexity. Oracle + AI gives us enterprise capability with startup simplicity."* - Lead Architect

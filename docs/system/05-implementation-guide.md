@@ -46,38 +46,23 @@ Required configuration:
 # Oracle Database (auto-configured with Docker)
 DATABASE_URL=oracle+oracledb://coffee_user:secure_password@localhost:1521/FREEPDB1
 
-# Google Cloud / Vertex AI
+GOOGLE_API_KEY=my-key
 GOOGLE_PROJECT_ID=your-project-id
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-
-# Optional: Specific model selection
-GEMINI_MODEL=gemini-2.5-flash
 ```
 
 ### Step 1.3: Start Oracle Database
 
 ```bash
-# Start Oracle 23AI Free (includes AI features!)
-docker-compose up -d oracle-free
-
-# Monitor startup (takes 2-3 minutes first time)
-docker-compose logs -f oracle-free
-
-# Look for: "DATABASE IS READY TO USE!"
+make start-infra
 ```
 
 ### Step 1.4: Verify Setup
 
 ```bash
-# Check Python environment
-python --version  # Should be 3.11+
-
-# Check dependencies
-uv pip list | grep -E "(litestar|oracledb|vertexai)"
-
 # Check Docker
 docker ps  # Should show oracle-free running
-
+docker compose logs # should show the DDL executed after startup
 # Check database connection
 uv run app database check-connection
 ```
@@ -86,21 +71,7 @@ uv run app database check-connection
 
 ### Step 2.1: Initialize Database Schema
 
-```bash
-# Run the database initialization script
-docker exec -i oracledb-vertexai-demo-oracle-free-1 sqlplus sys/secure_password@localhost:1521/FREE as sysdba < tools/deploy/oracle/db_init.sql
-
-# This creates:
-# - products table with VECTOR column
-# - intent_exemplar table for cached embeddings
-# - user_sessions with JSON storage
-# - response_cache with TTL
-# - search_metrics for analytics
-# - All necessary sequences and triggers
-# - Proper indexes including HNSW vector index
-```
-
-**Note:** The project now uses raw SQL scripts for schema management. All tables are created with proper Oracle 23AI features including:
+**Note:** When you run `make start-infra`, the DDL is automatically executed on the containers first launch
 
 - VECTOR data type with HNSW indexing
 - In-memory tables for hot data
@@ -196,12 +167,7 @@ class IntentRouter:
             "What coffee do you recommend?",
             "I want something smooth",
             "Tell me about espresso"
-        ],
-        "LOCATION_RAG": [
-            "Where are your shops?",
-            "Find store near me",
-            "What are your hours?"
-        ]
+        ], 
     }
 
     async def route_intent(self, query: str) -> tuple[str, float, str]:
@@ -521,70 +487,6 @@ async def test_full_recommendation_flow(client, db_session):
     assert data["intent"] == "PRODUCT_RAG"
 ```
 
-### Step 6.3: Performance Testing
-
-```bash
-# Run performance benchmarks
-uv run app test performance
-
-```
-
-## Phase 7: Production Deployment (60 minutes)
-
-### Step 7.1: Environment Preparation
-
-```bash
-# Production .env
-DATABASE_URL=oracle+oracledb://prod_user:${DB_PASSWORD}@oracle-prod:1521/PRODPDB
-GEMINI_MODEL=gemini-2.5-flash
-LOG_LEVEL=INFO
-ENVIRONMENT=production
-```
-
-### Step 7.2: Docker Build
-
-```dockerfile
-# Dockerfile
-FROM python:3.11-slim
-
-# Install Oracle client
-RUN apt-get update && apt-get install -y \
-    libaio1 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Install dependencies
-COPY pyproject.toml .
-RUN pip install uv && uv pip install .
-
-# Copy application
-COPY . .
-
-# Run application
-CMD ["uv", "run", "app", "run", "--host", "0.0.0.0"]
-```
-
-### Step 7.3: Production Configuration
-
-```yaml
-# docker-compose.prod.yml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    ports:
-      - "80:8000"
-    deploy:
-      replicas: 3
-      restart_policy:
-        condition: on-failure
-```
-
 ## Phase 8: Monitoring & Optimization (30 minutes)
 
 ### Step 8.1: Metrics Dashboard
@@ -604,19 +506,6 @@ async def metrics_dashboard() -> Template:
     """)
 
     return Template("metrics.html", context={"stats": stats})
-```
-
-### Step 8.2: Performance Monitoring
-
-```bash
-# Set up monitoring
-uv run app monitoring enable
-
-# View real-time metrics
-uv run app monitoring dashboard
-
-# Export metrics for analysis
-uv run app monitoring export --format=csv
 ```
 
 ## Common Issues & Solutions
