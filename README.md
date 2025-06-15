@@ -29,6 +29,18 @@ uv run app load-vectors
 
 Visit [http://localhost:5006](http://localhost:5006) to try the demo!
 
+## 🖼️ Screenshots
+
+### Coffee Chat Interface
+
+![Cymbal Coffee Chat Interface](docs/screenshots/cymbal_chat.png)
+*AI-powered coffee recommendations with real-time performance metrics*
+
+### Performance Dashboard
+
+![Performance Dashboard](docs/screenshots/performance_dashboard.png)
+*Live monitoring of Oracle vector search performance and system metrics*
+
 ## 📚 Documentation
 
 For complete implementation and development guides, see the [`docs/system/`](docs/system/) directory:
@@ -48,15 +60,16 @@ This demo uses:
 - **Litestar** - High-performance async Python framework
 - **HTMX** - Real-time UI updates without JavaScript complexity
 
-## 🎯 For Curious Developers
+## 🎯 Key Features
 
 This implementation is designed for conference demonstration with:
 
-- Real-time chat interface
-- Live Oracle performance metrics
-- Demonstrate in-memory caching using Oracle
-- Perform native Oracle similarity searching within the database
-- Demonstrates intent routing using exemplars
+- **Real-time Chat Interface** - Personalized coffee recommendations with AI personas
+- **Live Performance Metrics** - Oracle vector search timing and cache hit rates
+- **In-Memory Caching** - High-performance response caching using Oracle
+- **Native Vector Search** - Semantic similarity search without external dependencies
+- **Intent Routing** - Natural language understanding via exemplar matching
+- **Performance Dashboard** - Real-time monitoring of all system components
 
 ## 🔧 Development Commands
 

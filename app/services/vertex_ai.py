@@ -91,10 +91,7 @@ class VertexAIService:
         try:
             # Configure generation with temperature
             generation_config = {"temperature": temperature}
-            response = await self.model.generate_content_async(
-                prompt,
-                generation_config=generation_config
-            )
+            response = await self.model.generate_content_async(prompt, generation_config=generation_config)
             content = response.text
 
             # Cache successful response
@@ -170,10 +167,7 @@ class VertexAIService:
             return [0.0] * 768
 
     def create_system_message(
-        self,
-        message: str | None = None,
-        intent: str | None = None,
-        persona: str = "enthusiast"
+        self, message: str | None = None, intent: str | None = None, persona: str = "enthusiast"
     ) -> str:
         """Create system message based on detected intent and persona."""
 
