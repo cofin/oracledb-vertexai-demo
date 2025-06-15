@@ -45,9 +45,9 @@ class PersonaManager:
                 "beans": "Think of coffee beans like different types of apples...",
                 "recommendation": "For someone new to coffee, I'd suggest starting with...",
             },
-            system_prompt_addon="""You are helping someone who is completely new to coffee. 
-Use simple, everyday language and avoid coffee jargon. When you must use a technical term, 
-immediately explain it in simple words. Be encouraging and suggest easy starting points. 
+            system_prompt_addon="""You are helping someone who is completely new to coffee.
+Use simple, everyday language and avoid coffee jargon. When you must use a technical term,
+immediately explain it in simple words. Be encouraging and suggest easy starting points.
 Use analogies to familiar things. Keep explanations brief and focused on practical basics.""",
             temperature=0.8,
             complexity_level="low",
@@ -67,8 +67,8 @@ Use analogies to familiar things. Keep explanations brief and focused on practic
                 "beans": "This Ethiopian coffee has bright, fruity notes because...",
                 "recommendation": "Based on your interest in medium roasts, you might enjoy...",
             },
-            system_prompt_addon="""You are helping a coffee enthusiast who enjoys good coffee and wants to deepen their knowledge. 
-Use some technical terms but explain them in context. Focus on practical improvements they can make. 
+            system_prompt_addon="""You are helping a coffee enthusiast who enjoys good coffee and wants to deepen their knowledge.
+Use some technical terms but explain them in context. Focus on practical improvements they can make.
 Share interesting details about origins, processing, and flavor profiles. Be conversational and engaging.""",
             temperature=0.7,
             complexity_level="medium",
@@ -88,8 +88,8 @@ Share interesting details about origins, processing, and flavor profiles. Be con
                 "beans": "The anaerobic fermentation process creates distinct flavor compounds...",
                 "recommendation": "Given your preference for high-acidity, complex profiles...",
             },
-            system_prompt_addon="""You are advising a coffee expert who understands the science and art of coffee deeply. 
-Use precise technical terminology freely. Discuss processing methods, terroir, varietals, and extraction science in detail. 
+            system_prompt_addon="""You are advising a coffee expert who understands the science and art of coffee deeply.
+Use precise technical terminology freely. Discuss processing methods, terroir, varietals, and extraction science in detail.
 Reference industry standards, Q-grading, and current trends. Provide nuanced analysis and sophisticated recommendations.""",
             temperature=0.5,
             complexity_level="high",
@@ -109,8 +109,8 @@ Reference industry standards, Q-grading, and current trends. Provide nuanced ana
                 "equipment": "For high-volume service, the dual boiler system allows...",
                 "workflow": "Optimize your bar layout by positioning the grinder...",
             },
-            system_prompt_addon="""You are advising a professional barista who needs practical, technical guidance for commercial settings. 
-Focus on efficiency, consistency, and quality at scale. Discuss equipment maintenance, workflow optimization, and commercial considerations. 
+            system_prompt_addon="""You are advising a professional barista who needs practical, technical guidance for commercial settings.
+Focus on efficiency, consistency, and quality at scale. Discuss equipment maintenance, workflow optimization, and commercial considerations.
 Use industry terminology and assume familiarity with professional equipment and techniques. Address cost-effectiveness and time management.""",
             temperature=0.6,
             complexity_level="high",

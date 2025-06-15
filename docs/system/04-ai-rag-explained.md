@@ -3,6 +3,7 @@
 ## Chapter 1: What is AI in Simple Terms?
 
 Imagine you have a really smart assistant who:
+
 - Understands what you mean, not just what you say
 - Learns from experience without being explicitly programmed
 - Can find patterns in massive amounts of data
@@ -13,11 +14,13 @@ That's AI in a nutshell!
 ### The Coffee Shop Analogy
 
 **Without AI:**
+
 - Customer: "I want coffee"
 - System: Shows all 50 coffee products
 - Customer: Overwhelmed, picks randomly
 
 **With AI:**
+
 - Customer: "I want something smooth and not bitter"
 - System: Understands smooth = low acidity, not bitter = medium roast
 - System: "Based on your preferences, try our Colombian Medium Roast"
@@ -67,6 +70,7 @@ User Query: "I like nutty flavors"
 ### What Are Embeddings?
 
 Embeddings are like GPS coordinates for words:
+
 - San Francisco: (37.7749, -122.4194)
 - Coffee flavor: [0.2, -0.5, 0.8, ...]
 
@@ -109,6 +113,7 @@ light_roast_similarity = 0.23  # Poor match
 ### The Problem with Keywords
 
 **Keyword Matching (Old Way):**
+
 ```
 If query contains "location" → Show stores
 If query contains "coffee" → Show products
@@ -117,6 +122,7 @@ Problem: "I don't like coffee" → Shows coffee products 🤦
 ```
 
 **Intent Detection (Smart Way):**
+
 ```
 "I don't like coffee" → Understands negative sentiment
                      → Suggests tea or alternatives
@@ -147,11 +153,6 @@ INTENT_EXEMPLARS = {
         "bean juice please"
         # ... and 25+ more casual patterns
     ],
-    "LOCATION_RAG": [
-        "Where are your coffee shops?",
-        "What are your hours?",
-        "Find me the nearest store"
-    ],
     "GENERAL_CONVERSATION": [
         "How are you?",
         "Thanks for the help",
@@ -161,6 +162,7 @@ INTENT_EXEMPLARS = {
 ```
 
 The system:
+
 1. Converts your query to a 768-dimensional vector
 2. Compares it to cached exemplar embeddings (stored in Oracle In-Memory)
 3. Uses cosine similarity with a 70% threshold
@@ -173,6 +175,7 @@ Let's trace a real query through our system:
 ### User Says: "I'm tired and need something strong but not bitter"
 
 **Step 1: Intent Detection**
+
 ```
 Input: "I'm tired and need something strong but not bitter"
 Process: Compare with intent patterns
@@ -180,6 +183,7 @@ Result: PRODUCT_RECOMMENDATION (confidence: 0.92)
 ```
 
 **Step 2: Extract Meaning**
+
 ```
 Tired → Needs caffeine
 Strong → High caffeine, bold flavor
@@ -187,12 +191,14 @@ Not bitter → Avoid dark roasts, prefer medium
 ```
 
 **Step 3: Create Search Vector**
+
 ```
 Embedding: [0.7, -0.3, 0.9, ...] (768 dimensions)
 This represents: high caffeine + medium roast + smooth
 ```
 
 **Step 4: Find Matches in Oracle**
+
 ```sql
 SELECT name, description,
        VECTOR_DISTANCE(embedding, :query_vector) as match
@@ -202,6 +208,7 @@ ORDER BY match
 ```
 
 **Step 5: Generate Response**
+
 ```
 Found: Colombian Supremo, Vietnamese Robusta, Breakfast Blend
 
@@ -216,18 +223,22 @@ finish without bitterness."
 ### Traditional Search vs AI Search
 
 **Traditional Database Query:**
+
 ```sql
 SELECT * FROM products
 WHERE description LIKE '%strong%'
   AND description NOT LIKE '%bitter%'
 ```
+
 Result: Might miss perfect matches that use different words
 
 **AI-Powered Search:**
+
 ```sql
 SELECT * FROM products
 WHERE VECTOR_DISTANCE(embedding, :user_intent_vector) < 0.8
 ```
+
 Result: Finds products that match the meaning, not just keywords
 
 ### Business Impact
@@ -265,6 +276,7 @@ WHERE VECTOR_DISTANCE(p.embedding, :taste_vector) < 0.7
 ### The Power of Unified Data
 
 Without Oracle 23AI:
+
 - Query vector database for similar products
 - Query SQL database for inventory
 - Query location service for shops
@@ -272,6 +284,7 @@ Without Oracle 23AI:
 - Hope everything stays in sync
 
 With Oracle 23AI:
+
 - One query does everything
 - ACID guarantees across all data
 - 10x faster performance
@@ -280,18 +293,23 @@ With Oracle 23AI:
 ## Chapter 8: Common Questions
 
 ### Q: Is this like ChatGPT?
+
 A: Similar technology, but specialized for your business. ChatGPT knows everything; your system knows YOUR products deeply.
 
 ### Q: How accurate is it?
+
 A: Our intent detection is 95% accurate. Product recommendations have 89% satisfaction rate.
 
 ### Q: What if AI gets it wrong?
+
 A: Multiple fallback layers ensure graceful degradation. If AI fails, we use cached responses or simple keyword search.
 
 ### Q: Is my data safe?
+
 A: Yes! Your data never leaves Oracle. Only queries go to Google's AI, not your business data.
 
 ### Q: How much does it cost?
+
 A: Average cost is $0.003 per query. A typical customer journey (5 queries) costs 1.5 cents.
 
 ## Chapter 9: Future Possibilities
@@ -327,16 +345,19 @@ async def get_personalized_recommendation(user_id: str):
 ## Chapter 10: Getting Started
 
 ### For Business Leaders
+
 1. See the [Live Demo](08-demo-scenarios.md)
 2. Review [ROI calculations](02-business-value.md)
 3. Schedule a proof of concept
 
 ### For Technical Teams
+
 1. Understand the [Architecture](04-system-architecture.md)
 2. Follow the [Implementation Guide](06-implementation-guide.md)
 3. Deploy your first AI feature
 
 ### For Oracle DBAs
+
 1. Explore [Oracle AI features](03-oracle-architecture.md)
 2. Try vector search examples
 3. Show management what's possible

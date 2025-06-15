@@ -153,7 +153,6 @@ class SearchMetricsService:
         """Get time-series performance data for charts."""
         cursor = self.connection.cursor()
         try:
-            # Oracle doesn't support bind variables with INTERVAL, so we calculate the timestamp
             since_time = datetime.now(UTC) - timedelta(minutes=minutes)
             await cursor.execute(
                 """

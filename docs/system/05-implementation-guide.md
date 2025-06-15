@@ -3,6 +3,7 @@
 ## Prerequisites Checklist
 
 Before we begin, ensure you have:
+
 - [ ] Python 3.11+ installed
 - [ ] Docker Desktop running
 - [ ] Google Cloud account (or free credits)
@@ -40,6 +41,7 @@ nano .env  # or vim, code, etc.
 ```
 
 Required configuration:
+
 ```env
 # Oracle Database (auto-configured with Docker)
 DATABASE_URL=oracle+oracledb://coffee_user:secure_password@localhost:1521/FREEPDB1
@@ -259,7 +261,103 @@ class ProductService:
             cursor.close()
 ```
 
-## Phase 4: API Endpoints (30 minutes)
+## Phase 4: Persona System Implementation (30 minutes)
+
+### Step 4.1: Create PersonaManager Service
+
+The persona system adapts responses based on user expertise level:
+
+```python
+# app/services/persona_manager.py
+from msgspec import Struct
+
+class PersonaConfig(Struct):
+    name: str
+    temperature: float
+    system_prompt_addon: str
+    language_style: str
+
+class PersonaManager:
+    PERSONAS = {
+        "novice": PersonaConfig(
+            name="Coffee Novice",
+            temperature=0.8,
+            system_prompt_addon="Explain in simple terms...",
+            language_style="Simple, friendly, no jargon"
+        ),
+        "expert": PersonaConfig(
+            name="Coffee Expert",
+            temperature=0.5,
+            system_prompt_addon="Use technical precision...",
+            language_style="Technical, detailed, nuanced"
+        )
+    }
+```
+
+### Step 4.2: Integrate with VertexAI Service
+
+```python
+# Update vertex_ai.py
+def create_system_message(self, intent=None, persona="enthusiast"):
+    base_prompt = "You are a coffee expert..."
+    return PersonaManager.get_system_prompt(persona, base_prompt)
+
+async def generate_content(self, prompt, temperature=0.7):
+    config = {"temperature": temperature}
+    response = await self.model.generate_content_async(
+        prompt, generation_config=config
+    )
+```
+
+### Step 4.3: Update Frontend for Persona Selection
+
+```html
+<!-- Add persona buttons to chat interface -->
+<div class="demo-personas">
+    <button class="persona-btn" onclick="setPersona('novice')">
+        ☕ Coffee Novice
+    </button>
+    <button class="persona-btn" onclick="setPersona('expert')">
+        👨‍🍳 Coffee Expert
+    </button>
+</div>
+
+<script>
+function setPersona(persona) {
+    document.getElementById('persona').value = persona;
+    updatePersonaUI(persona);
+}
+</script>
+```
+
+### Step 4.4: Add Caching Layer
+
+Implement two-tier caching for optimal performance:
+
+```python
+# app/services/embedding_cache.py
+class EmbeddingCache:
+    def __init__(self, connection, ttl_hours=24):
+        self.connection = connection
+        self._memory_cache = {}  # Fast in-process cache
+
+    async def get_embedding(self, query, vertex_ai):
+        # Check memory cache first
+        if query in self._memory_cache:
+            return self._memory_cache[query]
+
+        # Check Oracle cache
+        cached = await self.fetch_from_oracle(query)
+        if cached:
+            return cached
+
+        # Generate new embedding
+        embedding = await vertex_ai.create_embedding(query)
+        await self.store_in_oracle(query, embedding)
+        return embedding
+```
+
+## Phase 5: API Endpoints (30 minutes)
 
 ### Step 4.1: Main Controller Structure
 
@@ -429,11 +527,6 @@ async def test_full_recommendation_flow(client, db_session):
 # Run performance benchmarks
 uv run app test performance
 
-# Expected results:
-# - Intent detection: <2ms (with cached embeddings)
-# - Embedding generation: <15ms
-# - Vector search: <18ms
-# - Total response: <45ms
 ```
 
 ## Phase 7: Production Deployment (60 minutes)
@@ -529,6 +622,7 @@ uv run app monitoring export --format=csv
 ## Common Issues & Solutions
 
 ### Issue: Slow vector search
+
 ```sql
 -- Solution: Create optimized index
 CREATE INDEX idx_product_embedding
@@ -538,6 +632,7 @@ PARAMETERS ('TYPE=HNSW, NEIGHBORS=32');
 ```
 
 ### Issue: High API costs
+
 ```python
 # Solution: Implement caching
 if cached_response := await cache.get(query_hash):
@@ -545,6 +640,7 @@ if cached_response := await cache.get(query_hash):
 ```
 
 ### Issue: Intent detection errors
+
 ```python
 # Solution: Add more exemplars and update cache
 INTENT_EXEMPLARS["PRODUCT_RAG"].extend([

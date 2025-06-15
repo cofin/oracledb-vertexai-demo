@@ -14,6 +14,8 @@ graph TB
         E[Intent Router]
         F[Recommendation Service]
         G[Session Manager]
+        P[Persona Manager]
+        Q[Embedding Cache]
     end
 
     subgraph "AI Layer"
@@ -36,10 +38,14 @@ graph TB
     E --> F
     F --> G
     F --> H
+    F --> P
+    E --> Q
+    F --> Q
     H --> I
     H --> J
     G --> K
     F --> K
+    Q --> K
     K --> L
     K --> M
     K --> N
@@ -51,6 +57,7 @@ graph TB
 ### 1. Frontend Layer (Zero Build Complexity)
 
 **Technology Stack:**
+
 - **HTMX 1.9.10**: Handles all dynamic updates
 - **Tailwind CSS**: Utility-first styling via CDN
 - **Server-Sent Events**: Real-time streaming responses
@@ -77,12 +84,14 @@ graph TB
 ### 2. Application Layer (Python + Litestar)
 
 **Core Framework:**
+
 - **Litestar 2.x**: Modern async Python web framework
 - **oracledb**: Python driver for Oracle Database (async support)
 - **msgspec**: High-performance serialization for JSON/DTOs
 - **Raw SQL**: Direct database access for clarity and performance
 
 **Service Architecture:**
+
 ```python
 class RecommendationService:
     """Main business logic orchestrator using raw SQL"""
@@ -91,16 +100,21 @@ class RecommendationService:
                  vertex_ai_service: VertexAIService,
                  products_service: ProductService,
                  shops_service: ShopService,
-                 session_service: UserSessionService):
+                 session_service: UserSessionService,
+                 embedding_cache: EmbeddingCache,
+                 response_cache: ResponseCacheService):
         self.vertex_ai = vertex_ai_service
         self.products = products_service
         self.shops = shops_service
         self.sessions = session_service
+        self.embedding_cache = embedding_cache
+        self.response_cache = response_cache
 ```
 
 ### 3. AI Integration Layer
 
 **Intent Detection System with Cached Embeddings:**
+
 ```python
 class IntentRouter:
     """Semantic understanding of user queries with database-cached embeddings"""
@@ -110,11 +124,6 @@ class IntentRouter:
             "What coffee do you recommend?",
             "Something smooth and chocolatey",
             "I need a strong espresso"
-        ],
-        "LOCATION_RAG": [
-            "Where are your shops?",
-            "Find a store near me",
-            "What are your hours?"
         ],
         "GENERAL_CONVERSATION": [
             "Hello!",
@@ -145,6 +154,7 @@ class IntentRouter:
 ```
 
 **Vertex AI Integration:**
+
 ```python
 class VertexAIService:
     """Native Google AI integration"""
@@ -159,9 +169,47 @@ class VertexAIService:
             logger.info("⚠️ Using stable fallback")
 ```
 
-### 4. Data Layer (Oracle 23AI)
+### 4. Persona System (Adaptive User Experience)
+
+**PersonaManager Architecture:**
+
+```python
+class PersonaManager:
+    """Manages different user expertise levels"""
+
+    PERSONAS = {
+        "novice": PersonaConfig(
+            name="Coffee Novice",
+            temperature=0.8,  # More creative
+            system_prompt_addon="Use simple language...",
+            focus_areas=["basics", "easy recommendations"]
+        ),
+        "expert": PersonaConfig(
+            name="Coffee Expert",
+            temperature=0.5,  # More precise
+            system_prompt_addon="Use technical terminology...",
+            focus_areas=["processing", "terroir", "cupping"]
+        )
+    }
+
+    @classmethod
+    def get_system_prompt(cls, persona: str, base_prompt: str) -> str:
+        """Enhance prompts based on user expertise"""
+        config = cls.PERSONAS[persona]
+        return f"{base_prompt}\n\n{config.system_prompt_addon}"
+```
+
+**UI Integration:**
+
+- Dynamic header updates based on persona
+- Persistent visual state with checkmarks
+- Context-aware input placeholders
+- Smooth transitions between personas
+
+### 5. Data Layer (Oracle 23AI)
 
 **Database Schema:**
+
 ```sql
 -- Core business data with AI embeddings
 CREATE TABLE products (
@@ -289,12 +337,14 @@ oracle_config = {
 ## Security Architecture
 
 ### API Security
+
 - **Rate Limiting**: 100 requests/minute per user
 - **CSRF Protection**: Built into Litestar
 - **Input Validation**: msgspec with strict schemas
 - **SQL Injection**: Parameterized queries only
 
 ### Data Security
+
 ```python
 # Automatic PII handling
 class SecureDataMixin:
@@ -309,6 +359,7 @@ class SecureDataMixin:
 ## Deployment Architecture
 
 ### Development Environment
+
 ```yaml
 # docker-compose.yml
 services:
@@ -333,6 +384,7 @@ services:
 ```
 
 ### Production Architecture
+
 ```mermaid
 graph LR
     subgraph "Load Balancer"
@@ -369,6 +421,7 @@ graph LR
 ## Monitoring & Observability
 
 ### Key Metrics Dashboard
+
 ```python
 # Real-time metrics collection
 class MetricsCollector:
@@ -389,6 +442,7 @@ class MetricsCollector:
 ```
 
 ### Health Checks
+
 ```python
 @get("/health")
 async def health_check(
@@ -410,6 +464,7 @@ async def health_check(
 ## Error Handling & Resilience
 
 ### Circuit Breaker Pattern
+
 ```python
 class VertexAICircuitBreaker:
     def __init__(self, failure_threshold=5, timeout=60):
@@ -434,6 +489,7 @@ class VertexAICircuitBreaker:
 ```
 
 ### Graceful Degradation
+
 ```python
 # Priority levels for fallback
 FALLBACK_CHAIN = [
@@ -447,6 +503,7 @@ FALLBACK_CHAIN = [
 ## Development Workflow
 
 ### Local Development
+
 ```bash
 # 1. Start infrastructure
 make start-infra
@@ -459,6 +516,7 @@ ptw tests/ --now
 ```
 
 ### Code Organization
+
 ```
 app/
 ├── controllers/      # HTTP endpoints
@@ -476,6 +534,7 @@ app/
 ## Performance Optimizations
 
 ### 1. Intent Exemplar Caching
+
 ```python
 # Database-cached embeddings eliminate startup delay
 class IntentExemplarService:
@@ -506,6 +565,7 @@ async def initialize_intent_router():
 ```
 
 ### 2. Batch Processing
+
 ```python
 # Process multiple embeddings in one API call
 async def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
@@ -517,6 +577,7 @@ async def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
 ```
 
 ### 3. Query Optimization
+
 ```sql
 -- Use Oracle hints for performance
 SELECT /*+ LEADING(p) USE_NL(i s) INDEX(p embed_idx) */
@@ -530,16 +591,19 @@ WHERE VECTOR_DISTANCE(p.embedding, :vector, COSINE) < 0.8;
 ## Scaling Considerations
 
 ### Horizontal Scaling
+
 - Stateless application design
 - Session affinity not required
 - Oracle RAC for database scaling
 
 ### Vertical Scaling
+
 - Start: 2 CPU, 4GB RAM
 - Growth: 8 CPU, 32GB RAM
 - Max: 32 CPU, 128GB RAM
 
 ### Cost Optimization
+
 - Use spot instances for workers
 - Schedule heavy jobs off-peak
 - Implement request coalescing
@@ -547,6 +611,7 @@ WHERE VECTOR_DISTANCE(p.embedding, :vector, COSINE) < 0.8;
 ## Next Steps
 
 Ready to dive deeper?
+
 - **[AI & RAG Explained](05-ai-rag-explained.md)** - Understand the AI magic
 - **[Implementation Guide](06-implementation-guide.md)** - Build it yourself
 - **[Operations Manual](07-operations-manual.md)** - Run it in production

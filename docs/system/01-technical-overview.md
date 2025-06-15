@@ -17,6 +17,7 @@ Semantic:    "I want something bold that'll wake me up"
 ```
 
 Embeddings are high-dimensional numerical representations that capture meaning:
+
 - Text is converted to 768-dimensional vectors using Vertex AI
 - Similar concepts have vectors that are close in vector space
 - Oracle 23AI stores and indexes these vectors natively
@@ -24,6 +25,7 @@ Embeddings are high-dimensional numerical representations that capture meaning:
 ### 2. Retrieval-Augmented Generation (RAG)
 
 RAG combines the best of both worlds:
+
 - **Retrieval**: Find relevant information from your database
 - **Generation**: Use AI to create natural, contextual responses
 
@@ -32,6 +34,7 @@ User Query → Intent Detection → Vector Search → AI Generation → Response
 ```
 
 This approach ensures responses are:
+
 - Grounded in your actual data (not hallucinated)
 - Contextually relevant
 - Naturally phrased
@@ -63,6 +66,9 @@ Traditional Stack:            Our Approach:
 2. **Application Services**
    - Intent Router: Classifies user queries using semantic similarity
    - Recommendation Service: Orchestrates the AI pipeline
+   - Persona Manager: Adapts responses based on user expertise level
+   - Embedding Cache: Intelligent caching of vector embeddings
+   - Response Cache: Caches AI-generated responses
    - Raw SQL Services: Direct Oracle access for clarity
 
 3. **AI Integration**
@@ -113,16 +119,71 @@ CREATE TABLE intent_exemplar (
 ) INMEMORY PRIORITY HIGH;
 ```
 
+#### Persona-Based Adaptive Responses
+
+The system adapts its communication style based on user expertise:
+
+```python
+# Four distinct personas for tailored experiences
+PERSONAS = {
+    "novice": {
+        "language": "Simple, jargon-free explanations",
+        "temperature": 0.8,  # More creative, friendly
+        "focus": "Basic concepts and easy recommendations"
+    },
+    "enthusiast": {
+        "language": "Balanced technical detail",
+        "temperature": 0.7,  # Moderate creativity
+        "focus": "Exploration and learning"
+    },
+    "expert": {
+        "language": "Technical precision",
+        "temperature": 0.5,  # More focused, accurate
+        "focus": "Deep analysis and nuanced details"
+    },
+    "barista": {
+        "language": "Industry-specific terminology",
+        "temperature": 0.6,  # Professional tone
+        "focus": "Commercial and workflow optimization"
+    }
+}
+```
+
+#### Intelligent Embedding Cache
+
+Two-tier caching strategy for optimal performance:
+
+```python
+# Embedding Cache: Stores vector representations
+# - 24-hour TTL for stable embeddings
+# - Memory + Oracle cache layers
+# - Prevents redundant API calls
+
+# Response Cache: Stores complete AI responses
+# - 5-minute TTL for dynamic content
+# - User-specific caching
+# - Reduces generation costs
+```
+
 ## Performance Characteristics
 
 ### Response Time Breakdown
+
 - Intent Detection: ~2ms (cached embeddings)
-- Embedding Generation: ~15ms (for new queries)
+- Embedding Generation:
+    - Cache hit: ~1ms (memory) / ~5ms (Oracle)
+    - Cache miss: ~15ms (API call)
 - Vector Search: ~18ms (1M vectors)
-- AI Generation: ~500ms (streaming starts earlier)
-- **Total**: <600ms end-to-end
+- AI Generation:
+    - Cache hit: ~10ms
+    - Cache miss: ~500ms (streaming starts earlier)
+- **Total**:
+    - Best case (all cached): <50ms
+    - Average case: <300ms
+    - Worst case: <600ms
 
 ### Scalability
+
 - Handles 100k+ queries/day on modest hardware
 - Linear scaling with Oracle RAC
 - Automatic query result caching
@@ -156,8 +217,7 @@ class ProductService:
 # Pre-compute and cache exemplar embeddings
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": ["I want coffee", "recommend espresso", ...],
-    "LOCATION_RAG": ["where are you located", "store hours", ...],
-}
+ }
 
 # On startup: Load from database (2ms) vs compute (2000ms)
 cached_embeddings = await load_from_oracle()
@@ -210,21 +270,25 @@ async def stream_ai_response(query: str):
 ## Why This Architecture?
 
 ### Simplicity
+
 - One database instead of six services
 - SQL for everything (even vectors)
 - No complex ETL pipelines
 
 ### Performance
+
 - Native vector operations in Oracle
 - In-memory caching built-in
 - Optimized HNSW indexing
 
 ### Reliability
+
 - Oracle's proven stability
 - Automatic failover with RAC
 - No cache inconsistency issues
 
 ### Cost Efficiency
+
 - Eliminate multiple service licenses
 - Reduce operational overhead
 - Use existing Oracle investment
@@ -232,6 +296,7 @@ async def stream_ai_response(query: str):
 ## Getting Started
 
 This demo includes:
+
 1. Complete working application
 2. Sample coffee product data
 3. Pre-configured AI prompts

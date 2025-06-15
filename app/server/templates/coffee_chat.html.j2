@@ -60,7 +60,7 @@
             padding-bottom: 15px;
             border-bottom: 2px solid var(--coffee-light);
         }
-        
+
         .chat-header h3 {
             transition: all 0.4s ease;
         }
@@ -90,14 +90,14 @@
             transform: translateY(-2px);
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
-        
+
         .persona-btn[aria-pressed="true"] {
             background-color: var(--coffee-medium);
             color: white;
             border-color: var(--coffee-dark);
             font-weight: 600;
         }
-        
+
         .persona-btn[aria-pressed="true"]::after {
             content: '✓';
             position: absolute;
@@ -533,7 +533,7 @@
     <script>
         // Demo persona management
         let currentPersona = 'enthusiast';
-        
+
         // Set initial persona button state on page load
         document.addEventListener('DOMContentLoaded', function() {
             updatePersonaUI('enthusiast');
@@ -554,7 +554,7 @@
 
             addSystemMessage(`Persona set to: ${persona.charAt(0).toUpperCase() + persona.slice(1)}. ${personaMessages[persona]}`);
         }
-        
+
         function updatePersonaUI(persona) {
             // Update all persona buttons
             document.querySelectorAll('.persona-btn').forEach(btn => {
@@ -568,7 +568,7 @@
                     btn.setAttribute('aria-pressed', 'false');
                 }
             });
-            
+
             // Update chat header
             const personaTitles = {
                 'novice': 'Chat with AI Coffee Guide (Beginner Mode)',
@@ -576,12 +576,12 @@
                 'expert': 'Chat with AI Coffee Sommelier',
                 'barista': 'Chat with AI Barista Trainer'
             };
-            
+
             const headerElement = document.querySelector('.chat-header h3');
             if (headerElement) {
                 headerElement.textContent = personaTitles[persona] || 'Chat with AI Coffee Expert';
             }
-            
+
             // Update input placeholder
             const placeholders = {
                 'novice': 'Ask a simple question about coffee...',
@@ -589,7 +589,7 @@
                 'expert': 'Ask about origins, processing, cupping notes...',
                 'barista': 'Ask about equipment, techniques, workflow...'
             };
-            
+
             const chatInput = document.getElementById('message');
             if (chatInput) {
                 chatInput.placeholder = placeholders[persona] || 'Ask me about coffee...';

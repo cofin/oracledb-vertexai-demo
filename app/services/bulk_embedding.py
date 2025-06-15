@@ -9,7 +9,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Final
 
 import structlog
-from google.cloud import aiplatform, storage
+from google.cloud import aiplatform, storage  # type: ignore[attr-defined]
 
 from app.lib.settings import get_settings
 
