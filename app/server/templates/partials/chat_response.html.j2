@@ -1,0 +1,24 @@
+<!-- User message -->
+<div class="message user">
+    <strong>You:</strong> {{ user_message }}
+</div>
+
+<!-- AI response -->
+<div class="message assistant">
+    <strong>AI Coffee Expert:</strong> <span class="ai-response-content">{{ ai_response }}</span>
+</div>
+
+<!-- No markdown parsing needed for chat interface -->
+
+
+<!-- Performance metrics update -->
+{% if query_id %}
+<script>
+// Update metrics after each response
+setTimeout(() => {
+    if (typeof loadMetrics === 'function') {
+        loadMetrics();
+    }
+}, 1000);
+</script>
+{% endif %}

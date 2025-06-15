@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html class="h-full">
+
+<head>
+    <meta charset="utf-8" />
+    <title inertia>Cymbal Coffee</title>
+    <meta name="referrer" content="same-origin" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', file_path='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', file_path='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', file_path='favicon-16x16.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', file_path='favicon.ico') }}">
+    <link rel="manifest" href="{{ url_for('static', file_path='site.webmanifest') }}">
+    <link rel="mask-icon" href="{{ url_for('static', file_path='safari-pinned-tab.svg') }}" color="#5bbad5">
+    <meta name="apple-mobile-web-app-title" content="Cymbal Coffee">
+    <meta name="application-name" content="Cymbal Coffee">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- HTMX for real-time updates -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- Shared Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', file_path='css/cymbal-theme.css') }}">
+
+    <style>
+        /* Coffee Chat specific styles */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--coffee-light);
+        }
+
+        .chat-header h3 {
+            transition: all 0.4s ease;
+        }
+
+        .demo-personas {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .persona-btn {
+            background-color: var(--coffee-light);
+            color: var(--coffee-dark);
+            border: 2px solid transparent;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .persona-btn:hover {
+            background-color: var(--coffee-medium);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .persona-btn[aria-pressed="true"] {
+            background-color: var(--coffee-medium);
+            color: white;
+            border-color: var(--coffee-dark);
+            font-weight: 600;
+        }
+
+        .persona-btn[aria-pressed="true"]::after {
+            content: '✓';
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 15px;
+            background-color: var(--cream);
+            margin-bottom: 20px;
+        }
+
+        /* Custom scrollbar styling */
+        .chat-container::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--cream);
+            border-radius: 10px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--coffee-light);
+            border-radius: 10px;
+            border: 2px solid var(--cream);
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: var(--coffee-medium);
+        }
+
+        /* Firefox scrollbar styling */
+        .chat-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--coffee-light) var(--cream);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            background-color: var(--coffee-medium);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.assistant {
+            background-color: white;
+            color: var(--coffee-dark);
+            border: 1px solid var(--coffee-light);
+        }
+
+        /* Markdown content styling */
+        .ai-response-content {
+            display: block;
+            margin-top: 8px;
+        }
+
+        .ai-response-content p {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .ai-response-content p:first-child {
+            margin-top: 0;
+        }
+
+        .ai-response-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .ai-response-content strong {
+            color: var(--coffee-medium);
+            font-weight: 600;
+        }
+
+        .ai-response-content ul, .ai-response-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+
+        .ai-response-content li {
+            margin: 6px 0;
+            line-height: 1.5;
+        }
+
+        .ai-response-content code {
+            background-color: var(--cream);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .ai-response-content blockquote {
+            border-left: 3px solid var(--coffee-light);
+            padding-left: 16px;
+            margin: 12px 0;
+            color: #666;
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            color: var(--coffee-medium);
+            font-style: italic;
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-direction: row;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--coffee-medium);
+        }
+
+        .send-btn {
+            background-color: var(--coffee-medium);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-width: 100px;
+        }
+
+        .send-btn:hover {
+            background-color: var(--coffee-dark);
+        }
+
+        .send-btn:disabled {
+            background-color: var(--coffee-light);
+            cursor: not-allowed;
+        }
+
+        /* Loading state styles */
+        .send-btn.htmx-request {
+            min-width: 115px;
+        }
+
+        .send-btn.htmx-request #send-text {
+            display: none;
+        }
+
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .loading-container {
+            display: none;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .send-btn.htmx-request .loading-container {
+            display: flex;
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .loading-dots {
+            display: flex;
+            gap: 2px;
+        }
+
+        .loading-dots span {
+            width: 3px;
+            height: 3px;
+            background-color: white;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+        .metrics-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--cream);
+            border-radius: 10px;
+            border: 1px solid var(--coffee-light);
+            min-height: 100px;
+            transition: opacity 0.3s ease;
+        }
+
+        .metrics-panel.loading {
+            opacity: 0.6;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            border: 1px solid var(--coffee-light);
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--coffee-medium);
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--coffee-dark);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--coffee-dark);
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        form:not(.chat-form) {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        label {
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: var(--coffee-medium);
+        }
+
+        input[type="text"] {
+            padding: 12px 15px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 25px;
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--coffee-medium);
+        }
+
+        input[type="submit"] {
+            background-color: var(--coffee-medium);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: var(--coffee-dark);
+        }
+
+        .output-container {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 15px;
+            background-color: var(--cream);
+        }
+
+        .output-container h2 {
+            color: var(--coffee-dark);
+            margin-bottom: 15px;
+        }
+
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            input[type="text"],
+            input[type="submit"] {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+
+</head>
+
+<body class="font-sans antialiased h-full">
+    <div class="container">
+        <!-- Cymbal Header -->
+        <div class="cymbal-header">
+            <div class="logo-section">
+                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Coffee Connoisseur">
+                <p>Powered by Oracle 23AI + Google Vertex AI</p>
+            </div>
+            <div class="title-section">
+                <h1>Connoisseur</h1>
+            </div>
+            <div class="nav-section">
+                <!-- Future navigation items can go here -->
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <!-- Chat Header with Demo Personas -->
+            <div class="chat-header">
+                <h3 style="margin: 0; color: var(--coffee-dark);">Chat with AI Coffee Expert</h3>
+                <div class="demo-personas">
+                    <button class="persona-btn" onclick="setPersona('novice')" title="Simple explanations for beginners">☕ Coffee Novice</button>
+                    <button class="persona-btn" onclick="setPersona('enthusiast')" title="Balanced detail for coffee lovers">🏆 Coffee Enthusiast</button>
+                    <button class="persona-btn" onclick="setPersona('expert')" title="Technical details for connoisseurs">👨‍🍳 Coffee Expert</button>
+                    <button class="persona-btn" onclick="setPersona('barista')" title="Professional guidance for the industry">☕ Professional Barista</button>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div id="chat-container" class="chat-container">
+                <div class="message assistant">
+                    <strong>AI Coffee Expert:</strong> Hello! Welcome to Cymbal Coffee Connoisseur. How can I help you today?
+                </div>
+                <!-- Messages will be added here via HTMX -->
+            </div>
+
+            <!-- Chat Form -->
+            <form class="chat-form" hx-post="{{ url_for('coffee_chat.get') }}" hx-target="#chat-container"
+                hx-swap="beforeend">
+                {{ csrf_input | safe }}
+                <input type="hidden" id="persona" name="persona" value="enthusiast">
+                <input class="chat-input" id="message" name="message" placeholder="Ask me about coffee..." required
+                    autocomplete="off">
+                <button type="submit" class="send-btn" id="send-btn">
+                    <div class="loading-container">
+                        <span class="loading-text">Thinking</span>
+                        <div class="loading-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                    <span id="send-text">Send ☕</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Performance Metrics Panel -->
+        <div class="metrics-panel loading" id="metrics-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: var(--coffee-dark);">Performance Metrics</h4>
+                <a href="/dashboard" style="font-size: 0.85rem; color: var(--coffee-medium); text-decoration: none; transition: color 0.3s ease;"
+                   onmouseover="this.style.color='var(--coffee-dark)'" onmouseout="this.style.color='var(--coffee-medium)'">
+                    View Full Dashboard →
+                </a>
+            </div>
+            <div class="metrics-grid" id="metrics-grid">
+                <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
+                    <div class="typing-indicator">Loading metrics...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript for interactivity -->
+    <script>
+        // Demo persona management
+        let currentPersona = 'enthusiast';
+
+        // Set initial persona button state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePersonaUI('enthusiast');
+        });
+
+        function setPersona(persona) {
+            currentPersona = persona;
+            document.getElementById('persona').value = persona;
+            updatePersonaUI(persona);
+
+            // Add persona message to chat
+            const personaMessages = {
+                'novice': "I'm new to coffee. Please explain things simply and recommend beginner-friendly options.",
+                'enthusiast': "I enjoy good coffee and want to learn more about different beans and brewing methods.",
+                'expert': "I'm a coffee connoisseur. I want detailed information about origins, processing, and tasting notes.",
+                'barista': "I'm a professional barista looking for technical brewing advice and commercial insights."
+            };
+
+            addSystemMessage(`Persona set to: ${persona.charAt(0).toUpperCase() + persona.slice(1)}. ${personaMessages[persona]}`);
+        }
+
+        function updatePersonaUI(persona) {
+            // Update all persona buttons
+            document.querySelectorAll('.persona-btn').forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(persona)) {
+                    btn.style.backgroundColor = 'var(--coffee-medium)';
+                    btn.style.color = 'white';
+                    btn.setAttribute('aria-pressed', 'true');
+                } else {
+                    btn.style.backgroundColor = 'var(--coffee-light)';
+                    btn.style.color = 'var(--coffee-dark)';
+                    btn.setAttribute('aria-pressed', 'false');
+                }
+            });
+
+            // Update chat header
+            const personaTitles = {
+                'novice': 'Chat with AI Coffee Guide (Beginner Mode)',
+                'enthusiast': 'Chat with AI Coffee Expert',
+                'expert': 'Chat with AI Coffee Sommelier',
+                'barista': 'Chat with AI Barista Trainer'
+            };
+
+            const headerElement = document.querySelector('.chat-header h3');
+            if (headerElement) {
+                headerElement.textContent = personaTitles[persona] || 'Chat with AI Coffee Expert';
+            }
+
+            // Update input placeholder
+            const placeholders = {
+                'novice': 'Ask a simple question about coffee...',
+                'enthusiast': 'Ask me about coffee varieties, brewing methods...',
+                'expert': 'Ask about origins, processing, cupping notes...',
+                'barista': 'Ask about equipment, techniques, workflow...'
+            };
+
+            const chatInput = document.getElementById('message');
+            if (chatInput) {
+                chatInput.placeholder = placeholders[persona] || 'Ask me about coffee...';
+            }
+        }
+
+        function addSystemMessage(message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.innerHTML = `<strong>System:</strong> ${message}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Auto-scroll chat to bottom
+        function scrollChatToBottom() {
+            const chatContainer = document.getElementById('chat-container');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // HTMX event listeners
+        document.body.addEventListener('htmx:beforeRequest', function (evt) {
+            if (evt.detail.elt.classList.contains('chat-form') || evt.detail.elt.closest('.chat-form')) {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.classList.add('htmx-request');
+                sendBtn.disabled = true;
+            }
+        });
+
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
+            scrollChatToBottom();
+
+            // Reset form and button
+            if (evt.detail.elt.classList.contains('chat-form') || evt.detail.elt.closest('.chat-form')) {
+                document.getElementById('message').value = '';
+                document.getElementById('message').focus();
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.classList.remove('htmx-request');
+                sendBtn.disabled = false;
+            }
+        });
+
+        // Load metrics on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            // Load metrics immediately
+            loadMetrics();
+        });
+
+        function loadMetrics() {
+            const metricsPanel = document.getElementById('metrics-panel');
+            const metricsGrid = document.getElementById('metrics-grid');
+
+            fetch('/metrics', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    metricsGrid.innerHTML = `
+                        <div class="metric-item">
+                            <div class="metric-value">${data.total_searches || 0}</div>
+                            <div class="metric-label">Total Searches</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${Math.round(data.avg_search_time_ms || 0)}ms</div>
+                            <div class="metric-label">Avg Response Time</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${Math.round(data.avg_oracle_time_ms || 0)}ms</div>
+                            <div class="metric-label">Oracle Vector Time</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-value">${(data.avg_similarity_score || 0).toFixed(2)}</div>
+                            <div class="metric-label">Avg Similarity</div>
+                        </div>
+                    `;
+                    // Remove loading class after data is loaded
+                    metricsPanel.classList.remove('loading');
+                })
+                .catch(err => {
+                    console.log('Metrics not available:', err);
+                    metricsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
+                            <small>Metrics will appear after first search</small>
+                        </div>
+                    `;
+                    metricsPanel.classList.remove('loading');
+                });
+        }
+
+        // Refresh metrics every 30 seconds
+        setInterval(loadMetrics, 30000);
+    </script>
+</body>
+
+</html>

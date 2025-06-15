@@ -1,0 +1,64 @@
+<!-- User message -->
+<div class="message user">
+    <strong>You:</strong> {{ user_message }}
+</div>
+
+<!-- AI response with streaming -->
+<div class="message assistant"
+     hx-ext="sse"
+     sse-connect="/chat/stream/{{ query_id }}"
+     sse-swap="message">
+    <strong>AI Coffee Expert:</strong>
+    <div id="streaming-content-{{ query_id }}" class="ai-response-content">
+        <span class="typing-indicator">🤔 Thinking about your coffee request...</span>
+    </div>
+</div>
+
+<script>
+// Handle streaming events
+document.addEventListener('DOMContentLoaded', function() {
+    const eventSource = new EventSource('/chat/stream/{{ query_id }}');
+    const contentDiv = document.getElementById('streaming-content-{{ query_id }}');
+    let fullContent = '';
+
+    eventSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+
+            if (data.chunk) {
+                fullContent += data.chunk;
+                contentDiv.textContent = fullContent;
+            }
+
+            if (data.done) {
+                eventSource.close();
+                // Update metrics after streaming completes
+                setTimeout(() => {
+                    if (typeof loadMetrics === 'function') {
+                        loadMetrics();
+                    }
+                }, 1000);
+            }
+
+            if (data.error) {
+                contentDiv.innerHTML = `<span style="color: #e74c3c;">Error: ${data.error}</span>`;
+                eventSource.close();
+            }
+
+            // Auto-scroll
+            if (typeof scrollChatToBottom === 'function') {
+                scrollChatToBottom();
+            }
+
+        } catch (e) {
+            console.error('Error parsing streaming data:', e);
+        }
+    };
+
+    eventSource.onerror = function(event) {
+        console.error('Streaming error:', event);
+        contentDiv.innerHTML = '<span style="color: #e74c3c;">Connection error. Please try again.</span>';
+        eventSource.close();
+    };
+});
+</script>

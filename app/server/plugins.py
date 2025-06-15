@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from litestar.plugins.flash import FlashConfig, FlashPlugin
-from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
+from litestar.plugins.htmx import HTMXPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
 from litestar_oracledb import OracleDatabasePlugin
-from litestar_vite import VitePlugin
-from litestar_vite.inertia import InertiaPlugin
 
 from app import config
 from app.lib.settings import get_settings
@@ -26,10 +23,7 @@ from app.server.core import ApplicationCore
 
 settings = get_settings()
 app_config = ApplicationCore()
-vite = VitePlugin(config=config.vite)
-oracle = OracleDatabasePlugin(config=config.oracle)
+oracle = OracleDatabasePlugin(config=config.oracle_async)
 granian = GranianPlugin()
-flasher = FlashPlugin(config=FlashConfig(template_config=vite.template_config))
-inertia = InertiaPlugin(config=config.inertia)
-alchemy = SQLAlchemyPlugin(config=config.alchemy)
 structlog = StructlogPlugin(config=config.log)
+htmx = HTMXPlugin()

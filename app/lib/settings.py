@@ -22,9 +22,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from advanced_alchemy.utils.text import slugify
 from litestar.utils.module_loader import module_to_os_path
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 if TYPE_CHECKING:
     from litestar.data_extractors import RequestExtractorField, ResponseExtractorField
@@ -38,115 +36,37 @@ TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
 
 @dataclass
 class DatabaseSettings:
-    ECHO: bool = field(
-        default_factory=lambda: os.getenv("DATABASE_ECHO", "False") in TRUE_VALUES,
-    )
-    """Enable SQLAlchemy engine logs."""
-    ECHO_POOL: bool = field(
-        default_factory=lambda: os.getenv("DATABASE_ECHO_POOL", "False") in TRUE_VALUES,
-    )
-    """Enable SQLAlchemy connection pool logs."""
-    POOL_DISABLED: bool = field(
-        default_factory=lambda: os.getenv("DATABASE_POOL_DISABLED", "False") in TRUE_VALUES,
-    )
-    """Disable SQLAlchemy pool configuration."""
-    POOL_MAX_OVERFLOW: int = field(default_factory=lambda: int(os.getenv("DATABASE_MAX_POOL_OVERFLOW", "10")))
-    """Max overflow for SQLAlchemy connection pool"""
-    POOL_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_SIZE", "5")))
-    """Pool size for SQLAlchemy connection pool"""
-    POOL_TIMEOUT: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_TIMEOUT", "30")))
-    """Time in seconds for timing connections out of the connection pool."""
-    POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
-    """Amount of time to wait before recycling connections."""
-    POOL_PRE_PING: bool = field(
-        default_factory=lambda: os.getenv("DATABASE_PRE_POOL_PING", "False") in TRUE_VALUES,
-    )
-    """Optionally ping database before fetching a session from the connection pool."""
+    """Oracle Database connection settings."""
+
     USER: str = field(
-        default_factory=lambda: os.getenv("DATABASE_USER", "scott"),
+        default_factory=lambda: os.getenv("DATABASE_USER", "app"),
     )
-    """SQLAlchemy Database User."""
+    """Oracle Database User."""
     PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "tiger"),
+        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "super-secret"),
     )
-    """SQLAlchemy Database Password."""
+    """Oracle Database Password."""
     HOST: str = field(
         default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"),
     )
+    """Oracle Database Host."""
     PORT: str = field(
         default_factory=lambda: os.getenv("DATABASE_PORT", "1521"),
     )
+    """Oracle Database Port."""
     SERVICE_NAME: str = field(
         default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1"),
     )
+    """Oracle Database Service Name."""
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
             f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'FREEPDB1')}",
         ),
     )
-    """SQLAlchemy Database DSN."""
-    URL: str = field(
-        default_factory=lambda: os.getenv(
-            "DATABASE_URL",
-            "oracle+oracledb://:@",
-        ),
-    )
-    """SQLAlchemy Database URL."""
-    MIGRATION_CONFIG: str = f"{BASE_DIR}/db/migrations/alembic.ini"
-    """The path to the `alembic.ini` configuration file."""
-    MIGRATION_PATH: str = f"{BASE_DIR}/db/migrations"
-    """The path to the `alembic` database migrations."""
-    MIGRATION_DDL_VERSION_TABLE: str = "ddl_version"
-    """The name to use for the `alembic` versions table name."""
+    """Oracle Database DSN."""
     FIXTURE_PATH: str = f"{BASE_DIR}/db/fixtures"
     """The path to JSON fixture files to load into tables."""
-    _engine_instance: AsyncEngine | None = None
-    """SQLAlchemy engine instance generated from settings."""
-
-    @property
-    def engine(self) -> AsyncEngine:
-        return self.get_engine()
-
-    def get_engine(self) -> AsyncEngine:
-        if self._engine_instance is not None:
-            return self._engine_instance
-
-        if self.URL == "oracle+oracledb://:@":
-            engine = create_async_engine(
-                url=self.URL,
-                thick_mode=False,
-                connect_args={
-                    "user": self.USER,
-                    "password": self.PASSWORD,
-                    "host": self.HOST,
-                    "port": self.PORT,
-                    "service_name": self.SERVICE_NAME,
-                },
-                future=True,
-                echo=self.ECHO,
-                echo_pool=self.ECHO_POOL,
-                max_overflow=self.POOL_MAX_OVERFLOW,
-                pool_size=self.POOL_SIZE,
-                pool_timeout=self.POOL_TIMEOUT,
-                pool_recycle=self.POOL_RECYCLE,
-                pool_pre_ping=self.POOL_PRE_PING,
-            )
-            self._engine_instance = engine
-        else:
-            engine = create_async_engine(
-                url=self.URL,
-                future=True,
-                echo=self.ECHO,
-                echo_pool=self.ECHO_POOL,
-                max_overflow=self.POOL_MAX_OVERFLOW,
-                pool_size=self.POOL_SIZE,
-                pool_timeout=self.POOL_TIMEOUT,
-                pool_recycle=self.POOL_RECYCLE,
-                pool_pre_ping=self.POOL_PRE_PING,
-            )
-            self._engine_instance = engine
-        return self._engine_instance
 
 
 @dataclass
@@ -193,25 +113,6 @@ class LogSettings:
     """Request cookie keys to obfuscate."""
     OBFUSCATE_HEADERS: set[str] = field(default_factory=lambda: {"Authorization", "X-API-KEY", "X-XSRF-TOKEN"})
     """Request header keys to obfuscate."""
-    JOB_FIELDS: list[str] = field(
-        default_factory=lambda: [
-            "function",
-            "kwargs",
-            "key",
-            "scheduled",
-            "attempts",
-            "completed",
-            "queued",
-            "started",
-            "result",
-            "error",
-        ],
-    )
-    """Attributes of the SAQ.
-
-    [`Job`](https://github.com/tobymao/saq/blob/master/saq/job.py) to be
-    logged.
-    """
     REQUEST_FIELDS: list[RequestExtractorField] = field(
         default_factory=lambda: [
             "path",
@@ -229,12 +130,6 @@ class LogSettings:
     )
     """Attributes of the [Response][litestar.response.Response] to be
     logged."""
-    WORKER_EVENT: str = "Worker"
-    """Log event name for logs from SAQ worker."""
-    SAQ_LEVEL: int = 50
-    """Level to log SAQ logs."""
-    SQLALCHEMY_LEVEL: int = 30
-    """Level to log SQLAlchemy logs."""
     GRANIAN_ACCESS_LEVEL: int = 30
     """Level to log uvicorn access logs."""
     GRANIAN_ERROR_LEVEL: int = 20
@@ -265,18 +160,11 @@ class AppSettings:
     """CSRF Secure Cookie"""
     GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
     """Google Project ID"""
-    GOOGLE_API_KEY: str = field(default_factory=lambda: os.getenv("GOOGLE_API_KEY", ""))
-    """Google API Key"""
-    EMBEDDING_MODEL_TYPE: str = "textembedding-gecko@003"
-
-    @property
-    def slug(self) -> str:
-        """Return a slugified name.
-
-        Returns:
-            `self.NAME`, all lowercase and hyphens instead of spaces.
-        """
-        return slugify(self.NAME)
+    # AI Model Configuration
+    GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash-preview-05-20"))
+    """Gemini model identifier - defaults to latest 2.5 Flash"""
+    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
+    """Text embedding model identifier"""
 
     def __post_init__(self) -> None:
         # Check if the ALLOWED_CORS_ORIGINS is a string.
@@ -296,49 +184,9 @@ class AppSettings:
 
 
 @dataclass
-class ViteSettings:
-    """Server configurations."""
-
-    DEV_MODE: bool = field(
-        default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES,
-    )
-    """Start `vite` development server."""
-    USE_SERVER_LIFESPAN: bool = field(
-        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "False") in TRUE_VALUES,
-    )
-    """Auto start and stop `vite` processes when running in development mode.."""
-    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
-    """The host the `vite` process will listen on.  Defaults to `0.0.0.0`"""
-    PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
-    """The port to start vite on.  Default to `5173`"""
-    HOT_RELOAD: bool = field(
-        default_factory=lambda: os.getenv("VITE_HOT_RELOAD", "False") in TRUE_VALUES,
-    )
-    """Start `vite` with HMR enabled."""
-    ENABLE_REACT_HELPERS: bool = field(
-        default_factory=lambda: os.getenv("VITE_ENABLE_REACT_HELPERS", "True") in TRUE_VALUES,
-    )
-    """Enable React support in HMR."""
-    BUNDLE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/public"))
-    """Bundle directory"""
-    RESOURCE_DIR: Path = field(default_factory=lambda: Path("resources"))
-    """Resource directory"""
-    TEMPLATE_DIR: Path = field(default_factory=lambda: Path(f"{BASE_DIR}/domain/coffee/templates"))
-    """Template directory."""
-    ASSET_URL: str = field(default_factory=lambda: os.getenv("ASSET_URL", "/static/"))
-    """Base URL for assets"""
-
-    @property
-    def set_static_files(self) -> bool:
-        """Serve static assets."""
-        return self.ASSET_URL.startswith("/")
-
-
-@dataclass
 class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
-    vite: ViteSettings = field(default_factory=ViteSettings)
     server: ServerSettings = field(default_factory=ServerSettings)
     log: LogSettings = field(default_factory=LogSettings)
 

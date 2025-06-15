@@ -24,9 +24,6 @@
     "node_modules": true,
     ".terraform": true
   },
-  "ruff.format.args": ["--config=${workspaceFolder}/pyproject.toml"],
-  "ruff.lint.run": "onType",
-  "ruff.lint.args": ["--config=${workspaceFolder}/pyproject.toml"],
   "mypy-type-checker.importStrategy": "fromEnvironment",
   "pylint.importStrategy": "fromEnvironment",
   "python.autoComplete.extraPaths": ["${workspaceFolder}"],
@@ -67,7 +64,6 @@
   ],
   "sqltools.disableReleaseNotifications": true,
   "sqltools.disableNodeDetectNotifications": true,
-  "cloudcode.duetAI.enable": true,
   "cloudcode.compute.sshInternalIp": true,
   "python.testing.pytestArgs": ["tests"],
   "markdownlint.run": "onSave",
@@ -113,5 +109,7 @@
       "database": "${workspaceFolder:oracledb-vertexai-demo}/.memory.db"
     }
   ],
-  "sqltools.useNodeRuntime": true
+  "sqltools.useNodeRuntime": true,
+  "python.analysis.extraPaths": ["${workspaceFolder}"],
+  "geminicodeassist.enable": true
 }

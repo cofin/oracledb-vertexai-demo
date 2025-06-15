@@ -30,52 +30,44 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     This class is responsible for configuring the main Litestar application with our routes, guards, and various plugins
     """
 
-    __slots__ = ("app_slug",)
-    app_slug: str
-
-    def __init__(self) -> None:
-        """Initialize ``ApplicationConfigurator``.
-
-        Args:
-            config: configure and start SAQ.
-        """
-
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
         """Configure application
 
         Args:
             app_config: The :class:`AppConfig <.config.app.AppConfig>` instance.
         """
-        from langchain_community.chat_message_histories import ChatMessageHistory
-        from langchain_community.vectorstores.oraclevs import OracleVS
-        from langchain_core.chat_history import BaseChatMessageHistory
-        from langchain_core.embeddings import Embeddings
-        from langchain_core.runnables import Runnable
-        from langchain_core.runnables.history import RunnableWithMessageHistory
-        from langchain_core.vectorstores import VectorStore
         from litestar import WebSocket
         from litestar.channels import ChannelsPlugin
+        from litestar.connection import Request
         from litestar.datastructures import State
         from litestar.enums import RequestEncodingType
-        from litestar.openapi.config import OpenAPIConfig
-        from litestar.openapi.plugins import ScalarRenderPlugin, SwaggerRenderPlugin
+        from litestar.openapi import OpenAPIConfig
+        from litestar.openapi.plugins import ScalarRenderPlugin
         from litestar.params import Body
-        from litestar_vite.inertia import InertiaRequest
+        from litestar.plugins.htmx import HTMXRequest
+        from litestar.static_files import create_static_files_router
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
-        from app import config
-        from app.__metadata__ import __version__ as current_version
-        from app.domain.coffee.controllers import CoffeeChatController
-        from app.domain.coffee.schemas import CoffeeChatMessage, CoffeeChatReply
-        from app.domain.coffee.services import ProductService, RecommendationService, ShopService
+        from app import config, schemas, services
         from app.lib import log
-        from app.lib.settings import get_settings
-        from app.server import plugins
+        from app.lib.settings import BASE_DIR, get_settings
+        from app.server import plugins, startup
+        from app.server.controllers import CoffeeChatController
+        from app.services import (
+            ChatConversationService,
+            CompanyService,
+            InventoryService,
+            OracleVectorSearchService,
+            ProductService,
+            RecommendationService,
+            ResponseCacheService,
+            SearchMetricsService,
+            ShopService,
+            UserSessionService,
+            VertexAIService,
+        )
 
         settings = get_settings()
-        self.app_slug = settings.app.slug
-
-        app_config.middleware.insert(0, config.session.middleware)
         # logging
         app_config.middleware.insert(0, log.StructlogMiddleware)
         app_config.after_exception.append(log.after_exception_hook_handler)
@@ -86,61 +78,84 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # plugins
         app_config.plugins.extend(
             [
-                plugins.flasher,
                 plugins.granian,
                 plugins.oracle,
                 plugins.structlog,
-                plugins.alchemy,
-                plugins.vite,
-                plugins.inertia,
+                plugins.htmx,
             ],
         )
+        # Set HTMXRequest as the default request class
+        app_config.request_class = HTMXRequest
+        app_config.template_config = config.templates
         # openapi
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
-            version=current_version,
+            version="0.2.0",
             use_handler_docstrings=True,
-            render_plugins=[ScalarRenderPlugin(version="latest"), SwaggerRenderPlugin()],
+            render_plugins=[ScalarRenderPlugin(version="latest")],
         )
         # routes
         app_config.route_handlers.extend(
             [
                 CoffeeChatController,
+                create_static_files_router(
+                    path="/static",
+                    directories=[str(BASE_DIR / "server" / "static")],
+                    name="static",
+                ),
             ],
         )
+        # startup hooks
+        app_config.on_startup.append(startup.on_startup)
         # signatures
         app_config.signature_namespace.update(
             {
-                "ChatMessageHistory": ChatMessageHistory,
-                "Embeddings": Embeddings,
-                "VectorStore": VectorStore,
-                "OracleVS": OracleVS,
+                # Oracle types
                 "AsyncConnection": AsyncConnection,
                 "Connection": Connection,
                 "AsyncConnectionPool": AsyncConnectionPool,
                 "ConnectionPool": ConnectionPool,
-                "Runnable": Runnable,
                 "RequestEncodingType": RequestEncodingType,
                 "Body": Body,
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
-                "BaseChatMessageHistory": BaseChatMessageHistory,
+                "schemas": schemas,
+                "services": services,
                 "ProductService": ProductService,
                 "ShopService": ShopService,
                 "RecommendationService": RecommendationService,
-                "CoffeeChatMessage": CoffeeChatMessage,
-                "CoffeeChatReply": CoffeeChatReply,
-                "Request": InertiaRequest,
-                "RunnableWithMessageHistory": RunnableWithMessageHistory,
+                "CompanyService": CompanyService,
+                "InventoryService": InventoryService,
+                "VertexAIService": VertexAIService,
+                "OracleVectorSearchService": OracleVectorSearchService,
+                "UserSessionService": UserSessionService,
+                "ChatConversationService": ChatConversationService,
+                "ResponseCacheService": ResponseCacheService,
+                "SearchMetricsService": SearchMetricsService,
+                "Request": Request,
+                "HTMXRequest": HTMXRequest,
             },
         )
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli import recommend
-        from app.lib.settings import get_settings
+        from app.cli import (
+            bulk_embed,
+            clear_cache,
+            dump_data,
+            embed_new,
+            load_fixtures,
+            load_vectors,
+            model_info,
+            truncate_tables,
+        )
 
-        settings = get_settings()
-        self.app_slug = settings.app.slug
-        cli.add_command(recommend, name="recommend")
+        cli.add_command(model_info, name="model-info")
+        cli.add_command(load_fixtures, name="load-fixtures")
+        cli.add_command(load_vectors, name="load-vectors")
+        cli.add_command(bulk_embed, name="bulk-embed")
+        cli.add_command(embed_new, name="embed-new")
+        cli.add_command(clear_cache, name="clear-cache")
+        cli.add_command(truncate_tables, name="truncate-tables")
+        cli.add_command(dump_data, name="dump-data")

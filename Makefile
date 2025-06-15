@@ -1,169 +1,154 @@
 SHELL := /bin/bash
+
 # =============================================================================
-# Variables
+# Configuration and Environment Variables
 # =============================================================================
 
-.DEFAULT_GOAL:=help
+.DEFAULT_GOAL := help
 .ONESHELL:
-USING_PDM		          	=	$(shell grep "tool.pdm" pyproject.toml && echo "yes")
-ENV_PREFIX		        	=.venv/bin/
-VENV_EXISTS           		=	$(shell python3 -c "if __import__('pathlib').Path('.venv/bin/activate').exists(): print('yes')")
-SRC_DIR               		=src
-BUILD_DIR             		=dist
-PDM_OPTS 		          	?=
-PDM 			            ?= 	pdm $(PDM_OPTS)
-
 .EXPORT_ALL_VARIABLES:
+MAKEFLAGS += --no-print-directory
 
-ifndef VERBOSE
-.SILENT:
-endif
+# ----------------------------------------------------------------------------
+# Display Formatting and Colors
+# ----------------------------------------------------------------------------
+BLUE := $(shell printf "\033[1;34m")
+GREEN := $(shell printf "\033[1;32m")
+RED := $(shell printf "\033[1;31m")
+YELLOW := $(shell printf "\033[1;33m")
+NC := $(shell printf "\033[0m")
+INFO := $(shell printf "$(BLUE)ℹ$(NC)")
+OK := $(shell printf "$(GREEN)✓$(NC)")
+WARN := $(shell printf "$(YELLOW)⚠$(NC)")
+ERROR := $(shell printf "$(RED)✖$(NC)")
 
-
+# =============================================================================
+# Help and Documentation
+# =============================================================================
 .PHONY: help
-help: 		   										## Display this help text for Makefile
+help: ## Display this help text for Makefile
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z0-9_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-
-.PHONY: upgrade
-upgrade:       										## Upgrade all dependencies to the latest stable versions
-	@echo "=> Updating all dependencies"
-	@if [ "$(USING_PDM)" ]; then $(PDM) update; fi
-	@echo "=> Python Dependencies Updated"
-	@$(ENV_PREFIX)pre-commit autoupdate
-	@echo "=> Updated Pre-commit"
-
-.PHONY: uninstall
-uninstall:
-	@echo "=> Uninstalling PDM"
-ifeq ($(OS),Windows_NT)
-	@echo "=> Removing PDM from %APPDATA%\Python\Scripts"
-	@if exist "%APPDATA%\Python\Scripts\pdm" (del "%APPDATA%\Python\Scripts\pdm")
-else
-	@echo "=> Removing PDM from ~/.local/bin"
-	@rm -f ~/.local/bin/pdm
-endif
-	@echo "=> PDM removal complete"
-	@echo "=> Uninstallation complete!"
-
 # =============================================================================
-# Developer Utils
+# Installation and Environment Setup
 # =============================================================================
-install-pdm: 										## Install latest version of PDM
-	@curl -sSLO https://pdm.fming.dev/install-pdm.py && \
-	curl -sSL https://pdm.fming.dev/install-pdm.py.sha256 | shasum -a 256 -c - && \
-	python3 install-pdm.py
+.PHONY: install-uv
+install-uv:                                         ## Install latest version of uv
+	@echo "${INFO} Installing uv..."
+	@curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
+	@echo "${OK} UV installed successfully"
 
-install:											## Install the project and dev deps
-	@if ! $(PDM) --version > /dev/null; then echo '=> Installing PDM'; $(MAKE) install-pdm; fi
-	@if [ "$(VENV_EXISTS)" ]; then echo "=> Removing existing virtual environment"; fi
-	@if [ "$(VENV_EXISTS)" ]; then $(MAKE) destroy-venv && $(MAKE) clean; fi
-	@if [ "$(USING_PDM)" ]; then $(PDM) config venv.in_project true && pdm venv --python 3.12 create --force; fi
-	@if [ "$(USING_PDM)" ]; then $(PDM) install -G:all; fi
-	@echo "=> Install complete! Note: If you want to re-install re-run 'make install'"
+.PHONY: install
+install: destroy clean ## Install the project, dependencies, and pre-commit
+	@echo "${INFO} Starting fresh installation..."
+	@uv python pin 3.12 >/dev/null 2>&1
+	@uv venv >/dev/null 2>&1
+	@uv sync --all-extras --dev
+	@echo "${OK} Installation complete! 🎉"
 
+.PHONY: destroy
+# Remove venv and node_modules
 
-.PHONY: clean
-clean: ## Remove build, test, and documentation artifacts
-	@echo "=> Cleaning project..."
-	@rm -rf \
-		.coverage coverage.xml coverage.json htmlcov/ \
-		.pytest_cache tests/.pytest_cache tests/**/.pytest_cache \
-		.mypy_cache .unasyncd_cache/ \
-		.ruff_cache .hypothesis build/ dist/ .eggs/
-	@find . -name '*.egg-info' -exec rm -rf {} +
-	@find . -type f -name '*.egg' -exec rm -f {} +
-	@find . -name '*.pyc' -exec rm -f {} +
-	@find . -name '*.pyo' -exec rm -f {} +
-	@find . -name '*~' -exec rm -f {} +
-	@find . -name '__pycache__' -exec rm -rf {} +
-	@find . -name '.ipynb_checkpoints' -exec rm -rf {} +
-	@find . -name '.terraform' -exec rm -fr {} +
-	@echo "=> Clean complete."
-
-destroy-venv: 											## Destroy the virtual environment
-	@echo "=> Cleaning Python virtual environment"
+destroy:
+	@echo "${INFO} Destroying virtual environment... 🗑️"
+	@uv run pre-commit clean >/dev/null 2>&1 || true
 	@rm -rf .venv
-
-destroy-node_modules: 											## Destroy the node environment
-	@echo "=> Cleaning Node modules"
 	@rm -rf node_modules
+	@echo "${OK} Virtual environment destroyed 🗑️"
 
-tidy: clean destroy-venv destroy-node_modules ## Clean up everything
-
-migrations:       ## Generate database migrations
-	@echo "ATTENTION: This operation will create a new database migration for any defined models changes."
-	@while [ -z "$$MIGRATION_MESSAGE" ]; do read -r -p "Migration message: " MIGRATION_MESSAGE; done ;
-	@$(ENV_PREFIX)app database make-migrations --autogenerate -m "$${MIGRATION_MESSAGE}"
-
-.PHONY: migrate
-migrate:          ## Generate database migrations
-	@echo "ATTENTION: Will apply all database migrations."
-	@$(ENV_PREFIX)app database upgrade
-
-.PHONY: build
-build:
-	@echo "=> Building package..."
-	@if [ "$(USING_PDM)" ]; then pdm build; fi
-	@echo "=> Package build complete..."
-
-.PHONY: refresh-lockfiles
-refresh-lockfiles:                                 ## Sync lockfiles with requirements files.
-	@pdm update --update-reuse --group :all
+# =============================================================================
+# Dependency Management
+# =============================================================================
+.PHONY: upgrade
+upgrade: ## Upgrade all dependencies to latest stable versions
+	@echo "${INFO} Updating all dependencies... 🔄"
+	@uv lock --upgrade
+	@echo "${OK} Dependencies updated 🔄"
+	@uv run pre-commit autoupdate
+	@echo "${OK} Updated Pre-commit hooks 🔄"
 
 .PHONY: lock
-lock:                                             ## Rebuild lockfiles from scratch, updating all dependencies
-	@pdm update --update-eager --group :all
+lock: ## Rebuild lockfiles from scratch
+	@echo "${INFO} Rebuilding lockfiles... 🔄"
+	@uv lock --upgrade >/dev/null 2>&1
+	@echo "${OK} Lockfiles updated"
+
+# =============================================================================
+# Build and Release
+# =============================================================================
+.PHONY: build
+build: ## Build the package
+	@echo "${INFO} Building package... 📦"
+	@uv build >/dev/null 2>&1
+	@echo "${OK} Package build complete"
+
+# =============================================================================
+# Cleaning and Maintenance
+# =============================================================================
+.PHONY: clean
+clean: ## Cleanup temporary build artifacts
+	@echo "${INFO} Cleaning working directory... 🧹"
+	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache tests/.pytest_cache tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
+	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
+	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
+	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
+	@find . -name '*.pyo' -exec rm -f {} + >/dev/null 2>&1
+	@find . -name '*~' -exec rm -f {} + >/dev/null 2>&1
+	@find . -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
+	@find . -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
+	@echo "${OK} Working directory cleaned"
 
 # =============================================================================
 # Tests, Linting, Coverage
 # =============================================================================
-.PHONY: lint
-lint: 												## Runs pre-commit hooks; includes ruff linting, codespell, black
-	@echo "=> Running pre-commit process"
-	@$(ENV_PREFIX)pre-commit run --all-files
-	@echo "=> Pre-commit complete"
-
-.PHONY: format
-format: 												## Runs code formatting utilities
-	@echo "=> Running pre-commit process"
-	@$(ENV_PREFIX)ruff . --fix
-	@echo "=> Pre-commit complete"
+.PHONY: test
+test: ## Run the tests
+	@echo "${INFO} Running test cases... 🧪"
+	@uv run pytest -n 2 --dist=loadgroup tests
+	@echo "${OK} Tests complete ✨"
 
 .PHONY: coverage
-coverage:  											## Run the tests and generate coverage report
-	@echo "=> Running tests with coverage"
-	@$(ENV_PREFIX)pytest tests --cov=app
-	@$(ENV_PREFIX)coverage html
-	@$(ENV_PREFIX)coverage xml
-	@echo "=> Coverage report generated"
+coverage: ## Run tests with coverage report
+	@echo "${INFO} Running tests with coverage... 📊"
+	@uv run pytest --cov -n 2 --dist=loadgroup --quiet
+	@uv run coverage html >/dev/null 2>&1
+	@uv run coverage xml >/dev/null 2>&1
+	@echo "${OK} Coverage report generated ✨"
 
-.PHONY: test
-test:  												## Run the tests
-	@echo "=> Running test cases"
-	@$(ENV_PREFIX)pytest tests
-	@echo "=> Tests complete"
+.PHONY: lint
+lint: ## Run all linting checks
+	@echo "${INFO} Running pre-commit checks... 🔎"
+	@uv run pre-commit run --color=always --all-files
+	@echo "${OK} Pre-commit checks passed ✨"
 
-# -----------------------------------------------------------------------------
+.PHONY: format
+format: ## Run code formatters
+	@echo "${INFO} Running code formatters... 🔧"
+	@uv run ruff check --fix --unsafe-fixes
+	@echo "${OK} Code formatting complete ✨"
+
+# =============================================================================
 # Local Infrastructure
-# -----------------------------------------------------------------------------
-
+# =============================================================================
 .PHONY: start-infra
 start-infra: ## Start local containers
-	@echo "=> Starting local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml up -d --force-recreate
+	@echo "${INFO} Starting local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml up -d --force-recreate
+	@echo "${OK} Infrastructure started"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
-	@echo "=> Stopping local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml down
+	@echo "${INFO} Stopping local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml down
+	@echo "${OK} Infrastructure stopped"
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
-	@echo "=> Wiping local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml down -v --remove-orphans
+	@echo "${INFO} Wiping local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml down -v --remove-orphans
+	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
-	@echo "=> Tailing logs for local Oracle 23AI & Valkey instances..."
-	@docker-compose -f docker-compose.yml logs -f
+	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
+	@docker compose -f docker-compose.yml logs -f

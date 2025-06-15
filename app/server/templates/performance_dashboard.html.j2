@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', file_path='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', file_path='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', file_path='favicon-16x16.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', file_path='favicon.ico') }}">
+    <link rel="manifest" href="{{ url_for('static', file_path='site.webmanifest') }}">
+    <link rel="mask-icon" href="{{ url_for('static', file_path='safari-pinned-tab.svg') }}" color="#5bbad5">
+    <meta name="apple-mobile-web-app-title" content="Cymbal Coffee">
+    <meta name="application-name" content="Cymbal Coffee">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+    <title>Performance Dashboard - Cymbal Coffee</title>
+
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+    <!-- HTMX for real-time updates -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <!-- Tippy.js for tooltips -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- Shared Theme CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', file_path='css/cymbal-theme.css') }}">
+
+    <style>
+        /* Dashboard-specific styles */
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .dashboard-header-section {
+            background-color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px 40px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card.success::before {
+            background: var(--success);
+        }
+
+        .metric-card.warning::before {
+            background: var(--warning);
+        }
+
+        .metric-card.danger::before {
+            background: var(--danger);
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--coffee-medium);
+            margin: 10px 0;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-trend {
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .trend-up {
+            color: var(--success);
+        }
+
+        .trend-down {
+            color: var(--danger);
+        }
+
+        .trend-neutral {
+            color: #666;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .chart-container h3 {
+            margin-top: 0;
+            color: var(--coffee-dark);
+            border-bottom: 2px solid var(--coffee-light);
+            padding-bottom: 10px;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        /* Help icon styles */
+        .help-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background-color: var(--coffee-light);
+            color: var(--coffee-dark);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .help-icon:hover {
+            background-color: var(--coffee-medium);
+            color: white;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-header h3 {
+            margin: 0;
+        }
+
+        /* Tippy tooltip theme */
+        .tippy-box[data-theme~='light-border'] {
+            background-color: white;
+            color: var(--coffee-dark);
+            border: 1px solid var(--coffee-light);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {
+            border-top-color: white;
+        }
+
+        .tippy-box[data-theme~='light-border'] .tippy-content {
+            padding: 10px 14px;
+        }
+
+        /* Metric tip styles */
+        .metric-tip {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        .tip-icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background-color: var(--cream);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-size: 14px;
+            cursor: help;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .tip-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--coffee-light);
+            border-top-color: var(--coffee-medium);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .vector-demo {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+
+        .vector-demo h3 {
+            margin-top: 0;
+            color: var(--coffee-dark);
+            border-bottom: 2px solid var(--coffee-light);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .vector-demo p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .vector-search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .vector-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--coffee-light);
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .vector-input:focus {
+            outline: none;
+            border-color: var(--coffee-medium);
+        }
+
+        .vector-submit-btn {
+            padding: 12px 24px;
+            background: var(--coffee-medium);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .vector-submit-btn:hover {
+            background: var(--coffee-dark);
+        }
+
+        .vector-results {
+            margin-top: 20px;
+        }
+
+        .similarity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--coffee-light);
+            transition: background-color 0.2s ease;
+        }
+
+        .similarity-item:hover {
+            background-color: #f9f9f9;
+        }
+
+        .similarity-item:last-child {
+            border-bottom: none;
+        }
+
+        .similarity-score {
+            background: var(--coffee-medium);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .search-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            font-size: 0.85rem;
+        }
+
+        .stat-item {
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-item strong {
+            color: var(--coffee-dark);
+            font-weight: 600;
+        }
+
+        .vector-results-container h4 {
+            margin: 20px 0 10px 0;
+            color: var(--coffee-dark);
+        }
+
+        .product-info h4 {
+            margin: 0 0 5px 0;
+            font-size: 1.1rem;
+        }
+
+        .product-info p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .vector-search-form {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .vector-input {
+                width: 100%;
+            }
+
+            .vector-submit-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .search-stats {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .similarity-item {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header Section -->
+    <div class="dashboard-header-section">
+        <div class="cymbal-header" style="max-width: 1400px; margin: 0 auto;">
+            <div class="logo-section">
+                <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Cymbal Coffee">
+                <p>Powered by Oracle 23AI + Google Vertex AI</p>
+            </div>
+            <div class="title-section">
+                <h1 style="font-size: 2.5rem;">Performance Dashboard</h1>
+            </div>
+            <div class="nav-section">
+                <a href="/" class="nav-link">← Back to Chat</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-container">
+        <!-- Key Metrics Section -->
+        <div class="section-header">
+            <h3>Key Performance Metrics</h3>
+            <span class="help-icon" data-tippy-content="Real-time metrics showing the overall performance of the Oracle 23AI Vector Search and Google Vertex AI integration. These update every 10 seconds.">?</span>
+        </div>
+
+        <!-- Key Metrics Cards -->
+        <div class="metrics-grid" hx-get="/api/metrics/summary" hx-trigger="load, every 10s" hx-swap="innerHTML">
+            <!-- Loading state -->
+            <div class="metric-card">
+                <div class="metric-label">Total Searches</div>
+                <div class="metric-value">
+                    <span class="loading-indicator"></span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Avg Response Time</div>
+                <div class="metric-value">
+                    <span class="loading-indicator"></span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Oracle Vector Time</div>
+                <div class="metric-value">
+                    <span class="loading-indicator"></span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-value">
+                    <span class="loading-indicator"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="section-header" style="margin-top: 40px;">
+            <h3>Performance Analytics</h3>
+            <span class="help-icon" data-tippy-content="Visual representations of system performance over time, updated every 30 seconds">?</span>
+        </div>
+
+        <div class="charts-grid">
+            <!-- Response Time Chart -->
+            <div class="chart-container">
+                <div class="section-header">
+                    <h3>Response Time Trends (Last 24 Hours)</h3>
+                    <span class="help-icon" data-tippy-content="Shows the average, minimum, and maximum response times over the past 24 hours. Helps identify performance patterns and peak usage periods">?</span>
+                </div>
+                <canvas id="responseTimeChart"></canvas>
+            </div>
+
+            <!-- Vector Search Performance -->
+            <div class="chart-container">
+                <div class="section-header">
+                    <h3>Vector Search Performance</h3>
+                    <span class="help-icon" data-tippy-content="Compares Oracle 23AI vector search time vs. total processing time, showing the efficiency of the vector similarity search operations">?</span>
+                </div>
+                <canvas id="vectorPerformanceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Detailed Metrics -->
+        <div class="chart-container">
+            <div class="section-header">
+                <h3>System Performance Breakdown</h3>
+                <span class="help-icon" data-tippy-content="Detailed breakdown of time spent in each system component: embedding generation, vector search, AI processing, and caching">?</span>
+            </div>
+            <canvas id="performanceBreakdownChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <!-- Vector Search Demo -->
+        <div class="vector-demo">
+            <div class="section-header">
+                <h3>🔍 Vector Search Demonstration</h3>
+                <span class="help-icon" data-tippy-content="Interactive demo of Oracle 23AI's vector similarity search. Natural language queries are converted to embeddings and matched against product vectors stored in the database">?</span>
+            </div>
+            <p>Try searching for coffee products using natural language:</p>
+
+            <form hx-post="/api/vector-demo" hx-target="#vector-results" hx-indicator="#vector-loading"
+                class="vector-search-form">
+                {{ csrf_input | safe }}
+                <input type="text" name="query" class="vector-input"
+                    placeholder="e.g., 'fruity coffee with chocolate notes'" required>
+                <button type="submit" class="vector-submit-btn">
+                    Search Products
+                    <span id="vector-loading" class="htmx-indicator">
+                        <span class="loading-indicator"></span>
+                    </span>
+                </button>
+            </form>
+
+            <div id="vector-results" class="vector-results">
+                <!-- Results will appear here -->
+            </div>
+        </div>
+
+        <div class="refresh-info">
+            Dashboard updates automatically every 10 seconds
+        </div>
+
+        <!-- Hidden div for chart data updates -->
+        <div hx-get="/api/metrics/charts" hx-trigger="load, every 30s" hx-swap="none" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Chart.js configuration
+        const chartColors = {
+            primary: '#967259',
+            secondary: '#D7B19D',
+            success: '#27ae60',
+            warning: '#f39c12',
+            danger: '#e74c3c',
+            dark: '#3C2A21'
+        };
+
+        // Response Time Chart
+        let responseTimeChart;
+
+        // Vector Performance Chart
+        let vectorPerformanceChart;
+
+        // Performance Breakdown Chart
+        let performanceBreakdownChart;
+
+        // Initialize charts when page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            initializeCharts();
+            loadChartData();
+
+            // Initialize tooltips
+            tippy('[data-tippy-content]', {
+                theme: 'light-border',
+                placement: 'top',
+                arrow: true,
+                animation: 'scale',
+                duration: [200, 150],
+                maxWidth: 350,
+                interactive: true
+            });
+        });
+
+        // Re-initialize tooltips after HTMX content updates
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            tippy('[data-tippy-content]', {
+                theme: 'light-border',
+                placement: 'top',
+                arrow: true,
+                animation: 'scale',
+                duration: [200, 150],
+                maxWidth: 350,
+                interactive: true
+            });
+        });
+
+        function initializeCharts() {
+            // Response Time Chart
+            const rtCtx = document.getElementById('responseTimeChart').getContext('2d');
+            responseTimeChart = new Chart(rtCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total Response Time',
+                        data: [],
+                        borderColor: chartColors.primary,
+                        backgroundColor: chartColors.primary + '20',
+                        tension: 0.4
+                    }, {
+                        label: 'Oracle Time',
+                        data: [],
+                        borderColor: chartColors.secondary,
+                        backgroundColor: chartColors.secondary + '20',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Vector Performance Chart
+            const vpCtx = document.getElementById('vectorPerformanceChart').getContext('2d');
+            vectorPerformanceChart = new Chart(vpCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Query Performance',
+                        data: [],
+                        backgroundColor: chartColors.primary,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Similarity Score'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Response Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Performance Breakdown Chart
+            const pbCtx = document.getElementById('performanceBreakdownChart').getContext('2d');
+            performanceBreakdownChart = new Chart(pbCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Embedding Generation', 'Vector Search', 'AI Processing', 'Other'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            chartColors.primary,
+                            chartColors.secondary,
+                            chartColors.success,
+                            chartColors.warning
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        }
+                    }
+                }
+            });
+        }
+
+        function loadChartData() {
+            // Fetch and update chart data
+            fetch('/api/metrics/charts')
+                .then(response => response.json())
+                .then(data => {
+                    updateCharts(data);
+                })
+                .catch(err => console.error('Error loading chart data:', err));
+        }
+
+        function updateCharts(data) {
+            // Update Response Time Chart
+            if (data.time_series && responseTimeChart) {
+                responseTimeChart.data.labels = data.time_series.labels;
+                responseTimeChart.data.datasets[0].data = data.time_series.total_latency;
+                responseTimeChart.data.datasets[1].data = data.time_series.oracle_latency;
+                responseTimeChart.update('none'); // Disable animation for smoother updates
+            }
+
+            // Update Vector Performance Chart
+            if (data.scatter_data && vectorPerformanceChart) {
+                vectorPerformanceChart.data.datasets[0].data = data.scatter_data;
+                vectorPerformanceChart.update('none');
+            }
+
+            // Update Performance Breakdown
+            if (data.breakdown_data && performanceBreakdownChart) {
+                performanceBreakdownChart.data.labels = data.breakdown_data.labels;
+                performanceBreakdownChart.data.datasets[0].data = data.breakdown_data.data;
+                performanceBreakdownChart.update();
+            }
+        }
+
+        // Refresh charts every 30 seconds
+        setInterval(loadChartData, 30000);
+
+        // Handle HTMX chart data updates
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
+            if (evt.detail.pathInfo.requestPath === '/api/metrics/charts') {
+                const data = JSON.parse(evt.detail.xhr.responseText);
+                updateCharts(data);
+            }
+        });
+
+        // HTMX event handlers
+        document.body.addEventListener('htmx:afterRequest', function (evt) {
+            // Handle vector search results
+            if (evt.detail.target.id === 'vector-results') {
+                // Animate results appearance
+                const results = evt.detail.target.querySelectorAll('.similarity-item');
+                results.forEach((item, index) => {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        item.style.transition = 'all 0.3s ease';
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0)';
+                    }, index * 100);
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

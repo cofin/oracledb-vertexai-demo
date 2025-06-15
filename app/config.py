@@ -12,20 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import sys
-from functools import lru_cache
 from typing import cast
 
 import structlog
-from advanced_alchemy.extensions.litestar import (
-    AlembicAsyncConfig,
-    AsyncSessionConfig,
-    SQLAlchemyAsyncConfig,
-    async_autocommit_handler_maker,
-)
 from litestar.config.cors import CORSConfig
 from litestar.config.csrf import CSRFConfig
+from litestar.contrib.jinja import JinjaTemplateEngine
+from litestar.exceptions import NotFoundException
 from litestar.logging.config import (
     LoggingConfig,
     StructLoggingConfig,
@@ -34,13 +27,16 @@ from litestar.logging.config import (
     default_structlog_standard_lib_processors,
 )
 from litestar.middleware.logging import LoggingMiddlewareConfig
-from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.plugins.structlog import StructlogConfig
-from litestar_oracledb import SyncOracleDatabaseConfig, SyncOraclePoolConfig
-from litestar_vite import ViteConfig
-from litestar_vite.inertia import InertiaConfig
+from litestar.template import TemplateConfig
+from litestar_oracledb import (
+    AsyncOracleDatabaseConfig,
+    AsyncOraclePoolConfig,
+    SyncOracleDatabaseConfig,
+    SyncOraclePoolConfig,
+)
 
-from app.lib.settings import get_settings
+from app.lib.settings import BASE_DIR, get_settings
 
 _settings = get_settings()
 
@@ -53,66 +49,31 @@ csrf = CSRFConfig(
 cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORIGINS))
 
 
-alchemy = SQLAlchemyAsyncConfig(
-    engine_instance=_settings.db.get_engine(),
-    before_send_handler=async_autocommit_handler_maker(  # note: change the session scope key if using multiple engines
-        commit_on_redirect=True,
-    ),
-    session_config=AsyncSessionConfig(expire_on_commit=False),
-    alembic_config=AlembicAsyncConfig(
-        render_as_batch=False,
-        version_table_name=_settings.db.MIGRATION_DDL_VERSION_TABLE,
-        script_config=_settings.db.MIGRATION_CONFIG,
-        script_location=_settings.db.MIGRATION_PATH,
-    ),
-)
-oracle = SyncOracleDatabaseConfig(
+templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
+oracle_sync = SyncOracleDatabaseConfig(
     pool_config=SyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
 )
-vite = ViteConfig(
-    bundle_dir=_settings.vite.BUNDLE_DIR,
-    resource_dir=_settings.vite.RESOURCE_DIR,
-    template_dir=_settings.vite.TEMPLATE_DIR,
-    use_server_lifespan=_settings.vite.USE_SERVER_LIFESPAN,
-    dev_mode=_settings.vite.DEV_MODE,
-    hot_reload=_settings.vite.HOT_RELOAD,
-    is_react=_settings.vite.ENABLE_REACT_HELPERS,
-    port=_settings.vite.PORT,
-    host=_settings.vite.HOST,
+oracle_async = AsyncOracleDatabaseConfig(
+    pool_config=AsyncOraclePoolConfig(user=_settings.db.USER, password=_settings.db.PASSWORD, dsn=_settings.db.DSN),
 )
-inertia = InertiaConfig(
-    root_template="index.html.j2",
-)
-session = CookieBackendConfig(secret=_settings.app.SECRET_KEY.encode("utf-8"))
 
 
-@lru_cache
-def _is_tty() -> bool:
-    return bool(sys.stderr.isatty() or sys.stdout.isatty())
-
-
-_structlog_processors = default_structlog_processors(as_json=not _is_tty())
-log_level = getattr(logging, _settings.log.LEVEL)
 log = StructlogConfig(
     enable_middleware_logging=False,
     structlog_logging_config=StructLoggingConfig(
+        disable_stack_trace={NotFoundException, 404},
         log_exceptions="always",
-        processors=_structlog_processors,
-        logger_factory=default_logger_factory(as_json=not _is_tty()),
+        processors=default_structlog_processors(as_json=False),
+        logger_factory=default_logger_factory(as_json=False),
         standard_lib_logging_config=LoggingConfig(
             root={"level": _settings.log.LEVEL, "handlers": ["queue_listener"]},
             formatters={
                 "standard": {
                     "()": structlog.stdlib.ProcessorFormatter,
-                    "processors": default_structlog_standard_lib_processors(as_json=not _is_tty()),
+                    "processors": default_structlog_standard_lib_processors(as_json=False),
                 },
             },
             loggers={
-                "saq": {
-                    "propagate": False,
-                    "level": _settings.log.SAQ_LEVEL,
-                    "handlers": ["queue_listener"],
-                },
                 "_granian": {
                     "propagate": False,
                     "level": _settings.log.GRANIAN_ERROR_LEVEL,
@@ -123,21 +84,6 @@ log = StructlogConfig(
                     "level": _settings.log.GRANIAN_ACCESS_LEVEL,
                     "handlers": ["queue_listener"],
                 },
-                "sqlalchemy.engine": {
-                    "propagate": False,
-                    "level": _settings.log.SQLALCHEMY_LEVEL,
-                    "handlers": ["queue_listener"],
-                },
-                "sqlalchemy.pool": {
-                    "propagate": False,
-                    "level": _settings.log.SQLALCHEMY_LEVEL,
-                    "handlers": ["queue_listener"],
-                },
-                "urllib3": {
-                    "propagate": False,
-                    "level": _settings.log.SQLALCHEMY_LEVEL,
-                    "handlers": ["queue_listener"],
-                },
             },
         ),
     ),
@@ -146,3 +92,15 @@ log = StructlogConfig(
         response_log_fields=["status_code"],
     ),
 )
+
+# Intent routing configuration
+INTENT_THRESHOLDS = {
+    "PRODUCT_RAG": 0.60,  # Lower threshold for product queries (more inclusive)
+    "GENERAL_CONVERSATION": 0.70,
+}
+
+# Vector search configuration
+VECTOR_SEARCH_CONFIG = {
+    "min_vector_threshold": 0.5,
+    "final_top_k": 5,
+}

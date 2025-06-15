@@ -1,0 +1,12 @@
+{% for key, metric in metrics.items() %}
+<div class="metric-card {% if metric.trend == 'up' %}success{% elif metric.trend == 'down' %}danger{% endif %}">
+    <div class="metric-label">{{ metric.label }}</div>
+    <div class="metric-value">{{ metric.value }}</div>
+    {% if metric.trend_value %}
+    <div class="metric-trend trend-{{ metric.trend }}">
+        {% if metric.trend == 'up' %}↑{% elif metric.trend == 'down' %}↓{% else %}→{% endif %}
+        {{ metric.trend_value }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
