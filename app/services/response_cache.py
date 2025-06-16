@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -93,7 +94,8 @@ class ResponseCacheService(BaseService):
                     UPDATE SET
                         query_text = :query_text,
                         response = :response,
-                        expires_at = :expires_at
+                        expires_at = :expires_at,
+                        hit_count = 0
                 WHEN NOT MATCHED THEN
                     INSERT (cache_key, query_text, response, expires_at, hit_count)
                     VALUES (:cache_key2, :query_text2, :response2, :expires_at2, 0)
@@ -103,8 +105,8 @@ class ResponseCacheService(BaseService):
                     "cache_key2": cache_key,
                     "query_text": query,
                     "query_text2": query,
-                    "response": msgspec.json.encode(response).decode("utf-8"),
-                    "response2": msgspec.json.encode(response).decode("utf-8"),
+                    "response": json.dumps(response, ensure_ascii=False),
+                    "response2": json.dumps(response, ensure_ascii=False),
                     "expires_at": expires_at,
                     "expires_at2": expires_at,
                 },
