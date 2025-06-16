@@ -27,24 +27,28 @@ if TYPE_CHECKING:
 logger = get_logger()
 
 
+async def _merge_one(cursor: oracledb.AsyncCursor, sql: str, params: dict[str, Any]) -> None:
+    """Execute a single MERGE statement."""
+    await cursor.execute(sql, params)
+
+
 async def _upsert_companies(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
     """Upsert company records using raw SQL."""
     cursor = conn.cursor()
+    sql = """
+        MERGE INTO company c
+        USING (SELECT :name AS name FROM dual) src
+        ON (c.name = src.name)
+        WHEN MATCHED THEN
+            UPDATE SET id = c.id  -- Dummy update to trigger updated_at
+        WHEN NOT MATCHED THEN
+            INSERT (name)
+            VALUES (:name2)
+        """
     try:
         for company in data:
-            await cursor.execute(
-                """
-                MERGE INTO company c
-                USING (SELECT :name AS name FROM dual) src
-                ON (c.name = src.name)
-                WHEN MATCHED THEN
-                    UPDATE SET id = c.id  -- Dummy update to trigger updated_at
-                WHEN NOT MATCHED THEN
-                    INSERT (name)
-                    VALUES (:name2)
-                """,
-                {"name": company["name"], "name2": company["name"]},
-            )
+            params = {"name": company["name"], "name2": company["name"]}
+            await _merge_one(cursor, sql, params)
         await conn.commit()
     finally:
         cursor.close()
@@ -53,27 +57,26 @@ async def _upsert_companies(conn: oracledb.AsyncConnection, data: list[dict[str,
 async def _upsert_shops(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
     """Upsert shop records using raw SQL."""
     cursor = conn.cursor()
+    sql = """
+        MERGE INTO shop s
+        USING (SELECT :name AS name FROM dual) src
+        ON (s.name = src.name)
+        WHEN MATCHED THEN
+            UPDATE SET
+                address = :address
+        WHEN NOT MATCHED THEN
+            INSERT (name, address)
+            VALUES (:name2, :address2)
+        """
     try:
         for shop in data:
-            await cursor.execute(
-                """
-                MERGE INTO shop s
-                USING (SELECT :name AS name FROM dual) src
-                ON (s.name = src.name)
-                WHEN MATCHED THEN
-                    UPDATE SET
-                        address = :address
-                WHEN NOT MATCHED THEN
-                    INSERT (name, address)
-                    VALUES (:name2, :address2)
-                """,
-                {
-                    "name": shop["name"],
-                    "name2": shop["name"],
-                    "address": shop["address"],
-                    "address2": shop["address"],
-                },
-            )
+            params = {
+                "name": shop["name"],
+                "name2": shop["name"],
+                "address": shop["address"],
+                "address2": shop["address"],
+            }
+            await _merge_one(cursor, sql, params)
         await conn.commit()
     finally:
         cursor.close()
@@ -208,33 +211,31 @@ async def _upsert_intent_exemplars(conn: oracledb.AsyncConnection, data: list[di
     import array
 
     cursor = conn.cursor()
+    sql = """
+        MERGE INTO intent_exemplar ie
+        USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
+        ON (ie.intent = src.intent AND ie.phrase = src.phrase)
+        WHEN MATCHED THEN
+            UPDATE SET
+                embedding = :embedding
+        WHEN NOT MATCHED THEN
+            INSERT (intent, phrase, embedding)
+            VALUES (:intent2, :phrase2, :embedding2)
+        """
     try:
         for exemplar in data:
             # Convert embedding list to Oracle array if present
             embedding = exemplar.get("embedding")
             oracle_embedding = array.array("f", embedding) if embedding else None
-
-            await cursor.execute(
-                """
-                MERGE INTO intent_exemplar ie
-                USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
-                ON (ie.intent = src.intent AND ie.phrase = src.phrase)
-                WHEN MATCHED THEN
-                    UPDATE SET
-                        embedding = :embedding
-                WHEN NOT MATCHED THEN
-                    INSERT (intent, phrase, embedding)
-                    VALUES (:intent2, :phrase2, :embedding2)
-                """,
-                {
-                    "intent": exemplar["intent"],
-                    "intent2": exemplar["intent"],
-                    "phrase": exemplar["phrase"],
-                    "phrase2": exemplar["phrase"],
-                    "embedding": oracle_embedding,
-                    "embedding2": oracle_embedding,
-                },
-            )
+            params = {
+                "intent": exemplar["intent"],
+                "intent2": exemplar["intent"],
+                "phrase": exemplar["phrase"],
+                "phrase2": exemplar["phrase"],
+                "embedding": oracle_embedding,
+                "embedding2": oracle_embedding,
+            }
+            await _merge_one(cursor, sql, params)
         await conn.commit()
     finally:
         cursor.close()

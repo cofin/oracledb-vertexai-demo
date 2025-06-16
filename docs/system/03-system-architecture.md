@@ -461,8 +461,8 @@ async def health_check(
 # 1. Start infrastructure
 make start-infra
 
-# 2. Run  
-uv run app run 
+# 2. Run
+uv run app run
 ```
 
 ### Code Organization

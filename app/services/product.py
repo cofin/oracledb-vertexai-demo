@@ -3,28 +3,22 @@
 from __future__ import annotations
 
 import array
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class ProductService:
+class ProductService(BaseService):
     """Handles database operations for products using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def get_all(self) -> list[dict[str, Any]]:
         """Get all products with company information."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """SELECT p.id, p.name, p.current_price, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id ORDER BY p.name"""
             )
 
-            products = [
+            return [
                 {
                     "id": row[0],
                     "name": row[1],
@@ -40,14 +34,9 @@ class ProductService:
                 async for row in cursor
             ]
 
-        finally:
-            cursor.close()
-        return products
-
     async def get_by_id(self, product_id: int) -> dict[str, Any] | None:
         """Get product by ID with company information."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """SELECT p.id, p.name, p.current_price, p.description, p.embedding, p.embedding_generated_on, p.created_at, p.updated_at, p.company_id, c.name as company_name FROM product p JOIN company c ON p.company_id = c.id WHERE p.id = :id""",
                 {"id": product_id},
@@ -68,13 +57,10 @@ class ProductService:
                     "company_name": row[9],
                 }
             return None
-        finally:
-            cursor.close()
 
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         """Get product by name."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -110,13 +96,10 @@ class ProductService:
                     "company_name": row[9],
                 }
             return None
-        finally:
-            cursor.close()
 
     async def search_by_description(self, search_term: str) -> list[dict[str, Any]]:
         """Search products by description."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -138,7 +121,7 @@ class ProductService:
                 {"search_term": f"%{search_term}%"},
             )
 
-            products = [
+            return [
                 {
                     "id": row[0],
                     "name": row[1],
@@ -153,16 +136,12 @@ class ProductService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
-        return products
 
     async def get_products_without_embeddings(
         self, limit: int = 100, offset: int = 0
     ) -> tuple[list[dict[str, Any]], int]:
         """Get products that have null embeddings with pagination."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Get total count
             await cursor.execute("""
                 SELECT COUNT(*) FROM product WHERE embedding IS NULL
@@ -209,15 +188,12 @@ class ProductService:
             ]
 
             return products, total_count
-        finally:
-            cursor.close()
 
     async def search_by_vector(
         self, query_embedding: list[float], limit: int = 10, similarity_threshold: float = 0.5
     ) -> list[dict[str, Any]]:
         """Search products by vector similarity using Oracle 23AI."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Convert Python list to Oracle VECTOR format
             oracle_vector = array.array("f", query_embedding)
 
@@ -266,13 +242,10 @@ class ProductService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
 
     async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
         """Update product embedding."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Convert Python list to Oracle VECTOR format
             oracle_vector = array.array("f", embedding)
 
@@ -288,8 +261,6 @@ class ProductService:
 
             await self.connection.commit()
             return cursor.rowcount > 0
-        finally:
-            cursor.close()
 
     async def create_product(
         self,
@@ -301,8 +272,7 @@ class ProductService:
         embedding: list[float] | None = None,
     ) -> dict[str, Any] | None:
         """Create a new product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Convert Python list to Oracle VECTOR format if provided
             oracle_vector = array.array("f", embedding) if embedding else None
 
@@ -332,13 +302,10 @@ class ProductService:
 
             # Return the created product
             return await self.get_by_id(product_id)
-        finally:
-            cursor.close()
 
     async def update_product(self, product_id: int, updates: dict[str, Any]) -> dict[str, Any] | None:
         """Update a product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Build UPDATE statement with safe field mapping
             field_mapping = {
                 "name": "name = :name",
@@ -365,15 +332,10 @@ class ProductService:
             if cursor.rowcount > 0:
                 return await self.get_by_id(product_id)
             return None
-        finally:
-            cursor.close()
 
     async def delete_product(self, product_id: int) -> bool:
         """Delete a product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("DELETE FROM product WHERE id = :id", {"id": product_id})
             await self.connection.commit()
             return cursor.rowcount > 0
-        finally:
-            cursor.close()

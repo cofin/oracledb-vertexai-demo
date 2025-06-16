@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class InventoryService:
+class InventoryService(BaseService):
     """Handles database operations for inventory using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def get_all(self) -> list[dict[str, Any]]:
         """Get all inventory entries with shop and product information."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("""
                 SELECT
                     i.id,
@@ -55,13 +49,10 @@ class InventoryService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
 
     async def get_by_shop_and_product(self, shop_id: int, product_id: int) -> dict[str, Any] | None:
         """Get inventory by shop and product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -101,13 +92,10 @@ class InventoryService:
                     "updated_at": row[10],
                 }
             return None
-        finally:
-            cursor.close()
 
     async def get_products_in_shop(self, shop_id: int) -> list[dict[str, Any]]:
         """Get all products available in a shop."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -148,13 +136,10 @@ class InventoryService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
 
     async def get_shops_with_product(self, product_id: int) -> list[dict[str, Any]]:
         """Get all shops that have a product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -195,13 +180,10 @@ class InventoryService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
 
     async def add_product_to_shop(self, shop_id: int, product_id: int) -> dict[str, Any] | None:
         """Add a product to a shop's inventory."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Use MERGE to handle duplicate key scenario
             await cursor.execute(
                 """
@@ -224,13 +206,10 @@ class InventoryService:
 
             # Return the inventory entry
             return await self.get_by_shop_and_product(shop_id, product_id)
-        finally:
-            cursor.close()
 
     async def remove_product_from_shop(self, shop_id: int, product_id: int) -> bool:
         """Remove a product from a shop's inventory."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 DELETE FROM inventory
@@ -241,13 +220,10 @@ class InventoryService:
 
             await self.connection.commit()
             return cursor.rowcount > 0
-        finally:
-            cursor.close()
 
     async def delete_by_id(self, inventory_id: str) -> bool:
         """Delete an inventory entry by ID."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 DELETE FROM inventory WHERE id = :id
@@ -257,13 +233,10 @@ class InventoryService:
 
             await self.connection.commit()
             return cursor.rowcount > 0
-        finally:
-            cursor.close()
 
     async def update_inventory(self, inventory_id: str, shop_id: int, product_id: int) -> dict[str, Any] | None:
         """Update an inventory entry (change shop or product)."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 UPDATE inventory
@@ -279,13 +252,10 @@ class InventoryService:
             if cursor.rowcount > 0:
                 return await self.get_by_shop_and_product(shop_id, product_id)
             return None
-        finally:
-            cursor.close()
 
     async def get_product_availability_count(self, product_id: int) -> int:
         """Get the count of shops that have a specific product."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT COUNT(*) FROM inventory WHERE product_id = :product_id
@@ -294,13 +264,10 @@ class InventoryService:
             )
             result = await cursor.fetchone()
             return result[0] if result else 0
-        finally:
-            cursor.close()
 
     async def get_shop_product_count(self, shop_id: int) -> int:
         """Get the count of products in a specific shop."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT COUNT(*) FROM inventory WHERE shop_id = :shop_id
@@ -309,14 +276,11 @@ class InventoryService:
             )
             result = await cursor.fetchone()
             return result[0] if result else 0
-        finally:
-            cursor.close()
 
     async def bulk_add_products(self, shop_id: int, product_ids: list[int]) -> int:
         """Add multiple products to a shop's inventory."""
-        cursor = self.connection.cursor()
         added_count = 0
-        try:
+        async with self.get_cursor() as cursor:
             for product_id in product_ids:
                 await cursor.execute(
                     """
@@ -338,14 +302,11 @@ class InventoryService:
 
             await self.connection.commit()
             return added_count
-        finally:
-            cursor.close()
 
     async def bulk_remove_products(self, shop_id: int, product_ids: list[int]) -> int:
         """Remove multiple products from a shop's inventory."""
-        cursor = self.connection.cursor()
         removed_count = 0
-        try:
+        async with self.get_cursor() as cursor:
             for product_id in product_ids:
                 await cursor.execute(
                     """
@@ -358,5 +319,3 @@ class InventoryService:
 
             await self.connection.commit()
             return removed_count
-        finally:
-            cursor.close()

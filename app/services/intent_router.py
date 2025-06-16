@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app.config import INTENT_THRESHOLDS, VECTOR_SEARCH_CONFIG
+from app.services.base import BaseService
 
 if TYPE_CHECKING:
     import oracledb
@@ -149,35 +150,40 @@ INTENT_EXEMPLARS = {
 }
 
 
-class IntentRouter:
+class IntentRouter(BaseService):
     """Oracle 23AI native vector similarity search for intent routing."""
 
-    def __init__(self, vertex_ai_service: VertexAIService, embedding_cache: EmbeddingCache | None = None) -> None:
+    def __init__(
+        self,
+        connection: oracledb.AsyncConnection,
+        vertex_ai_service: VertexAIService,
+        embedding_cache: EmbeddingCache | None = None,
+    ) -> None:
         """Initialize with Vertex AI service and optional embedding cache."""
+        super().__init__(connection)
         self.vertex_ai = vertex_ai_service
         self.cache = embedding_cache
 
-    async def route_intent(self, query: str, connection: oracledb.AsyncConnection) -> list[tuple[str, float, str]]:
+    async def route_intent(self, query: str) -> tuple[list[tuple[str, float, str]], bool]:
         """Route intent using Oracle's native vector similarity search.
 
         Args:
             query: User's input query
-            connection: Oracle database connection
 
         Returns:
-            List of tuples (intent, confidence_score, matched_phrase) sorted by score
+            Tuple of (results, embedding_cache_hit) where results is a list of tuples (intent, confidence_score, matched_phrase)
         """
         # Get embedding (with caching if available)
+        embedding_cache_hit = False
         if self.cache:
-            query_embedding = await self.cache.get_embedding(query, self.vertex_ai)
+            query_embedding, embedding_cache_hit = await self.cache.get_embedding(query, self.vertex_ai)
         else:
             query_embedding = await self.vertex_ai.create_embedding(query)
 
         oracle_vector = array.array("f", query_embedding)
 
         # Execute pure vector similarity search
-        cursor = connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -214,33 +220,28 @@ class IntentRouter:
                 top_match=filtered_results[0] if filtered_results else None,
             )
 
-            return filtered_results
+            return filtered_results, embedding_cache_hit
 
-        finally:
-            cursor.close()
-
-    async def route_intent_single(self, query: str, connection: oracledb.AsyncConnection) -> tuple[str, float, str]:
+    async def route_intent_single(self, query: str) -> tuple[str, float, str, bool]:
         """Route to single best intent with fallback to GENERAL_CONVERSATION.
 
         Args:
             query: User's input query
-            connection: Oracle database connection
 
         Returns:
-            Tuple of (intent, confidence_score, matched_phrase)
+            Tuple of (intent, confidence_score, matched_phrase, embedding_cache_hit)
         """
         # Use pure vector similarity search
-        results = await self.route_intent(query, connection)
+        results, embedding_cache_hit = await self.route_intent(query)
 
         if results:
-            return results[0]
+            return (*results[0], embedding_cache_hit)
         # No matches above threshold - default to general conversation
-        return "GENERAL_CONVERSATION", 0.0, ""
+        return "GENERAL_CONVERSATION", 0.0, "", embedding_cache_hit
 
     async def route_with_llm_fallback(
         self,
         query: str,
-        connection: oracledb.AsyncConnection,
         high_confidence_threshold: float = 0.9,
         medium_confidence_threshold: float = 0.7,
     ) -> tuple[str, float, str]:
@@ -248,7 +249,6 @@ class IntentRouter:
 
         Args:
             query: User's input query
-            connection: Oracle database connection
             high_confidence_threshold: Threshold for direct routing
             medium_confidence_threshold: Threshold for LLM escalation
 
@@ -256,7 +256,7 @@ class IntentRouter:
             Tuple of (intent, confidence_score, method_used)
         """
         # First, try vector similarity search
-        intent, confidence, _ = await self.route_intent_single(query, connection)
+        intent, confidence, _, _ = await self.route_intent_single(query)
 
         if confidence > high_confidence_threshold:
             # High confidence - use vector search result directly
@@ -288,7 +288,7 @@ Query: "{query}"
 Category:"""
 
         try:
-            response = await self.vertex_ai.generate_content(prompt)
+            response, _ = await self.vertex_ai.generate_content(prompt)
 
             # Extract the intent from response
             intent = response.strip().upper()

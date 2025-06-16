@@ -18,24 +18,19 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import msgspec
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class ResponseCacheService:
+class ResponseCacheService(BaseService):
     """Oracle response caching using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     def _generate_cache_key(self, query: str, user_id: str = "default") -> str:
         """Generate deterministic cache key."""
-        content = f"{query.lower().strip()}:{user_id}"
+        content = f"{query.strip()}:{user_id}"
         return hashlib.sha256(content.encode()).hexdigest()  # Use SHA256 instead of MD5
 
     async def get_cached_response(self, query: str, user_id: str = "default") -> dict | None:
@@ -43,8 +38,7 @@ class ResponseCacheService:
         cache_key = self._generate_cache_key(query, user_id)
         now = datetime.now(UTC)
 
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT id, response, expires_at, hit_count
@@ -76,8 +70,6 @@ class ResponseCacheService:
 
                     return row[1] if isinstance(row[1], dict) else msgspec.json.decode(row[1]) if row[1] else {}
             return None
-        finally:
-            cursor.close()
 
     async def cache_response(
         self,
@@ -90,8 +82,7 @@ class ResponseCacheService:
         cache_key = self._generate_cache_key(query, user_id)
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
 
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Use MERGE for upsert
             await cursor.execute(
                 """
@@ -154,14 +145,11 @@ class ResponseCacheService:
 
             msg = "Failed to create cache entry"
             raise RuntimeError(msg)
-        finally:
-            cursor.close()
 
     async def cleanup_expired(self) -> int:
         """Remove expired cache entries."""
         now = datetime.now(UTC)
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 DELETE FROM response_cache
@@ -171,15 +159,12 @@ class ResponseCacheService:
             )
             await self.connection.commit()
             return cursor.rowcount
-        finally:
-            cursor.close()
 
     async def get_cache_stats(self, hours: int = 24) -> dict:
         """Get cache hit rate and statistics."""
         since = datetime.now(UTC) - timedelta(hours=hours)
-        cursor = self.connection.cursor()
 
-        try:
+        async with self.get_cursor() as cursor:
             # Get total cache hits and entries
             await cursor.execute(
                 """
@@ -209,5 +194,3 @@ class ResponseCacheService:
                 "total_cache_hits": int(total_hits),
                 "avg_hits_per_entry": round(row[2] or 0, 1),
             }
-        finally:
-            cursor.close()

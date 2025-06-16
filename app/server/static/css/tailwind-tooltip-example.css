@@ -1,0 +1,52 @@
+/* Example of Tailwind-based tooltip with JavaScript positioning */
+
+/* Base tooltip classes using Tailwind utilities */
+.tooltip-tailwind {
+  @apply absolute z-50 max-w-sm bg-gray-900 text-white rounded-lg shadow-lg
+           opacity-0 scale-95 transition-all duration-200 pointer-events-none;
+}
+
+.tooltip-tailwind.show {
+  @apply opacity-100 scale-100 pointer-events-auto;
+}
+
+/* Arrow styles */
+.tooltip-arrow {
+  @apply absolute w-0 h-0;
+}
+
+.tooltip-arrow-top {
+  @apply -bottom-2 left-1/2 -translate-x-1/2;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid theme("colors.gray.900");
+}
+
+.tooltip-arrow-bottom {
+  @apply -top-2 left-1/2 -translate-x-1/2;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid theme("colors.gray.900");
+}
+
+.tooltip-arrow-left {
+  @apply -right-2 top-1/2 -translate-y-1/2;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid theme("colors.gray.900");
+}
+
+.tooltip-arrow-right {
+  @apply -left-2 top-1/2 -translate-y-1/2;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid theme("colors.gray.900");
+}
+
+/* Usage with JavaScript:
+ * 1. Create tooltip with base classes
+ * 2. Use JavaScript to:
+ *    - Calculate position and set style.left/top
+ *    - Add appropriate arrow class based on placement
+ *    - Adjust arrow position with inline styles if needed
+ */

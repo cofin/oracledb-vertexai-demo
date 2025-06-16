@@ -31,6 +31,15 @@
     <!-- Shared Theme CSS -->
     <link rel="stylesheet" href="{{ url_for('static', file_path='css/cymbal-theme.css') }}">
 
+    <!-- Help Tooltips CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', file_path='css/help-tooltips.css') }}">
+
+    <!-- Tooltip Positioning System -->
+    <script src="{{ url_for('static', file_path='js/tooltip-positioning.js') }}"></script>
+
+    <!-- Help Tooltips JavaScript -->
+    <script src="{{ url_for('static', file_path='js/help-tooltips-htmx.js') }}"></script>
+
     <style>
         /* Coffee Chat specific styles */
         body {
@@ -455,6 +464,11 @@
 </head>
 
 <body class="font-sans antialiased h-full">
+    <!-- Help Toggle Button -->
+    <button class="help-toggle" onclick="toggleHelp()" title="Toggle learning mode">
+        💡
+    </button>
+
     <div class="container">
         <!-- Cymbal Header -->
         <div class="cymbal-header">
@@ -496,8 +510,13 @@
                 hx-swap="beforeend">
                 {{ csrf_input | safe }}
                 <input type="hidden" id="persona" name="persona" value="enthusiast">
-                <input class="chat-input" id="message" name="message" placeholder="Ask me about coffee..." required
-                    autocomplete="off">
+                <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                    <input class="chat-input" id="message" name="message" placeholder="Ask me about coffee..." required
+                        autocomplete="off">
+                    <button type="button" class="help-trigger" onclick="showTooltip('input-processing', this)" title="Learn about input processing">
+                        🔍
+                    </button>
+                </div>
                 <button type="submit" class="send-btn" id="send-btn">
                     <div class="loading-container">
                         <span class="loading-text">Thinking</span>

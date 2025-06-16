@@ -16,21 +16,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID
 
 import msgspec
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class ChatConversationService:
+class ChatConversationService(BaseService):
     """Conversation history using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def add_message(
         self,
@@ -41,8 +36,7 @@ class ChatConversationService:
         message_metadata: dict | None = None,
     ) -> dict[str, Any]:
         """Add message to conversation."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Handle session_id whether it's UUID or bytes from Oracle RAW
             session_id_value = session_id.bytes if isinstance(session_id, UUID) else session_id
 
@@ -89,8 +83,6 @@ class ChatConversationService:
                 "created_at": row[1],
                 "updated_at": row[2],
             }
-        finally:
-            cursor.close()
 
     async def get_conversation_history(
         self,
@@ -99,8 +91,7 @@ class ChatConversationService:
         session_id: UUID | bytes | None = None,
     ) -> list[dict[str, Any]]:
         """Get recent conversation history."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             if session_id:
                 # Handle session_id whether it's UUID or bytes from Oracle RAW
                 session_id_value = session_id.bytes if isinstance(session_id, UUID) else session_id
@@ -160,5 +151,3 @@ class ChatConversationService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()

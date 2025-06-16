@@ -20,15 +20,18 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Annotated
 
-from google.api_core import exceptions as google_exceptions
 from litestar import Controller, get, post
 from litestar.di import Provide
-from litestar.exceptions import ValidationException
-from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
+from litestar.plugins.htmx import (
+    HTMXRequest,
+    HTMXTemplate,
+    HXStopPolling,
+)
 from litestar.response import File, Stream
 
 from app import schemas
 from app.server import deps
+from app.server.exception_handlers import HTMXValidationException
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -57,7 +60,6 @@ class CoffeeChatController(Controller):
         "metrics_service": Provide(deps.provide_search_metrics_service),
         "exemplar_service": Provide(deps.provide_intent_exemplar_service),
         "recommendation_service": Provide(deps.provide_recommendation_service),
-        "oracle_metrics_service": Provide(deps.provide_oracle_metrics_service),
     }
 
     @staticmethod
@@ -78,8 +80,7 @@ class CoffeeChatController(Controller):
         message = message.replace("\x00", "").strip()
 
         if not message:
-            msg = "Message cannot be empty"
-            raise ValidationException(msg)
+            raise HTMXValidationException(detail="Message cannot be empty", field="message")
 
         return message
 
@@ -93,7 +94,6 @@ class CoffeeChatController(Controller):
     @get(path="/", name="coffee_chat.show")
     async def show_coffee_chat(self) -> HTMXTemplate:
         """Serve site root with CSP nonce."""
-
         return HTMXTemplate(
             template_name="coffee_chat.html.j2",
             context={"csp_nonce": self.generate_csp_nonce()},
@@ -116,42 +116,14 @@ class CoffeeChatController(Controller):
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests with enhanced security."""
-        # Generate CSP nonce for this response
+
         csp_nonce = self.generate_csp_nonce()
+        clean_message = self.validate_message(data.message)
+        validated_persona = self.validate_persona(data.persona)
 
-        # Validate and sanitize inputs
-        try:
-            clean_message = self.validate_message(data.message)
-            validated_persona = self.validate_persona(data.persona)
-        except ValidationException as e:
-            return HTMXTemplate(
-                template_name="partials/chat_response.html.j2",
-                context={
-                    "user_message": "Invalid input",
-                    "ai_response": str(e),
-                    "query_id": "",
-                    "csp_nonce": csp_nonce,
-                },
-            )
+        reply = await recommendation_service.get_recommendation(clean_message, persona=validated_persona)
 
-        # Get coffee recommendation with persona
-        try:
-            reply = await recommendation_service.get_recommendation(clean_message, persona=validated_persona)
-        except (google_exceptions.GoogleAPIError, ValueError):
-            # Log the error ly (don't expose internal details to user)
-            return HTMXTemplate(
-                template_name="partials/chat_response.html.j2",
-                context={
-                    "user_message": clean_message,
-                    "ai_response": "Sorry, I encountered an error processing your request. Please try again.",
-                    "query_id": "",
-                    "csp_nonce": csp_nonce,
-                },
-            )
-
-        # Check if this is an HTMX request using the HTMXRequest
         if request.htmx:
-            # Return partial template for HTMX
             return HTMXTemplate(
                 template_name="partials/chat_response.html.j2",
                 context={
@@ -159,11 +131,20 @@ class CoffeeChatController(Controller):
                     "ai_response": reply.answer,
                     "query_id": reply.query_id,
                     "metrics": reply.search_metrics,
+                    "from_cache": getattr(reply, "from_cache", False),
+                    "embedding_cache_hit": getattr(reply, "embedding_cache_hit", False),
+                    "intent_detected": getattr(reply, "intent_detected", "GENERAL_CONVERSATION"),
                     "csp_nonce": csp_nonce,
                 },
+                trigger_event="help:process-complete",
+                params={
+                    "vector_search": "complete",
+                    "llm_generation": "complete",
+                    "query_id": reply.query_id,
+                },
+                after="settle",
             )
 
-        # Return full page for non-HTMX requests (fallback)
         return HTMXTemplate(
             template_name="coffee_chat.html.j2",
             context={
@@ -201,7 +182,7 @@ class CoffeeChatController(Controller):
                 # Send completion signal
                 yield f"data: {{'done': true, 'query_id': '{query_id}'}}\n\n"
 
-            except google_exceptions.GoogleAPIError:
+            except Exception:  # noqa: BLE001
                 yield f"data: {{'error': 'Service temporarily unavailable', 'query_id': '{query_id}'}}\n\n"
 
         return Stream(
@@ -227,6 +208,9 @@ class CoffeeChatController(Controller):
                 "metrics": metrics,
                 "csp_nonce": self.generate_csp_nonce(),
             },
+            trigger_event="dashboard:loaded",
+            params={"total_searches": metrics.get("total_searches", 0)},
+            after="settle",
             headers={
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",
@@ -236,16 +220,15 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: SearchMetricsService, request: HTMXRequest) -> dict:
+    async def get_metrics(self, metrics_service: SearchMetricsService, request: HTMXRequest) -> dict | HXStopPolling:
         """Get performance metrics with validation."""
-        # Validate request is XHR or HTMX
         if request.headers.get("X-Requested-With") != "XMLHttpRequest" and not request.htmx:
             return {"error": "Invalid request"}
 
         try:
             metrics = await metrics_service.get_performance_stats(hours=24)
-
-            # Sanitize metrics data
+            if request.htmx and metrics.get("total_searches", 0) == 0:
+                return HXStopPolling()
             return {
                 "total_searches": int(metrics.get("total_searches", 0)),
                 "avg_search_time_ms": float(metrics.get("avg_search_time_ms", 0)),
@@ -309,9 +292,23 @@ class CoffeeChatController(Controller):
             },
         }
 
+        # Check if cache hit rate is high and trigger notification
+        trigger_event = None
+        params = {}
+
+        if cache_stats["cache_hit_rate"] > 90:  # noqa: PLR2004
+            trigger_event = "metrics:high-cache-rate"
+            params = {"rate": cache_stats["cache_hit_rate"]}
+        elif perf_stats["avg_search_time_ms"] > 1000:  # noqa: PLR2004
+            trigger_event = "metrics:slow-response"
+            params = {"time": perf_stats["avg_search_time_ms"]}
+
         return HTMXTemplate(
             template_name="partials/_metric_cards.html.j2",
             context={"metrics": metrics_data},
+            trigger_event=trigger_event,
+            params=params,
+            after="settle" if trigger_event else None,
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
@@ -320,13 +317,8 @@ class CoffeeChatController(Controller):
         metrics_service: SearchMetricsService,
     ) -> schemas.ChartDataResponse:
         """Get chart data for dashboard visualizations."""
-        # Get time series data
         time_series = await metrics_service.get_time_series_data(minutes=60)
-
-        # Get scatter plot data
         scatter_data = await metrics_service.get_scatter_data(hours=1)
-
-        # Get breakdown data
         breakdown = await metrics_service.get_performance_breakdown()
 
         return schemas.ChartDataResponse(
@@ -353,43 +345,32 @@ class CoffeeChatController(Controller):
         # Validate and sanitize input
         query = self.validate_message(data.query)
 
-        # Start timing
-        start_time = time.time()
+        full_request_start = time.time()
+        detailed_timings: dict[str, float] = {}
 
-        # Generate embedding
-        embedding_start = time.time()
-        try:
-            # Note: This will use the actual Vertex AI service
-            await vertex_ai_service.create_embedding(query)
-        except Exception:  # noqa: BLE001
-            return HTMXTemplate(
-                template_name="partials/_vector_error.html.j2",
-                context={"error": "Failed to generate embedding"},
-            )
-        embedding_time = (time.time() - embedding_start) * 1000
+        # 1. Time the similarity_search call
+        similarity_search_start = time.time()
+        results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
+        detailed_timings["similarity_search_total_ms"] = (time.time() - similarity_search_start) * 1000
+        detailed_timings.update(vector_timings)  # Merge internal timings
 
-        # Perform vector search
-        oracle_start = time.time()
-        results = await vector_search_service.similarity_search(query, k=5)
-        oracle_time = (time.time() - oracle_start) * 1000
-
-        # Total time
-        total_time = (time.time() - start_time) * 1000
-
-        # Record metrics
+        # 2. Time the metrics recording
+        metrics_record_start = time.time()
         await metrics_service.record_search(
             schemas.SearchMetricsCreate(
                 query_id=str(uuid.uuid4()),
                 user_id="demo_user",
-                search_time_ms=total_time,
-                embedding_time_ms=embedding_time,
-                oracle_time_ms=oracle_time,
-                similarity_score=results[0]["distance"] if results else 0,
+                search_time_ms=(time.time() - full_request_start) * 1000,  # Current total
+                embedding_time_ms=vector_timings["embedding_ms"],
+                oracle_time_ms=vector_timings["oracle_ms"],
+                similarity_score=1 - results[0]["distance"] if results else 0,
                 result_count=len(results),
             )
         )
+        detailed_timings["metrics_recording_ms"] = (time.time() - metrics_record_start) * 1000
 
-        # Format results for display
+        # 3. Time results formatting
+        format_results_start = time.time()
         demo_results = [
             {
                 "name": r["name"],
@@ -399,16 +380,110 @@ class CoffeeChatController(Controller):
             }
             for r in results
         ]
+        detailed_timings["results_formatting_ms"] = (time.time() - format_results_start) * 1000
 
-        return HTMXTemplate(
+        # 4. Calculate total time before template rendering
+        pre_template_total = (time.time() - full_request_start) * 1000
+
+        # Calculate overhead so far
+        known_duration = sum([
+            detailed_timings.get("similarity_search_total_ms", 0),
+            detailed_timings.get("metrics_recording_ms", 0),
+            detailed_timings.get("results_formatting_ms", 0),
+        ])
+        detailed_timings["pre_template_overhead_ms"] = pre_template_total - known_duration
+
+        # Log detailed timings for debugging
+        request.logger.info(
+            "vector_demo_detailed_timings",
+            query=query[:50],
+            timings=detailed_timings,
+            cache_hit=embedding_cache_hit,
+        )
+
+        # Determine performance level and trigger appropriate event
+        performance_event = None
+        perf_params = {}
+
+        if pre_template_total < 100:  # noqa: PLR2004
+            performance_event = "vector:search-fast"
+            perf_params = {"level": "excellent"}
+        elif pre_template_total < 500:  # noqa: PLR2004
+            performance_event = "vector:search-normal"
+            perf_params = {"level": "good"}
+        else:
+            performance_event = "vector:search-slow"
+            perf_params = {"level": "needs-optimization"}
+
+        # 5. Create template response (timing template creation separately)
+        template_start = time.time()
+        response = HTMXTemplate(
             template_name="partials/_vector_results.html.j2",
             context={
                 "results": demo_results,
-                "search_time": f"{total_time:.0f}ms",
-                "embedding_time": f"{embedding_time:.0f}ms",
-                "oracle_time": f"{oracle_time:.0f}ms",
+                "search_time": f"{pre_template_total:.0f}ms",
+                "embedding_time": f"{vector_timings['embedding_ms']:.1f}ms",
+                "oracle_time": f"{vector_timings['oracle_ms']:.1f}ms",
+                "cache_hit": embedding_cache_hit,
+                # Add detailed timing breakdown for debugging
+                "debug_timings": {k: f"{v:.1f}ms" for k, v in detailed_timings.items()},
             },
+            # Trigger performance events
+            trigger_event=performance_event,
+            params={**perf_params, "total_ms": pre_template_total},
+            after="settle",
         )
+        detailed_timings["template_creation_ms"] = (time.time() - template_start) * 1000
+
+        # Final log with all timings
+        detailed_timings["total_endpoint_ms"] = (time.time() - full_request_start) * 1000
+        request.logger.info("vector_demo_final_timings", timings=detailed_timings)
+
+        return response
+
+    @get(path="/api/help/query-log/{message_id:str}", name="help.query_log")
+    async def get_query_log(
+        self,
+        message_id: str,
+        metrics_service: SearchMetricsService,
+        recommendation_service: RecommendationService,
+        request: HTMXRequest,
+    ) -> dict:
+        """Get query execution details for help tooltips."""
+        # Validate message_id format
+        if not re.match(r"^[a-fA-F0-9\-]+$", message_id):
+            return {"error": "Invalid message ID"}
+
+        # Check if this is an XHR request
+        if not request.htmx and request.headers.get("X-Requested-With") != "XMLHttpRequest":
+            return {"error": "Invalid request"}
+
+        try:
+            query_metrics = await metrics_service.get_query_details(message_id) or {}
+            return {
+                "intent_query": query_metrics.get("intent_query", ""),
+                "intent_type": query_metrics.get("intent_type", "PRODUCT_RAG"),
+                "similarity": query_metrics.get("similarity_score", 0.9),
+                "execution_time": query_metrics.get("intent_detection_time", 2.3),
+                "vector_search_query": query_metrics.get("vector_search_query", ""),
+                "matched_products": query_metrics.get("matched_products", []),
+                "vector_search_time": query_metrics.get("oracle_time_ms", 8.7),
+                "cache_queries": query_metrics.get("cache_queries", []),
+                "execution_times": {
+                    "embedding_generation": query_metrics.get("embedding_time_ms"),
+                    "vector_search": query_metrics.get("oracle_time_ms"),
+                    "total": query_metrics.get("search_time_ms"),
+                },
+            }
+
+        except Exception:  # noqa: BLE001
+            return {
+                "error": "Metrics temporarily unavailable",
+                "demo": True,
+                "intent_type": "PRODUCT_RAG",
+                "similarity": 0.9,
+                "vector_search_time": 8.7,
+            }
 
     @get(
         path="/favicon.ico",

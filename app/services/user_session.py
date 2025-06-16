@@ -18,28 +18,22 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import msgspec
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class UserSessionService:
+class UserSessionService(BaseService):
     """Oracle session management using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def create_session(self, user_id: str, ttl_hours: int = 24) -> dict[str, Any]:
         """Create new session with automatic expiry."""
         session_id = str(uuid.uuid4())
         expires_at = datetime.now(UTC) + timedelta(hours=ttl_hours)
 
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 INSERT INTO user_session (session_id, user_id, data, expires_at)
@@ -60,13 +54,10 @@ class UserSessionService:
                 msg = "Failed to create session"
                 raise RuntimeError(msg)
             return session
-        finally:
-            cursor.close()
 
     async def get_active_session(self, session_id: str) -> dict[str, Any] | None:
         """Get session if not expired."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -102,8 +93,6 @@ class UserSessionService:
                         "updated_at": row[6],
                     }
             return None
-        finally:
-            cursor.close()
 
     async def update_session_data(self, session_id: str, data: dict) -> dict[str, Any]:
         """Update session data."""
@@ -115,8 +104,7 @@ class UserSessionService:
         # Merge with existing data
         updated_data = {**session["data"], **data}
 
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 UPDATE user_session
@@ -135,14 +123,11 @@ class UserSessionService:
                 msg = "Failed to update session"
                 raise RuntimeError(msg)
             return result
-        finally:
-            cursor.close()
 
     async def cleanup_expired(self) -> int:
         """Remove expired sessions."""
         now = datetime.now(UTC)
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 DELETE FROM user_session
@@ -152,5 +137,3 @@ class UserSessionService:
             )
             await self.connection.commit()
             return cursor.rowcount
-        finally:
-            cursor.close()

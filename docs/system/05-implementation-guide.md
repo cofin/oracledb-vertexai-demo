@@ -167,7 +167,7 @@ class IntentRouter:
             "What coffee do you recommend?",
             "I want something smooth",
             "Tell me about espresso"
-        ], 
+        ],
     }
 
     async def route_intent(self, query: str) -> tuple[str, float, str]:
