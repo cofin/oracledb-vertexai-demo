@@ -1,5 +1,6 @@
 """Native recommendation service using Oracle + Vertex AI."""
 
+import time
 import uuid
 from collections.abc import AsyncGenerator, Sequence
 from typing import TYPE_CHECKING, Any
@@ -55,20 +56,22 @@ class RecommendationService:
 
         # Initialize intent router with embedding cache
         # Connection will be passed to route_intent method
-        self.intent_router = IntentRouter(vertex_ai_service, embedding_cache)
+        self.intent_router = IntentRouter(
+            self.products_service.connection,
+            vertex_ai_service,
+            embedding_cache,
+        )
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
 
     async def get_recommendation(
-        self,
-        query: str,
-        persona: str = "enthusiast",
-        session_id: str | None = None
+        self, query: str, persona: str = "enthusiast", session_id: str | None = None
     ) -> schemas.CoffeeChatReply:
         """Get coffee recommendation with Oracle integration."""
 
         query_id = str(uuid.uuid4())
+        start_time = time.time()
 
         # Get or create session
         if not session_id:
@@ -84,7 +87,16 @@ class RecommendationService:
 
         # Route the question through product and location matching
         chat_metadata: dict[str, Any] = {}
-        chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
+        intent_start = time.time()
+        chat_metadata, matched_product_ids, vector_timings = await self._route_products_question(query, chat_metadata)
+        intent_time = (time.time() - intent_start) * 1000
+
+        # Track intent detection embedding cache hits
+        intent_embedding_cache_hit = chat_metadata.get("intent_embedding_cache_hit", False)
+
+        # For accurate cache reporting, only show cache hit if the FIRST embedding lookup was cached
+        # The second lookup (product search) will always hit if intent detection populated the cache
+        overall_embedding_cache_hit = intent_embedding_cache_hit
 
         # Get detected intent from metadata
         intent_routing = chat_metadata.get("intent_routing", {})
@@ -107,7 +119,8 @@ class RecommendationService:
         context = self._format_context(query, chat_metadata)
 
         # Generate AI response with intent-aware system message and persona
-        ai_response = await self.vertex_ai.chat_with_history(
+        ai_start = time.time()
+        ai_response, response_cache_hit = await self.vertex_ai.chat_with_history(
             query=query,
             context=context,
             conversation_history=history_for_ai,
@@ -115,6 +128,38 @@ class RecommendationService:
             intent=detected_intent,
             persona=persona,
         )
+        ai_time = (time.time() - ai_start) * 1000
+
+        # DEBUG: Track response cache status for UI debugging
+        logger.info("response_cache_status", response_cache_hit=response_cache_hit, query=query[:50])
+
+        # Get embedding cache hit status from metadata
+        embedding_cache_hit = overall_embedding_cache_hit
+
+        # Calculate total time
+        total_time = (time.time() - start_time) * 1000
+
+        # Record metrics for this query (if not from cache)
+        if not response_cache_hit:
+            # Get similarity score from product matches if available
+            similarity_score = None
+            if matched_product_ids and chat_metadata.get("product_matches"):
+                # Use a reasonable similarity score for successful product matches
+                similarity_score = 0.8
+
+            await self.metrics_service.record_search(
+                schemas.SearchMetricsCreate(
+                    query_id=query_id,
+                    user_id=self.user_id,
+                    search_time_ms=total_time,
+                    embedding_time_ms=vector_timings["embedding_ms"],  # Actual embedding generation time
+                    oracle_time_ms=vector_timings["oracle_ms"],  # Actual Oracle vector search time
+                    ai_time_ms=ai_time,  # LLM generation time
+                    intent_time_ms=intent_time,  # Intent detection time
+                    similarity_score=similarity_score,
+                    result_count=len(matched_product_ids),
+                )
+            )
 
         # Save conversation to Oracle
         await self.conversation_service.add_message(
@@ -133,6 +178,11 @@ class RecommendationService:
             message_metadata={
                 "query_id": query_id,
                 "product_matches": len(matched_product_ids),
+                "total_time_ms": total_time,
+                "embedding_time_ms": vector_timings["embedding_ms"],
+                "oracle_time_ms": vector_timings["oracle_ms"],
+                "ai_time_ms": ai_time,
+                "intent_time_ms": intent_time,
             },
         )
 
@@ -146,21 +196,32 @@ class RecommendationService:
             answer=ai_response,
             query_id=query_id,
             search_metrics=await self.metrics_service.get_performance_stats(hours=1),
+            from_cache=response_cache_hit,
+            embedding_cache_hit=embedding_cache_hit,
+            intent_detected=detected_intent,
         )
 
     async def _route_products_question(
         self,
         query: str,
         chat_metadata: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], Sequence[int]]:
-        """Route question through semantic intent detection and product matching."""
+    ) -> tuple[dict[str, Any], Sequence[int], dict]:
+        """Route question through semantic intent detection and product matching.
+
+        Returns:
+            - chat_metadata: Enhanced with routing information
+            - matched_product_ids: List of matching product IDs
+            - vector_timings: Timing data from vector search operations
+        """
 
         chat_metadata = chat_metadata or {}
+        vector_timings = {"embedding_ms": 0, "oracle_ms": 0, "total_ms": 0}
 
         # Use semantic intent detection with Oracle connection
-        # Get connection from one of our services (they all use the same connection)
-        connection = self.exemplar_service.connection if self.exemplar_service else self.products_service.connection
-        intent, confidence, exemplar = await self.intent_router.route_intent_single(query, connection)
+        intent, confidence, exemplar, intent_embedding_cache_hit = await self.intent_router.route_intent_single(query)
+
+        # Store intent embedding cache hit status
+        chat_metadata["intent_embedding_cache_hit"] = intent_embedding_cache_hit
 
         # Log the routing decision for analysis
         logger.info(
@@ -180,9 +241,12 @@ class RecommendationService:
 
         # Only perform vector search for product-related intents
         if intent == "PRODUCT_RAG":
-            # Perform vector search using Oracle
-            matched_documents = await self.vector_search.similarity_search(query=query, k=4)
+            # Perform vector search using Oracle with embedding cache tracking
+            matched_documents, embedding_cache_hit, vector_timings = await self.vector_search.similarity_search(query=query, k=4)
             matched_product_ids = [match["metadata"]["id"] for match in matched_documents]
+
+            # Store embedding cache hit status in metadata
+            chat_metadata["embedding_cache_hit"] = embedding_cache_hit
 
             if matched_product_ids:
                 # Get product details using our new service
@@ -196,9 +260,9 @@ class RecommendationService:
                     f"- {product['name']}: {product['description']}" for product in similar_products
                 ]
 
-                return chat_metadata, matched_product_ids
+                return chat_metadata, matched_product_ids, vector_timings
 
-        return chat_metadata, []
+        return chat_metadata, [], vector_timings
 
     def _format_context(self, query: str, chat_metadata: dict[str, Any]) -> str:
         """Format context for AI prompt."""
@@ -212,10 +276,7 @@ class RecommendationService:
         return "\n\n".join(formatted_parts)
 
     async def stream_recommendation(
-        self,
-        query: str,
-        persona: str = "enthusiast",
-        session_id: str | None = None
+        self, query: str, persona: str = "enthusiast", session_id: str | None = None
     ) -> AsyncGenerator[str, None]:
         """Stream recommendation response."""
 
@@ -233,7 +294,7 @@ class RecommendationService:
 
         # Route the question (same as regular recommendation)
         chat_metadata: dict[str, Any] = {}
-        chat_metadata, matched_product_ids = await self._route_products_question(query, chat_metadata)
+        chat_metadata, matched_product_ids, _vector_timings = await self._route_products_question(query, chat_metadata)
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(

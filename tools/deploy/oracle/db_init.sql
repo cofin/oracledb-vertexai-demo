@@ -87,6 +87,29 @@ CREATE TABLE response_cache (
 CREATE INDEX ix_cache_expires ON response_cache (expires_at);
 CREATE INDEX ix_cache_key_expires ON response_cache (cache_key, expires_at);
 
+-- Create embedding_cache table with Oracle 23AI vector support
+CREATE TABLE embedding_cache (
+    id RAW(16) DEFAULT SYS_GUID() NOT NULL,
+    cache_key VARCHAR2(256 CHAR) NOT NULL,
+    query_text VARCHAR2(4000 CHAR) NOT NULL,
+    embedding VECTOR(768, FLOAT32) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    hit_count NUMBER(10) DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL FOR INSERT AND UPDATE CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT pk_embedding_cache PRIMARY KEY (id),
+    CONSTRAINT uq_embedding_cache_key UNIQUE (cache_key)
+) INMEMORY PRIORITY HIGH;
+
+-- Create indexes for embedding_cache
+CREATE INDEX ix_embedding_cache_expires ON embedding_cache (expires_at);
+CREATE INDEX ix_embedding_cache_key_expires ON embedding_cache (cache_key, expires_at);
+-- Create vector index for similarity search on embedding_cache
+CREATE VECTOR INDEX idx_embedding_cache_embedding ON embedding_cache(embedding)
+ORGANIZATION NEIGHBOR PARTITIONS
+DISTANCE COSINE
+WITH TARGET ACCURACY 95;
+
 -- Create search_metrics table for performance monitoring
 CREATE TABLE search_metrics (
     id RAW(16) DEFAULT SYS_GUID() NOT NULL,
@@ -95,6 +118,8 @@ CREATE TABLE search_metrics (
     search_time_ms BINARY_DOUBLE NOT NULL,
     embedding_time_ms BINARY_DOUBLE NOT NULL,
     oracle_time_ms BINARY_DOUBLE NOT NULL,
+    ai_time_ms BINARY_DOUBLE DEFAULT 0 NOT NULL,
+    intent_time_ms BINARY_DOUBLE DEFAULT 0 NOT NULL,
     similarity_score BINARY_DOUBLE,
     result_count NUMBER(10) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL CURRENT_TIMESTAMP NOT NULL,
@@ -192,7 +217,8 @@ COMMENT ON TABLE product IS 'Coffee products with AI embeddings for similarity s
 COMMENT ON TABLE inventory IS 'Links products to shops where they are available';
 COMMENT ON TABLE intent_exemplar IS 'Cached intent phrases with embeddings for fast routing';
 COMMENT ON TABLE response_cache IS 'Cached AI responses with TTL for performance';
-COMMENT ON TABLE search_metrics IS 'Performance metrics for search operations';
+COMMENT ON TABLE embedding_cache IS 'Cached embeddings using Oracle VECTOR type for efficient storage and retrieval';
+COMMENT ON TABLE search_metrics IS 'Performance metrics for search operations including vector search, AI generation, and intent detection';
 COMMENT ON TABLE user_session IS 'User session storage with JSON data';
 COMMENT ON TABLE chat_conversation IS 'Chat conversation history';
 

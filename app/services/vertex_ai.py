@@ -75,15 +75,27 @@ class VertexAIService:
         user_id: str = "default",
         use_cache: bool = True,
         temperature: float = 0.7,
-    ) -> str:
-        """Generate content with Oracle caching."""
+    ) -> tuple[str, bool]:
+        """Generate content with Oracle caching, returning cache status."""
+        return await self.generate_content_with_cache_key(prompt, prompt, user_id, use_cache, temperature)
+
+    async def generate_content_with_cache_key(
+        self,
+        prompt: str,
+        cache_key: str,
+        user_id: str = "default",
+        use_cache: bool = True,
+        temperature: float = 0.7,
+    ) -> tuple[str, bool]:
+        """Generate content with custom cache key, returning cache status."""
 
         # Try cache first
         if use_cache and self.cache_service:
-            cached = await self.cache_service.get_cached_response(prompt, user_id)
-            if cached:
+            cached = await self.cache_service.get_cached_response(cache_key, user_id)
+            if cached is not None:
                 content = cached.get("content", "")
-                return str(content)
+                if content:  # Only return cache hit if there's actual content
+                    return str(content), True  # Cache hit
 
         # Record timing
         start_time = time.time()
@@ -97,7 +109,7 @@ class VertexAIService:
             # Cache successful response
             if use_cache and self.cache_service:
                 await self.cache_service.cache_response(
-                    prompt,
+                    cache_key,
                     {"content": content, "model": self.model_name},
                     ttl_minutes=5,
                     user_id=user_id,
@@ -105,9 +117,9 @@ class VertexAIService:
 
         except google_exceptions.GoogleAPIError as e:
             # Handle API errors gracefully
-            return f"I apologize, but I'm experiencing technical difficulties. Please try again. Error: {e!s}"
+            return f"I apologize, but I'm experiencing technical difficulties. Please try again. Error: {e!s}", False
         else:
-            return cast("str", content)
+            return cast("str", content), False  # Cache miss
 
         finally:
             # Record metrics
@@ -184,20 +196,14 @@ For general queries or greetings:
             """.strip()
         else:
             base_message = """
-You are a helpful AI assistant specializing in coffee recommendations for Cymbal Coffee Connoisseur.
-Given a user's chat history, the latest user query, and relevant context about our products, provide an engaging and informative response.
+You are a helpful coffee expert for Cymbal Coffee. Give quick, friendly recommendations and advice.
 
-Focus on:
-- Product recommendations based on user preferences
-- Detailed descriptions of coffee varieties and flavors
-- Helping users discover new coffee experiences
-- Answering questions about coffee preparation and brewing methods
-
-Format your responses for a chat interface:
-- Use plain text without markdown formatting
-- Keep responses natural and conversational
-- Use regular punctuation and spacing
-- Avoid bullet points or special formatting - write in flowing sentences
+Keep responses SHORT and conversational - this is a chat interface:
+- 1-3 sentences max unless they ask for details
+- Be direct and helpful
+- Focus on practical recommendations
+- No bullet points or long explanations
+- Sound natural and friendly like you're talking to a customer at the counter
             """.strip()
 
         # If a custom message is provided, use it as the base
@@ -215,8 +221,8 @@ Format your responses for a chat interface:
         user_id: str = "default",
         intent: str | None = None,
         persona: str = "enthusiast",
-    ) -> str:
-        """Chat with conversation history and context."""
+    ) -> tuple[str, bool]:
+        """Chat with conversation history and context, returning cache status."""
 
         # Build prompt with system message, history, and context
         system_msg = self.create_system_message(intent=intent, persona=persona)
@@ -243,7 +249,15 @@ Format your responses for a chat interface:
         # Get temperature from persona
         temperature = PersonaManager.get_temperature(persona)
 
-        return await self.generate_content(prompt, user_id, temperature=temperature)
+        # Create a cache key based on query, context, and persona instead of full prompt
+        # This allows caching responses for similar queries with same context/persona
+        # but avoids false cache hits from different conversation histories
+        cache_key = f"{query}|{context}|{intent}|{persona}"
+
+        # TEMP DEBUG: Check for cache key collisions
+        logger.info("cache_key_debug", cache_key=cache_key, query=query, context_len=len(context), intent=intent, persona=persona)
+
+        return await self.generate_content_with_cache_key(prompt, cache_key, user_id, temperature=temperature)
 
 
 class OracleVectorSearchService:
@@ -259,17 +273,26 @@ class OracleVectorSearchService:
         self.vertex_ai_service = vertex_ai_service
         self.embedding_cache = embedding_cache
 
-    async def similarity_search(self, query: str, k: int = 4) -> list[dict]:
-        """Perform Oracle vector similarity search."""
+    async def similarity_search(self, query: str, k: int = 4) -> tuple[list[dict], bool, dict]:
+        """Perform Oracle vector similarity search.
+
+        Returns:
+            - list of matched products
+            - boolean indicating embedding cache hit
+            - dict with timing data: {"embedding_ms": float, "oracle_ms": float, "total_ms": float}
+        """
         start_time = time.time()
 
         try:
             # Create embedding for query (with caching if available)
             embedding_start = time.time()
 
+            embedding_cache_hit = False
             if self.embedding_cache:
                 logger.debug("product_search_using_cache", query=query[:50])
-                query_embedding = await self.embedding_cache.get_embedding(query, self.vertex_ai_service)
+                query_embedding, embedding_cache_hit = await self.embedding_cache.get_embedding(
+                    query, self.vertex_ai_service
+                )
             else:
                 logger.debug("product_search_no_cache", query=query[:50])
                 query_embedding = await self.vertex_ai_service.create_embedding(query)
@@ -285,8 +308,7 @@ class OracleVectorSearchService:
             vector_array = array.array("f", query_embedding)
 
             # Execute search using raw Oracle SQL
-            cursor = self.products_service.connection.cursor()
-            try:
+            async with self.products_service.get_cursor() as cursor:
                 await cursor.execute(
                     """
                     SELECT p.id, p.name, p.description,
@@ -315,26 +337,18 @@ class OracleVectorSearchService:
                     }
                     async for row in cursor
                 ]
-            finally:
-                cursor.close()
 
-            # Record metrics
-            if self.vertex_ai_service.metrics_service:
-                total_time = (time.time() - start_time) * 1000
-                await self.vertex_ai_service.metrics_service.record_search(
-                    SearchMetricsCreate(
-                        query_id=str(uuid.uuid4()),
-                        search_time_ms=total_time,
-                        embedding_time_ms=embedding_time,
-                        oracle_time_ms=oracle_time,
-                        similarity_score=1.0 - (products[0]["distance"] if products else 1.0),
-                        result_count=len(products),
-                    ),
-                )
+            # Calculate total time and return timing data
+            total_time = (time.time() - start_time) * 1000
+            timing_data = {
+                "embedding_ms": embedding_time,
+                "oracle_ms": oracle_time,
+                "total_ms": total_time,
+            }
 
         except (KeyError, AttributeError) as e:
             # Return empty results on error, but log it
             logger.exception("Vector search error", error=str(e))
-            return []
+            return [], False, {"embedding_ms": 0, "oracle_ms": 0, "total_ms": 0}
         else:
-            return products
+            return products, embedding_cache_hit, timing_data

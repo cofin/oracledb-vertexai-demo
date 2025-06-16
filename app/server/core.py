@@ -53,6 +53,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.lib.settings import BASE_DIR, get_settings
         from app.server import plugins, startup
         from app.server.controllers import CoffeeChatController
+        from app.server.exception_handlers import exception_handlers
         from app.services import (
             ChatConversationService,
             CompanyService,
@@ -107,6 +108,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         )
         # startup hooks
         app_config.on_startup.append(startup.on_startup)
+        # exception handlers
+        app_config.exception_handlers.update(exception_handlers)  # type: ignore[arg-type]
         # signatures
         app_config.signature_namespace.update(
             {

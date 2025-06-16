@@ -112,7 +112,7 @@ class EmbeddingCache:
         result = await self.fetch_from_oracle(query)
         if result:
             return result
- 
+
         embedding = await generate_embedding(query)
         await self.store_in_oracle(query, embedding)
         return embedding
@@ -141,7 +141,7 @@ WHERE VECTOR_DISTANCE(p.embedding, :taste_vector, COSINE) < 0.7
   AND ST_Distance(s.location, :user_location) < 5000 -- Within 5km
   AND i.quantity > 0
 ORDER BY match_score, distance
-FETCH FIRST 10 ROWS ONLY; 
+FETCH FIRST 10 ROWS ONLY;
 ```
 
 ## Implementation Patterns

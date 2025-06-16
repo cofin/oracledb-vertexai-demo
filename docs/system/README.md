@@ -71,7 +71,7 @@ cp .env.example .env
 
 # 3. Start Oracle 23AI (3 minutes)
 make start-infra
- 
+
 uv run app load-fixtures
 
 # 5. Launch application (1 minute)

@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
 
-class CompanyService:
+class CompanyService(BaseService):
     """Handles database operations for companies using raw SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def get_all(self) -> list[dict[str, Any]]:
         """Get all companies."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("""
                 SELECT
                     id,
@@ -38,13 +32,10 @@ class CompanyService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()
 
     async def get_by_id(self, company_id: int) -> dict[str, Any] | None:
         """Get company by ID."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -67,13 +58,10 @@ class CompanyService:
                     "updated_at": row[3],
                 }
             return None
-        finally:
-            cursor.close()
 
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         """Get company by name."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -96,13 +84,10 @@ class CompanyService:
                     "updated_at": row[3],
                 }
             return None
-        finally:
-            cursor.close()
 
     async def get_with_products(self, company_id: int) -> dict[str, Any] | None:
         """Get company with all its products."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Get company first
             company = await self.get_by_id(company_id)
             if not company:
@@ -143,13 +128,10 @@ class CompanyService:
 
             company["products"] = products
             return company
-        finally:
-            cursor.close()
 
     async def exists_by_name(self, name: str) -> bool:
         """Check if company exists by name."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT COUNT(*) FROM company WHERE name = :name
@@ -159,13 +141,10 @@ class CompanyService:
             result = await cursor.fetchone()
             count = result[0] if result else 0
             return count > 0
-        finally:
-            cursor.close()
 
     async def create_company(self, name: str) -> dict[str, Any] | None:
         """Create a new company."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 INSERT INTO company (name)
@@ -180,13 +159,10 @@ class CompanyService:
 
             # Return the created company
             return await self.get_by_id(company_id)
-        finally:
-            cursor.close()
 
     async def update_company(self, company_id: int, name: str) -> dict[str, Any] | None:
         """Update a company."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 UPDATE company
@@ -201,23 +177,17 @@ class CompanyService:
             if cursor.rowcount > 0:
                 return await self.get_by_id(company_id)
             return None
-        finally:
-            cursor.close()
 
     async def delete_company(self, company_id: int) -> bool:
         """Delete a company (cascade deletes products due to FK constraint)."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("DELETE FROM company WHERE id = :id", {"id": company_id})
             await self.connection.commit()
             return cursor.rowcount > 0
-        finally:
-            cursor.close()
 
     async def upsert_company(self, name: str) -> dict[str, Any] | None:
         """Insert or update company by name using MERGE."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 MERGE INTO company c
@@ -236,13 +206,10 @@ class CompanyService:
 
             # Return the company (either existing or newly created)
             return await self.get_by_name(name)
-        finally:
-            cursor.close()
 
     async def get_product_count(self, company_id: int) -> int:
         """Get the count of products for a company."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT COUNT(*) FROM product WHERE company_id = :company_id
@@ -251,13 +218,10 @@ class CompanyService:
             )
             result = await cursor.fetchone()
             return result[0] if result else 0
-        finally:
-            cursor.close()
 
     async def search_by_name(self, search_term: str) -> list[dict[str, Any]]:
         """Search companies by name pattern."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT
@@ -281,5 +245,3 @@ class CompanyService:
                 }
                 async for row in cursor
             ]
-        finally:
-            cursor.close()

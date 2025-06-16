@@ -34,12 +34,12 @@ Visit [http://localhost:5006](http://localhost:5006) to try the demo!
 ### Coffee Chat Interface
 
 ![Cymbal Coffee Chat Interface](docs/screenshots/cymbal_chat.png)
-*AI-powered coffee recommendations with real-time performance metrics*
+_AI-powered coffee recommendations with real-time performance metrics_
 
 ### Performance Dashboard
 
 ![Performance Dashboard](docs/screenshots/performance_dashboard.png)
-*Live monitoring of Oracle vector search performance and system metrics*
+_Live monitoring of Oracle vector search performance and system metrics_
 
 ## 📚 Documentation
 
@@ -48,6 +48,16 @@ For complete implementation and development guides, see the [`docs/system/`](doc
 - **[Technical Overview](docs/system/01-technical-overview.md)** - High-level technical concepts
 - **[Oracle Architecture](docs/system/02-oracle-architecture.md)** - Oracle 23AI unified platform
 - **[Implementation Guide](docs/system/05-implementation-guide.md)** - Step-by-step build guide
+
+### Recent Architecture Updates
+
+- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements including:
+  - Native HTMX integration with Litestar
+  - Centralized exception handling system
+  - Unified cache information API
+  - Enhanced cache hit tracking
+- **[HTMX Events Reference](docs/htmx-events.md)** - Complete list of custom HTMX events
+- **[HTMX Migration Summary](docs/htmx-migration-summary.md)** - Details of the HTMX native integration
 - **[Demo Scenarios](docs/system/07-demo-scenarios.md)** - Live demonstration scripts
 
 ## 🏗️ Architecture

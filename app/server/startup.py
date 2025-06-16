@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from typing import TYPE_CHECKING
 
 import structlog
@@ -52,8 +53,7 @@ async def populate_product_exemplars(
     count = 0
     for exemplar in product_exemplars:
         # Check if already exists
-        cursor = conn.cursor()
-        try:
+        async with conn.cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT 1 FROM intent_exemplar
@@ -71,8 +71,6 @@ async def populate_product_exemplars(
 
                 if count % 10 == 0:
                     logger.info("Added %d product exemplars...", count)
-        finally:
-            cursor.close()
 
     logger.info("Added %d new product exemplars", count)
 
@@ -106,13 +104,9 @@ async def warm_up_connection_pool(app: Litestar) -> None:
     logger.info("Warming up Oracle connection pool...")
 
     # Run a simple query to establish pool connections
-    async with config.oracle_async.get_connection() as conn:
-        cursor = conn.cursor()
-        try:
-            await cursor.execute("SELECT 1 FROM DUAL")
-            await cursor.fetchone()
-        finally:
-            cursor.close()
+    async with config.oracle_async.get_connection() as conn, conn.cursor() as cursor:
+        await cursor.execute("SELECT 1 FROM DUAL")
+        await cursor.fetchone()
 
     logger.info("Connection pool warmed up")
 
@@ -121,6 +115,9 @@ async def on_startup(app: Litestar) -> None:
     """Main startup hook that runs all initialization tasks."""
 
     logger.info("Running application startup tasks...")
+
+    app.state.csp_nonce_generator = lambda: secrets.token_urlsafe(16)
+
     await warm_up_connection_pool(app)
     await initialize_intent_exemplar_cache(app)
     logger.info("Application startup complete")

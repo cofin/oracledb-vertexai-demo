@@ -66,8 +66,7 @@ class BulkEmbeddingService:
         """Export products without embeddings to JSONL format for batch processing."""
 
         # Get products that need embeddings (where embedding is NULL)
-        cursor = self.product_service.connection.cursor()
-        try:
+        async with self.product_service.get_cursor() as cursor:
             await cursor.execute("""
                 SELECT id, name, description
                 FROM product
@@ -89,8 +88,6 @@ class BulkEmbeddingService:
                     "metadata": {"product_id": str(product_id)},
                 }
                 batch_data.append(request_data)
-        finally:
-            cursor.close()
 
         # Write to JSONL file
         bucket = self.storage_client.bucket(self.bucket_name)
@@ -201,8 +198,7 @@ class BulkEmbeddingService:
         oracle_vector = convert_to_oracle_vector(embedding)
 
         # Use raw SQL to update product
-        cursor = self.product_service.connection.cursor()
-        try:
+        async with self.product_service.get_cursor() as cursor:
             await cursor.execute(
                 """
                 UPDATE product
@@ -212,8 +208,6 @@ class BulkEmbeddingService:
                 {"embedding": oracle_vector, "id": int(product_id)},
             )
             await self.product_service.connection.commit()
-        finally:
-            cursor.close()
 
         await logger.adebug(f"Updated embedding for product {product_id}")
 
@@ -287,8 +281,7 @@ class OnlineEmbeddingService:
         """Process products that need embeddings using online API."""
 
         # Get products without embeddings (limit to reasonable batch size)
-        cursor = product_service.connection.cursor()
-        try:
+        async with product_service.get_cursor() as cursor:
             await cursor.execute(
                 """
                 SELECT id, name, description
@@ -300,8 +293,6 @@ class OnlineEmbeddingService:
             )
 
             products = [{"id": row[0], "name": row[1], "description": row[2]} async for row in cursor]
-        finally:
-            cursor.close()
 
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
@@ -314,8 +305,7 @@ class OnlineEmbeddingService:
                 if embedding:
                     oracle_vector = convert_to_oracle_vector(embedding)
                     # Update product with embedding
-                    cursor = product_service.connection.cursor()
-                    try:
+                    async with product_service.get_cursor() as cursor:
                         await cursor.execute(
                             """
                             UPDATE product
@@ -326,8 +316,6 @@ class OnlineEmbeddingService:
                         )
                         await product_service.connection.commit()
                         return 1
-                    finally:
-                        cursor.close()
                 return 0
 
         # Process all products concurrently

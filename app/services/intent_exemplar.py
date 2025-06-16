@@ -8,25 +8,20 @@ from typing import TYPE_CHECKING
 import numpy as np
 import structlog
 
-if TYPE_CHECKING:
-    import oracledb
+from app.services.base import BaseService
 
+if TYPE_CHECKING:
     from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
 
-class IntentExemplarService:
+class IntentExemplarService(BaseService):
     """Service for managing intent exemplar embeddings using raw Oracle SQL."""
-
-    def __init__(self, connection: oracledb.AsyncConnection) -> None:
-        """Initialize with Oracle connection."""
-        self.connection = connection
 
     async def get_exemplars_with_phrases(self) -> dict[str, list[tuple[str, list[float]]]]:
         """Get all exemplars with their phrases and embeddings."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("""
                 SELECT intent, phrase, embedding
                 FROM intent_exemplar
@@ -45,13 +40,10 @@ class IntentExemplarService:
                     result[intent].append((phrase, embedding))
 
             return result
-        finally:
-            cursor.close()
 
     async def load_all_exemplars(self) -> dict[str, np.ndarray]:
         """Load all cached exemplar embeddings grouped by intent."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             await cursor.execute("""
                 SELECT intent, embedding
                 FROM intent_exemplar
@@ -75,8 +67,6 @@ class IntentExemplarService:
                 numpy_result[intent] = np.array(embeddings_list)
 
             return numpy_result
-        finally:
-            cursor.close()
 
     async def cache_exemplar(
         self,
@@ -85,8 +75,7 @@ class IntentExemplarService:
         embedding: list[float],
     ) -> None:
         """Cache a single exemplar embedding."""
-        cursor = self.connection.cursor()
-        try:
+        async with self.get_cursor() as cursor:
             # Convert Python list to Oracle VECTOR format
             oracle_vector = array.array("f", embedding)
 
@@ -113,8 +102,6 @@ class IntentExemplarService:
             )
 
             await self.connection.commit()
-        finally:
-            cursor.close()
 
     async def populate_cache(
         self,
@@ -123,9 +110,8 @@ class IntentExemplarService:
     ) -> int:
         """Populate cache with all exemplars. Returns count of embeddings created."""
         count = 0
-        cursor = self.connection.cursor()
 
-        try:
+        async with self.get_cursor() as cursor:
             for intent, phrases in exemplars.items():
                 for phrase in phrases:
                     # Check if already cached
@@ -150,5 +136,3 @@ class IntentExemplarService:
 
             logger.info("Populated cache with %d new exemplar embeddings", count)
             return count
-        finally:
-            cursor.close()

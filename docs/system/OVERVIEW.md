@@ -22,7 +22,7 @@ docs/system/
 ├── 03-system-architecture.md    # Complete technical architecture
 ├── 04-ai-rag-explained.md       # AI concepts in simple terms
 ├── 05-implementation-guide.md   # Step-by-step build instructions
-├── 06-operations-manual.md      # Production operations guide 
+├── 06-operations-manual.md      # Production operations guide
 ```
 
 ### Key Technologies Documented

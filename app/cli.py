@@ -169,14 +169,19 @@ def model_info() -> None:
 
 @click.command(name="clear-cache")
 @click.option(
-    "--keep-intent-exemplar",
+    "--clear-intent-exemplar",
     is_flag=True,
-    help="Keep intent exemplar cache (recommended to avoid re-computing embeddings)",
+    help="Also clear intent exemplar cache (WARNING: requires re-computing embeddings)",
 )
 @click.option(
     "--keep-response-cache",
     is_flag=True,
     help="Keep response cache",
+)
+@click.option(
+    "--keep-embedding-cache",
+    is_flag=True,
+    help="Keep embedding cache",
 )
 @click.option(
     "--keep-search-metrics",
@@ -190,20 +195,27 @@ def model_info() -> None:
     help="Skip confirmation prompt",
 )
 def clear_cache(
-    keep_intent_exemplar: bool,
+    clear_intent_exemplar: bool,
     keep_response_cache: bool,
+    keep_embedding_cache: bool,
     keep_search_metrics: bool,
     force: bool,
 ) -> None:
-    """Clear cache tables in the database."""
+    """Clear cache tables in the database.
+
+    By default, clears response_cache, embedding_cache, and search_metrics.
+    Intent exemplars are preserved by default to avoid expensive re-computation.
+    """
     console = get_console()
 
     # Determine which tables to clear
     tables_to_clear = []
-    if not keep_intent_exemplar:
+    if clear_intent_exemplar:
         tables_to_clear.append("intent_exemplar")
     if not keep_response_cache:
         tables_to_clear.append("response_cache")
+    if not keep_embedding_cache:
+        tables_to_clear.append("embedding_cache")
     if not keep_search_metrics:
         tables_to_clear.append("search_metrics")
 
@@ -211,21 +223,9 @@ def clear_cache(
         console.print("[yellow]No tables selected for clearing. Use --help to see options.[/yellow]")
         return
 
-    # Show what will be cleared
-    console.print("[bold]Tables to clear:[/bold]")
-    for table in tables_to_clear:
-        console.print(f"  • {table}")
-
-    # Confirmation prompt
-    if not force:
-        confirm = Prompt.ask(
-            "\n[bold red]Are you sure you want to clear these tables?[/bold red]",
-            choices=["y", "n"],
-            default="n",
-        )
-        if confirm.lower() != "y":
-            console.print("[yellow]Operation cancelled.[/yellow]")
-            return
+    # Show what will be cleared and confirm
+    if not force and not _confirm_clear(console, tables_to_clear):
+        return
 
     async def _clear_cache() -> None:
         """Clear cache tables."""
@@ -239,7 +239,7 @@ def clear_cache(
                         status.update(f"Clearing {table_name}...")
 
                         # Validate table name to prevent SQL injection
-                        if table_name not in ["intent_exemplar", "response_cache", "search_metrics"]:
+                        if table_name not in ["intent_exemplar", "response_cache", "search_metrics", "embedding_cache"]:
                             console.print(f"[red]✗ Invalid table name: {table_name}[/red]")
                             continue
 
@@ -260,9 +260,25 @@ def clear_cache(
     anyio.run(_clear_cache)
 
 
+def _confirm_clear(console: Console, tables: list[str]) -> bool:
+    """Confirm cache clearing with user."""
+    console.print("[bold]Tables to clear:[/bold]")
+    for table in tables:
+        console.print(f"  • {table}")
+    confirm = Prompt.ask(
+        "\n[bold red]Are you sure you want to clear these tables?[/bold red]",
+        choices=["y", "n"],
+        default="n",
+    )
+    if confirm.lower() != "y":
+        console.print("[yellow]Operation cancelled.[/yellow]")
+        return False
+    return True
+
+
 def _get_tables_to_truncate(skip_cache: bool, skip_session: bool, skip_data: bool) -> list[str]:
     """Get list of tables to truncate based on flags."""
-    cache_tables = ["intent_exemplar", "response_cache", "search_metrics"]
+    cache_tables = ["intent_exemplar", "response_cache", "search_metrics", "embedding_cache"]
     session_tables = ["chat_conversation", "user_session"]  # Order matters for FKs
     data_tables = ["inventory", "product", "shop", "company"]  # Order matters for FKs
 
@@ -372,6 +388,7 @@ def truncate_tables(
                             "intent_exemplar",
                             "response_cache",
                             "search_metrics",
+                            "embedding_cache",
                             "chat_conversation",
                             "user_session",
                             "inventory",

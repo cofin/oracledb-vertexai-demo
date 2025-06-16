@@ -28,7 +28,7 @@
     <!-- Tippy.js for tooltips -->
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
-    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/animations/scale.css" />
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -178,7 +178,7 @@
             line-height: 1.5;
         }
 
-        .tippy-box[data-theme~='light-border'][data-placement^='top'] > .tippy-arrow::before {
+        .tippy-box[data-theme~='light-border'][data-placement^='top']>.tippy-arrow::before {
             border-top-color: white;
         }
 
@@ -396,7 +396,7 @@
 <body>
     <!-- Header Section -->
     <div class="dashboard-header-section">
-        <div class="cymbal-header" style="max-width: 1400px; margin: 0 auto;">
+        <div class="cymbal-header" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
             <div class="logo-section">
                 <img src="{{ url_for('static', file_path='cymbal-orig.jpg') }}" alt="Cymbal Coffee">
                 <p>Powered by Oracle 23AI + Google Vertex AI</p>
@@ -415,7 +415,8 @@
         <!-- Key Metrics Section -->
         <div class="section-header">
             <h3>Key Performance Metrics</h3>
-            <span class="help-icon" data-tippy-content="Real-time metrics showing the overall performance of the Oracle 23AI Vector Search and Google Vertex AI integration. These update every 10 seconds.">?</span>
+            <span class="help-icon"
+                data-tippy-content="Real-time metrics showing the overall performance of the Oracle 23AI Vector Search and Google Vertex AI integration. These update every 10 seconds.">?</span>
         </div>
 
         <!-- Key Metrics Cards -->
@@ -450,7 +451,8 @@
         <!-- Charts Section -->
         <div class="section-header" style="margin-top: 40px;">
             <h3>Performance Analytics</h3>
-            <span class="help-icon" data-tippy-content="Visual representations of system performance over time, updated every 30 seconds">?</span>
+            <span class="help-icon"
+                data-tippy-content="Visual representations of system performance over time, updated every 30 seconds">?</span>
         </div>
 
         <div class="charts-grid">
@@ -458,7 +460,8 @@
             <div class="chart-container">
                 <div class="section-header">
                     <h3>Response Time Trends (Last 24 Hours)</h3>
-                    <span class="help-icon" data-tippy-content="Shows the average, minimum, and maximum response times over the past 24 hours. Helps identify performance patterns and peak usage periods">?</span>
+                    <span class="help-icon"
+                        data-tippy-content="Shows the average, minimum, and maximum response times over the past 24 hours. Helps identify performance patterns and peak usage periods">?</span>
                 </div>
                 <canvas id="responseTimeChart"></canvas>
             </div>
@@ -467,7 +470,8 @@
             <div class="chart-container">
                 <div class="section-header">
                     <h3>Vector Search Performance</h3>
-                    <span class="help-icon" data-tippy-content="Compares Oracle 23AI vector search time vs. total processing time, showing the efficiency of the vector similarity search operations">?</span>
+                    <span class="help-icon"
+                        data-tippy-content="Compares Oracle 23AI vector search time vs. total processing time, showing the efficiency of the vector similarity search operations">?</span>
                 </div>
                 <canvas id="vectorPerformanceChart"></canvas>
             </div>
@@ -477,7 +481,8 @@
         <div class="chart-container">
             <div class="section-header">
                 <h3>System Performance Breakdown</h3>
-                <span class="help-icon" data-tippy-content="Detailed breakdown of time spent in each system component: embedding generation, vector search, AI processing, and caching">?</span>
+                <span class="help-icon"
+                    data-tippy-content="Detailed breakdown of time spent in each system component: embedding generation, vector search, AI processing, and caching">?</span>
             </div>
             <canvas id="performanceBreakdownChart" style="max-height: 300px;"></canvas>
         </div>
@@ -486,7 +491,8 @@
         <div class="vector-demo">
             <div class="section-header">
                 <h3>🔍 Vector Search Demonstration</h3>
-                <span class="help-icon" data-tippy-content="Interactive demo of Oracle 23AI's vector similarity search. Natural language queries are converted to embeddings and matched against product vectors stored in the database">?</span>
+                <span class="help-icon"
+                    data-tippy-content="Interactive demo of Oracle 23AI's vector similarity search. Natural language queries are converted to embeddings and matched against product vectors stored in the database">?</span>
             </div>
             <p>Try searching for coffee products using natural language:</p>
 
@@ -554,7 +560,7 @@
         });
 
         // Re-initialize tooltips after HTMX content updates
-        document.body.addEventListener('htmx:afterSwap', function(evt) {
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
             tippy('[data-tippy-content]', {
                 theme: 'light-border',
                 placement: 'top',

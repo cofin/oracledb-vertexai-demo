@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 import msgspec
 
+from app.lib.schema import BaseStruct, CamelizedBaseStruct, Message, camel_case
+
 if TYPE_CHECKING:
     from datetime import datetime
     from uuid import UUID
@@ -43,31 +45,6 @@ __all__ = (
     "VectorDemoResult",
     "camel_case",
 )
-
-
-class BaseStruct(msgspec.Struct):
-    def to_dict(self) -> dict[str, Any]:
-        return {f: getattr(self, f) for f in self.__struct_fields__ if getattr(self, f, None) != msgspec.UNSET}
-
-
-class CamelizedBaseStruct(BaseStruct, rename="camel"):
-    """Camelized Base Struct"""
-
-
-class Message(CamelizedBaseStruct):
-    message: str
-
-
-def camel_case(string: str) -> str:
-    """Convert a string to camel case.
-
-    Args:
-        string (str): The string to convert
-
-    Returns:
-        str: The string converted to camel case
-    """
-    return "".join(word if index == 0 else word.capitalize() for index, word in enumerate(string.split("_")))
 
 
 class CoffeeChatMessage(msgspec.Struct):
@@ -127,6 +104,8 @@ class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaul
     search_time_ms: float
     embedding_time_ms: float
     oracle_time_ms: float
+    ai_time_ms: float = 0.0
+    intent_time_ms: float = 0.0
     similarity_score: float | None = None
     result_count: int
 
@@ -146,6 +125,9 @@ class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
     answer: str
     query_id: str
     search_metrics: dict = {}
+    from_cache: bool = False
+    embedding_cache_hit: bool = False
+    intent_detected: str = "GENERAL_CONVERSATION"
 
 
 # Legacy TypedDict for compatibility (to be removed)
@@ -194,7 +176,7 @@ class ChartDataResponse(msgspec.Struct, gc=False, omit_defaults=True):
     breakdown_data: dict[str, Any]
 
 
-class VectorDemoRequest(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class VectorDemoRequest(msgspec.Struct, gc=False, omit_defaults=True):
     """Vector search demo request."""
 
     query: str
