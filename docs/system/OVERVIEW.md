@@ -102,5 +102,3 @@ All documentation follows these principles:
 - **Database**: Oracle 23AI with native VECTOR support
 
 ---
-
-*This documentation represents the consolidated knowledge from development, testing, and production deployment of the Oracle + Vertex AI Coffee Recommendation System.*

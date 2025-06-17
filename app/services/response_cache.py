@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -82,7 +81,7 @@ class ResponseCacheService(BaseService):
         """Cache response with TTL."""
         cache_key = self._generate_cache_key(query, user_id)
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
-
+        response_json = msgspec.json.encode(response).decode("utf-8") if isinstance(response, dict) else response
         async with self.get_cursor() as cursor:
             # Use MERGE for upsert
             await cursor.execute(
@@ -105,8 +104,8 @@ class ResponseCacheService(BaseService):
                     "cache_key2": cache_key,
                     "query_text": query,
                     "query_text2": query,
-                    "response": json.dumps(response, ensure_ascii=False),
-                    "response2": json.dumps(response, ensure_ascii=False),
+                    "response": response_json,
+                    "response2": response_json,
                     "expires_at": expires_at,
                     "expires_at2": expires_at,
                 },

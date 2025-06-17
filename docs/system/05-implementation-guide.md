@@ -20,14 +20,11 @@ git clone https://github.com/your-org/oracledb-vertexai-demo.git
 cd oracledb-vertexai-demo
 
 # Install uv (modern Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# curl -LsSf https://astral.sh/uv/install.sh | sh
+make install-uv
 
 # Create virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-uv sync
+make install
 ```
 
 ### Step 1.2: Configure Environment
@@ -44,7 +41,11 @@ Required configuration:
 
 ```env
 # Oracle Database (auto-configured with Docker)
-DATABASE_URL=oracle+oracledb://coffee_user:secure_password@localhost:1521/FREEPDB1
+DATABASE_USER=app
+DATABASE_PASSWORD=super-secret
+DATABASE_HOST=localhost
+DATABASE_PORT=1521
+DATABASE_SERVICE_NAME=freepdb1
 
 GOOGLE_API_KEY=my-key
 GOOGLE_PROJECT_ID=your-project-id
@@ -63,8 +64,6 @@ make start-infra
 # Check Docker
 docker ps  # Should show oracle-free running
 docker compose logs # should show the DDL executed after startup
-# Check database connection
-uv run app database check-connection
 ```
 
 ## Phase 2: Database Initialization (20 minutes)
@@ -96,7 +95,7 @@ uv run app truncate-tables --skip-session  # Keep user sessions
 ### Step 2.3: Generate Embeddings
 
 ```bash
-# Generate embeddings for all products (recommended for demo)
+# Generate embeddings for all products.  (this has been included with the gzipped files with `load-fixtures`)
 uv run app load-vectors
 # This creates embeddings from product name + description
 # e.g., "Cymbal Dark Roast: A bold, full-bodied coffee with chocolate notes"
@@ -558,5 +557,3 @@ Congratulations! You've built an AI-powered system. Here's what's next:
 - [Demo Scenarios](08-demo-scenarios.md) - Show off your system
 
 ---
-
-*"Building AI systems doesn't have to be complex. With the right architecture and tools, you can create magic in hours, not months."* - Happy Developer
