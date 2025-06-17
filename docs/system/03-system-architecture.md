@@ -287,66 +287,15 @@ sequenceDiagram
     H-->>U: Updated UI
 ```
 
-## Performance Architecture
-
-### Caching Strategy
-
-```python
-# Three-tier caching approach
-class CacheStrategy:
-    """
-    L1: Browser Cache (1 min) - Static assets
-    L2: Oracle In-Memory (5 min) - Common queries
-    L3: Oracle Disk (24 hrs) - All responses
-    """
-
-    async def get_or_compute(self, key: str, compute_fn):
-        # Check L2 cache first
-        cached = await self.oracle_cache.get(key)
-        if cached and not cached.expired:
-            return cached.value
-
-        # Compute and cache
-        result = await compute_fn()
-        await self.oracle_cache.set(key, result, ttl=300)
-        return result
-```
-
-### Connection Pooling
-
-```python
-# Optimized for Oracle 23AI
-oracle_config = {
-    "pool_size": 20,
-    "max_overflow": 10,
-    "pool_timeout": 30,
-    "pool_recycle": 3600,
-    "pool_pre_ping": True,
-    "echo_pool": "debug"
-}
-```
-
 ## Security Architecture
 
 ### API Security
 
-- **Rate Limiting**: 100 requests/minute per user
+- **Rate Limiting**: 100 requests/minute per user (Litestar Rate Limiting)
 - **CSRF Protection**: Built into Litestar
+- **CSP Protection: Custom implementation
 - **Input Validation**: msgspec with strict schemas
 - **SQL Injection**: Parameterized queries only
-
-### Data Security
-
-```python
-# Automatic PII handling
-class SecureDataMixin:
-    @property
-    def masked_user_id(self):
-        """Never expose raw user IDs"""
-        return hashlib.sha256(
-            f"{self.user_id}:{settings.SECRET_KEY}".encode()
-        ).hexdigest()[:12]
-```
 
 ## Deployment Architecture
 
@@ -363,16 +312,7 @@ services:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
-
-  app:
-    build: .
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-    ports:
-      - "5005:5005"
-    depends_on:
-      - oracle-free
+ 
 ```
 
 ### Production Architecture

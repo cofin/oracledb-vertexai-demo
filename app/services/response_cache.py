@@ -81,7 +81,7 @@ class ResponseCacheService(BaseService):
         """Cache response with TTL."""
         cache_key = self._generate_cache_key(query, user_id)
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
-
+        response_json = msgspec.json.encode(response).decode("utf-8") if isinstance(response, dict) else response
         async with self.get_cursor() as cursor:
             # Use MERGE for upsert
             await cursor.execute(
@@ -93,7 +93,8 @@ class ResponseCacheService(BaseService):
                     UPDATE SET
                         query_text = :query_text,
                         response = :response,
-                        expires_at = :expires_at
+                        expires_at = :expires_at,
+                        hit_count = 0
                 WHEN NOT MATCHED THEN
                     INSERT (cache_key, query_text, response, expires_at, hit_count)
                     VALUES (:cache_key2, :query_text2, :response2, :expires_at2, 0)
@@ -103,8 +104,8 @@ class ResponseCacheService(BaseService):
                     "cache_key2": cache_key,
                     "query_text": query,
                     "query_text2": query,
-                    "response": msgspec.json.encode(response).decode("utf-8"),
-                    "response2": msgspec.json.encode(response).decode("utf-8"),
+                    "response": response_json,
+                    "response2": response_json,
                     "expires_at": expires_at,
                     "expires_at2": expires_at,
                 },

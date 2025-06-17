@@ -108,12 +108,15 @@ class VertexAIService:
 
             # Cache successful response
             if use_cache and self.cache_service:
-                await self.cache_service.cache_response(
-                    cache_key,
-                    {"content": content, "model": self.model_name},
-                    ttl_minutes=5,
-                    user_id=user_id,
-                )
+                try:
+                    await self.cache_service.cache_response(
+                        cache_key,
+                        {"content": content, "model": self.model_name},
+                        ttl_minutes=5,
+                        user_id=user_id,
+                    )
+                except Exception as cache_error:  # noqa: BLE001
+                    logger.warning("oracle_cache_write_error", error=str(cache_error), cache_key=cache_key[:50])
 
         except google_exceptions.GoogleAPIError as e:
             # Handle API errors gracefully

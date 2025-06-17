@@ -97,7 +97,7 @@
             background-color: var(--coffee-medium);
             color: white;
             transform: translateY(-2px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         .persona-btn[aria-pressed="true"] {
@@ -198,7 +198,8 @@
             font-weight: 600;
         }
 
-        .ai-response-content ul, .ai-response-content ol {
+        .ai-response-content ul,
+        .ai-response-content ol {
             margin: 12px 0;
             padding-left: 24px;
         }
@@ -288,9 +289,12 @@
 
         /* Loading animation */
         @keyframes pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
             }
+
             50% {
                 opacity: 0.3;
             }
@@ -490,17 +494,22 @@
             <div class="chat-header">
                 <h3 style="margin: 0; color: var(--coffee-dark);">Chat with AI Coffee Expert</h3>
                 <div class="demo-personas">
-                    <button class="persona-btn" onclick="setPersona('novice')" title="Simple explanations for beginners">☕ Coffee Novice</button>
-                    <button class="persona-btn" onclick="setPersona('enthusiast')" title="Balanced detail for coffee lovers">🏆 Coffee Enthusiast</button>
-                    <button class="persona-btn" onclick="setPersona('expert')" title="Technical details for connoisseurs">👨‍🍳 Coffee Expert</button>
-                    <button class="persona-btn" onclick="setPersona('barista')" title="Professional guidance for the industry">☕ Professional Barista</button>
+                    <button class="persona-btn" onclick="setPersona('novice')"
+                        title="Simple explanations for beginners">☕ Coffee Novice</button>
+                    <button class="persona-btn" onclick="setPersona('enthusiast')"
+                        title="Balanced detail for coffee lovers">🏆 Coffee Enthusiast</button>
+                    <button class="persona-btn" onclick="setPersona('expert')"
+                        title="Technical details for connoisseurs">👨‍🍳 Coffee Expert</button>
+                    <button class="persona-btn" onclick="setPersona('barista')"
+                        title="Professional guidance for the industry">☕ Professional Barista</button>
                 </div>
             </div>
 
             <!-- Chat Container -->
             <div id="chat-container" class="chat-container">
                 <div class="message assistant">
-                    <strong>AI Coffee Expert:</strong> Hello! Welcome to Cymbal Coffee Connoisseur. How can I help you today?
+                    <strong>AI Coffee Expert:</strong> Hello! Welcome to Cymbal Coffee Connoisseur. How can I help you
+                    today?
                 </div>
                 <!-- Messages will be added here via HTMX -->
             </div>
@@ -513,7 +522,8 @@
                 <div style="position: relative; flex: 1; display: flex; align-items: center;">
                     <input class="chat-input" id="message" name="message" placeholder="Ask me about coffee..." required
                         autocomplete="off">
-                    <button type="button" class="help-trigger" onclick="showTooltip('input-processing', this)" title="Learn about input processing">
+                    <button type="button" class="help-trigger" onclick="showTooltip('input-processing', this)"
+                        title="Learn about input processing">
                         🔍
                     </button>
                 </div>
@@ -535,8 +545,10 @@
         <div class="metrics-panel loading" id="metrics-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="margin: 0; color: var(--coffee-dark);">Performance Metrics</h4>
-                <a href="/dashboard" style="font-size: 0.85rem; color: var(--coffee-medium); text-decoration: none; transition: color 0.3s ease;"
-                   onmouseover="this.style.color='var(--coffee-dark)'" onmouseout="this.style.color='var(--coffee-medium)'">
+                <a href="/dashboard"
+                    style="font-size: 0.85rem; color: var(--coffee-medium); text-decoration: none; transition: color 0.3s ease;"
+                    onmouseover="this.style.color='var(--coffee-dark)'"
+                    onmouseout="this.style.color='var(--coffee-medium)'">
                     View Full Dashboard →
                 </a>
             </div>
@@ -555,7 +567,7 @@
         let currentPersona = 'enthusiast';
 
         // Set initial persona button state on page load
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             updatePersonaUI('enthusiast');
         });
 
@@ -591,7 +603,7 @@
 
             // Update chat header
             const personaTitles = {
-                'novice': 'Chat with AI Coffee Guide (Beginner Mode)',
+                'novice': 'Chat with AI Coffee Guide',
                 'enthusiast': 'Chat with AI Coffee Expert',
                 'expert': 'Chat with AI Coffee Sommelier',
                 'barista': 'Chat with AI Barista Trainer'

@@ -273,32 +273,7 @@ WHERE VECTOR_DISTANCE(p.embedding, :taste_vector) < 0.7
   AND s.city = 'San Francisco';
 ```
 
-### The Power of Unified Data
-
-Without Oracle 23AI:
-
-- Query vector database for similar products
-- Query SQL database for inventory
-- Query location service for shops
-- Combine results in application code
-- Hope everything stays in sync
-
-With Oracle 23AI:
-
-- One query does everything
-- ACID guarantees across all data
-- 10x faster performance
-- 75% less code to maintain
-
 ## Chapter 8: Common Questions
-
-### Q: Is this like ChatGPT?
-
-A: Similar technology, but specialized for your business. ChatGPT knows everything; your system knows YOUR products deeply.
-
-### Q: How accurate is it?
-
-A: Our intent detection is 95% accurate. Product recommendations have 89% satisfaction rate.
 
 ### Q: What if AI gets it wrong?
 
@@ -308,47 +283,7 @@ A: Multiple fallback layers ensure graceful degradation. If AI fails, we use cac
 
 A: Yes! Your data never leaves Oracle. Only queries go to Google's AI, not your business data.
 
-### Q: How much does it cost?
-
-A: Average cost is $0.003 per query. A typical customer journey (5 queries) costs 1.5 cents.
-
-## Chapter 9: Future Possibilities
-
-### What's Next?
-
-1. **Multilingual Support**: Same system, any language
-2. **Voice Integration**: "Alexa, order my usual coffee"
-3. **Predictive Ordering**: "Your monthly Colombian is ready"
-4. **Sentiment Analysis**: Understand customer mood
-5. **Visual Search**: Photo of coffee → Find similar
-
-### Advanced Capabilities Coming
-
-```python
-# Future: Multi-modal understanding
-async def process_coffee_image(image_path: str):
-    # Extract visual features
-    visual_embedding = await extract_image_features(image_path)
-
-    # Find similar looking coffees
-    return await find_similar_by_appearance(visual_embedding)
-
-# Future: Personalization
-async def get_personalized_recommendation(user_id: str):
-    # Learn from history
-    preferences = await analyze_user_history(user_id)
-
-    # Predict what they'll love next
-    return await predict_next_favorite(preferences)
-```
-
 ## Chapter 10: Getting Started
-
-### For Business Leaders
-
-1. See the [Live Demo](08-demo-scenarios.md)
-2. Review [ROI calculations](02-business-value.md)
-3. Schedule a proof of concept
 
 ### For Technical Teams
 
@@ -375,5 +310,3 @@ The future isn't about complex AI systems. It's about making AI so simple and in
 Welcome to the age of intelligent applications!
 
 ---
-
-*"The best AI is the AI you don't notice. It just makes everything work better."* - Happy Customer
