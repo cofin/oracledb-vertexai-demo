@@ -71,5 +71,3 @@ The embeddings are NOT being cached in the response cache. The system has proper
 - Embeddings are cached separately in their own table with appropriate data types
 - Response cache only contains AI-generated text responses
 - Product embeddings never make it into the response cache because they're filtered out when building the context string
-
-The caching architecture is well-designed and prevents embedding data from being unnecessarily duplicated in the response cache.
