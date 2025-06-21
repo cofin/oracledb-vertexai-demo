@@ -60,7 +60,7 @@ def handle_validation_exception(request: Request, exc: ValidationException) -> R
 
     # Return HTMX template with validation error event
     return HTMXTemplate(
-        template_name="partials/chat_response.html.j2",
+        template_name="partials/chat_response.html",
         context={
             "user_message": "Invalid input",
             "ai_response": str(exc.detail) if hasattr(exc, "detail") else str(exc),
@@ -83,7 +83,7 @@ def handle_google_api_exception(request: Request, exc: google_exceptions.GoogleA
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html.j2",
+        template_name="partials/chat_response.html",
         context={
             "user_message": user_message,
             "ai_response": "Sorry, I encountered an error processing your request. Please try again.",
@@ -107,7 +107,7 @@ def handle_htmx_api_exception(request: Request, exc: HTMXAPIException) -> Respon
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html.j2",
+        template_name="partials/chat_response.html",
         context={
             "user_message": user_message,
             "ai_response": exc.detail,
@@ -131,7 +131,7 @@ def handle_generic_exception(request: Request, exc: Exception) -> Response:
     csp_nonce = getattr(request.app.state, "csp_nonce_generator", lambda: "")()
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html.j2",
+        template_name="partials/chat_response.html",
         context={
             "user_message": "Your request",
             "ai_response": "An unexpected error occurred. Please try again later.",
@@ -154,7 +154,7 @@ def handle_value_error(request: Request, exc: ValueError) -> Response:
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html.j2",
+        template_name="partials/chat_response.html",
         context={
             "user_message": user_message,
             "ai_response": "Sorry, I encountered an error processing your request. Please try again.",
@@ -187,7 +187,7 @@ def handle_vector_demo_exception(request: Request, exc: VectorDemoException) -> 
     error_message = error_messages.get(exc.operation, exc.detail)
 
     return HTMXTemplate(
-        template_name="partials/_vector_results.html.j2",
+        template_name="partials/_vector_results.html",
         context={
             "results": [],
             "search_time": "N/A",
@@ -217,6 +217,4 @@ exception_handlers = {
     HTMXAPIException: handle_htmx_api_exception,
     VectorDemoException: handle_vector_demo_exception,
     ValueError: handle_value_error,
-    # Don't include generic Exception handler - let Litestar handle it
-    # Exception: handle_generic_exception,
 }
