@@ -95,7 +95,7 @@ class CoffeeChatController(Controller):
     async def show_coffee_chat(self) -> HTMXTemplate:
         """Serve site root with CSP nonce."""
         return HTMXTemplate(
-            template_name="coffee_chat.html.j2",
+            template_name="coffee_chat.html",
             context={"csp_nonce": self.generate_csp_nonce()},
             headers={
                 "X-Content-Type-Options": "nosniff",
@@ -125,7 +125,7 @@ class CoffeeChatController(Controller):
 
         if request.htmx:
             return HTMXTemplate(
-                template_name="partials/chat_response.html.j2",
+                template_name="partials/chat_response.html",
                 context={
                     "user_message": clean_message,
                     "ai_response": reply.answer,
@@ -146,7 +146,7 @@ class CoffeeChatController(Controller):
             )
 
         return HTMXTemplate(
-            template_name="coffee_chat.html.j2",
+            template_name="coffee_chat.html",
             context={
                 "answer": reply.answer,
                 "csp_nonce": csp_nonce,
@@ -203,7 +203,7 @@ class CoffeeChatController(Controller):
         metrics = await metrics_service.get_performance_stats(hours=24)
 
         return HTMXTemplate(
-            template_name="performance_dashboard.html.j2",
+            template_name="performance_dashboard.html",
             context={
                 "metrics": metrics,
                 "csp_nonce": self.generate_csp_nonce(),
@@ -304,7 +304,7 @@ class CoffeeChatController(Controller):
             params = {"time": perf_stats["avg_search_time_ms"]}
 
         return HTMXTemplate(
-            template_name="partials/_metric_cards.html.j2",
+            template_name="partials/_metric_cards.html",
             context={"metrics": metrics_data},
             trigger_event=trigger_event,
             params=params,
@@ -418,7 +418,7 @@ class CoffeeChatController(Controller):
         # 5. Create template response (timing template creation separately)
         template_start = time.time()
         response = HTMXTemplate(
-            template_name="partials/_vector_results.html.j2",
+            template_name="partials/_vector_results.html",
             context={
                 "results": demo_results,
                 "search_time": f"{pre_template_total:.0f}ms",

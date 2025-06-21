@@ -53,6 +53,7 @@ After tracing the data flow, I found that **embeddings are NOT being cached in t
 ## Two Separate Caching Systems
 
 1. **Response Cache** (`response_cache` table)
+
    - Stores: Complete LLM responses as JSON
    - Key: Query + context + intent + persona
    - TTL: 5 minutes (short for freshness)

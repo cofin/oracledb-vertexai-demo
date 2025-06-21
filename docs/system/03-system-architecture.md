@@ -312,7 +312,7 @@ services:
       - "1521:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
- 
+
 ```
 
 ### Production Architecture
