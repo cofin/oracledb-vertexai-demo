@@ -20,9 +20,7 @@ dependencies = [
     "python-dotenv",
     "google-genai",
     "google-cloud-aiplatform>=1.38.0",
-
     "google-generativeai>=0.3.2",
-    "vertexai",
     "numpy",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."

@@ -1,4 +1,3 @@
-# ruff: noqa: ERA001
 """Coffee domain dependency providers."""
 
 from __future__ import annotations

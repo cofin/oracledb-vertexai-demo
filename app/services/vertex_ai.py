@@ -8,10 +8,9 @@ import uuid
 from typing import TYPE_CHECKING, Any, cast
 
 import structlog
-import vertexai
+from google import genai
 from google.api_core import exceptions as google_exceptions
-from vertexai.generative_models import GenerativeModel
-from vertexai.language_models import TextEmbeddingModel
+from google.genai import types
 
 from app.lib.settings import get_settings
 from app.schemas import SearchMetricsCreate
@@ -33,8 +32,9 @@ class VertexAIService:
     def __init__(self) -> None:
         settings = get_settings()
 
-        # Initialize Vertex AI
-        vertexai.init(
+        # Initialize Google GenAI client
+        self.client = genai.Client(
+            vertexai=True,
             project=settings.app.GOOGLE_PROJECT_ID,
             location="us-central1",
         )
@@ -43,8 +43,6 @@ class VertexAIService:
         self.model_name = settings.app.GEMINI_MODEL
         self.embedding_model = settings.app.EMBEDDING_MODEL
 
-        # Initialize the model
-        self.model = GenerativeModel(self.model_name)
         logger.info("Initialized model", model=self.model_name)
 
         # Oracle services for metrics and caching
@@ -58,13 +56,9 @@ class VertexAIService:
 
     def get_model_info(self) -> dict[str, str]:
         """Get information about the currently active model."""
-        # Extract just the model name from the full path
-        active_model_full = self.model._model_name  # noqa: SLF001
-        active_model_name = active_model_full.split("/")[-1] if "/" in active_model_full else active_model_full
-
         return {
-            "active_model": active_model_name,
-            "active_model_full": active_model_full,
+            "active_model": self.model_name,
+            "active_model_full": self.model_name,
             "configured_model": self.model_name,
             "embedding_model": self.embedding_model,
         }
@@ -102,8 +96,11 @@ class VertexAIService:
 
         try:
             # Configure generation with temperature
-            generation_config = {"temperature": temperature}
-            response = await self.model.generate_content_async(prompt, generation_config=generation_config)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=temperature),
+            )
             content = response.text
 
             # Cache successful response
@@ -147,15 +144,12 @@ class VertexAIService:
     ) -> AsyncGenerator[str, None]:
         """Stream content generation."""
         try:
-            # Configure generation with temperature
-            generation_config = {"temperature": temperature}
-            response = await self.model.generate_content_async(
-                prompt,
-                stream=True,
-                generation_config=generation_config,
-            )
-
-            async for chunk in response:
+            # Configure generation with temperature for streaming
+            async for chunk in await self.client.aio.models.generate_content_stream(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=temperature),
+            ):
                 if chunk.text:
                     yield chunk.text
 
@@ -163,15 +157,16 @@ class VertexAIService:
             yield f"Error: {e!s}"
 
     async def create_embedding(self, text: str) -> list[float]:
-        """Create embeddings using Vertex AI."""
+        """Create embeddings using Google GenAI."""
         try:
-            # Use the native Vertex AI embedding model
+            # Use the Google GenAI embedding model
+            response = await self.client.aio.models.embed_content(
+                model=self.embedding_model,
+                contents=text,
+            )
 
-            model = TextEmbeddingModel.from_pretrained(self.embedding_model)
-            embeddings = await model.get_embeddings_async([text])
-
-            if embeddings and len(embeddings) > 0:
-                return cast("list[float]", embeddings[0].values)
+            if response.embeddings and len(response.embeddings) > 0:
+                return cast("list[float]", response.embeddings[0].values)
             # Fallback to mock embedding for development
 
         except Exception:
@@ -258,7 +253,14 @@ Keep responses SHORT and conversational - this is a chat interface:
         cache_key = f"{query}|{context}|{intent}|{persona}"
 
         # TEMP DEBUG: Check for cache key collisions
-        logger.info("cache_key_debug", cache_key=cache_key, query=query, context_len=len(context), intent=intent, persona=persona)
+        logger.info(
+            "cache_key_debug",
+            cache_key=cache_key,
+            query=query,
+            context_len=len(context),
+            intent=intent,
+            persona=persona,
+        )
 
         return await self.generate_content_with_cache_key(prompt, cache_key, user_id, temperature=temperature)
 
