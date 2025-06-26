@@ -18,7 +18,9 @@ dependencies = [
     "litestar-oracledb",
     "litestar-granian[uvloop]",
     "python-dotenv",
+    "google-genai",
     "google-cloud-aiplatform>=1.38.0",
+
     "google-generativeai>=0.3.2",
     "vertexai",
     "numpy",
