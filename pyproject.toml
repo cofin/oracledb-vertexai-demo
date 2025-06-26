@@ -18,9 +18,8 @@ dependencies = [
     "litestar-oracledb",
     "litestar-granian[uvloop]",
     "python-dotenv",
-    "google-cloud-aiplatform>=1.38.0",
+    "google-genai",
     "google-generativeai>=0.3.2",
-    "vertexai",
     "numpy",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
