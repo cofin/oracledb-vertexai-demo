@@ -1,20 +1,6 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NewType
 
 import msgspec
 
@@ -46,11 +32,19 @@ __all__ = (
     "camel_case",
 )
 
+ProductId = NewType("ProductId", int)
+ShopId = NewType("ShopId", int)
+CompanyId = NewType("CompanyId", int)
+InventoryId = NewType("InventoryId", UUID)
+SessionId = NewType("SessionId", str)
+UserId = NewType("UserId", str)
+QueryId = NewType("QueryId", str)
+
 
 class CoffeeChatMessage(msgspec.Struct):
     """Chat message input DTO."""
 
-    message: str
+    message: str = msgspec.field(min_length=1, max_length=2000)
     persona: str = "enthusiast"
 
 
@@ -60,7 +54,7 @@ class CoffeeChatMessage(msgspec.Struct):
 class UserSessionCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     """Session creation payload."""
 
-    user_id: str
+    user_id: UserId
     data: dict = {}
 
 
@@ -68,8 +62,8 @@ class UserSessionRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
     """Session response payload."""
 
     id: UUID
-    session_id: str
-    user_id: str
+    session_id: SessionId
+    user_id: UserId
     data: dict
     expires_at: datetime
     created_at: datetime
@@ -79,7 +73,7 @@ class ChatConversationCreate(msgspec.Struct, gc=False, array_like=True, omit_def
     """Conversation creation payload."""
 
     session_id: UUID
-    user_id: str
+    user_id: UserId
     role: str  # 'user' | 'assistant' | 'system'
     content: str
     message_metadata: dict = {}
@@ -89,7 +83,7 @@ class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defau
     """Conversation response payload."""
 
     id: UUID
-    user_id: str
+    user_id: UserId
     role: str
     content: str
     message_metadata: dict
@@ -99,8 +93,8 @@ class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defau
 class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True, kw_only=True):
     """Metrics creation payload."""
 
-    query_id: str
-    user_id: str | None = None
+    query_id: QueryId
+    user_id: UserId | None = None
     search_time_ms: float
     embedding_time_ms: float
     oracle_time_ms: float
@@ -123,7 +117,8 @@ class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
     message: str
     messages: list[ChatMessage]
     answer: str
-    query_id: str
+    query_id: QueryId
+    session_id: SessionId
     search_metrics: dict = {}
     from_cache: bool = False
     embedding_cache_hit: bool = False
@@ -135,7 +130,7 @@ class HistoryMeta(msgspec.Struct, gc=False, array_like=True, omit_defaults=True)
     """History metadata."""
 
     conversation_id: str
-    user_id: str
+    user_id: UserId
 
 
 # Dashboard API DTOs
@@ -189,3 +184,113 @@ class VectorDemoResult(msgspec.Struct, gc=False, array_like=True, omit_defaults=
     description: str
     similarity_score: float
     search_time_ms: float
+
+
+class CompanyDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Company DTO."""
+
+    id: CompanyId
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ShopDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Shop DTO."""
+
+    id: ShopId
+    name: str
+    address: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProductDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Product DTO."""
+
+    id: ProductId
+    name: str
+    description: str
+    price: float
+
+
+class IntentExemplarDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Intent Exemplar DTO."""
+
+    id: int
+    intent: str
+    phrase: str
+    embedding: list[float] | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserSessionDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """User Session DTO."""
+
+    id: UUID
+    session_id: SessionId
+    user_id: UserId
+    data: dict
+    expires_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class ChatConversationDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Chat Conversation DTO."""
+
+    id: UUID
+    session_id: UUID
+    user_id: UserId
+    role: str
+    content: str
+    message_metadata: dict
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResponseCacheDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Response Cache DTO."""
+
+    id: UUID
+    cache_key: str
+    query_text: str
+    response: dict
+    expires_at: datetime
+    hit_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class SearchMetricsDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Search Metrics DTO."""
+
+    id: UUID
+    query_id: QueryId
+    user_id: UserId | None
+    search_time_ms: float
+    embedding_time_ms: float
+    oracle_time_ms: float
+    ai_time_ms: float
+    intent_time_ms: float
+    similarity_score: float | None
+    result_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class InventoryDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Inventory DTO."""
+
+    id: InventoryId
+    shop_id: ShopId
+    shop_name: str
+    shop_address: str
+    product_id: ProductId
+    product_name: str
+    current_price: float
+    description: str
+    company_name: str
+    created_at: datetime
+    updated_at: datetime

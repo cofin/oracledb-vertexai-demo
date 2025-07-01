@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from litestar.enums import RequestEncodingType
-    from litestar.params import Body
+    from litestar.params import Body, Cookie
 
     from app.services.recommendation import RecommendationService
     from app.services.response_cache import ResponseCacheService
@@ -114,6 +114,7 @@ class CoffeeChatController(Controller):
         ],
         recommendation_service: RecommendationService,
         request: HTMXRequest,
+        session_id: str | None = Cookie(None),
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests with enhanced security."""
 
@@ -121,10 +122,12 @@ class CoffeeChatController(Controller):
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
 
-        reply = await recommendation_service.get_recommendation(clean_message, persona=validated_persona)
+        reply = await recommendation_service.get_recommendation(
+            clean_message, persona=validated_persona, session_id=session_id
+        )
 
         if request.htmx:
-            return HTMXTemplate(
+            response = HTMXTemplate(
                 template_name="partials/chat_response.html",
                 context={
                     "user_message": clean_message,
@@ -144,14 +147,30 @@ class CoffeeChatController(Controller):
                 },
                 after="settle",
             )
+            response.set_cookie(
+                key="session_id",
+                value=reply.session_id,
+                httponly=True,
+                secure=request.url.scheme == "https",
+                samesite="lax",
+            )
+            return response
 
-        return HTMXTemplate(
+        response = HTMXTemplate(
             template_name="coffee_chat.html",
             context={
                 "answer": reply.answer,
                 "csp_nonce": csp_nonce,
             },
         )
+        response.set_cookie(
+            key="session_id",
+            value=reply.session_id,
+            httponly=True,
+            secure=request.url.scheme == "https",
+            samesite="lax",
+        )
+        return response
 
     @get(path="/chat/stream/{query_id:str}", name="chat.stream")
     async def stream_response(

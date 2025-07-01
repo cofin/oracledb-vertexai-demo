@@ -132,24 +132,20 @@ uv run app dump-data --path /tmp/backup --no-compress
 
 ## Phase 3: Core Services Implementation (60 minutes)
 
-### Step 3.1: Understanding the Service Architecture
+### Step 3.1: Understanding the Service and Repository Architecture
 
 ```python
 # app/services/__init__.py structure
 services/
-├── intent_router.py        # Understands user intent
-├── intent_exemplar.py      # Manages cached embeddings (raw SQL)
-├── vertex_ai.py           # Google AI integration
 ├── recommendation.py      # Main business logic
-├── user_session.py       # Session management (raw SQL)
-├── chat_conversation.py  # Chat history (raw SQL)
-├── response_cache.py     # Response caching (raw SQL)
-├── search_metrics.py     # Performance tracking (raw SQL)
-├── product.py           # Product management (raw SQL)
-├── shop.py             # Shop management (raw SQL)
-├── company.py          # Company management (raw SQL)
-├── inventory.py        # Inventory tracking (raw SQL)
-└── bulk_embedding.py   # Batch AI processing
+├── vertex_ai.py           # Google AI integration
+└── ...                    # Other business logic services
+
+# app/db/repositories/__init__.py structure
+repositories/
+├── product.py           # Product data access (raw SQL)
+├── shop.py              # Shop data access (raw SQL)
+└── ...                  # Other data access repositories
 ```
 
 ### Step 3.2: Intent Router Deep Dive
@@ -191,14 +187,14 @@ class VertexAIService:
             logger.info("⚠️ Using fallback model")
 ```
 
-### Step 3.4: Raw SQL Service Pattern
+### Step 3.4: Repository Pattern
 
-All services now use raw Oracle SQL for clarity and performance:
+All data access is now in repositories:
 
 ```python
-# app/services/product.py
-class ProductService:
-    """Product management using raw SQL"""
+# app/db/repositories/product.py
+class ProductRepository:
+    """Product data access using raw SQL"""
 
     def __init__(self, connection: oracledb.AsyncConnection):
         self.connection = connection

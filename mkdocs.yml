@@ -1,0 +1,16 @@
+site_name: OracleDB + Vertex AI Demo
+site_description: A reference application for Oracle 23AI and VertexAI integration.
+theme:
+  name: material
+  features:
+    - content.code.annotate
+    - navigation.tabs
+    - search
+nav:
+  - 'Overview': 'index.md'
+  - 'Technical Overview': 'system/01-technical-overview.md'
+  - 'Oracle Architecture': 'system/02-oracle-architecture.md'
+  - 'System Architecture': 'system/03-system-architecture.md'
+  - 'AI & RAG Explained': 'system/04-ai-rag-explained.md'
+  - 'Implementation Guide': 'system/05-implementation-guide.md'
+docs_dir: docs

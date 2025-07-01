@@ -151,6 +151,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             load_fixtures,
             load_vectors,
             model_info,
+            reset_embeddings,
             truncate_tables,
         )
 
@@ -162,3 +163,4 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         cli.add_command(clear_cache, name="clear-cache")
         cli.add_command(truncate_tables, name="truncate-tables")
         cli.add_command(dump_data, name="dump-data")
+        cli.add_command(reset_embeddings, name="reset-embeddings")

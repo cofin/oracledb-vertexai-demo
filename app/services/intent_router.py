@@ -164,21 +164,25 @@ class IntentRouter(BaseService):
         self.vertex_ai = vertex_ai_service
         self.cache = embedding_cache
 
-    async def route_intent(self, query: str) -> tuple[list[tuple[str, float, str]], bool]:
+    async def route_intent(self, query: str, query_embedding: list[float] | None = None) -> tuple[list[tuple[str, float, str]], bool]:
         """Route intent using Oracle's native vector similarity search.
 
         Args:
             query: User's input query
+            query_embedding: Optional pre-computed embedding for the query
 
         Returns:
             Tuple of (results, embedding_cache_hit) where results is a list of tuples (intent, confidence_score, matched_phrase)
         """
         # Get embedding (with caching if available)
         embedding_cache_hit = False
-        if self.cache:
-            query_embedding, embedding_cache_hit = await self.cache.get_embedding(query, self.vertex_ai)
+        if query_embedding is None:
+            if self.cache:
+                query_embedding, embedding_cache_hit = await self.cache.get_embedding(query, self.vertex_ai)
+            else:
+                query_embedding = await self.vertex_ai.create_embedding(query)
         else:
-            query_embedding = await self.vertex_ai.create_embedding(query)
+            embedding_cache_hit = True  # If embedding is provided, it's considered a cache hit
 
         oracle_vector = array.array("f", query_embedding)
 
@@ -222,17 +226,18 @@ class IntentRouter(BaseService):
 
             return filtered_results, embedding_cache_hit
 
-    async def route_intent_single(self, query: str) -> tuple[str, float, str, bool]:
+    async def route_intent_single(self, query: str, query_embedding: list[float] | None = None) -> tuple[str, float, str, bool]:
         """Route to single best intent with fallback to GENERAL_CONVERSATION.
 
         Args:
             query: User's input query
+            query_embedding: Optional pre-computed embedding for the query
 
         Returns:
             Tuple of (intent, confidence_score, matched_phrase, embedding_cache_hit)
         """
         # Use pure vector similarity search
-        results, embedding_cache_hit = await self.route_intent(query)
+        results, embedding_cache_hit = await self.route_intent(query, query_embedding)
 
         if results:
             return (*results[0], embedding_cache_hit)

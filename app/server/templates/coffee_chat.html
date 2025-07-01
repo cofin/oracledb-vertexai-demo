@@ -515,8 +515,7 @@
             </div>
 
             <!-- Chat Form -->
-            <form class="chat-form" hx-post="{{ url_for('coffee_chat.get') }}" hx-target="#chat-container"
-                hx-swap="beforeend">
+            <form class="chat-form" hx-post="{{ url_for('coffee_chat.get') }}" hx-target="#chat-container" hx-swap="beforeend" hx-trigger="submit" _="on htmx:afterOnLoad from this tell the body trigger newMessage from me">
                 {{ csrf_input | safe }}
                 <input type="hidden" id="persona" name="persona" value="enthusiast">
                 <div style="position: relative; flex: 1; display: flex; align-items: center;">
@@ -542,7 +541,7 @@
         </div>
 
         <!-- Performance Metrics Panel -->
-        <div class="metrics-panel loading" id="metrics-panel">
+        <div class="metrics-panel loading" id="metrics-panel" hx-get="/api/metrics/summary" hx-trigger="load, newMessage from:body" hx-swap="innerHTML">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="margin: 0; color: var(--coffee-dark);">Performance Metrics</h4>
                 <a href="/dashboard"

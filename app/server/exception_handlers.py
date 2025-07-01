@@ -9,6 +9,8 @@ from litestar.exceptions import HTTPException, ValidationException
 from litestar.plugins.htmx import HTMXTemplate
 from litestar.status_codes import HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
 
+from app.lib.exceptions import AppServiceException
+
 if TYPE_CHECKING:
     from litestar import Request
     from litestar.response import Response
@@ -209,6 +211,23 @@ def handle_vector_demo_exception(request: Request, exc: VectorDemoException) -> 
     )
 
 
+def handle_app_service_exception(request: Request, exc: AppServiceException) -> Response:
+    """Handle application service exceptions."""
+    return HTMXTemplate(
+        template_name="partials/chat_response.html",
+        context={
+            "user_message": "An error occurred",
+            "ai_response": exc.detail,
+            "query_id": "",
+            "csp_nonce": getattr(request.app.state, "csp_nonce_generator", lambda: "")(),
+        },
+        status_code=exc.status_code,
+        trigger_event="api:error",
+        params={"type": "service_error", "retry": False},
+        after="receive",
+    )
+
+
 # Exception handler mapping for registration
 exception_handlers = {
     ValidationException: handle_validation_exception,
@@ -217,4 +236,5 @@ exception_handlers = {
     HTMXAPIException: handle_htmx_api_exception,
     VectorDemoException: handle_vector_demo_exception,
     ValueError: handle_value_error,
+    AppServiceException: handle_app_service_exception,
 }

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import array
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import structlog
 from google import genai
@@ -21,7 +20,6 @@ logger = structlog.get_logger()
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from app.services.embedding_cache import EmbeddingCache
     from app.services.response_cache import ResponseCacheService
     from app.services.search_metrics import SearchMetricsService
 
@@ -263,97 +261,3 @@ Keep responses SHORT and conversational - this is a chat interface:
         )
 
         return await self.generate_content_with_cache_key(prompt, cache_key, user_id, temperature=temperature)
-
-
-class OracleVectorSearchService:
-    """Oracle vector search without LangChain."""
-
-    def __init__(
-        self,
-        products_service: Any,
-        vertex_ai_service: VertexAIService,
-        embedding_cache: EmbeddingCache | None = None,
-    ) -> None:
-        self.products_service = products_service
-        self.vertex_ai_service = vertex_ai_service
-        self.embedding_cache = embedding_cache
-
-    async def similarity_search(self, query: str, k: int = 4) -> tuple[list[dict], bool, dict]:
-        """Perform Oracle vector similarity search.
-
-        Returns:
-            - list of matched products
-            - boolean indicating embedding cache hit
-            - dict with timing data: {"embedding_ms": float, "oracle_ms": float, "total_ms": float}
-        """
-        start_time = time.time()
-
-        try:
-            # Create embedding for query (with caching if available)
-            embedding_start = time.time()
-
-            embedding_cache_hit = False
-            if self.embedding_cache:
-                logger.debug("product_search_using_cache", query=query[:50])
-                query_embedding, embedding_cache_hit = await self.embedding_cache.get_embedding(
-                    query, self.vertex_ai_service
-                )
-            else:
-                logger.debug("product_search_no_cache", query=query[:50])
-                query_embedding = await self.vertex_ai_service.create_embedding(query)
-
-            embedding_time = (time.time() - embedding_start) * 1000
-
-            # Perform Oracle vector search
-            oracle_start = time.time()
-
-            # Convert embedding to Oracle VECTOR format
-
-            # Convert to float32 array for Oracle VECTOR
-            vector_array = array.array("f", query_embedding)
-
-            # Execute search using raw Oracle SQL
-            async with self.products_service.get_cursor() as cursor:
-                await cursor.execute(
-                    """
-                    SELECT p.id, p.name, p.description,
-                           VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
-                    FROM product p
-                    WHERE p.embedding IS NOT NULL
-                    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-                    FETCH FIRST :limit ROWS ONLY
-                    """,
-                    {
-                        "query_vector": vector_array,
-                        "limit": k,
-                    },
-                )
-
-                oracle_time = (time.time() - oracle_start) * 1000
-
-                # Format results
-                products = [
-                    {
-                        "id": row[0],
-                        "name": row[1],
-                        "description": row[2],
-                        "distance": row[3],
-                        "metadata": {"id": row[0]},
-                    }
-                    async for row in cursor
-                ]
-
-            # Calculate total time and return timing data
-            total_time = (time.time() - start_time) * 1000
-            timing_data = {
-                "embedding_ms": embedding_time,
-                "oracle_ms": oracle_time,
-                "total_ms": total_time,
-            }
-
-        except (KeyError, AttributeError) as e:
-            # Return empty results on error, but log it
-            logger.exception("Vector search error", error=str(e))
-            return [], False, {"embedding_ms": 0, "oracle_ms": 0, "total_ms": 0}
-        else:
-            return products, embedding_cache_hit, timing_data

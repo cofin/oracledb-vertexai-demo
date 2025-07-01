@@ -478,4 +478,39 @@ def dump_data(table: str, path: str, no_compress: bool) -> None:
     anyio.run(_dump_data)
 
 
+@click.command(name="reset-embeddings")
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+def reset_embeddings(force: bool) -> None:
+    """Reset all embeddings in the product table to NULL."""
+    console = get_console()
+
+    if not force:
+        confirm = Prompt.ask(
+            "\n[bold red]Are you sure you want to reset all product embeddings?[/bold red]",
+            choices=["y", "n"],
+            default="n",
+        )
+        if confirm.lower() != "y":
+            console.print("[yellow]Operation cancelled.[/yellow]")
+            return
+
+    async def _reset_embeddings() -> None:
+        """Execute the embedding reset."""
+        from app.config import oracle_async
+
+        async with oracle_async.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                with console.status("[bold green]Resetting embeddings..."):
+                    await cursor.execute("UPDATE product SET embedding = NULL, embedding_generated_on = NULL")
+                    await conn.commit()
+                    console.print(f"[green]✓ Reset {cursor.rowcount} product embeddings.[/green]")
+
+    anyio.run(_reset_embeddings)
+
+
 # Main execution removed - CLI is handled by Litestar

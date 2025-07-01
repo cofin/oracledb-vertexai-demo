@@ -146,21 +146,18 @@ FETCH FIRST 10 ROWS ONLY;
 
 ## Implementation Patterns
 
-### Service Architecture
+### Service and Repository Architecture
 
 ```python
 import oracledb
 
-class UnifiedDataService:
-    """One service, all capabilities - using raw Oracle SQL"""
-
+class ProductRepository:
+    """One repository, all product-related SQL"""
     def __init__(self, connection: oracledb.AsyncConnection):
         self.connection = connection
 
-    async def semantic_search(self, query: str, user_location: tuple):
+    async def semantic_search(self, query_embedding: list[float]):
         """Vector search + geospatial + inventory in ONE query"""
-        query_embedding = await self.create_embedding(query)
-
         cursor = self.connection.cursor()
         try:
             await cursor.execute("""
@@ -176,10 +173,18 @@ class UnifiedDataService:
             """, {
                 "embedding": query_embedding
             })
-
             return await cursor.fetchall()
         finally:
             cursor.close()
+
+class ProductService:
+    """Business logic, no SQL"""
+    def __init__(self, product_repository: ProductRepository):
+        self.product_repository = product_repository
+
+    async def find_products(self, query: str):
+        embedding = await self.create_embedding(query)
+        return await self.product_repository.semantic_search(embedding)
 ```
 
 ### Advanced Areas to Explore
