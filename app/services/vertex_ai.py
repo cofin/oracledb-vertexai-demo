@@ -12,7 +12,7 @@ from google.api_core import exceptions as google_exceptions
 from google.genai import types
 
 from app.lib.settings import get_settings
-from app.schemas import SearchMetricsCreate
+from app.schemas import QueryId, SearchMetricsCreate, UserId
 from app.services.persona_manager import PersonaManager
 
 logger = structlog.get_logger()
@@ -125,8 +125,8 @@ class VertexAIService:
                 total_time = (time.time() - start_time) * 1000
                 await self.metrics_service.record_search(
                     SearchMetricsCreate(
-                        query_id=str(uuid.uuid4()),
-                        user_id=user_id,
+                        query_id=QueryId(str(uuid.uuid4())),
+                        user_id=UserId(user_id) if user_id else None,
                         search_time_ms=total_time,
                         embedding_time_ms=0,  # Not applicable for generation
                         oracle_time_ms=0,  # Measured separately

@@ -100,7 +100,7 @@ Visit <http://localhost:5005> and start chatting about coffee!
 
 Try these queries to see the magic:
 
-1. "I want something smooth and chocolatey" 
+1. "I want something smooth and chocolatey"
 2. "What's got the most caffeine?"
 3. "I need something bold."
 

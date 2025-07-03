@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class InventoryService:
     """Handles database operations for inventory using a repository."""
 
-    def __init__(self, inventory_repository: InventoryRepository):
+    def __init__(self, inventory_repository: InventoryRepository) -> None:
         """Initialize with inventory repository."""
         self.repository = inventory_repository
 

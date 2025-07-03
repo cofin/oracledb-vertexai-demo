@@ -1,8 +1,12 @@
+import oracledb
+
 from app.schemas import InventoryDTO
+
 from .base import BaseRepository
 
+
 class InventoryRepository(BaseRepository[InventoryDTO]):
-    def __init__(self, connection):
+    def __init__(self, connection: oracledb.AsyncConnection) -> None:
         super().__init__(connection, InventoryDTO)
 
     async def get_all(self) -> list[InventoryDTO]:
@@ -60,4 +64,4 @@ class InventoryRepository(BaseRepository[InventoryDTO]):
         async with self.connection.cursor() as cursor:
             await cursor.execute(query, {"shop_id": shop_id, "product_id": product_id})
             await self.connection.commit()
-            return cursor.rowcount > 0
+            return bool(cursor.rowcount > 0)

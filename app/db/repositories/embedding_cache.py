@@ -1,8 +1,13 @@
+import array
+import oracledb
+
 from app.schemas import EmbeddingCacheDTO
+
 from .base import BaseRepository
 
+
 class EmbeddingCacheRepository(BaseRepository[EmbeddingCacheDTO]):
-    def __init__(self, connection):
+    def __init__(self, connection: oracledb.AsyncConnection) -> None:
         super().__init__(connection, EmbeddingCacheDTO)
 
     async def get_by_key(self, cache_key: str) -> EmbeddingCacheDTO | None:
@@ -16,10 +21,8 @@ class EmbeddingCacheRepository(BaseRepository[EmbeddingCacheDTO]):
         embedding: list[float],
         ttl_hours: int,
     ) -> EmbeddingCacheDTO:
-        import array
-        from datetime import datetime, timedelta, UTC
+        from datetime import UTC, datetime, timedelta
         expires_at = datetime.now(UTC) + timedelta(hours=ttl_hours)
-        embedding_array = array.array("f", embedding)
         query = """
             MERGE INTO embedding_cache ec
             USING (SELECT :cache_key AS cache_key FROM dual) src
@@ -32,24 +35,24 @@ class EmbeddingCacheRepository(BaseRepository[EmbeddingCacheDTO]):
                     hit_count = 0
             WHEN NOT MATCHED THEN
                 INSERT (cache_key, query_text, embedding, expires_at, hit_count)
-                VALUES (:cache_key2, :query_text2, :embedding2, :expires_at2, 0)
+                VALUES (:cache_key, :query_text, :embedding, :expires_at, 0)
         """
         async with self.connection.cursor() as cursor:
+            embedding_array = array.array("f", embedding)
             await cursor.execute(
                 query,
                 {
                     "cache_key": cache_key,
-                    "cache_key2": cache_key,
                     "query_text": query_text,
-                    "query_text2": query_text,
                     "embedding": embedding_array,
-                    "embedding2": embedding_array,
                     "expires_at": expires_at,
-                    "expires_at2": expires_at,
                 },
             )
             await self.connection.commit()
-        return await self.get_by_key(cache_key)
+        result = await self.get_by_key(cache_key)
+        if result is None:
+            raise RuntimeError("Failed to create or update embedding cache")
+        return result
 
     async def increment_hit_count(self, cache_key: str) -> None:
         query = "UPDATE embedding_cache SET hit_count = hit_count + 1 WHERE cache_key = :cache_key"

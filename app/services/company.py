@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class CompanyService:
     """Handles database operations for companies using a repository."""
 
-    def __init__(self, company_repository: CompanyRepository):
+    def __init__(self, company_repository: CompanyRepository) -> None:
         """Initialize with company repository."""
         self.repository = company_repository
 

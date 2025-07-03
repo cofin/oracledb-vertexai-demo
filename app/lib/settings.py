@@ -193,13 +193,9 @@ class Settings:
     @classmethod
     @lru_cache(maxsize=1, typed=True)
     def from_env(cls, dotenv_filename: str = ".env") -> Settings:
-        from litestar.cli._utils import console
-
         env_file = Path(f"{os.curdir}/{dotenv_filename}")
         if env_file.is_file():
             from dotenv import load_dotenv
-
-            console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
 
             load_dotenv(env_file, override=True)
         return Settings()

@@ -40,6 +40,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.channels import ChannelsPlugin
         from litestar.connection import Request
         from litestar.datastructures import State
+        from litestar.di import Provide
         from litestar.enums import RequestEncodingType
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
@@ -49,16 +50,28 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
 
         from app import config, schemas, services
+        from app.db.repositories import (
+            ChatConversationRepository,
+            CompanyRepository,
+            EmbeddingCacheRepository,
+            IntentExemplarRepository,
+            InventoryRepository,
+            ProductRepository,
+            ResponseCacheRepository,
+            SearchMetricsRepository,
+            ShopRepository,
+            UserSessionRepository,
+        )
         from app.lib import log
         from app.lib.settings import BASE_DIR, get_settings
-        from app.server import plugins, startup
+        from app.server import deps, plugins, startup
         from app.server.controllers import CoffeeChatController
         from app.server.exception_handlers import exception_handlers
         from app.services import (
             ChatConversationService,
             CompanyService,
+            EmbeddingCache,
             InventoryService,
-            OracleVectorSearchService,
             ProductService,
             RecommendationService,
             ResponseCacheService,
@@ -110,6 +123,23 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         app_config.on_startup.append(startup.on_startup)
         # exception handlers
         app_config.exception_handlers.update(exception_handlers)  # type: ignore[arg-type]
+        # dependency injection
+        app_config.dependencies = {
+            "db_connection": Provide(deps.provide_db_connection),
+            # Services
+            "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
+            "products_service": Provide(deps.provide_product_service),
+            "company_service": Provide(deps.provide_company_service),
+            "shops_service": Provide(deps.provide_shop_service),
+            "inventory_service": Provide(deps.provide_inventory_service),
+            "session_service": Provide(deps.provide_user_session_service),
+            "conversation_service": Provide(deps.provide_chat_conversation_service),
+            "cache_service": Provide(deps.provide_response_cache_service),
+            "metrics_service": Provide(deps.provide_search_metrics_service),
+            "exemplar_service": Provide(deps.provide_intent_exemplar_service),
+            "embedding_cache": Provide(deps.provide_embedding_cache),
+            "recommendation_service": Provide(deps.provide_recommendation_service),
+        }
         # signatures
         app_config.signature_namespace.update(
             {
@@ -125,19 +155,32 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "WebSocket": WebSocket,
                 "schemas": schemas,
                 "services": services,
+                # Repositories
+                "ProductRepository": ProductRepository,
+                "CompanyRepository": CompanyRepository,
+                "ShopRepository": ShopRepository,
+                "InventoryRepository": InventoryRepository,
+                "UserSessionRepository": UserSessionRepository,
+                "ChatConversationRepository": ChatConversationRepository,
+                "ResponseCacheRepository": ResponseCacheRepository,
+                "SearchMetricsRepository": SearchMetricsRepository,
+                "IntentExemplarRepository": IntentExemplarRepository,
+                "EmbeddingCacheRepository": EmbeddingCacheRepository,
+                # Services
+                "EmbeddingCache": EmbeddingCache,
                 "ProductService": ProductService,
                 "ShopService": ShopService,
                 "RecommendationService": RecommendationService,
                 "CompanyService": CompanyService,
                 "InventoryService": InventoryService,
                 "VertexAIService": VertexAIService,
-                "OracleVectorSearchService": OracleVectorSearchService,
                 "UserSessionService": UserSessionService,
                 "ChatConversationService": ChatConversationService,
                 "ResponseCacheService": ResponseCacheService,
                 "SearchMetricsService": SearchMetricsService,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
+                "Provide": Provide,
             },
         )
         return app_config

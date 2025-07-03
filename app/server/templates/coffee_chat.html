@@ -356,8 +356,15 @@
 
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
+        }
+
+        .metrics-grid .metric-card {
+            width: auto !important;
+            margin: 0 !important;
+            min-width: 0 !important;
+            max-width: none !important;
         }
 
         .metric-item {
@@ -507,10 +514,18 @@
 
             <!-- Chat Container -->
             <div id="chat-container" class="chat-container">
-                <div class="message assistant">
+                <div class="message assistant" {% if conversation_history %}style="display: none;"{% endif %}>
                     <strong>AI Coffee Expert:</strong> Hello! Welcome to Cymbal Coffee Connoisseur. How can I help you
                     today?
                 </div>
+                {% if conversation_history %}
+                    {% for message in conversation_history %}
+                        <div class="message {{ message.role }}">
+                            <strong>{% if message.role == 'user' %}You{% else %}AI Coffee Expert{% endif %}:</strong>
+                            <span class="ai-response-content">{{ message.content }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
                 <!-- Messages will be added here via HTMX -->
             </div>
 
@@ -541,7 +556,7 @@
         </div>
 
         <!-- Performance Metrics Panel -->
-        <div class="metrics-panel loading" id="metrics-panel" hx-get="/api/metrics/summary" hx-trigger="load, newMessage from:body" hx-swap="innerHTML">
+        <div class="metrics-panel loading" id="metrics-panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <h4 style="margin: 0; color: var(--coffee-dark);">Performance Metrics</h4>
                 <a href="/dashboard"
@@ -551,7 +566,7 @@
                     View Full Dashboard →
                 </a>
             </div>
-            <div class="metrics-grid" id="metrics-grid">
+            <div class="metrics-grid" id="metrics-grid" hx-get="/api/metrics/summary" hx-trigger="load, newMessage from:body" hx-swap="innerHTML">
                 <div style="grid-column: 1 / -1; text-align: center; color: var(--coffee-medium);">
                     <div class="typing-indicator">Loading metrics...</div>
                 </div>

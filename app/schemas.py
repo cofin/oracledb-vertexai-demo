@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, NewType
+from uuid import UUID
 
 import msgspec
 
@@ -8,7 +9,6 @@ from app.lib.schema import BaseStruct, CamelizedBaseStruct, Message, camel_case
 
 if TYPE_CHECKING:
     from datetime import datetime
-    from uuid import UUID
 
 __all__ = (
     "BaseStruct",
@@ -39,12 +39,16 @@ InventoryId = NewType("InventoryId", UUID)
 SessionId = NewType("SessionId", str)
 UserId = NewType("UserId", str)
 QueryId = NewType("QueryId", str)
+IntentExemplarId = NewType("IntentExemplarId", int)
+ConversationId = NewType("ConversationId", UUID)
+CacheId = NewType("CacheId", UUID)
+MetricsId = NewType("MetricsId", UUID)
 
 
 class CoffeeChatMessage(msgspec.Struct):
     """Chat message input DTO."""
 
-    message: str = msgspec.field(min_length=1, max_length=2000)
+    message: str
     persona: str = "enthusiast"
 
 
@@ -217,7 +221,7 @@ class ProductDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
 class IntentExemplarDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """Intent Exemplar DTO."""
 
-    id: int
+    id: IntentExemplarId
     intent: str
     phrase: str
     embedding: list[float] | None
@@ -228,7 +232,7 @@ class IntentExemplarDTO(BaseStruct, gc=False, array_like=True, omit_defaults=Tru
 class UserSessionDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """User Session DTO."""
 
-    id: UUID
+    id: UUID  # Session table primary key
     session_id: SessionId
     user_id: UserId
     data: dict
@@ -240,8 +244,8 @@ class UserSessionDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
 class ChatConversationDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """Chat Conversation DTO."""
 
-    id: UUID
-    session_id: UUID
+    id: ConversationId
+    session_id: UUID  # FK to UserSession
     user_id: UserId
     role: str
     content: str
@@ -253,7 +257,7 @@ class ChatConversationDTO(BaseStruct, gc=False, array_like=True, omit_defaults=T
 class ResponseCacheDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """Response Cache DTO."""
 
-    id: UUID
+    id: CacheId
     cache_key: str
     query_text: str
     response: dict
@@ -263,10 +267,23 @@ class ResponseCacheDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True
     updated_at: datetime
 
 
+class EmbeddingCacheDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
+    """Embedding Cache DTO."""
+
+    id: CacheId
+    cache_key: str
+    query_text: str
+    embedding: list[float]
+    expires_at: datetime
+    hit_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class SearchMetricsDTO(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """Search Metrics DTO."""
 
-    id: UUID
+    id: MetricsId
     query_id: QueryId
     user_id: UserId | None
     search_time_ms: float

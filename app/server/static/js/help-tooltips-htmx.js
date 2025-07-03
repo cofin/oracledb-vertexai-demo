@@ -355,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (button) {
     button.textContent = helpEnabled ? "✓" : "💡";
     button.classList.toggle("active", helpEnabled);
+    button.addEventListener("click", toggleHelp);
   }
 
   // Show/hide help elements based on initial state
@@ -463,6 +464,27 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
             label: "Oracle Vector Search",
             value: times.vector_search,
             color: "#10b981",
+          });
+        }
+        if (times.ai_processing != null && times.ai_processing > 0) {
+          realMetrics.push({
+            label: "AI Processing",
+            value: times.ai_processing,
+            color: "#f59e0b",
+          });
+        }
+        if (times.intent_routing != null && times.intent_routing > 0) {
+          realMetrics.push({
+            label: "Intent Routing",
+            value: times.intent_routing,
+            color: "#3b82f6",
+          });
+        }
+        if (times.other != null && times.other > 0) {
+          realMetrics.push({
+            label: "Other",
+            value: times.other,
+            color: "#64748b",
           });
         }
 

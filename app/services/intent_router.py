@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+# Removed array import - using Oracle 23AI native vector operations
 import array
 from typing import TYPE_CHECKING
 
 import structlog
 
 from app.config import INTENT_THRESHOLDS, VECTOR_SEARCH_CONFIG
-from app.services.base import BaseService
 
 if TYPE_CHECKING:
-    import oracledb
-
+    from app.db.repositories.intent_exemplar import IntentExemplarRepository
     from app.services.embedding_cache import EmbeddingCache
     from app.services.vertex_ai import VertexAIService
 
@@ -150,17 +149,17 @@ INTENT_EXEMPLARS = {
 }
 
 
-class IntentRouter(BaseService):
+class IntentRouter:
     """Oracle 23AI native vector similarity search for intent routing."""
 
     def __init__(
         self,
-        connection: oracledb.AsyncConnection,
+        exemplar_repository: IntentExemplarRepository,
         vertex_ai_service: VertexAIService,
         embedding_cache: EmbeddingCache | None = None,
     ) -> None:
-        """Initialize with Vertex AI service and optional embedding cache."""
-        super().__init__(connection)
+        """Initialize with repository, Vertex AI service and optional embedding cache."""
+        self.exemplar_repository = exemplar_repository
         self.vertex_ai = vertex_ai_service
         self.cache = embedding_cache
 
@@ -184,10 +183,9 @@ class IntentRouter(BaseService):
         else:
             embedding_cache_hit = True  # If embedding is provided, it's considered a cache hit
 
-        oracle_vector = array.array("f", query_embedding)
-
-        # Execute pure vector similarity search
-        async with self.get_cursor() as cursor:
+        # Execute pure vector similarity search using Oracle 23AI vector operations
+        async with self.exemplar_repository.connection.cursor() as cursor:
+            embedding_array = array.array("f", query_embedding)
             await cursor.execute(
                 """
                 SELECT
@@ -200,7 +198,7 @@ class IntentRouter(BaseService):
                 FETCH FIRST :top_k ROWS ONLY
                 """,
                 {
-                    "query_embedding": oracle_vector,
+                    "query_embedding": embedding_array,
                     "min_threshold": VECTOR_SEARCH_CONFIG["min_vector_threshold"],
                     "top_k": VECTOR_SEARCH_CONFIG["final_top_k"],
                 },

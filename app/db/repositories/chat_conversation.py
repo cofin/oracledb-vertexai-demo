@@ -1,8 +1,12 @@
+import oracledb
+
 from app.schemas import ChatConversationDTO
+
 from .base import BaseRepository
 
+
 class ChatConversationRepository(BaseRepository[ChatConversationDTO]):
-    def __init__(self, connection):
+    def __init__(self, connection: oracledb.AsyncConnection) -> None:
         super().__init__(connection, ChatConversationDTO)
 
     async def get_conversation_history(
@@ -40,6 +44,7 @@ class ChatConversationRepository(BaseRepository[ChatConversationDTO]):
         message_metadata: dict | None = None,
     ) -> ChatConversationDTO:
         import msgspec
+
         query = """
             INSERT INTO chat_conversation (session_id, user_id, role, content, message_metadata)
             VALUES (:session_id, :user_id, :role, :content, :message_metadata)
@@ -57,9 +62,13 @@ class ChatConversationRepository(BaseRepository[ChatConversationDTO]):
                     "id": cursor.var(str),
                 },
             )
-            message_id = cursor.bindvars["id"].getvalue()
+            message_id = cursor.bindvars["id"].getvalue()[0]
             await self.connection.commit()
-        return await self.get_by_id(message_id)
+        result = await self.get_by_id(message_id)
+        if result is None:
+            msg = "Failed to create chat message"
+            raise RuntimeError(msg)
+        return result
 
     async def get_by_id(self, message_id: str) -> ChatConversationDTO | None:
         query = "SELECT id, session_id, user_id, role, content, message_metadata, created_at, updated_at FROM chat_conversation WHERE id = :id"

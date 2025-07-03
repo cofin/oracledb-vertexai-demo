@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 class EmbeddingCache:
     """Oracle-based cache for embedding vectors using a repository."""
 
-    def __init__(self, embedding_cache_repository: EmbeddingCacheRepository, ttl_hours: int = 24):
+    def __init__(self, embedding_cache_repository: EmbeddingCacheRepository, ttl_hours: int = 24) -> None:
         """Initialize with repository."""
         self.repository = embedding_cache_repository
         self.ttl_hours = ttl_hours

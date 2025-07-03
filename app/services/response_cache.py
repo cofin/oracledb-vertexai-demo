@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class ResponseCacheService:
     """Oracle response caching using a repository."""
 
-    def __init__(self, response_cache_repository: ResponseCacheRepository):
+    def __init__(self, response_cache_repository: ResponseCacheRepository) -> None:
         """Initialize with response cache repository."""
         self.repository = response_cache_repository
 

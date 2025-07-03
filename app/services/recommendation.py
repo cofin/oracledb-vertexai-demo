@@ -7,11 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from app import schemas
+from app.db.repositories.intent_exemplar import IntentExemplarRepository
+from app.schemas import QueryId, UserId
+
 if TYPE_CHECKING:
     from app.services.embedding_cache import EmbeddingCache
     from app.services.product import ProductService
     from app.services.shop import ShopService
-from app import schemas
 from app.services.chat_conversation import ChatConversationService
 from app.services.embedding_cache import EmbeddingCache
 from app.services.intent_exemplar import IntentExemplarService
@@ -20,7 +23,7 @@ from app.services.persona_manager import PersonaManager
 from app.services.response_cache import ResponseCacheService
 from app.services.search_metrics import SearchMetricsService
 from app.services.user_session import UserSessionService
-from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
+from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -31,7 +34,6 @@ class RecommendationService:
     def __init__(
         self,
         vertex_ai_service: VertexAIService,
-        vector_search_service: OracleVectorSearchService,
         products_service: "ProductService",
         shops_service: "ShopService",
         session_service: UserSessionService,
@@ -39,11 +41,11 @@ class RecommendationService:
         cache_service: ResponseCacheService,
         metrics_service: SearchMetricsService,
         exemplar_service: IntentExemplarService | None = None,
+        exemplar_repository: IntentExemplarRepository | None = None,
         embedding_cache: EmbeddingCache | None = None,
         user_id: str = "default",
     ) -> None:
         self.vertex_ai = vertex_ai_service
-        self.vector_search = vector_search_service
         self.products_service = products_service
         self.shops_service = shops_service
         self.session_service = session_service
@@ -51,16 +53,19 @@ class RecommendationService:
         self.cache_service = cache_service
         self.metrics_service = metrics_service
         self.exemplar_service = exemplar_service
+        self.exemplar_repository = exemplar_repository
         self.embedding_cache = embedding_cache
         self.user_id = user_id
 
-        # Initialize intent router with embedding cache
-        # Connection will be passed to route_intent method
-        self.intent_router = IntentRouter(
-            self.products_service.connection,
-            vertex_ai_service,
-            embedding_cache,
-        )
+        # Initialize intent router with repository
+        if exemplar_repository:
+            self.intent_router = IntentRouter(
+                exemplar_repository,
+                vertex_ai_service,
+                embedding_cache,
+            )
+        else:
+            self.intent_router: IntentRouter | None = None
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
@@ -76,18 +81,22 @@ class RecommendationService:
         # Get or create session
         if not session_id:
             session = await self.session_service.create_session(self.user_id)
-            session_id = session["session_id"]
+            session_id = session.session_id
         else:
             active_session = await self.session_service.get_active_session(session_id)
             if active_session:
                 session = active_session
             else:
                 session = await self.session_service.create_session(self.user_id)
-                session_id = session["session_id"]
+                session_id = session.session_id
 
         # Get embedding for the user query once.
         embedding_start = time.time()
-        query_embedding, embedding_cache_hit = await self.embedding_cache.get_embedding(query, self.vertex_ai)
+        if self.embedding_cache:
+            query_embedding, embedding_cache_hit = await self.embedding_cache.get_embedding(query, self.vertex_ai)
+        else:
+            query_embedding = await self.vertex_ai.create_embedding(query)
+            embedding_cache_hit = False
         embedding_time = (time.time() - embedding_start) * 1000
 
         # Route the question through product and location matching
@@ -96,6 +105,7 @@ class RecommendationService:
         chat_metadata, matched_product_ids, vector_timings, similarity_score = await self._route_products_question(
             query, query_embedding, chat_metadata
         )
+        vector_timings["embedding_ms"] = embedding_time
         intent_time = (time.time() - intent_start) * 1000
 
         # Get detected intent from metadata
@@ -106,12 +116,12 @@ class RecommendationService:
         conversation_history = await self.conversation_service.get_conversation_history(
             self.user_id,
             limit=10,
-            session_id=session["id"],
+            session_id=session.id,
         )
 
         # Format conversation history for Vertex AI
         history_for_ai = [
-            {"role": msg["role"], "content": msg["content"]}
+            {"role": msg.role, "content": msg.content}
             for msg in reversed(conversation_history)  # Reverse to get chronological order
         ]
 
@@ -140,8 +150,8 @@ class RecommendationService:
         if not response_cache_hit:
             await self.metrics_service.record_search(
                 schemas.SearchMetricsCreate(
-                    query_id=query_id,
-                    user_id=self.user_id,
+                    query_id=QueryId(query_id),
+                    user_id=UserId(self.user_id) if self.user_id else None,
                     search_time_ms=total_time,
                     embedding_time_ms=embedding_time,
                     oracle_time_ms=vector_timings.get("oracle_ms", 0),
@@ -154,7 +164,7 @@ class RecommendationService:
 
         # Save conversation to Oracle
         await self.conversation_service.add_message(
-            session_id=session["id"],
+            session_id=session.id,
             user_id=self.user_id,
             role="user",
             content=query,
@@ -162,7 +172,7 @@ class RecommendationService:
         )
 
         await self.conversation_service.add_message(
-            session_id=session["id"],
+            session_id=session.id,
             user_id=self.user_id,
             role="assistant",
             content=ai_response,
@@ -185,8 +195,8 @@ class RecommendationService:
                 schemas.ChatMessage(message=ai_response, source="ai"),
             ],
             answer=ai_response,
-            query_id=query_id,
-            session_id=session_id,
+            query_id=QueryId(query_id),
+            session_id=schemas.SessionId(session_id),
             search_metrics=await self.metrics_service.get_performance_stats(hours=1),
             from_cache=response_cache_hit,
             embedding_cache_hit=embedding_cache_hit,
@@ -209,7 +219,7 @@ class RecommendationService:
         """
 
         chat_metadata = chat_metadata or {}
-        vector_timings = {"embedding_ms": 0, "oracle_ms": 0, "total_ms": 0}
+        vector_timings: dict[str, float] = {"embedding_ms": 0.0, "oracle_ms": 0.0, "total_ms": 0.0}
         similarity_score = None
 
         # Use semantic intent detection with the pre-computed embedding
@@ -234,15 +244,14 @@ class RecommendationService:
         # Only perform vector search for product-related intents
         if intent == "PRODUCT_RAG":
             # Perform vector search using the pre-computed embedding
-            (
-                matched_documents,
-                embedding_cache_hit,
-                vector_timings,
-            ) = await self.vector_search.similarity_search_with_embedding(query_embedding, k=4)
-            matched_product_ids = [match["metadata"]["id"] for match in matched_documents]
+            matched_documents, product_vector_timings = await self.products_service.search_by_vector_with_timing(
+                query_embedding, limit=4
+            )
+            vector_timings.update(product_vector_timings)
+            matched_product_ids = [match["id"] for match in matched_documents]
 
             # Store embedding cache hit status in metadata
-            chat_metadata["embedding_cache_hit"] = embedding_cache_hit
+            chat_metadata["embedding_cache_hit"] = False  # Not available from direct vector search
 
             if matched_product_ids:
                 # Get product details using our new service
@@ -253,7 +262,7 @@ class RecommendationService:
                         similar_products.append(product)
 
                 chat_metadata["product_matches"] = [
-                    f"- {product['name']}: {product['description']}" for product in similar_products
+                    f"- {product.name}: {product.description}" for product in similar_products
                 ]
                 # Get the similarity score of the top match
                 similarity_score = 1 - matched_documents[0]["distance"] if matched_documents else None
@@ -281,24 +290,30 @@ class RecommendationService:
         # Get or create session
         if not session_id:
             session = await self.session_service.create_session(self.user_id)
-            session_id = session["session_id"]
+            session_id = session.session_id
         else:
             active_session = await self.session_service.get_active_session(session_id)
             if active_session:
                 session = active_session
             else:
                 session = await self.session_service.create_session(self.user_id)
-                session_id = session["session_id"]
+                session_id = session.session_id
 
-        # Route the question (same as regular recommendation)
+        # Get embedding for the user query once for streaming
+        if self.embedding_cache:
+            query_embedding, _ = await self.embedding_cache.get_embedding(query, self.vertex_ai)
+        else:
+            query_embedding = await self.vertex_ai.create_embedding(query)
+
+        # Route the question using pre-computed embedding
         chat_metadata: dict[str, Any] = {}
-        chat_metadata, matched_product_ids, _vector_timings = await self._route_products_question(query, chat_metadata)
+        chat_metadata, matched_product_ids, _vector_timings, _similarity = await self._route_products_question(query, query_embedding, chat_metadata)
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
             self.user_id,
             limit=10,
-            session_id=session["id"],
+            session_id=session.id,
         )
 
         # Format conversation history for Vertex AI
@@ -339,7 +354,7 @@ class RecommendationService:
         query_id = str(uuid.uuid4())
 
         await self.conversation_service.add_message(
-            session_id=session["id"],
+            session_id=session.id,
             user_id=self.user_id,
             role="user",
             content=query,
@@ -347,7 +362,7 @@ class RecommendationService:
         )
 
         await self.conversation_service.add_message(
-            session_id=session["id"],
+            session_id=session.id,
             user_id=self.user_id,
             role="assistant",
             content=full_response,

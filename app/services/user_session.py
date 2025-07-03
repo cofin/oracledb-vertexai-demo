@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class UserSessionService:
     """Oracle session management using a repository."""
 
-    def __init__(self, user_session_repository: UserSessionRepository):
+    def __init__(self, user_session_repository: UserSessionRepository) -> None:
         """Initialize with user session repository."""
         self.repository = user_session_repository
 

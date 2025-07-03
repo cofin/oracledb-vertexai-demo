@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 if TYPE_CHECKING:
-    from uuid import UUID
 
     from app.db.repositories.chat_conversation import ChatConversationRepository
     from app.schemas import ChatConversationDTO
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 class ChatConversationService:
     """Conversation history using a repository."""
 
-    def __init__(self, chat_conversation_repository: ChatConversationRepository):
+    def __init__(self, chat_conversation_repository: ChatConversationRepository) -> None:
         """Initialize with chat conversation repository."""
         self.repository = chat_conversation_repository
 

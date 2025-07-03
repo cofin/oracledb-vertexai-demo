@@ -1,8 +1,12 @@
+import oracledb
+
 from app.schemas import CompanyDTO
+
 from .base import BaseRepository
 
+
 class CompanyRepository(BaseRepository[CompanyDTO]):
-    def __init__(self, connection):
+    def __init__(self, connection: oracledb.AsyncConnection) -> None:
         super().__init__(connection, CompanyDTO)
 
     async def get_all(self) -> list[CompanyDTO]:
@@ -20,8 +24,9 @@ class CompanyRepository(BaseRepository[CompanyDTO]):
     async def create_company(self, name: str) -> CompanyDTO | None:
         query = "INSERT INTO company (name) VALUES (:name) RETURNING id INTO :id"
         async with self.connection.cursor() as cursor:
-            await cursor.execute(query, {"name": name, "id": cursor.var(int)})
-            company_id = cursor.bindvars["id"].getvalue()
+            id_var = cursor.var(int)
+            await cursor.execute(query, {"name": name, "id": id_var})
+            company_id = id_var.getvalue()[0]
             await self.connection.commit()
             return await self.get_by_id(company_id)
 
@@ -39,4 +44,4 @@ class CompanyRepository(BaseRepository[CompanyDTO]):
         async with self.connection.cursor() as cursor:
             await cursor.execute(query, {"id": company_id})
             await self.connection.commit()
-            return cursor.rowcount > 0
+            return bool(cursor.rowcount > 0)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.db.repositories.shop import ShopRepository
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 class ShopService:
     """Handles database operations for shops using a repository."""
 
-    def __init__(self, shop_repository: ShopRepository):
+    def __init__(self, shop_repository: ShopRepository) -> None:
         """Initialize with shop repository."""
         self.repository = shop_repository
 
@@ -30,7 +30,7 @@ class ShopService:
         """Create a new shop."""
         return await self.repository.create_shop(name, address)
 
-    async def update_shop(self, shop_id: int, updates: dict[str, any]) -> ShopDTO | None:
+    async def update_shop(self, shop_id: int, updates: dict[str, Any]) -> ShopDTO | None:
         """Update a shop."""
         return await self.repository.update_shop(shop_id, updates)
 

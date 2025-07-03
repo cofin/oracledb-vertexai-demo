@@ -30,7 +30,6 @@ from app.__metadata__ import __version__
 if TYPE_CHECKING:
     from rich.console import Console
 
-
 __all__ = (
     "bulk_embed",
     "clear_cache",
@@ -39,6 +38,7 @@ __all__ = (
     "load_fixtures",
     "load_vectors",
     "model_info",
+    "reset_embeddings",
     "truncate_tables",
     "version_callback",
 )
@@ -260,7 +260,7 @@ def clear_cache(
     anyio.run(_clear_cache)
 
 
-def _confirm_clear(console: Console, tables: list[str]) -> bool:
+def _confirm_clear(console, tables: list[str]) -> bool:
     """Confirm cache clearing with user."""
     console.print("[bold]Tables to clear:[/bold]")
     for table in tables:
@@ -292,14 +292,14 @@ def _get_tables_to_truncate(skip_cache: bool, skip_session: bool, skip_data: boo
     return tables
 
 
-def _display_tables(console: Console, tables: list[str]) -> None:
+def _display_tables(console, tables: list[str]) -> None:
     """Display tables that will be truncated."""
     console.print("[bold]Tables to truncate:[/bold]")
     for table in tables:
         console.print(f"  • {table}")
 
 
-def _confirm_truncate(console: Console) -> bool:
+def _confirm_truncate(console) -> bool:
     """Confirm truncation with user."""
     console.print("\n[bold red]⚠️  WARNING: This will remove ALL data from the selected tables![/bold red]")
     confirm = Prompt.ask(
@@ -503,12 +503,11 @@ def reset_embeddings(force: bool) -> None:
         """Execute the embedding reset."""
         from app.config import oracle_async
 
-        async with oracle_async.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                with console.status("[bold green]Resetting embeddings..."):
-                    await cursor.execute("UPDATE product SET embedding = NULL, embedding_generated_on = NULL")
-                    await conn.commit()
-                    console.print(f"[green]✓ Reset {cursor.rowcount} product embeddings.[/green]")
+        async with oracle_async.get_connection() as conn, conn.cursor() as cursor:
+            with console.status("[bold green]Resetting embeddings..."):
+                await cursor.execute("UPDATE product SET embedding = NULL, embedding_generated_on = NULL")
+                await conn.commit()
+                console.print(f"[green]✓ Reset {cursor.rowcount} product embeddings.[/green]")
 
     anyio.run(_reset_embeddings)
 

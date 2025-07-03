@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypeVar
 from app import config
 from app.db.repositories.chat_conversation import ChatConversationRepository
 from app.db.repositories.company import CompanyRepository
+from app.db.repositories.embedding_cache import EmbeddingCacheRepository
 from app.db.repositories.intent_exemplar import IntentExemplarRepository
 from app.db.repositories.inventory import InventoryRepository
 from app.db.repositories.product import ProductRepository
@@ -44,103 +45,64 @@ async def provide_db_connection() -> AsyncGenerator[AsyncConnection, None]:
         yield conn
 
 
-async def provide_company_repository(db_connection: AsyncConnection) -> CompanyRepository:
-    """Provide Company repository."""
-    return CompanyRepository(db_connection)
-
-
-async def provide_product_repository(db_connection: AsyncConnection) -> ProductRepository:
-    """Provide Product repository."""
-    return ProductRepository(db_connection)
-
-
-async def provide_shop_repository(db_connection: AsyncConnection) -> ShopRepository:
-    """Provide Shop repository."""
-    return ShopRepository(db_connection)
-
-
-async def provide_inventory_repository(db_connection: AsyncConnection) -> InventoryRepository:
-    """Provide Inventory repository."""
-    return InventoryRepository(db_connection)
-
-
-async def provide_user_session_repository(db_connection: AsyncConnection) -> UserSessionRepository:
-    """Provide UserSession repository."""
-    return UserSessionRepository(db_connection)
-
-
-async def provide_chat_conversation_repository(db_connection: AsyncConnection) -> ChatConversationRepository:
-    """Provide ChatConversation repository."""
-    return ChatConversationRepository(db_connection)
-
-
-async def provide_response_cache_repository(db_connection: AsyncConnection) -> ResponseCacheRepository:
-    """Provide ResponseCache repository."""
-    return ResponseCacheRepository(db_connection)
-
-
-async def provide_search_metrics_repository(db_connection: AsyncConnection) -> SearchMetricsRepository:
-    """Provide SearchMetrics repository."""
-    return SearchMetricsRepository(db_connection)
-
-
-async def provide_intent_exemplar_repository(db_connection: AsyncConnection) -> IntentExemplarRepository:
-    """Provide IntentExemplar repository."""
-    return IntentExemplarRepository(db_connection)
-
-
-async def provide_company_service(company_repository: CompanyRepository) -> CompanyService:
+async def provide_company_service(db_connection: AsyncConnection) -> CompanyService:
     """Provide Company service."""
-    return CompanyService(company_repository)
+    repository = CompanyRepository(db_connection)
+    return CompanyService(repository)
 
 
-async def provide_product_service(product_repository: ProductRepository) -> ProductService:
+async def provide_product_service(db_connection: AsyncConnection) -> ProductService:
     """Provide Product service."""
-    return ProductService(product_repository)
+    repository = ProductRepository(db_connection)
+    return ProductService(repository)
 
 
-async def provide_shop_service(shop_repository: ShopRepository) -> ShopService:
+async def provide_shop_service(db_connection: AsyncConnection) -> ShopService:
     """Provide Shop service."""
-    return ShopService(shop_repository)
+    repository = ShopRepository(db_connection)
+    return ShopService(repository)
 
 
-async def provide_inventory_service(inventory_repository: InventoryRepository) -> InventoryService:
+async def provide_inventory_service(db_connection: AsyncConnection) -> InventoryService:
     """Provide Inventory service."""
-    return InventoryService(inventory_repository)
+    repository = InventoryRepository(db_connection)
+    return InventoryService(repository)
 
 
-async def provide_user_session_service(user_session_repository: UserSessionRepository) -> UserSessionService:
+async def provide_user_session_service(db_connection: AsyncConnection) -> UserSessionService:
     """Provide UserSession service."""
-    return UserSessionService(user_session_repository)
+    repository = UserSessionRepository(db_connection)
+    return UserSessionService(repository)
 
 
-async def provide_chat_conversation_service(
-    chat_conversation_repository: ChatConversationRepository,
-) -> ChatConversationService:
+async def provide_chat_conversation_service(db_connection: AsyncConnection) -> ChatConversationService:
     """Provide ChatConversation service."""
-    return ChatConversationService(chat_conversation_repository)
+    repository = ChatConversationRepository(db_connection)
+    return ChatConversationService(repository)
 
 
-async def provide_response_cache_service(response_cache_repository: ResponseCacheRepository) -> ResponseCacheService:
+async def provide_response_cache_service(db_connection: AsyncConnection) -> ResponseCacheService:
     """Provide ResponseCache service."""
-    return ResponseCacheService(response_cache_repository)
+    repository = ResponseCacheRepository(db_connection)
+    return ResponseCacheService(repository)
 
 
-async def provide_search_metrics_service(search_metrics_repository: SearchMetricsRepository) -> SearchMetricsService:
+async def provide_search_metrics_service(db_connection: AsyncConnection) -> SearchMetricsService:
     """Provide SearchMetrics service."""
-    return SearchMetricsService(search_metrics_repository)
+    repository = SearchMetricsRepository(db_connection)
+    return SearchMetricsService(repository)
 
 
-async def provide_intent_exemplar_service(
-    intent_exemplar_repository: IntentExemplarRepository,
-) -> IntentExemplarService:
+async def provide_intent_exemplar_service(db_connection: AsyncConnection) -> IntentExemplarService:
     """Provide IntentExemplar service."""
-    return IntentExemplarService(intent_exemplar_repository)
+    repository = IntentExemplarRepository(db_connection)
+    return IntentExemplarService(repository)
 
 
-async def provide_embedding_cache(embedding_cache_repository: EmbeddingCacheRepository) -> EmbeddingCache:
+async def provide_embedding_cache(db_connection: AsyncConnection) -> EmbeddingCache:
     """Provide Embedding Cache service."""
-    return EmbeddingCache(embedding_cache_repository, ttl_hours=24)
+    repository = EmbeddingCacheRepository(db_connection)
+    return EmbeddingCache(repository, ttl_hours=24)
 
 
 async def provide_vertex_ai_service() -> VertexAIService:
@@ -150,9 +112,10 @@ async def provide_vertex_ai_service() -> VertexAIService:
 
 async def provide_recommendation_service(
     request: Request,
+    db_connection: AsyncConnection,
     vertex_ai_service: VertexAIService,
-    product_repository: ProductRepository,
-    shop_service: ShopService,
+    products_service: ProductService,
+    shops_service: ShopService,
     session_service: UserSessionService,
     conversation_service: ChatConversationService,
     cache_service: ResponseCacheService,
@@ -162,16 +125,17 @@ async def provide_recommendation_service(
 ) -> RecommendationService:
     """Provide recommendation service with Oracle integration."""
     user_id = BrowserFingerprint.get_stable_user_id(request)
+    exemplar_repository = IntentExemplarRepository(db_connection)
     return RecommendationService(
         vertex_ai_service=vertex_ai_service,
-        vector_search_service=None,  # This is removed
-        products_service=ProductService(product_repository),
-        shops_service=shop_service,
+        products_service=products_service,
+        shops_service=shops_service,
         session_service=session_service,
         conversation_service=conversation_service,
         cache_service=cache_service,
         metrics_service=metrics_service,
         exemplar_service=exemplar_service,
+        exemplar_repository=exemplar_repository,
         embedding_cache=embedding_cache,
         user_id=user_id,
     )

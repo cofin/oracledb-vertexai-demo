@@ -21,7 +21,7 @@ import uuid
 from typing import TYPE_CHECKING, Annotated
 
 from litestar import Controller, get, post
-from litestar.di import Provide
+from litestar.params import Parameter
 from litestar.plugins.htmx import (
     HTMXRequest,
     HTMXTemplate,
@@ -30,37 +30,24 @@ from litestar.plugins.htmx import (
 from litestar.response import File, Stream
 
 from app import schemas
-from app.server import deps
 from app.server.exception_handlers import HTMXValidationException
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from litestar.enums import RequestEncodingType
-    from litestar.params import Body, Cookie
+    from litestar.params import Body
 
+    from app.services.embedding_cache import EmbeddingCache
+    from app.services.product import ProductService
     from app.services.recommendation import RecommendationService
     from app.services.response_cache import ResponseCacheService
     from app.services.search_metrics import SearchMetricsService
-    from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
+    from app.services.vertex_ai import VertexAIService
 
 
 class CoffeeChatController(Controller):
     """Coffee Chat Controller with enhanced security measures."""
-
-    dependencies = {
-        "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
-        "vector_search_service": Provide(deps.provide_oracle_vector_search_service),
-        "products_service": Provide(deps.provide_product_service),
-        "shops_service": Provide(deps.provide_shop_service),
-        "session_service": Provide(deps.provide_user_session_service),
-        "conversation_service": Provide(deps.provide_chat_conversation_service),
-        "embedding_cache": Provide(deps.provide_embedding_cache),
-        "cache_service": Provide(deps.provide_response_cache_service),
-        "metrics_service": Provide(deps.provide_search_metrics_service),
-        "exemplar_service": Provide(deps.provide_intent_exemplar_service),
-        "recommendation_service": Provide(deps.provide_recommendation_service),
-    }
 
     @staticmethod
     def generate_csp_nonce() -> str:
@@ -92,11 +79,31 @@ class CoffeeChatController(Controller):
         return persona
 
     @get(path="/", name="coffee_chat.show")
-    async def show_coffee_chat(self) -> HTMXTemplate:
-        """Serve site root with CSP nonce."""
+    async def show_coffee_chat(
+        self,
+        session_service: UserSessionService,
+        conversation_service: ChatConversationService,
+        request: HTMXRequest,
+        session_id: str | None = Parameter(cookie="session_id", default=None),
+    ) -> HTMXTemplate:
+        """Serve site root with CSP nonce and conversation history."""
+        conversation_history = []
+        if session_id:
+            active_session = await session_service.get_active_session(session_id)
+            if active_session:
+                history = await conversation_service.get_conversation_history(
+                    user_id=active_session.user_id,
+                    session_id=active_session.id,
+                    limit=50,
+                )
+                conversation_history = reversed(history)
+
         return HTMXTemplate(
             template_name="coffee_chat.html",
-            context={"csp_nonce": self.generate_csp_nonce()},
+            context={
+                "csp_nonce": self.generate_csp_nonce(),
+                "conversation_history": conversation_history,
+            },
             headers={
                 "X-Content-Type-Options": "nosniff",
                 "X-Frame-Options": "DENY",
@@ -114,7 +121,7 @@ class CoffeeChatController(Controller):
         ],
         recommendation_service: RecommendationService,
         request: HTMXRequest,
-        session_id: str | None = Cookie(None),
+        session_id: str | None = Parameter(cookie="session_id", default=None),
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests with enhanced security."""
 
@@ -356,8 +363,9 @@ class CoffeeChatController(Controller):
         self,
         data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
         vertex_ai_service: VertexAIService,
-        vector_search_service: OracleVectorSearchService,
+        products_service: ProductService,
         metrics_service: SearchMetricsService,
+        embedding_cache: EmbeddingCache,
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Interactive vector search demonstration."""
@@ -367,21 +375,33 @@ class CoffeeChatController(Controller):
         full_request_start = time.time()
         detailed_timings: dict[str, float] = {}
 
-        # 1. Time the similarity_search call
-        similarity_search_start = time.time()
-        results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
-        detailed_timings["similarity_search_total_ms"] = (time.time() - similarity_search_start) * 1000
+        # 1. Get embedding for the query
+        embedding_start = time.time()
+        embedding, from_cache = await embedding_cache.get_embedding(query, vertex_ai_service)
+        embedding_time = (time.time() - embedding_start) * 1000
+        detailed_timings["embedding_ms"] = embedding_time
+
+        # 2. Perform vector search
+        search_start = time.time()
+        results, vector_timings = await products_service.search_by_vector_with_timing(embedding, limit=5)
+        vector_timings["embedding_ms"] = embedding_time
+        detailed_timings["similarity_search_total_ms"] = (time.time() - search_start) * 1000
         detailed_timings.update(vector_timings)  # Merge internal timings
+
+        # For compatibility with existing code
+        embedding_cache_hit = from_cache
 
         # 2. Time the metrics recording
         metrics_record_start = time.time()
         await metrics_service.record_search(
             schemas.SearchMetricsCreate(
-                query_id=str(uuid.uuid4()),
-                user_id="demo_user",
+                query_id=schemas.QueryId(str(uuid.uuid4())),
+                user_id=schemas.UserId("demo_user"),
                 search_time_ms=(time.time() - full_request_start) * 1000,  # Current total
-                embedding_time_ms=vector_timings["embedding_ms"],
-                oracle_time_ms=vector_timings["oracle_ms"],
+                embedding_time_ms=detailed_timings["embedding_ms"],
+                oracle_time_ms=detailed_timings["oracle_ms"],
+                ai_time_ms=0,
+                intent_time_ms=0,
                 similarity_score=1 - results[0]["distance"] if results else 0,
                 result_count=len(results),
             )
@@ -479,6 +499,16 @@ class CoffeeChatController(Controller):
 
         try:
             query_metrics = await metrics_service.get_query_details(message_id) or {}
+            if not query_metrics:
+                return {"error": "Performance metrics not available for this query."}
+
+            total_time = query_metrics.get("search_time_ms", 0)
+            embedding_time = query_metrics.get("embedding_time_ms", 0)
+            oracle_time = query_metrics.get("oracle_time_ms", 0)
+            ai_time = query_metrics.get("ai_time_ms", 0)
+            intent_time = query_metrics.get("intent_time_ms", 0)
+            other_time = total_time - embedding_time - oracle_time - ai_time - intent_time
+
             return {
                 "intent_query": query_metrics.get("intent_query", ""),
                 "intent_type": query_metrics.get("intent_type", "PRODUCT_RAG"),
@@ -489,9 +519,12 @@ class CoffeeChatController(Controller):
                 "vector_search_time": query_metrics.get("oracle_time_ms", 8.7),
                 "cache_queries": query_metrics.get("cache_queries", []),
                 "execution_times": {
-                    "embedding_generation": query_metrics.get("embedding_time_ms"),
-                    "vector_search": query_metrics.get("oracle_time_ms"),
-                    "total": query_metrics.get("search_time_ms"),
+                    "embedding_generation": embedding_time,
+                    "vector_search": oracle_time,
+                    "ai_processing": ai_time,
+                    "intent_routing": intent_time,
+                    "other": other_time,
+                    "total": total_time,
                 },
             }
 

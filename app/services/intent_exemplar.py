@@ -14,7 +14,7 @@ logger = structlog.get_logger()
 class IntentExemplarService:
     """Service for managing intent exemplar embeddings using a repository."""
 
-    def __init__(self, intent_exemplar_repository: IntentExemplarRepository):
+    def __init__(self, intent_exemplar_repository: IntentExemplarRepository) -> None:
         """Initialize with intent exemplar repository."""
         self.repository = intent_exemplar_repository
 
