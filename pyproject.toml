@@ -53,7 +53,9 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "build" },
+    { include-group = "docs" },
 ]
+docs = ["mkdocs", "mkdocs-material"]
 extras = []
 lint = ["mypy", "pre-commit", "pyright", "ruff", "slotscheck", "types-click"]
 test = [
