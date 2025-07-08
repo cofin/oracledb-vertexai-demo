@@ -8,11 +8,11 @@ This document outlines a series of proposed enhancements to the existing OracleD
 
 The application follows a service-oriented architecture with a clear separation of concerns between the web layer (Litestar), business logic (Services), and data layer (Oracle 23AI). Key characteristics of the current design include:
 
-*   **Litestar:** Serves as the high-performance async web framework for both a RESTful API and HTMX-driven UI.
-*   **Raw SQL in Services:** A deliberate choice for clarity, services directly execute raw `oracledb` SQL queries.
-*   **msgspec:** Used for high-performance data validation and serialization in API endpoints.
-*   **Jinja2 & HTMX:** Provide a dynamic, low-JavaScript user interface through server-side rendered partials.
-*   **Unified Database:** Oracle 23AI is effectively used as a multi-model database, handling relational data, vectors, JSON, and caching.
+- **Litestar:** Serves as the high-performance async web framework for both a RESTful API and HTMX-driven UI.
+- **Raw SQL in Services:** A deliberate choice for clarity, services directly execute raw `oracledb` SQL queries.
+- **msgspec:** Used for high-performance data validation and serialization in API endpoints.
+- **Jinja2 & HTMX:** Provide a dynamic, low-JavaScript user interface through server-side rendered partials.
+- **Unified Database:** Oracle 23AI is effectively used as a multi-model database, handling relational data, vectors, JSON, and caching.
 
 While this approach is direct and effective, we can introduce patterns that will enhance the system's scalability and ease of future development.
 
@@ -24,25 +24,26 @@ The current pattern of embedding raw `oracledb` cursor management directly withi
 
 **Proposal:** Introduce a dedicated **Repository Pattern**.
 
-*   **What:** A Repository is a class dedicated to data access for a single entity (e.g., `ProductRepository`, `SessionRepository`). It encapsulates all SQL queries and `oracledb` interactions.
-*   **Why:**
-    *   **Decoupling:** Services focus purely on business logic and orchestration, delegating data persistence to repositories.
-    *   **DRY (Don't Repeat Yourself):** Centralizes cursor management and row mapping logic.
-    *   **Testability:** Allows for easily mocking the repository layer in service unit tests, avoiding the need for a live database connection.
+- **What:** A Repository is a class dedicated to data access for a single entity (e.g., `ProductRepository`, `SessionRepository`). It encapsulates all SQL queries and `oracledb` interactions.
+- **Why:**
+    - **Decoupling:** Services focus purely on business logic and orchestration, delegating data persistence to repositories.
+    - **DRY (Don't Repeat Yourself):** Centralizes cursor management and row mapping logic.
+    - **Testability:** Allows for easily mocking the repository layer in service unit tests, avoiding the need for a live database connection.
 
 #### Clarifying the Service and Repository Layers
 
 This refactoring introduces a clear, layered architecture that enhances readability and maintainability. The roles of each layer become highly specialized:
 
-*   **Controllers (`app/server/controllers.py`):** The entry point for HTTP requests. Responsible for parsing incoming data, validating it with `msgspec` schemas, and invoking the appropriate service method. It knows nothing about business logic or data access.
+- **Controllers (`app/server/controllers.py`):** The entry point for HTTP requests. Responsible for parsing incoming data, validating it with `msgspec` schemas, and invoking the appropriate service method. It knows nothing about business logic or data access.
 
-*   **Services (`app/services/`):** The core of the application's business logic. A service orchestrates operations to fulfill a use case. It may call multiple repositories or even other services (e.g., `RecommendationService` calls `ProductService`). **Crucially, services are now completely decoupled from the database.** They contain no SQL, no `oracledb` code, and operate purely on data objects (DTOs).
+- **Services (`app/services/`):** The core of the application's business logic. A service orchestrates operations to fulfill a use case. It may call multiple repositories or even other services (e.g., `RecommendationService` calls `ProductService`). **Crucially, services are now completely decoupled from the database.** They contain no SQL, no `oracledb` code, and operate purely on data objects (DTOs).
 
-*   **Repositories (`app/db/repositories/`):** The dedicated Data Access Layer (DAL). A repository's sole responsibility is to manage the interaction with the database for a specific data entity (e.g., `Product`). It contains all the SQL queries and the logic to map database rows to application data objects.
+- **Repositories (`app/db/repositories/`):** The dedicated Data Access Layer (DAL). A repository's sole responsibility is to manage the interaction with the database for a specific data entity (e.g., `Product`). It contains all the SQL queries and the logic to map database rows to application data objects.
 
 This separation can be visualized as follows:
 
 **New Architecture Flow:**
+
 ```
 [Controller] --> [Service] --> [Repository] --> [Database]
    (HTTP)      (Business      (SQL & Data
@@ -56,9 +57,10 @@ This is a significant improvement over the previous model where the Service laye
 The initial proposal for mapping database rows to models was brittle. A robust implementation must not depend on the order of columns in a `SELECT` statement. The correct approach, inspired by the existing `app/db/utils.py`, is to dynamically build a dictionary using the column names from the database cursor and then instantiate the `msgspec` model.
 
 **The improved logic is as follows:**
-1.  After executing a query, get the list of column names from `cursor.description`.
-2.  For each row returned by the cursor (which is a tuple), create a dictionary by zipping the column names with the row's values.
-3.  Instantiate the target `msgspec.Struct` using keyword arguments from this dictionary (e.g., `MyModel(**row_dict)`).
+
+1. After executing a query, get the list of column names from `cursor.description`.
+2. For each row returned by the cursor (which is a tuple), create a dictionary by zipping the column names with the row's values.
+3. Instantiate the target `msgspec.Struct` using keyword arguments from this dictionary (e.g., `MyModel(**row_dict)`).
 
 This ensures that as long as the column names in the SQL query match the field names in the `Struct`, the mapping will be correct, regardless of column order.
 
@@ -178,11 +180,11 @@ The current dependency injection is functional but can be made more robust and e
 
 **Proposal:** Define dependencies explicitly in the application layer.
 
-*   **What:** Use Litestar's `Provide` callable in route handlers or controllers to manage dependency lifecycles.
-*   **Why:**
-    *   **Clarity:** Makes dependencies explicit and their scope (request, app) clear.
-    *   **Flexibility:** Easily swap implementations for testing or different environments.
-    *   **Lifecycle Management:** Handles setup and teardown of resources like connection pools.
+- **What:** Use Litestar's `Provide` callable in route handlers or controllers to manage dependency lifecycles.
+- **Why:**
+    - **Clarity:** Makes dependencies explicit and their scope (request, app) clear.
+    - **Flexibility:** Easily swap implementations for testing or different environments.
+    - **Lifecycle Management:** Handles setup and teardown of resources like connection pools.
 
 **Example: Managing DB Connections**
 
@@ -218,7 +220,7 @@ app = Litestar(
 
 **Proposal:** Implement custom exception handlers to ensure all API errors return a consistent JSON structure.
 
-*   **Why:** Provides a predictable error format for API consumers, improving their ability to handle failures gracefully.
+- **Why:** Provides a predictable error format for API consumers, improving their ability to handle failures gracefully.
 
 **Example: Custom Exception Handler**
 
@@ -254,7 +256,7 @@ The project already leverages `msgspec` for performance. We can enhance its usag
 
 **Proposal:** Use `msgspec.Meta` for constraints and `typing.NewType` for strong type hinting.
 
-*   **Why:** Catches data validation errors at the boundary of the application, ensuring services and repositories operate on valid data. `NewType` prevents accidentally mixing up different kinds of IDs (e.g., `ProductId` vs `ShopId`).
+- **Why:** Catches data validation errors at the boundary of the application, ensuring services and repositories operate on valid data. `NewType` prevents accidentally mixing up different kinds of IDs (e.g., `ProductId` vs `ShopId`).
 
 **Example: Advanced Schema Definition**
 
@@ -287,7 +289,7 @@ class ProductDTO(msgspec.Struct):
 
 **Proposal:** Use Jinja2 macros to create reusable, parameterizable UI components.
 
-*   **Why:** Reduces duplication in HTML templates and makes the frontend code more modular and easier to maintain, similar to components in a JavaScript framework.
+- **Why:** Reduces duplication in HTML templates and makes the frontend code more modular and easier to maintain, similar to components in a JavaScript framework.
 
 **Example: A Reusable Product Card Macro**
 
@@ -295,9 +297,9 @@ class ProductDTO(msgspec.Struct):
 <!-- templates/macros/_ui_components.html (New) -->
 {% macro product_card(product) %}
 <div class="bg-white p-4 rounded shadow">
-    <h3 class="font-bold">{{ product.name }}</h3>
-    <p class="text-sm">{{ product.description }}</p>
-    <p class="text-green-600 font-bold">${{ product.price }}</p>
+  <h3 class="font-bold">{{ product.name }}</h3>
+  <p class="text-sm">{{ product.description }}</p>
+  <p class="text-green-600 font-bold">${{ product.price }}</p>
 </div>
 {% endmacro %}
 ```
@@ -307,9 +309,7 @@ class ProductDTO(msgspec.Struct):
 {% from "macros/_ui_components.html" import product_card %}
 
 <div class="grid grid-cols-2 gap-4 mt-4">
-    {% for product in products %}
-        {{ product_card(product) }}
-    {% endfor %}
+  {% for product in products %} {{ product_card(product) }} {% endfor %}
 </div>
 ```
 
@@ -317,7 +317,7 @@ class ProductDTO(msgspec.Struct):
 
 **Proposal:** Use custom events and `hx-trigger` to decouple frontend components.
 
-*   **Why:** Instead of one component directly targeting another (`hx-target`), it can emit a generic event that other components can listen for. This creates a more flexible and maintainable frontend architecture.
+- **Why:** Instead of one component directly targeting another (`hx-target`), it can emit a generic event that other components can listen for. This creates a more flexible and maintainable frontend architecture.
 
 **Example: Broadcasting a "newMessage" Event**
 
@@ -326,21 +326,25 @@ class ProductDTO(msgspec.Struct):
 
 <!-- The form no longer targets a specific element. -->
 <!-- Instead, it triggers a swap on the body after a successful POST. -->
-<form hx-post="/coffee/chat/send"
-      hx-swap="none"
-      _="on htmx:afterOnLoad from this
+<form
+  hx-post="/coffee/chat/send"
+  hx-swap="none"
+  _="on htmx:afterOnLoad from this
          tell the body
-         trigger newMessage from me">
-    <input name="message" placeholder="Ask about coffee..." />
-    <button type="submit">Send ☕</button>
+         trigger newMessage from me"
+>
+  <input name="message" placeholder="Ask about coffee..." />
+  <button type="submit">Send ☕</button>
 </form>
 
 <!-- The chat history now listens for the 'newMessage' event -->
-<div id="chat-history"
-     hx-get="/coffee/chat/history"
-     hx-trigger="load, newMessage from:body"
-     hx-swap="innerHTML">
-    <!-- Chat history will be loaded here on page load and on new messages -->
+<div
+  id="chat-history"
+  hx-get="/coffee/chat/history"
+  hx-trigger="load, newMessage from:body"
+  hx-swap="innerHTML"
+>
+  <!-- Chat history will be loaded here on page load and on new messages -->
 </div>
 ```
 
@@ -349,37 +353,39 @@ class ProductDTO(msgspec.Struct):
 The current intent detection relies on vector similarity against a static list of exemplar phrases. This is fast but can be brittle. We can improve this using more advanced Gemini capabilities.
 
 #### Proposal 1: Hybrid Intent Detection (Low Effort, High Impact)
+
 Continue using the fast vector search as the primary method, but add an LLM fallback for ambiguous cases.
 
-*   **Logic:**
-    1.  Perform vector search as usual.
-    2.  If the confidence score is high (e.g., > 0.80), trust the result.
-    3.  If the score is low (e.g., < 0.65), default to a safe option like `GENERAL_CONVERSATION`.
-    4.  If the score is in an "ambiguous" middle range, make a second call to the Gemini model with a **few-shot prompt** to get a more nuanced classification. This prompt includes a handful of examples to guide the model's decision.
+- **Logic:**
+  1. Perform vector search as usual.
+  2. If the confidence score is high (e.g., > 0.80), trust the result.
+  3. If the score is low (e.g., < 0.65), default to a safe option like `GENERAL_CONVERSATION`.
+  4. If the score is in an "ambiguous" middle range, make a second call to the Gemini model with a **few-shot prompt** to get a more nuanced classification. This prompt includes a handful of examples to guide the model's decision.
 
-*   **Benefit:** Improves accuracy for edge cases and non-standard phrasing without the overhead of a fully fine-tuned model.
+- **Benefit:** Improves accuracy for edge cases and non-standard phrasing without the overhead of a fully fine-tuned model.
 
 #### Proposal 2: Fine-Tuned Intent Model (High Effort, Maximum Accuracy)
+
 For the most robust and accurate solution, fine-tune a Gemini model specifically for this classification task.
 
-*   **Logic:**
-    1.  **Create a Dataset:** Compile a large JSONL file containing hundreds or thousands of labeled examples (`{"text_input": "some user query", "output": "PRODUCT_RAG"}`).
-    2.  **Tune Model:** Use the Gemini API or Google Cloud console to train a new, specialized model on this dataset.
-    3.  **Simplify Router:** The `IntentRouter` becomes much simpler. It no longer performs a vector search. Instead, it makes a single, direct API call to the fine-tuned model endpoint to get the intent.
+- **Logic:**
+  1. **Create a Dataset:** Compile a large JSONL file containing hundreds or thousands of labeled examples (`{"text_input": "some user query", "output": "PRODUCT_RAG"}`).
+  2. **Tune Model:** Use the Gemini API or Google Cloud console to train a new, specialized model on this dataset.
+  3. **Simplify Router:** The `IntentRouter` becomes much simpler. It no longer performs a vector search. Instead, it makes a single, direct API call to the fine-tuned model endpoint to get the intent.
 
-*   **Benefit:** This is the production-grade standard. It yields the highest accuracy, is optimized for the specific task, and can be faster and more cost-effective per-query at scale than the hybrid approach.
+- **Benefit:** This is the production-grade standard. It yields the highest accuracy, is optimized for the specific task, and can be faster and more cost-effective per-query at scale than the hybrid approach.
 
 ## 4. Conclusion & Refactoring Benefits
 
 The proposed enhancements build upon the solid foundation of the existing application. By introducing these patterns, we can achieve the following benefits:
 
-*   **Code Consolidation and Boilerplate Removal:** The primary benefit of this refactoring is the removal of repetitive code.
-    *   **Backend:** The Repository Pattern will eliminate raw `oracledb` cursor and connection management from all service classes. This boilerplate logic will be consolidated into a single `BaseRepository`, making services cleaner and more focused on business logic. The `app/services/base.py` file will be removed entirely. The `OracleVectorSearchService` in `app/services/vertex_ai.py` will also be removed, with its logic consolidated into the `ProductRepository`.
-    *   **Frontend:** Jinja2 macros will remove duplicated HTML blocks from templates. UI components like product cards will be defined once and reused, simplifying template maintenance.
-*   **Increased Maintainability:** With less duplicated code and clearer separation of concerns, the application becomes easier to understand, modify, and extend.
-*   **Improved Testability:** Decoupling the service layer from the data access layer allows for simpler, more reliable unit tests using mock repositories.
-*   **Enhanced Developer Experience:** Clearer patterns and less boilerplate lead to a faster and more enjoyable development process.
-*   **Greater Scalability:** The architecture is better prepared for future growth in complexity and features.
+- **Code Consolidation and Boilerplate Removal:** The primary benefit of this refactoring is the removal of repetitive code.
+    - **Backend:** The Repository Pattern will eliminate raw `oracledb` cursor and connection management from all service classes. This boilerplate logic will be consolidated into a single `BaseRepository`, making services cleaner and more focused on business logic. The `app/services/base.py` file will be removed entirely. The `OracleVectorSearchService` in `app/services/vertex_ai.py` will also be removed, with its logic consolidated into the `ProductRepository`.
+    - **Frontend:** Jinja2 macros will remove duplicated HTML blocks from templates. UI components like product cards will be defined once and reused, simplifying template maintenance.
+- **Increased Maintainability:** With less duplicated code and clearer separation of concerns, the application becomes easier to understand, modify, and extend.
+- **Improved Testability:** Decoupling the service layer from the data access layer allows for simpler, more reliable unit tests using mock repositories.
+- **Enhanced Developer Experience:** Clearer patterns and less boilerplate lead to a faster and more enjoyable development process.
+- **Greater Scalability:** The architecture is better prepared for future growth in complexity and features.
 
 These changes represent an evolutionary step for the codebase, aligning it with best practices for building large-scale, production-ready web applications.
 
@@ -388,99 +394,100 @@ These changes represent an evolutionary step for the codebase, aligning it with 
 This section outlines the step-by-step file modifications required to implement the proposed enhancements.
 
 ### Milestone 0: Pre-Refactoring Fixes and Enhancements
+
 This milestone addresses critical bugs and adds quality-of-life features to stabilize the current implementation before we begin the larger architectural refactor.
 
-1.  **Implement True Session Persistence:**
-    *   **File:** `app/server/controllers.py`, `app/services/recommendation.py`
-    *   **Action:**
-        *   Modify the `handle_coffee_chat` controller. When a new session is created by the `RecommendationService`, capture the `session_id` from the return value.
-        *   Set a secure, `HttpOnly` cookie on the `HTMXTemplate` response containing the `session_id`.
-        *   On subsequent requests, the controller will read the `session_id` from the request cookie and pass it to the `RecommendationService`. This will correctly retrieve the existing session and its chat history.
+1. **Implement True Session Persistence:**
+   - **File:** `app/server/controllers.py`, `app/services/recommendation.py`
+   - **Action:**
+     - Modify the `handle_coffee_chat` controller. When a new session is created by the `RecommendationService`, capture the `session_id` from the return value.
+     - Set a secure, `HttpOnly` cookie on the `HTMXTemplate` response containing the `session_id`.
+     - On subsequent requests, the controller will read the `session_id` from the request cookie and pass it to the `RecommendationService`. This will correctly retrieve the existing session and its chat history.
 
-2.  **Refactor Caching and Metrics Logic:**
-    *   **File:** `app/services/recommendation.py`
-    *   **Action:**
-        *   Refactor the `get_recommendation` method to fetch the query embedding **only once**.
-        *   This single embedding vector will then be passed as an argument to both the `intent_router` and the `vector_search_service`, eliminating the redundant API call.
-        *   Correct the metrics logging to use the *actual* similarity score returned from the vector search, not a hardcoded value.
+2. **Refactor Caching and Metrics Logic:**
+   - **File:** `app/services/recommendation.py`
+   - **Action:**
+     - Refactor the `get_recommendation` method to fetch the query embedding **only once**.
+     - This single embedding vector will then be passed as an argument to both the `intent_router` and the `vector_search_service`, eliminating the redundant API call.
+     - Correct the metrics logging to use the _actual_ similarity score returned from the vector search, not a hardcoded value.
 
-3.  **Add `reset-embeddings` CLI Command:**
-    *   **File:** `app/cli.py`, `app/server/core.py`
-    *   **Action:**
-        *   Create a new Click command function named `reset_embeddings` in `app/cli.py`.
-        *   This function will execute the SQL `UPDATE product SET embedding = NULL, embedding_generated_on = NULL;`.
-        *   It will include a `--force` flag to bypass a confirmation prompt, for safety.
-        *   Register the new `reset_embeddings` command in `app/server/core.py` so it's available via the application's CLI.
+3. **Add `reset-embeddings` CLI Command:**
+   - **File:** `app/cli.py`, `app/server/core.py`
+   - **Action:**
+     - Create a new Click command function named `reset_embeddings` in `app/cli.py`.
+     - This function will execute the SQL `UPDATE product SET embedding = NULL, embedding_generated_on = NULL;`.
+     - It will include a `--force` flag to bypass a confirmation prompt, for safety.
+     - Register the new `reset_embeddings` command in `app/server/core.py` so it's available via the application's CLI.
 
 ### Milestone 1: Refactor to Repository Pattern
 
-1.  **Create Directory Structure:**
-    *   Create new directory: `app/db/repositories/`
-    *   Create new file: `app/db/repositories/__init__.py`
-2.  **Implement Base Repository:**
-    *   Create new file: `app/db/repositories/base.py` containing the generic `BaseRepository` class to handle common database operations and model mapping.
-3.  **Create Concrete Repositories:**
-    *   For each data entity, create a dedicated repository file in `app/db/repositories/`. For example:
-        *   `product.py`
-        *   `shop.py`
-        *   `intent_exemplar.py`
-        *   `user_session.py`
-        *   ...and so on for all other data-accessing services.
-4.  **Refactor Service Layer:**
-    *   Modify each service in `app/services/` to remove raw `oracledb` logic and inheritance from `BaseService`.
-    *   Instead of a database connection, change the constructor to inject the corresponding repository.
-    *   Delegate all data access calls to the repository methods. For example, `app/services/product.py` will be updated to use `ProductRepository`.
-    *   Refactor `app/services/vertex_ai.py` to remove the `OracleVectorSearchService` class.
-5.  **Remove Obsolete Base Service:**
-    *   Delete the file `app/services/base.py`.
+1. **Create Directory Structure:**
+   - Create new directory: `app/db/repositories/`
+   - Create new file: `app/db/repositories/__init__.py`
+2. **Implement Base Repository:**
+   - Create new file: `app/db/repositories/base.py` containing the generic `BaseRepository` class to handle common database operations and model mapping.
+3. **Create Concrete Repositories:**
+   - For each data entity, create a dedicated repository file in `app/db/repositories/`. For example:
+     - `product.py`
+     - `shop.py`
+     - `intent_exemplar.py`
+     - `user_session.py`
+     - ...and so on for all other data-accessing services.
+4. **Refactor Service Layer:**
+   - Modify each service in `app/services/` to remove raw `oracledb` logic and inheritance from `BaseService`.
+   - Instead of a database connection, change the constructor to inject the corresponding repository.
+   - Delegate all data access calls to the repository methods. For example, `app/services/product.py` will be updated to use `ProductRepository`.
+   - Refactor `app/services/vertex_ai.py` to remove the `OracleVectorSearchService` class.
+5. **Remove Obsolete Base Service:**
+   - Delete the file `app/services/base.py`.
 
 ### Milestone 2: Enhance Litestar Configuration
 
-1.  **Implement Structured Dependency Injection:**
-    *   Modify `app/asgi.py`.
-    *   Create provider functions for the database connection pool and for each new repository and service.
-    *   Update the `Litestar` application constructor to use a `dependencies` dictionary populated with `Provide` calls for the entire application stack (repositories injected into services).
-2.  **Standardize API Error Handling:**
-    *   Create new file: `app/lib/exceptions.py` to define a custom `AppServiceException`.
-    *   Modify `app/server/exception_handlers.py` to add a handler for `AppServiceException` that returns a structured JSON error response.
-    *   Update `app/asgi.py` to register this new exception handler in the `Litestar` app.
+1. **Implement Structured Dependency Injection:**
+   - Modify `app/asgi.py`.
+   - Create provider functions for the database connection pool and for each new repository and service.
+   - Update the `Litestar` application constructor to use a `dependencies` dictionary populated with `Provide` calls for the entire application stack (repositories injected into services).
+2. **Standardize API Error Handling:**
+   - Create new file: `app/lib/exceptions.py` to define a custom `AppServiceException`.
+   - Modify `app/server/exception_handlers.py` to add a handler for `AppServiceException` that returns a structured JSON error response.
+   - Update `app/asgi.py` to register this new exception handler in the `Litestar` app.
 
 ### Milestone 3: Improve Schema Definitions
 
-1.  **Strengthen Type Safety and Validation:**
-    *   Modify `app/schemas.py`.
-    *   Use `typing.NewType` to create distinct types for different entity IDs (e.g., `ProductId`, `ShopId`).
-    *   Update all `msgspec.Struct` definitions to use these new, more specific types.
-    *   Add field-level validation (`min_length`, `max_length`, numeric constraints) to the structs using `msgspec.field`.
+1. **Strengthen Type Safety and Validation:**
+   - Modify `app/schemas.py`.
+   - Use `typing.NewType` to create distinct types for different entity IDs (e.g., `ProductId`, `ShopId`).
+   - Update all `msgspec.Struct` definitions to use these new, more specific types.
+   - Add field-level validation (`min_length`, `max_length`, numeric constraints) to the structs using `msgspec.field`.
 
 ### Milestone 4: Refactor Frontend Components
 
-1.  **Create Reusable Template Macros:**
-    *   Create new directory: `app/server/templates/macros/`
-    *   Create new file: `app/server/templates/macros/_ui_components.html`.
-    *   Implement a `product_card` macro and other potential reusable components within this file.
-2.  **Adopt Macros in Templates:**
-    *   Modify templates like `app/server/templates/partials/_vector_results.html` to import and use the new macros, reducing code duplication.
-3.  **Decouple UI with HTMX Events:**
-    *   Modify `app/server/templates/coffee_chat.html`.
-    *   Update the chat submission form to emit a custom event (e.g., `newMessage`) upon success instead of directly targeting the chat history `div`.
-    *   Update the chat history `div` to listen for this custom event using `hx-trigger`.
+1. **Create Reusable Template Macros:**
+   - Create new directory: `app/server/templates/macros/`
+   - Create new file: `app/server/templates/macros/_ui_components.html`.
+   - Implement a `product_card` macro and other potential reusable components within this file.
+2. **Adopt Macros in Templates:**
+   - Modify templates like `app/server/templates/partials/_vector_results.html` to import and use the new macros, reducing code duplication.
+3. **Decouple UI with HTMX Events:**
+   - Modify `app/server/templates/coffee_chat.html`.
+   - Update the chat submission form to emit a custom event (e.g., `newMessage`) upon success instead of directly targeting the chat history `div`.
+   - Update the chat history `div` to listen for this custom event using `hx-trigger`.
 
 ### Milestone 5: Implement MkDocs Documentation Site
 
-1.  **Add Dependencies:**
-    *   Update `pyproject.toml` to include `mkdocs` and `mkdocs-material` in a new `[project.optional-dependencies]` group named `docs`.
-2.  **Create Configuration:**
-    *   Create a new `mkdocs.yml` file in the project root.
-    *   Configure the `site_name`, `site_description`, and set the theme to `material`.
-    *   Enable modern Material theme features like `content.code.annotate`, `navigation.tabs`, and `search`.
-3.  **Define Navigation:**
-    *   In `mkdocs.yml`, create a `nav` section that mirrors the structure of the `docs/system/` directory, providing a logical reading order for the documentation.
-4.  **Review and Refine Content:**
-    *   Read through all markdown files in `docs/system/` and update them to reflect the new repository-based architecture.
-    *   Ensure all code examples are accurate and that inter-document links are correctly formatted for MkDocs.
-5.  **Add Build Command:**
-    *   Add a new script to `pyproject.toml` under `[tool.uv.scripts]` (or a `Makefile` target) named `serve-docs` that executes `mkdocs serve`.
+1. **Add Dependencies:**
+   - Update `pyproject.toml` to include `mkdocs` and `mkdocs-material` in a new `[project.optional-dependencies]` group named `docs`.
+2. **Create Configuration:**
+   - Create a new `mkdocs.yml` file in the project root.
+   - Configure the `site_name`, `site_description`, and set the theme to `material`.
+   - Enable modern Material theme features like `content.code.annotate`, `navigation.tabs`, and `search`.
+3. **Define Navigation:**
+   - In `mkdocs.yml`, create a `nav` section that mirrors the structure of the `docs/system/` directory, providing a logical reading order for the documentation.
+4. **Review and Refine Content:**
+   - Read through all markdown files in `docs/system/` and update them to reflect the new repository-based architecture.
+   - Ensure all code examples are accurate and that inter-document links are correctly formatted for MkDocs.
+5. **Add Build Command:**
+   - Add a new script to `pyproject.toml` under `[tool.uv.scripts]` (or a `Makefile` target) named `serve-docs` that executes `mkdocs serve`.
 
 ## 6. Implementation Checklist
 
