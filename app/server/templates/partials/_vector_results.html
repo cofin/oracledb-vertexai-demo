@@ -1,3 +1,4 @@
+{% from "macros/_ui_components.html" import product_card %}
 <div class="vector-results-container">
     {% if error %}
     <div class="alert alert-danger" role="alert">
@@ -34,18 +35,11 @@
 
     {% if results %}
     <h4>Found {{ results|length }} matching products:</h4>
-
-    {% for result in results %}
-    <div class="similarity-item">
-        <div class="product-info">
-            <h4>{{ result.name }}</h4>
-            <p>{{ result.description }}</p>
-        </div>
-        <div class="similarity-score">
-            {{ result.similarity }}
-        </div>
+    <div class="grid grid-cols-2 gap-4 mt-4">
+        {% for result in results %}
+        {{ product_card(result) }}
+        {% endfor %}
     </div>
-    {% endfor %}
     {% else %}
     <div style="text-align: center; padding: 40px; color: #666;">
         <p>No products found matching your query.</p>

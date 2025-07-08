@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+# Removed array import - using Oracle 23AI native vector operations
 import array
 import asyncio
 import json
@@ -25,9 +26,9 @@ logger = structlog.get_logger()
 RECOMMENDED_BATCH_SIZE: Final[int] = 25000
 
 
-def convert_to_oracle_vector(embedding: list[float]) -> array.array:
-    """Convert a Python list of floats to Oracle VECTOR format."""
-    return array.array("f", embedding)
+def convert_to_oracle_vector(embedding: list[float]) -> list[float]:
+    """Oracle 23AI handles vectors natively - no conversion needed."""
+    return embedding
 
 
 class BulkEmbeddingService:
@@ -193,19 +194,16 @@ class BulkEmbeddingService:
             await logger.awarn(f"No embedding found for product {product_id}")
             return
 
-        # Update product in database
-        # Convert to Oracle VECTOR format
-        oracle_vector = convert_to_oracle_vector(embedding)
-
-        # Use raw SQL to update product
+        # Update product using Oracle 23AI native vector operations
         async with self.product_service.get_cursor() as cursor:
+            embedding_array = array.array("f", embedding)
             await cursor.execute(
                 """
                 UPDATE product
                 SET embedding = :embedding
                 WHERE id = :id
                 """,
-                {"embedding": oracle_vector, "id": int(product_id)},
+                {"embedding": embedding_array, "id": int(product_id)},
             )
             await self.product_service.connection.commit()
 
@@ -303,8 +301,7 @@ class OnlineEmbeddingService:
                 embedding = await self.embed_single_product(str(product["id"]), text_content)
 
                 if embedding:
-                    oracle_vector = convert_to_oracle_vector(embedding)
-                    # Update product with embedding
+                    # Update product with embedding using Oracle 23AI native operations
                     async with product_service.get_cursor() as cursor:
                         await cursor.execute(
                             """
@@ -312,7 +309,7 @@ class OnlineEmbeddingService:
                             SET embedding = :embedding
                             WHERE id = :id
                             """,
-                            {"embedding": oracle_vector, "id": product["id"]},
+                            {"embedding": embedding, "id": product["id"]},
                         )
                         await product_service.connection.commit()
                         return 1

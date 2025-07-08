@@ -8,16 +8,14 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app import config
-from app.server import deps
 from app.services.intent_exemplar import IntentExemplarService
 from app.services.intent_router import INTENT_EXEMPLARS
 from app.services.product import ProductService
+from app.services.vertex_ai import VertexAIService
 
 if TYPE_CHECKING:
     import oracledb
     from litestar import Litestar
-
-    from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -31,13 +29,16 @@ async def populate_product_exemplars(
     logger.info("Adding product names as exemplars...")
 
     # Get all products
-    product_service = ProductService(conn)
+    from app.db.repositories.product import ProductRepository
+
+    product_repository = ProductRepository(conn)
+    product_service = ProductService(product_repository)
     products = await product_service.get_all()
 
     # Create exemplars from product names
     product_exemplars = []
     for product in products:
-        name = product["name"]
+        name = product.name
         # Add various query patterns for each product
         product_exemplars.extend([
             f"tell me about {name}",
@@ -82,8 +83,11 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
     # Get Oracle connection from the async pool
     async with config.oracle_async.get_connection() as conn:
         # Create service instances
-        vertex_ai_service = await anext(deps.provide_vertex_ai_service())
-        exemplar_service = IntentExemplarService(conn)
+        from app.db.repositories.intent_exemplar import IntentExemplarRepository
+
+        vertex_ai_service = VertexAIService()
+        exemplar_repository = IntentExemplarRepository(conn)
+        exemplar_service = IntentExemplarService(exemplar_repository)
         cached_data = await exemplar_service.get_exemplars_with_phrases()
         if not cached_data:
             logger.info("Populating intent exemplar cache...")

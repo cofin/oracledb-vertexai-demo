@@ -83,9 +83,7 @@ async def _upsert_shops(conn: oracledb.AsyncConnection, data: list[dict[str, Any
 
 
 async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert product records using raw SQL."""
-    import array
-
+    """Upsert product records using raw SQL with Oracle 23AI native vector operations."""
     cursor = conn.cursor()
     try:
         # Get mapping of company IDs
@@ -96,48 +94,73 @@ async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, 
         company_id_map = {i + 1: company_ids[i] for i in range(len(company_ids))}
 
         for product in data:
-            # Convert embedding list to Oracle array if present
+            # Handle embedding and date
             embedding = product.get("embedding")
             embedding_date = product.get("embedding_generated_on")
-
-            oracle_embedding = array.array("f", embedding) if embedding else None
 
             # Map fixture company_id to actual ID
             actual_company_id = company_id_map.get(product["company_id"], product["company_id"])
 
-            await cursor.execute(
-                """
-                MERGE INTO product p
-                USING (SELECT :name AS name FROM dual) src
-                ON (p.name = src.name)
-                WHEN MATCHED THEN
-                    UPDATE SET
-                        company_id = :company_id,
-                        current_price = :current_price,
-                        description = :description,
-                        embedding = :embedding,
-                        embedding_generated_on = :embedding_generated_on
-                WHEN NOT MATCHED THEN
-                    INSERT (company_id, name, current_price, description,
-                            embedding, embedding_generated_on)
-                    VALUES (:company_id2, :name2, :current_price2, :description2,
-                            :embedding2, :embedding_generated_on2)
-                """,
-                {
-                    "company_id": actual_company_id,
-                    "company_id2": actual_company_id,
-                    "name": product["name"],
-                    "name2": product["name"],
-                    "current_price": product["current_price"],
-                    "current_price2": product["current_price"],
-                    "description": product["description"],
-                    "description2": product["description"],
-                    "embedding": oracle_embedding,
-                    "embedding2": oracle_embedding,
-                    "embedding_generated_on": embedding_date,
-                    "embedding_generated_on2": embedding_date,
-                },
-            )
+            if embedding:
+                await cursor.execute(
+                    """
+                    MERGE INTO product p
+                    USING (SELECT :name AS name FROM dual) src
+                    ON (p.name = src.name)
+                    WHEN MATCHED THEN
+                        UPDATE SET
+                            company_id = :company_id,
+                            current_price = :current_price,
+                            description = :description,
+                            embedding = :embedding,
+                            embedding_generated_on = :embedding_generated_on
+                    WHEN NOT MATCHED THEN
+                        INSERT (company_id, name, current_price, description,
+                                embedding, embedding_generated_on)
+                        VALUES (:company_id2, :name2, :current_price2, :description2,
+                                :embedding2, :embedding_generated_on2)
+                    """,
+                    {
+                        "company_id": actual_company_id,
+                        "company_id2": actual_company_id,
+                        "name": product["name"],
+                        "name2": product["name"],
+                        "current_price": product["current_price"],
+                        "current_price2": product["current_price"],
+                        "description": product["description"],
+                        "description2": product["description"],
+                        "embedding": embedding,
+                        "embedding2": embedding,
+                        "embedding_generated_on": embedding_date,
+                        "embedding_generated_on2": embedding_date,
+                    },
+                )
+            else:
+                await cursor.execute(
+                    """
+                    MERGE INTO product p
+                    USING (SELECT :name AS name FROM dual) src
+                    ON (p.name = src.name)
+                    WHEN MATCHED THEN
+                        UPDATE SET
+                            company_id = :company_id,
+                            current_price = :current_price,
+                            description = :description
+                    WHEN NOT MATCHED THEN
+                        INSERT (company_id, name, current_price, description)
+                        VALUES (:company_id2, :name2, :current_price2, :description2)
+                    """,
+                    {
+                        "company_id": actual_company_id,
+                        "company_id2": actual_company_id,
+                        "name": product["name"],
+                        "name2": product["name"],
+                        "current_price": product["current_price"],
+                        "current_price2": product["current_price"],
+                        "description": product["description"],
+                        "description2": product["description"],
+                    },
+                )
         await conn.commit()
     finally:
         cursor.close()
@@ -207,34 +230,47 @@ async def _upsert_inventory(conn: oracledb.AsyncConnection, data: list[dict[str,
 
 
 async def _upsert_intent_exemplars(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert intent exemplar records using raw SQL."""
-    import array
-
+    """Upsert intent exemplar records using raw SQL with Oracle 23AI native vector operations."""
     cursor = conn.cursor()
-    sql = """
-        MERGE INTO intent_exemplar ie
-        USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
-        ON (ie.intent = src.intent AND ie.phrase = src.phrase)
-        WHEN MATCHED THEN
-            UPDATE SET
-                embedding = :embedding
-        WHEN NOT MATCHED THEN
-            INSERT (intent, phrase, embedding)
-            VALUES (:intent2, :phrase2, :embedding2)
-        """
     try:
         for exemplar in data:
-            # Convert embedding list to Oracle array if present
+            # Handle embedding with Oracle 23AI native operations
             embedding = exemplar.get("embedding")
-            oracle_embedding = array.array("f", embedding) if embedding else None
-            params = {
-                "intent": exemplar["intent"],
-                "intent2": exemplar["intent"],
-                "phrase": exemplar["phrase"],
-                "phrase2": exemplar["phrase"],
-                "embedding": oracle_embedding,
-                "embedding2": oracle_embedding,
-            }
+            if embedding:
+                sql = """
+                    MERGE INTO intent_exemplar ie
+                    USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
+                    ON (ie.intent = src.intent AND ie.phrase = src.phrase)
+                    WHEN MATCHED THEN
+                        UPDATE SET
+                            embedding = :embedding
+                    WHEN NOT MATCHED THEN
+                        INSERT (intent, phrase, embedding)
+                        VALUES (:intent2, :phrase2, :embedding2)
+                    """
+                params = {
+                    "intent": exemplar["intent"],
+                    "intent2": exemplar["intent"],
+                    "phrase": exemplar["phrase"],
+                    "phrase2": exemplar["phrase"],
+                    "embedding": embedding,
+                    "embedding2": embedding,
+                }
+            else:
+                sql = """
+                    MERGE INTO intent_exemplar ie
+                    USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
+                    ON (ie.intent = src.intent AND ie.phrase = src.phrase)
+                    WHEN NOT MATCHED THEN
+                        INSERT (intent, phrase)
+                        VALUES (:intent2, :phrase2)
+                    """
+                params = {
+                    "intent": exemplar["intent"],
+                    "intent2": exemplar["intent"],
+                    "phrase": exemplar["phrase"],
+                    "phrase2": exemplar["phrase"],
+                }
             await _merge_one(cursor, sql, params)
         await conn.commit()
     finally:
@@ -272,9 +308,7 @@ async def load_database_fixtures() -> None:
 
 
 async def _load_vectors() -> None:
-    """Load vector embeddings for products using raw SQL."""
-    import array
-
+    """Load vector embeddings for products using Oracle 23AI native vector operations."""
     from app import config
     from app.services.vertex_ai import VertexAIService
 
@@ -297,8 +331,7 @@ async def _load_vectors() -> None:
                 text_content = f"{product['name']}: {product['description']}"
                 embedding = await vertex_ai.create_embedding(text_content)
 
-                # Convert to Oracle VECTOR format
-                oracle_vector = array.array("f", embedding)
+                # Use Oracle 23AI native vector operations
                 await cursor.execute(
                     """
                     UPDATE product
@@ -306,7 +339,7 @@ async def _load_vectors() -> None:
                         embedding_generated_on = SYSTIMESTAMP
                     WHERE id = :id
                     """,
-                    {"id": product["id"], "embedding": oracle_vector},
+                    {"id": product["id"], "embedding": embedding},
                 )
 
                 logger.info(
@@ -359,24 +392,30 @@ async def export_table_data(
             raise ValueError(msg)
 
         # Get all data from the table
-        # TODO: Consider using streaming/pagination for very large tables
+        # TODO: Consider using streaming/pagination for very large tables  # noqa: FIX002
         await cursor.execute(f"SELECT * FROM {table_name}")  # noqa: S608
 
         # Get column names
         columns = [col[0].lower() for col in cursor.description]
 
         # Fetch all rows and convert to dictionaries
-        # TODO: Stream rows to file instead of loading all into memory for large tables
+        # TODO: Stream rows to file instead of loading all into memory for large tables  # noqa: FIX002
         rows = []
         async for row in cursor:
             row_dict = {}
             for i, value in enumerate(row):
                 col_name = columns[i]
 
-                # Handle special Oracle types
+                # Handle special Oracle types including Oracle 23AI VECTOR
                 if isinstance(value, array.array):
-                    # Convert Oracle VECTOR to list
+                    # Convert Oracle VECTOR to list for JSON serialization
                     row_dict[col_name] = list(value)
+                elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
+                    # Handle other Oracle vector types that might be returned
+                    try:
+                        row_dict[col_name] = list(value)
+                    except (TypeError, ValueError):
+                        row_dict[col_name] = str(value)
                 elif isinstance(value, datetime):
                     # Convert datetime to ISO format
                     row_dict[col_name] = value.isoformat()  # type: ignore[assignment]
@@ -389,7 +428,7 @@ async def export_table_data(
             rows.append(row_dict)
 
         # Serialize with msgspec
-        # TODO: Consider streaming JSON encoder for very large datasets
+        # TODO: Consider streaming JSON encoder for very large datasets  # noqa: FIX002
         json_data = msgspec.json.encode(rows)
 
         # Write to file
@@ -440,9 +479,9 @@ async def dump_database_data(
             # Get list of tables to export
             if tables == "*":
                 # Get all user tables
-                # TODO: Consider caching table list or making configurable
+                # TODO: Consider caching table list or making configurable  # noqa: FIX002
                 # For demo purposes, only export essential tables
-                # TODO: Remove this filter for production use to export all tables
+                # TODO: Remove this filter for production use to export all tables  # noqa: FIX002
                 await cursor.execute("""
                     SELECT table_name
                     FROM user_tables
@@ -456,7 +495,7 @@ async def dump_database_data(
                 table_list = [t.upper() for t in tables]
 
             # Export each table
-            # TODO: Consider parallel exports for multiple tables
+            # TODO: Consider parallel exports for multiple tables  # noqa: FIX002
             results = {}
             for table_name in table_list:
                 try:

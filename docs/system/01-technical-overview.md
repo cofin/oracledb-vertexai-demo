@@ -155,12 +155,11 @@ PERSONAS = {
 
 ## Implementation Patterns
 
-### 1. Service Layer Pattern
+### 1. Repository Pattern
 
 ```python
-class ProductService:
-    """Direct SQL access for clarity and control"""
-
+class ProductRepository:
+    """Handles all SQL for the 'product' table."""
     async def search_by_embedding(self, embedding: list[float]) -> list[dict]:
         cursor = self.connection.cursor()
         try:
@@ -173,6 +172,15 @@ class ProductService:
             return [self._row_to_dict(row) async for row in cursor]
         finally:
             cursor.close()
+
+class ProductService:
+    """Contains business logic, but no SQL."""
+    def __init__(self, product_repository: ProductRepository):
+        self.product_repository = product_repository
+
+    async def find_similar_products(self, query: str) -> list[dict]:
+        embedding = await self.create_embedding(query)
+        return await self.product_repository.search_by_embedding(embedding)
 ```
 
 ### 2. Intent Detection Pattern

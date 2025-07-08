@@ -89,23 +89,23 @@ graph TB
 - **msgspec**: High-performance serialization for JSON/DTOs
 - **Raw SQL**: Direct database access for clarity and performance
 
-**Service Architecture:**
+**Service and Repository Architecture:**
 
 ```python
 class RecommendationService:
-    """Main business logic orchestrator using raw SQL"""
+    """Main business logic orchestrator."""
 
     def __init__(self,
                  vertex_ai_service: VertexAIService,
-                 products_service: ProductService,
-                 shops_service: ShopService,
-                 session_service: UserSessionService,
+                 products_repository: ProductRepository,
+                 shops_repository: ShopRepository,
+                 session_repository: UserSessionRepository,
                  embedding_cache: EmbeddingCache,
                  response_cache: ResponseCacheService):
         self.vertex_ai = vertex_ai_service
-        self.products = products_service
-        self.shops = shops_service
-        self.sessions = session_service
+        self.products_repo = products_repository
+        self.shops_repo = shops_repository
+        self.sessions_repo = session_repository
         self.embedding_cache = embedding_cache
         self.response_cache = response_cache
 ```
