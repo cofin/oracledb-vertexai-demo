@@ -23,10 +23,10 @@ class ChatConversationService:
         role: str,
         content: str,
         message_metadata: dict | None = None,
-    ) -> ChatConversationDTO:
+    ) -> None:
         """Add message to conversation."""
         session_id_str = session_id.hex if isinstance(session_id, UUID) else session_id.hex()
-        return await self.repository.add_message(
+        await self.repository.add_message(
             session_id_str, user_id, role, content, message_metadata
         )
 

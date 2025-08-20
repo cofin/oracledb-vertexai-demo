@@ -2,13 +2,12 @@
 
 import time
 import uuid
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from app import schemas
-from app.db.repositories.intent_exemplar import IntentExemplarRepository
 from app.schemas import QueryId, UserId
 
 if TYPE_CHECKING:
@@ -17,9 +16,8 @@ if TYPE_CHECKING:
     from app.services.shop import ShopService
 from app.services.chat_conversation import ChatConversationService
 from app.services.embedding_cache import EmbeddingCache
-from app.services.intent_exemplar import IntentExemplarService
-from app.services.intent_router import IntentRouter
 from app.services.persona_manager import PersonaManager
+from app.services.product_recommendation import ProductRecommendationService
 from app.services.response_cache import ResponseCacheService
 from app.services.search_metrics import SearchMetricsService
 from app.services.user_session import UserSessionService
@@ -40,8 +38,7 @@ class RecommendationService:
         conversation_service: ChatConversationService,
         cache_service: ResponseCacheService,
         metrics_service: SearchMetricsService,
-        exemplar_service: IntentExemplarService | None = None,
-        exemplar_repository: IntentExemplarRepository | None = None,
+        product_recommendation_service: ProductRecommendationService,
         embedding_cache: EmbeddingCache | None = None,
         user_id: str = "default",
     ) -> None:
@@ -52,26 +49,18 @@ class RecommendationService:
         self.conversation_service = conversation_service
         self.cache_service = cache_service
         self.metrics_service = metrics_service
-        self.exemplar_service = exemplar_service
-        self.exemplar_repository = exemplar_repository
+        self.product_recommendation_service = product_recommendation_service
         self.embedding_cache = embedding_cache
         self.user_id = user_id
-
-        # Initialize intent router with repository
-        if exemplar_repository:
-            self.intent_router = IntentRouter(
-                exemplar_repository,
-                vertex_ai_service,
-                embedding_cache,
-            )
-        else:
-            self.intent_router: IntentRouter | None = None
 
         # Inject Oracle services into Vertex AI
         self.vertex_ai.set_services(metrics_service, cache_service)
 
     async def get_recommendation(
-        self, query: str, persona: str = "enthusiast", session_id: str | None = None
+        self,
+        query: str,
+        persona: str = "enthusiast",
+        session_id: str | None = None,
     ) -> schemas.CoffeeChatReply:
         """Get coffee recommendation with Oracle integration."""
 
@@ -102,7 +91,7 @@ class RecommendationService:
         # Route the question through product and location matching
         chat_metadata: dict[str, Any] = {}
         intent_start = time.time()
-        chat_metadata, matched_product_ids, vector_timings, similarity_score = await self._route_products_question(
+        chat_metadata, matched_product_ids, vector_timings, similarity_score = await self.product_recommendation_service.recommend_products(
             query, query_embedding, chat_metadata
         )
         vector_timings["embedding_ms"] = embedding_time
@@ -203,74 +192,6 @@ class RecommendationService:
             intent_detected=detected_intent,
         )
 
-    async def _route_products_question(
-        self,
-        query: str,
-        query_embedding: list[float],
-        chat_metadata: dict[str, Any] | None = None,
-    ) -> tuple[dict[str, Any], Sequence[int], dict, float | None]:
-        """Route question through semantic intent detection and product matching.
-
-        Returns:
-            - chat_metadata: Enhanced with routing information
-            - matched_product_ids: List of matching product IDs
-            - vector_timings: Timing data from vector search operations
-            - similarity_score: The top similarity score from the product search
-        """
-
-        chat_metadata = chat_metadata or {}
-        vector_timings: dict[str, float] = {"embedding_ms": 0.0, "oracle_ms": 0.0, "total_ms": 0.0}
-        similarity_score = None
-
-        # Use semantic intent detection with the pre-computed embedding
-        intent, confidence, exemplar, _ = await self.intent_router.route_intent_single(query, query_embedding)
-
-        # Log the routing decision for analysis
-        logger.info(
-            "Intent routing decision",
-            query=query,
-            intent=intent,
-            confidence=confidence,
-            exemplar=exemplar,
-        )
-
-        # Add routing metadata for transparency
-        chat_metadata["intent_routing"] = {
-            "detected_intent": intent,
-            "confidence": confidence,
-            "matched_exemplar": exemplar,
-        }
-
-        # Only perform vector search for product-related intents
-        if intent == "PRODUCT_RAG":
-            # Perform vector search using the pre-computed embedding
-            matched_documents, product_vector_timings = await self.products_service.search_by_vector_with_timing(
-                query_embedding, limit=4
-            )
-            vector_timings.update(product_vector_timings)
-            matched_product_ids = [match["id"] for match in matched_documents]
-
-            # Store embedding cache hit status in metadata
-            chat_metadata["embedding_cache_hit"] = False  # Not available from direct vector search
-
-            if matched_product_ids:
-                # Get product details using our new service
-                similar_products = []
-                for product_id in matched_product_ids[:2]:  # Limit to 2 products
-                    product = await self.products_service.get_by_id(product_id)
-                    if product:
-                        similar_products.append(product)
-
-                chat_metadata["product_matches"] = [
-                    f"- {product.name}: {product.description}" for product in similar_products
-                ]
-                # Get the similarity score of the top match
-                similarity_score = 1 - matched_documents[0]["distance"] if matched_documents else None
-
-                return chat_metadata, matched_product_ids, vector_timings, similarity_score
-
-        return chat_metadata, [], vector_timings, similarity_score
-
     def _format_context(self, query: str, chat_metadata: dict[str, Any]) -> str:
         """Format context for AI prompt."""
 
@@ -283,7 +204,10 @@ class RecommendationService:
         return "\n\n".join(formatted_parts)
 
     async def stream_recommendation(
-        self, query: str, persona: str = "enthusiast", session_id: str | None = None
+        self,
+        query: str,
+        persona: str = "enthusiast",
+        session_id: str | None = None,
     ) -> AsyncGenerator[str, None]:
         """Stream recommendation response."""
 
@@ -307,7 +231,7 @@ class RecommendationService:
 
         # Route the question using pre-computed embedding
         chat_metadata: dict[str, Any] = {}
-        chat_metadata, matched_product_ids, _vector_timings, _similarity = await self._route_products_question(query, query_embedding, chat_metadata)
+        chat_metadata, matched_product_ids, _vector_timings, _similarity = await self.product_recommendation_service.recommend_products(query, query_embedding, chat_metadata)
 
         # Get conversation history
         conversation_history = await self.conversation_service.get_conversation_history(
@@ -317,7 +241,7 @@ class RecommendationService:
         )
 
         # Format conversation history for Vertex AI
-        history_for_ai = [{"role": msg["role"], "content": msg["content"]} for msg in reversed(conversation_history)]
+        history_for_ai = [{"role": msg.role, "content": msg.content} for msg in reversed(conversation_history)]
 
         # Get detected intent from metadata
         intent_routing = chat_metadata.get("intent_routing", {})
@@ -331,7 +255,7 @@ class RecommendationService:
 
         if history_for_ai:
             prompt_parts.append("\n# Conversation History:")
-            for msg in history_for_ai[-5:]:  # Last 5 messages for streaming
+            for msg in history_for_ai[-5:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 prompt_parts.append(f"{role.title()}: {content}")

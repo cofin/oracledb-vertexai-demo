@@ -76,27 +76,31 @@ def bulk_embed() -> None:
     """Run bulk embedding job for all products using Vertex AI Batch Prediction."""
 
     async def _run_bulk_embed() -> None:
-        from app.server.deps import provide_product_service
+        from app.config import oracle_async
+        from app.db.repositories import ProductRepository
         from app.services.bulk_embedding import BulkEmbeddingService
+        from app.services.product import ProductService
 
         console = get_console()
         console.print("[bold cyan]🚀 Starting bulk embedding job...[/bold cyan]")
 
-        products_service = await anext(provide_product_service())
-        bulk_service = BulkEmbeddingService(products_service)
+        async with oracle_async.get_connection() as conn:
+            product_repository = ProductRepository(conn)
+            products_service = ProductService(product_repository)
+            bulk_service = BulkEmbeddingService(products_service)
 
-        # Run the complete bulk embedding pipeline
-        result = await bulk_service.run_bulk_embedding_job()
+            # Run the complete bulk embedding pipeline
+            result = await bulk_service.run_bulk_embedding_job()
 
-        if result["status"] == "completed":
-            console.print("[bold green]✓ Bulk embedding completed![/bold green]")
-            console.print(f"Products exported: {result['products_exported']}")
-            console.print(f"Embeddings processed: {result['embeddings_processed']}")
-            console.print(f"Job ID: {result['job_id']}")
-        elif result["status"] == "skipped":
-            console.print(f"[yellow]⚠ {result['reason']}[/yellow]")
-        else:
-            console.print(f"[bold red]✗ Bulk embedding failed: {result['error']}[/bold red]")
+            if result["status"] == "completed":
+                console.print("[bold green]✓ Bulk embedding completed![/bold green]")
+                console.print(f"Products exported: {result['products_exported']}")
+                console.print(f"Embeddings processed: {result['embeddings_processed']}")
+                console.print(f"Job ID: {result['job_id']}")
+            elif result["status"] == "skipped":
+                console.print(f"[yellow]⚠ {result['reason']}[/yellow]")
+            else:
+                console.print(f"[bold red]✗ Bulk embedding failed: {result['error']}[/bold red]")
 
     anyio.run(_run_bulk_embed)
 
@@ -107,24 +111,28 @@ def embed_new(limit: int) -> None:
     """Process new/updated products using online embedding API for real-time updates."""
 
     async def _embed_new_products() -> None:
-        from app.server.deps import provide_product_service
+        from app.config import oracle_async
+        from app.db.repositories import ProductRepository
         from app.services.bulk_embedding import OnlineEmbeddingService
+        from app.services.product import ProductService
         from app.services.vertex_ai import VertexAIService
 
         console = get_console()
         console.print(f"[bold cyan]🔄 Processing up to {limit} new products...[/bold cyan]")
 
-        products_service = await anext(provide_product_service())
-        vertex_ai_service = VertexAIService()
-        online_service = OnlineEmbeddingService(vertex_ai_service)
+        async with oracle_async.get_connection() as conn:
+            product_repository = ProductRepository(conn)
+            products_service = ProductService(product_repository)
+            vertex_ai_service = VertexAIService()
+            online_service = OnlineEmbeddingService(vertex_ai_service)
 
-        # Process new products
-        processed_count = await online_service.process_new_products(products_service, limit)
+            # Process new products
+            processed_count = await online_service.process_new_products(products_service, limit)
 
-        if processed_count > 0:
-            console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
-        else:
-            console.print("[yellow]No new products to process[/yellow]")
+            if processed_count > 0:
+                console.print(f"[bold green]✓ Processed {processed_count} products![/bold green]")
+            else:
+                console.print("[yellow]No new products to process[/yellow]")
 
     anyio.run(_embed_new_products)
 
@@ -260,7 +268,7 @@ def clear_cache(
     anyio.run(_clear_cache)
 
 
-def _confirm_clear(console, tables: list[str]) -> bool:
+def _confirm_clear(console: Console, tables: list[str]) -> bool:
     """Confirm cache clearing with user."""
     console.print("[bold]Tables to clear:[/bold]")
     for table in tables:
@@ -292,14 +300,14 @@ def _get_tables_to_truncate(skip_cache: bool, skip_session: bool, skip_data: boo
     return tables
 
 
-def _display_tables(console, tables: list[str]) -> None:
+def _display_tables(console: Console, tables: list[str]) -> None:
     """Display tables that will be truncated."""
     console.print("[bold]Tables to truncate:[/bold]")
     for table in tables:
         console.print(f"  • {table}")
 
 
-def _confirm_truncate(console) -> bool:
+def _confirm_truncate(console: Console) -> bool:
     """Confirm truncation with user."""
     console.print("\n[bold red]⚠️  WARNING: This will remove ALL data from the selected tables![/bold red]")
     confirm = Prompt.ask(

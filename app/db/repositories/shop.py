@@ -27,7 +27,7 @@ class ShopRepository(BaseRepository[ShopDTO]):
         query = "INSERT INTO shop (name, address) VALUES (:name, :address) RETURNING id INTO :id"
         async with self.connection.cursor() as cursor:
             await cursor.execute(query, {"name": name, "address": address, "id": cursor.var(int)})
-            shop_id = cursor.bindvars["id"].getvalue()[0]
+            shop_id = cursor.bindvars["id"].getvalue()[0][0]
             await self.connection.commit()
             return await self.get_by_id(shop_id)
 

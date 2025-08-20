@@ -1,3 +1,6 @@
+from datetime import UTC, datetime, timedelta
+
+import msgspec
 import oracledb
 
 from app.schemas import ResponseCacheDTO
@@ -20,9 +23,6 @@ class ResponseCacheRepository(BaseRepository[ResponseCacheDTO]):
         response: dict,
         ttl_minutes: int,
     ) -> ResponseCacheDTO:
-        from datetime import UTC, datetime, timedelta
-
-        import msgspec
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
         response_json = msgspec.json.encode(response).decode("utf-8")
         query = """
@@ -56,10 +56,12 @@ class ResponseCacheRepository(BaseRepository[ResponseCacheDTO]):
             await self.connection.commit()
         result = await self.get_by_key(cache_key)
         if result is None:
-            raise RuntimeError("Failed to create or update response cache")
+            msg = "Failed to create or update response cache"
+            raise RuntimeError(msg)
         return result
 
     async def cleanup_expired(self) -> int:
+        """Remove expired cache entries."""
         from datetime import UTC, datetime
         now = datetime.now(UTC)
         query = "DELETE FROM response_cache WHERE expires_at < :now"
@@ -67,3 +69,36 @@ class ResponseCacheRepository(BaseRepository[ResponseCacheDTO]):
             await cursor.execute(query, {"now": now})
             await self.connection.commit()
             return int(cursor.rowcount)
+
+    async def get_cache_stats(self, hours: int = 24) -> dict:
+        """Get cache hit rate and statistics."""
+        from datetime import UTC, datetime, timedelta
+
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        query = """
+            SELECT
+                COUNT(*) as total_entries,
+                SUM(hit_count) as total_hits,
+                AVG(hit_count) as avg_hits_per_entry
+            FROM response_cache
+            WHERE created_at > :since
+        """
+        async with self.connection.cursor() as cursor:
+            await cursor.execute(query, {"since": since})
+            row = await cursor.fetchone()
+            if not row:
+                return {
+                    "cache_hit_rate": 0.0,
+                    "total_cached_queries": 0,
+                    "total_cache_hits": 0,
+                    "avg_hits_per_entry": 0.0,
+                }
+            total_entries, total_hits, avg_hits = row
+            total_requests = (total_entries or 0) + (total_hits or 0)
+            hit_rate = ((total_hits or 0) / total_requests * 100) if total_requests > 0 else 0.0
+            return {
+                "cache_hit_rate": round(hit_rate, 1),
+                "total_cached_queries": total_entries or 0,
+                "total_cache_hits": int(total_hits or 0),
+                "avg_hits_per_entry": round(avg_hits or 0, 1),
+            }

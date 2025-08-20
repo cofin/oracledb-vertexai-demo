@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 # Removed array import - using Oracle 23AI native vector operations
-import array
 import asyncio
 import json
 import uuid
@@ -17,6 +16,7 @@ from app.lib.settings import get_settings
 if TYPE_CHECKING:
     from google.cloud.aiplatform import BatchPredictionJob
 
+    from app.schemas import ProductDTO
     from app.services.product import ProductService
     from app.services.vertex_ai import VertexAIService
 
@@ -66,29 +66,22 @@ class BulkEmbeddingService:
     async def export_products_to_jsonl(self, output_path: str) -> int:
         """Export products without embeddings to JSONL format for batch processing."""
 
-        # Get products that need embeddings (where embedding is NULL)
-        async with self.product_service.get_cursor() as cursor:
-            await cursor.execute("""
-                SELECT id, name, description
-                FROM product
-                WHERE embedding IS NULL
-            """)
+        products, _ = await self.product_service.repository.get_products_without_embeddings(limit=RECOMMENDED_BATCH_SIZE)
 
-            batch_data = []
-            async for row in cursor:
-                product_id, name, description = row
-                # Combine product name and description for embedding
-                text_content = f"{name}: {description}"
+        batch_data = []
+        for product in products:
+            # Combine product name and description for embedding
+            text_content = f"{product.name}: {product.description}"
 
-                # Format for Vertex AI batch prediction
-                request_data = {
-                    "content": text_content,
-                    "task_type": "RETRIEVAL_DOCUMENT",
-                    "title": name,
-                    # Include product ID for mapping results back
-                    "metadata": {"product_id": str(product_id)},
-                }
-                batch_data.append(request_data)
+            # Format for Vertex AI batch prediction
+            request_data = {
+                "content": text_content,
+                "task_type": "RETRIEVAL_DOCUMENT",
+                "title": product.name,
+                # Include product ID for mapping results back
+                "metadata": {"product_id": str(product.id)},
+            }
+            batch_data.append(request_data)
 
         # Write to JSONL file
         bucket = self.storage_client.bucket(self.bucket_name)
@@ -194,18 +187,7 @@ class BulkEmbeddingService:
             await logger.awarn(f"No embedding found for product {product_id}")
             return
 
-        # Update product using Oracle 23AI native vector operations
-        async with self.product_service.get_cursor() as cursor:
-            embedding_array = array.array("f", embedding)
-            await cursor.execute(
-                """
-                UPDATE product
-                SET embedding = :embedding
-                WHERE id = :id
-                """,
-                {"embedding": embedding_array, "id": int(product_id)},
-            )
-            await self.product_service.connection.commit()
+        await self.product_service.repository.update_embedding(int(product_id), embedding)
 
         await logger.adebug(f"Updated embedding for product {product_id}")
 
@@ -278,41 +260,19 @@ class OnlineEmbeddingService:
     async def process_new_products(self, product_service: ProductService, limit: int = 200) -> int:
         """Process products that need embeddings using online API."""
 
-        # Get products without embeddings (limit to reasonable batch size)
-        async with product_service.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT id, name, description
-                FROM product
-                WHERE embedding IS NULL
-                FETCH FIRST :limit ROWS ONLY
-            """,
-                {"limit": limit},
-            )
-
-            products = [{"id": row[0], "name": row[1], "description": row[2]} async for row in cursor]
+        products, _ = await product_service.repository.get_products_without_embeddings(limit=limit)
 
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
 
-        async def process_product(product: dict) -> int:
+        async def process_product(product: ProductDTO) -> int:
             async with semaphore:
-                text_content = f"{product['name']}: {product['description']}"
-                embedding = await self.embed_single_product(str(product["id"]), text_content)
+                text_content = f"{product.name}: {product.description}"
+                embedding = await self.embed_single_product(str(product.id), text_content)
 
                 if embedding:
-                    # Update product with embedding using Oracle 23AI native operations
-                    async with product_service.get_cursor() as cursor:
-                        await cursor.execute(
-                            """
-                            UPDATE product
-                            SET embedding = :embedding
-                            WHERE id = :id
-                            """,
-                            {"embedding": embedding, "id": product["id"]},
-                        )
-                        await product_service.connection.commit()
-                        return 1
+                    await product_service.repository.update_embedding(product.id, embedding)
+                    return 1
                 return 0
 
         # Process all products concurrently

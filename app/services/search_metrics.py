@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.db.repositories.search_metrics import SearchMetricsRepository
-    from app.schemas import SearchMetricsCreate, SearchMetricsDTO
+    from app.schemas import SearchMetricsCreate
 
 
 class SearchMetricsService:
@@ -14,9 +14,9 @@ class SearchMetricsService:
         """Initialize with search metrics repository."""
         self.repository = search_metrics_repository
 
-    async def record_search(self, metrics_data: SearchMetricsCreate) -> SearchMetricsDTO:
+    async def record_search(self, metrics_data: SearchMetricsCreate) -> None:
         """Record search performance metrics."""
-        return await self.repository.record_search(metrics_data)
+        await self.repository.record_search(metrics_data)
 
     async def get_performance_stats(self, hours: int = 24) -> dict:
         """Get performance statistics."""

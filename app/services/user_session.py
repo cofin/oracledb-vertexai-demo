@@ -37,6 +37,4 @@ class UserSessionService:
 
     async def cleanup_expired(self) -> int:
         """Remove expired sessions."""
-        # This logic would need to be implemented in the repository
-        # if it were to be used.
-        return 0
+        return await self.repository.cleanup_expired()

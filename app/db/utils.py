@@ -11,15 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import annotations
 
+import array
+import gzip
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import msgspec
 from structlog import get_logger
 
+from app import config
 from app.lib.fixtures import open_fixture_async
+from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
     import oracledb
@@ -27,260 +32,130 @@ if TYPE_CHECKING:
 logger = get_logger()
 
 
-async def _merge_one(cursor: oracledb.AsyncCursor, sql: str, params: dict[str, Any]) -> None:
-    """Execute a single MERGE statement."""
-    await cursor.execute(sql, params)
+async def _upsert(
+    conn: oracledb.AsyncConnection, table_name: str, data: list[dict[str, Any]], match_on: list[str]
+) -> None:
+    """Generic upsert function using MERGE.
+
+    Args:
+        conn: The database connection.
+        table_name: The name of the table to upsert into.
+        data: A list of dictionaries representing the rows to upsert.
+        match_on: A list of column names to use for matching existing rows.
+    """
+    if not data:
+        return
+
+    async with conn.cursor() as cursor:
+        cols = data[0].keys()
+        update_cols = [c for c in cols if c not in match_on]
+
+        on_clause = " AND ".join([f"t.{c} = s.{c}" for c in match_on])
+        update_clause = ", ".join([f"t.{c} = s.{c}" for c in update_cols])
+        insert_cols = ", ".join(cols)
+        insert_vals = ", ".join([f":{c}" for c in cols])
+        source_cols = ", ".join([f":{c} AS {c}" for c in cols])
+
+        update_sql = f"WHEN MATCHED THEN UPDATE SET {update_clause}" if update_clause else ""
+
+        sql = f"""
+            MERGE INTO {table_name} t
+            USING (SELECT {source_cols} FROM dual) s
+            ON ({on_clause})
+            {update_sql}
+            WHEN NOT MATCHED THEN
+                INSERT ({insert_cols}) VALUES ({insert_vals})"""  # noqa: S608
+
+        await cursor.executemany(sql, data)
+        await conn.commit()
 
 
 async def _upsert_companies(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert company records using raw SQL."""
-    cursor = conn.cursor()
-    sql = """
-        MERGE INTO company c
-        USING (SELECT :name AS name FROM dual) src
-        ON (c.name = src.name)
-        WHEN MATCHED THEN
-            UPDATE SET id = c.id  -- Dummy update to trigger updated_at
-        WHEN NOT MATCHED THEN
-            INSERT (name)
-            VALUES (:name2)
-        """
-    try:
-        for company in data:
-            params = {"name": company["name"], "name2": company["name"]}
-            await _merge_one(cursor, sql, params)
-        await conn.commit()
-    finally:
-        cursor.close()
+    """Upsert company records using a generic upsert function."""
+    await _upsert(conn, "company", [{k: v for k, v in c.items() if k in ["name"]} for c in data], ["name"])
 
 
 async def _upsert_shops(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert shop records using raw SQL."""
-    cursor = conn.cursor()
-    sql = """
-        MERGE INTO shop s
-        USING (SELECT :name AS name FROM dual) src
-        ON (s.name = src.name)
-        WHEN MATCHED THEN
-            UPDATE SET
-                address = :address
-        WHEN NOT MATCHED THEN
-            INSERT (name, address)
-            VALUES (:name2, :address2)
-        """
-    try:
-        for shop in data:
-            params = {
-                "name": shop["name"],
-                "name2": shop["name"],
-                "address": shop["address"],
-                "address2": shop["address"],
-            }
-            await _merge_one(cursor, sql, params)
-        await conn.commit()
-    finally:
-        cursor.close()
+    """Upsert shop records using a generic upsert function."""
+    await _upsert(conn, "shop", [{k: v for k, v in s.items() if k in ["name", "address"]} for s in data], ["name"])
 
 
 async def _upsert_products(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert product records using raw SQL with Oracle 23AI native vector operations."""
-    cursor = conn.cursor()
-    try:
-        # Get mapping of company IDs
-        await cursor.execute("SELECT id FROM company ORDER BY id")
-        company_ids = [row[0] async for row in cursor]
+    """Upsert product records using a PL/SQL block with executemany for bulk processing."""
 
-        # Map fixture company IDs (1,2,3...) to actual IDs
+    async with conn.cursor() as cursor:
+        await cursor.execute("SELECT id FROM company ORDER BY id")
+        company_ids = [row[0] for row in await cursor.fetchall()]
         company_id_map = {i + 1: company_ids[i] for i in range(len(company_ids))}
 
+        products_to_upsert = []
         for product in data:
-            # Handle embedding and date
-            embedding = product.get("embedding")
-            embedding_date = product.get("embedding_generated_on")
+            product_data = {
+                "company_id": company_id_map.get(product["company_id"], product["company_id"]),
+                "name": product["name"],
+                "current_price": product["current_price"],
+                "description": product["description"],
+                "embedding": array.array("f", product["embedding"]) if product.get("embedding") else None,
+                "embedding_generated_on": product.get("embedding_generated_on"),
+            }
+            products_to_upsert.append(product_data)
 
-            # Map fixture company_id to actual ID
-            actual_company_id = company_id_map.get(product["company_id"], product["company_id"])
-
-            if embedding:
-                await cursor.execute(
-                    """
-                    MERGE INTO product p
-                    USING (SELECT :name AS name FROM dual) src
-                    ON (p.name = src.name)
-                    WHEN MATCHED THEN
-                        UPDATE SET
-                            company_id = :company_id,
-                            current_price = :current_price,
-                            description = :description,
-                            embedding = :embedding,
-                            embedding_generated_on = :embedding_generated_on
-                    WHEN NOT MATCHED THEN
-                        INSERT (company_id, name, current_price, description,
-                                embedding, embedding_generated_on)
-                        VALUES (:company_id2, :name2, :current_price2, :description2,
-                                :embedding2, :embedding_generated_on2)
-                    """,
-                    {
-                        "company_id": actual_company_id,
-                        "company_id2": actual_company_id,
-                        "name": product["name"],
-                        "name2": product["name"],
-                        "current_price": product["current_price"],
-                        "current_price2": product["current_price"],
-                        "description": product["description"],
-                        "description2": product["description"],
-                        "embedding": embedding,
-                        "embedding2": embedding,
-                        "embedding_generated_on": embedding_date,
-                        "embedding_generated_on2": embedding_date,
-                    },
-                )
-            else:
-                await cursor.execute(
-                    """
-                    MERGE INTO product p
-                    USING (SELECT :name AS name FROM dual) src
-                    ON (p.name = src.name)
-                    WHEN MATCHED THEN
-                        UPDATE SET
-                            company_id = :company_id,
-                            current_price = :current_price,
-                            description = :description
-                    WHEN NOT MATCHED THEN
-                        INSERT (company_id, name, current_price, description)
-                        VALUES (:company_id2, :name2, :current_price2, :description2)
-                    """,
-                    {
-                        "company_id": actual_company_id,
-                        "company_id2": actual_company_id,
-                        "name": product["name"],
-                        "name2": product["name"],
-                        "current_price": product["current_price"],
-                        "current_price2": product["current_price"],
-                        "description": product["description"],
-                        "description2": product["description"],
-                    },
-                )
-        await conn.commit()
-    finally:
-        cursor.close()
+    await _upsert(conn, "product", products_to_upsert, ["name"])
 
 
 async def _upsert_inventory(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert inventory records using raw SQL."""
-    cursor = conn.cursor()
-    try:
-        # Create a mapping of old IDs to actual IDs
-        # First, get all products and shops with their IDs
+    """Upsert inventory records using a generic upsert function."""
+    async with conn.cursor() as cursor:
         await cursor.execute("SELECT id, name FROM product ORDER BY id")
-        products = {row[0]: row[1] async for row in cursor}
+        products = {row[0]: row[1] for row in await cursor.fetchall()}
 
         await cursor.execute("SELECT id, name FROM shop ORDER BY id")
-        shops = {row[0]: row[1] async for row in cursor}
+        shops = {row[0]: row[1] for row in await cursor.fetchall()}
 
-        # For the fixtures, we'll use a simple mapping based on order
-        # The fixtures use IDs starting from 1 for shops and specific IDs for products
         shop_id_map = {i + 1: list(shops.keys())[i] for i in range(len(shops))}
-
-        # For products, we have 216 products with fixture IDs 1-216
-        # Map them 1:1 to the actual IDENTITY column values
         product_list = list(products.keys())
         product_id_map = {}
         if product_list:
-            # Map fixture product IDs 1-216 to actual sequential IDs
             for i, fixture_id in enumerate(range(1, 217)):
                 if i < len(product_list):
                     product_id_map[fixture_id] = product_list[i]
 
+        inventory_to_upsert = []
         for inventory in data:
-            fixture_shop_id = inventory["shop_id"]
-            fixture_product_id = inventory["product_id"]
-
-            # Map fixture IDs to actual IDs
-            actual_shop_id = shop_id_map.get(fixture_shop_id)
-            actual_product_id = product_id_map.get(fixture_product_id)
-
-            if actual_shop_id and actual_product_id:
-                await cursor.execute(
-                    """
-                    MERGE INTO inventory i
-                    USING (SELECT :shop_id AS shop_id, :product_id AS product_id FROM dual) src
-                    ON (i.shop_id = src.shop_id AND i.product_id = src.product_id)
-                    WHEN MATCHED THEN
-                        UPDATE SET id = i.id  -- Dummy update to trigger updated_at
-                    WHEN NOT MATCHED THEN
-                        INSERT (shop_id, product_id)
-                        VALUES (:shop_id2, :product_id2)
-                    """,
-                    {
-                        "shop_id": actual_shop_id,
-                        "shop_id2": actual_shop_id,
-                        "product_id": actual_product_id,
-                        "product_id2": actual_product_id,
-                    },
-                )
+            inventory_data = {
+                "shop_id": shop_id_map.get(inventory["shop_id"]),
+                "product_id": product_id_map.get(inventory["product_id"]),
+            }
+            if inventory_data["shop_id"] and inventory_data["product_id"]:
+                inventory_to_upsert.append(inventory_data)
             else:
                 logger.warning(
-                    "Skipping inventory - could not map shop %s or product %s", fixture_shop_id, fixture_product_id
+                    "Skipping inventory - could not map shop %s or product %s",
+                    inventory["shop_id"],
+                    inventory["product_id"],
                 )
 
-        await conn.commit()
-    finally:
-        cursor.close()
+    await _upsert(conn, "inventory", inventory_to_upsert, ["shop_id", "product_id"])
 
 
 async def _upsert_intent_exemplars(conn: oracledb.AsyncConnection, data: list[dict[str, Any]]) -> None:
-    """Upsert intent exemplar records using raw SQL with Oracle 23AI native vector operations."""
-    cursor = conn.cursor()
-    try:
-        for exemplar in data:
-            # Handle embedding with Oracle 23AI native operations
-            embedding = exemplar.get("embedding")
-            if embedding:
-                sql = """
-                    MERGE INTO intent_exemplar ie
-                    USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
-                    ON (ie.intent = src.intent AND ie.phrase = src.phrase)
-                    WHEN MATCHED THEN
-                        UPDATE SET
-                            embedding = :embedding
-                    WHEN NOT MATCHED THEN
-                        INSERT (intent, phrase, embedding)
-                        VALUES (:intent2, :phrase2, :embedding2)
-                    """
-                params = {
-                    "intent": exemplar["intent"],
-                    "intent2": exemplar["intent"],
-                    "phrase": exemplar["phrase"],
-                    "phrase2": exemplar["phrase"],
-                    "embedding": embedding,
-                    "embedding2": embedding,
-                }
-            else:
-                sql = """
-                    MERGE INTO intent_exemplar ie
-                    USING (SELECT :intent AS intent, :phrase AS phrase FROM dual) src
-                    ON (ie.intent = src.intent AND ie.phrase = src.phrase)
-                    WHEN NOT MATCHED THEN
-                        INSERT (intent, phrase)
-                        VALUES (:intent2, :phrase2)
-                    """
-                params = {
-                    "intent": exemplar["intent"],
-                    "intent2": exemplar["intent"],
-                    "phrase": exemplar["phrase"],
-                    "phrase2": exemplar["phrase"],
-                }
-            await _merge_one(cursor, sql, params)
-        await conn.commit()
-    finally:
-        cursor.close()
+    """Upsert intent exemplar records using a generic upsert function."""
+    import array
+
+    exemplars_to_upsert = []
+    for exemplar in data:
+        exemplar_data = {
+            "intent": exemplar["intent"],
+            "phrase": exemplar["phrase"],
+            "embedding": array.array("f", exemplar["embedding"]) if exemplar.get("embedding") else None,
+        }
+        exemplars_to_upsert.append(exemplar_data)
+
+    await _upsert(conn, "intent_exemplar", exemplars_to_upsert, ["intent", "phrase"])
 
 
 async def load_database_fixtures() -> None:
     """Import/Synchronize Database Fixtures using raw SQL."""
-    from app import config
-    from app.lib.settings import get_settings
 
     settings = get_settings()
     fixtures_path = Path(settings.db.FIXTURE_PATH)
@@ -353,7 +228,7 @@ async def _load_vectors() -> None:
             cursor.close()
 
 
-async def export_table_data(
+async def export_table_data(  # noqa: C901
     conn: oracledb.AsyncConnection,
     table_name: str,
     export_path: Path,
@@ -370,14 +245,35 @@ async def export_table_data(
     Returns:
         Number of records exported
     """
-    import array
-    import gzip
-    from datetime import datetime
-
-    import msgspec
 
     cursor = conn.cursor()
     try:
+        # Validate table name to prevent SQL injection
+        valid_tables = [
+            "COMPANY",
+            "SHOP",
+            "PRODUCT",
+            "INVENTORY",
+            "INTENT_EXEMPLAR",
+            "APP_CONFIG",
+        ]
+        if table_name.upper() not in valid_tables:
+            msg = f"Invalid table name: {table_name}"
+            raise ValueError(msg)
+
+        # Validate table name to prevent SQL injection
+        valid_tables = [
+            "COMPANY",
+            "SHOP",
+            "PRODUCT",
+            "INVENTORY",
+            "INTENT_EXEMPLAR",
+            "APP_CONFIG",
+        ]
+        if table_name.upper() not in valid_tables:
+            msg = f"Invalid table name: {table_name}"
+            raise ValueError(msg)
+
         # Validate table name to prevent SQL injection
         valid_tables = [
             "COMPANY",
@@ -415,7 +311,7 @@ async def export_table_data(
                     try:
                         row_dict[col_name] = list(value)
                     except (TypeError, ValueError):
-                        row_dict[col_name] = str(value)
+                        row_dict[col_name] = str(value)  # type: ignore[assignment]
                 elif isinstance(value, datetime):
                     # Convert datetime to ISO format
                     row_dict[col_name] = value.isoformat()  # type: ignore[assignment]
@@ -469,7 +365,6 @@ async def dump_database_data(
     Returns:
         Dictionary mapping table names to record counts
     """
-    from app import config
 
     export_path = Path(export_path)
 
@@ -488,7 +383,7 @@ async def dump_database_data(
                     WHERE table_name IN ('COMPANY', 'INTENT_EXEMPLAR', 'PRODUCT', 'SHOP')
                     ORDER BY table_name
                 """)
-                table_list = [row[0] for row in await cursor.fetchall()]
+                table_list: list[str] = [row[0] for row in await cursor.fetchall()]
             elif isinstance(tables, str):
                 table_list = [tables.upper()]
             else:

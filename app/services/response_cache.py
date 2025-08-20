@@ -46,11 +46,4 @@ class ResponseCacheService:
 
     async def get_cache_stats(self, hours: int = 24) -> dict:
         """Get cache hit rate and statistics."""
-        # This logic would need to be implemented in the repository
-        # if it were to be used.
-        return {
-            "cache_hit_rate": 0.0,
-            "total_cached_queries": 0,
-            "total_cache_hits": 0,
-            "avg_hits_per_entry": 0.0,
-        }
+        return await self.repository.get_cache_stats(hours=hours)

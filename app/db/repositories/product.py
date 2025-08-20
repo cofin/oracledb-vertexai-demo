@@ -154,7 +154,7 @@ class ProductRepository(BaseRepository[ProductDTO]):
                 params["embedding"] = array.array("f", embedding)
 
             await cursor.execute(query, params)
-            product_id = cursor.bindvars["id"].getvalue()[0]
+            product_id = cursor.bindvars["id"].getvalue()[0][0]
             await self.connection.commit()
             return await self.get_by_id(product_id)
 

@@ -1,42 +1,59 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from app import config
-from app.db.repositories.chat_conversation import ChatConversationRepository
-from app.db.repositories.company import CompanyRepository
-from app.db.repositories.embedding_cache import EmbeddingCacheRepository
-from app.db.repositories.intent_exemplar import IntentExemplarRepository
-from app.db.repositories.inventory import InventoryRepository
-from app.db.repositories.product import ProductRepository
-from app.db.repositories.response_cache import ResponseCacheRepository
-from app.db.repositories.search_metrics import SearchMetricsRepository
-from app.db.repositories.shop import ShopRepository
-from app.db.repositories.user_session import UserSessionRepository
+from app.db.repositories import (
+    ChatConversationRepository,
+    CompanyRepository,
+    EmbeddingCacheRepository,
+    IntentExemplarRepository,
+    InventoryRepository,
+    ProductRepository,
+    ResponseCacheRepository,
+    SearchMetricsRepository,
+    ShopRepository,
+    UserSessionRepository,
+)
 from app.services import (
     ChatConversationService,
     CompanyService,
+    EmbeddingCache,
+    IntentExemplarService,
+    IntentService,
     InventoryService,
+    ProductRecommendationService,
     ProductService,
     RecommendationService,
     ResponseCacheService,
     SearchMetricsService,
     ShopService,
     UserSessionService,
+    VectorDemoService,
     VertexAIService,
 )
 from app.services.browser_session import BrowserFingerprint
-from app.services.embedding_cache import EmbeddingCache
-from app.services.intent_exemplar import IntentExemplarService
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Callable
 
     from litestar import Request
     from oracledb import AsyncConnection
 
+RepositoryT = TypeVar("RepositoryT")
+ServiceT = TypeVar("ServiceT")
 
-T = TypeVar("T")
+
+def create_service_provider(
+    repo_class: type[RepositoryT],
+    service_class: type[ServiceT],
+    **kwargs: Any,
+) -> Callable[[AsyncConnection], ServiceT]:
+    def provider(db_connection: AsyncConnection) -> ServiceT:
+        repository = repo_class(db_connection)  # type: ignore[call-arg]
+        return service_class(repository, **kwargs)  # type: ignore[call-arg]
+
+    return provider
 
 
 async def provide_db_connection() -> AsyncGenerator[AsyncConnection, None]:
@@ -45,64 +62,55 @@ async def provide_db_connection() -> AsyncGenerator[AsyncConnection, None]:
         yield conn
 
 
-async def provide_company_service(db_connection: AsyncConnection) -> CompanyService:
-    """Provide Company service."""
-    repository = CompanyRepository(db_connection)
-    return CompanyService(repository)
+provide_company_service = create_service_provider(CompanyRepository, CompanyService)
+provide_product_service = create_service_provider(ProductRepository, ProductService)
+provide_shop_service = create_service_provider(ShopRepository, ShopService)
+provide_inventory_service = create_service_provider(InventoryRepository, InventoryService)
+provide_user_session_service = create_service_provider(UserSessionRepository, UserSessionService)
+provide_chat_conversation_service = create_service_provider(ChatConversationRepository, ChatConversationService)
+provide_response_cache_service = create_service_provider(ResponseCacheRepository, ResponseCacheService)
+provide_search_metrics_service = create_service_provider(SearchMetricsRepository, SearchMetricsService)
+provide_intent_exemplar_service = create_service_provider(IntentExemplarRepository, IntentExemplarService)
+provide_embedding_cache = create_service_provider(EmbeddingCacheRepository, EmbeddingCache, ttl_hours=24)
+async def provide_intent_service(
+    intent_exemplar_service: IntentExemplarService,
+    vertex_ai_service: VertexAIService,
+    embedding_cache: EmbeddingCache,
+) -> IntentService:
+    """Provide an intent service instance."""
+    return IntentService(
+        exemplar_repository=intent_exemplar_service.repository,
+        vertex_ai_service=vertex_ai_service,
+        embedding_cache=embedding_cache,
+    )
 
+async def provide_vector_demo_service(
+    vertex_ai_service: VertexAIService,
+    products_service: ProductService,
+    metrics_service: SearchMetricsService,
+    embedding_cache: EmbeddingCache,
+) -> VectorDemoService:
+    """Provide a vector demo service instance."""
+    return VectorDemoService(
+        vertex_ai_service=vertex_ai_service,
+        products_service=products_service,
+        metrics_service=metrics_service,
+        embedding_cache=embedding_cache,
+    )
 
-async def provide_product_service(db_connection: AsyncConnection) -> ProductService:
-    """Provide Product service."""
-    repository = ProductRepository(db_connection)
-    return ProductService(repository)
-
-
-async def provide_shop_service(db_connection: AsyncConnection) -> ShopService:
-    """Provide Shop service."""
-    repository = ShopRepository(db_connection)
-    return ShopService(repository)
-
-
-async def provide_inventory_service(db_connection: AsyncConnection) -> InventoryService:
-    """Provide Inventory service."""
-    repository = InventoryRepository(db_connection)
-    return InventoryService(repository)
-
-
-async def provide_user_session_service(db_connection: AsyncConnection) -> UserSessionService:
-    """Provide UserSession service."""
-    repository = UserSessionRepository(db_connection)
-    return UserSessionService(repository)
-
-
-async def provide_chat_conversation_service(db_connection: AsyncConnection) -> ChatConversationService:
-    """Provide ChatConversation service."""
-    repository = ChatConversationRepository(db_connection)
-    return ChatConversationService(repository)
-
-
-async def provide_response_cache_service(db_connection: AsyncConnection) -> ResponseCacheService:
-    """Provide ResponseCache service."""
-    repository = ResponseCacheRepository(db_connection)
-    return ResponseCacheService(repository)
-
-
-async def provide_search_metrics_service(db_connection: AsyncConnection) -> SearchMetricsService:
-    """Provide SearchMetrics service."""
-    repository = SearchMetricsRepository(db_connection)
-    return SearchMetricsService(repository)
-
-
-async def provide_intent_exemplar_service(db_connection: AsyncConnection) -> IntentExemplarService:
-    """Provide IntentExemplar service."""
-    repository = IntentExemplarRepository(db_connection)
-    return IntentExemplarService(repository)
-
-
-async def provide_embedding_cache(db_connection: AsyncConnection) -> EmbeddingCache:
-    """Provide Embedding Cache service."""
-    repository = EmbeddingCacheRepository(db_connection)
-    return EmbeddingCache(repository, ttl_hours=24)
+async def provide_oracle_vector_search_service(
+    vertex_ai_service: VertexAIService,
+    products_service: ProductService,
+    metrics_service: SearchMetricsService,
+    embedding_cache: EmbeddingCache,
+) -> VectorDemoService:
+    """Provide an oracle vector search service instance."""
+    return VectorDemoService(
+        vertex_ai_service=vertex_ai_service,
+        products_service=products_service,
+        metrics_service=metrics_service,
+        embedding_cache=embedding_cache,
+    )
 
 
 async def provide_vertex_ai_service() -> VertexAIService:
@@ -110,9 +118,15 @@ async def provide_vertex_ai_service() -> VertexAIService:
     return VertexAIService()
 
 
+async def provide_product_recommendation_service(
+    intent_service: IntentService, products_service: ProductService
+) -> ProductRecommendationService:
+    """Provide product recommendation services."""
+    return ProductRecommendationService(intent_service, products_service)
+
+
 async def provide_recommendation_service(
     request: Request,
-    db_connection: AsyncConnection,
     vertex_ai_service: VertexAIService,
     products_service: ProductService,
     shops_service: ShopService,
@@ -120,12 +134,11 @@ async def provide_recommendation_service(
     conversation_service: ChatConversationService,
     cache_service: ResponseCacheService,
     metrics_service: SearchMetricsService,
-    exemplar_service: IntentExemplarService,
+    product_recommendation_service: ProductRecommendationService,
     embedding_cache: EmbeddingCache,
 ) -> RecommendationService:
     """Provide recommendation service with Oracle integration."""
     user_id = BrowserFingerprint.get_stable_user_id(request)
-    exemplar_repository = IntentExemplarRepository(db_connection)
     return RecommendationService(
         vertex_ai_service=vertex_ai_service,
         products_service=products_service,
@@ -134,8 +147,7 @@ async def provide_recommendation_service(
         conversation_service=conversation_service,
         cache_service=cache_service,
         metrics_service=metrics_service,
-        exemplar_service=exemplar_service,
-        exemplar_repository=exemplar_repository,
+        product_recommendation_service=product_recommendation_service,
         embedding_cache=embedding_cache,
         user_id=user_id,
     )

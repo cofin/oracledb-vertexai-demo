@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self
+import contextlib
+from typing import TYPE_CHECKING, Self
 
 import structlog
 
 from app.lib.exceptions import RepositoryError
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     import oracledb
 
 logger = structlog.get_logger(__name__)
@@ -28,13 +31,19 @@ class UnitOfWork:
             # But we track the state for proper cleanup
             self._in_transaction = True
             logger.debug("Starting unit of work transaction")
-            return self
         except Exception as e:
             logger.exception("Failed to start transaction", exc_info=e)
             msg = "Failed to start transaction"
             raise RepositoryError(msg) from e
+        else:
+            return self
 
-    async def __aexit__(self, exc_type: type[Exception] | None, exc_val: Exception | None, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Commit or rollback the transaction based on exceptions."""
         if not self._in_transaction:
             return
@@ -48,10 +57,8 @@ class UnitOfWork:
             logger.exception("Error during transaction cleanup", exc_info=e)
             # Try to rollback if commit failed
             if exc_type is None:
-                try:
+                with contextlib.suppress(Exception):
                     await self.rollback()
-                except Exception:
-                    pass  # Already logging above
             msg = "Transaction cleanup failed"
             raise RepositoryError(msg) from e
         finally:

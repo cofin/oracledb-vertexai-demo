@@ -513,19 +513,11 @@
             </div>
 
             <!-- Chat Container -->
-            <div id="chat-container" class="chat-container">
-                <div class="message assistant" {% if conversation_history %}style="display: none;"{% endif %}>
+            <div id="chat-container" class="chat-container" hx-get="{{ url_for('chat.history') }}" hx-trigger="load" hx-swap="innerHTML">
+                <div class="message assistant">
                     <strong>AI Coffee Expert:</strong> Hello! Welcome to Cymbal Coffee Connoisseur. How can I help you
                     today?
                 </div>
-                {% if conversation_history %}
-                    {% for message in conversation_history %}
-                        <div class="message {{ message.role }}">
-                            <strong>{% if message.role == 'user' %}You{% else %}AI Coffee Expert{% endif %}:</strong>
-                            <span class="ai-response-content">{{ message.content }}</span>
-                        </div>
-                    {% endfor %}
-                {% endif %}
                 <!-- Messages will be added here via HTMX -->
             </div>
 

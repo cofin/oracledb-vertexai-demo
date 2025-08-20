@@ -1,6 +1,8 @@
 import array
+
 import oracledb
 
+from app.lib.exceptions import EmbeddingCacheError
 from app.schemas import EmbeddingCacheDTO
 
 from .base import BaseRepository
@@ -51,7 +53,8 @@ class EmbeddingCacheRepository(BaseRepository[EmbeddingCacheDTO]):
             await self.connection.commit()
         result = await self.get_by_key(cache_key)
         if result is None:
-            raise RuntimeError("Failed to create or update embedding cache")
+            msg = "Failed to create or update embedding cache"
+            raise EmbeddingCacheError(msg)
         return result
 
     async def increment_hit_count(self, cache_key: str) -> None:

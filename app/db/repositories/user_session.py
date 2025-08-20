@@ -1,5 +1,6 @@
 import oracledb
 
+from app.lib.exceptions import UserSessionError
 from app.schemas import UserSessionDTO
 
 from .base import BaseRepository
@@ -32,7 +33,8 @@ class UserSessionRepository(BaseRepository[UserSessionDTO]):
             await self.connection.commit()
         result = await self.get_by_session_id(session_id)
         if result is None:
-            raise RuntimeError("Failed to create session")
+            msg = "Failed to create session"
+            raise UserSessionError(msg)
         return result
 
     async def update_session_data(self, session_id: str, data: dict) -> UserSessionDTO:
@@ -49,5 +51,16 @@ class UserSessionRepository(BaseRepository[UserSessionDTO]):
             await self.connection.commit()
         result = await self.get_by_session_id(session_id)
         if result is None:
-            raise RuntimeError("Failed to update session")
+            msg = "Failed to update session"
+            raise UserSessionError(msg)
         return result
+
+    async def cleanup_expired(self) -> int:
+        """Remove expired sessions."""
+        from datetime import UTC, datetime
+        now = datetime.now(UTC)
+        query = "DELETE FROM user_session WHERE expires_at < :now"
+        async with self.connection.cursor() as cursor:
+            await cursor.execute(query, {"now": now})
+            await self.connection.commit()
+            return int(cursor.rowcount)

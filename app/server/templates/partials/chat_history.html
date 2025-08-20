@@ -1,0 +1,6 @@
+{% for message in conversation_history %}
+<div class="message {{ message.role }}">
+    <strong>{% if message.role == 'user' %}You{% else %}AI Coffee Expert{% endif %}:</strong>
+    <span class="ai-response-content">{{ message.content }}</span>
+</div>
+{% endfor %}

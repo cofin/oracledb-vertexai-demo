@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 import secrets
 import time
-import uuid
 from typing import TYPE_CHECKING, Annotated
 
 from litestar import Controller, get, post
@@ -25,25 +24,28 @@ from litestar.params import Parameter
 from litestar.plugins.htmx import (
     HTMXRequest,
     HTMXTemplate,
-    HXStopPolling,
 )
-from litestar.response import File, Stream
+from litestar.response import File
+from litestar_htmx import HXStopPolling
 
 from app import schemas
 from app.server.exception_handlers import HTMXValidationException
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
-    from app.services.embedding_cache import EmbeddingCache
-    from app.services.product import ProductService
-    from app.services.recommendation import RecommendationService
-    from app.services.response_cache import ResponseCacheService
-    from app.services.search_metrics import SearchMetricsService
-    from app.services.vertex_ai import VertexAIService
+    from app.services import (
+        ChatConversationService,
+        RecommendationService,
+        ResponseCacheService,
+        SearchMetricsService,
+        UserSessionService,
+        VectorDemoService,
+    )
+
+FAST_THRESHOLD = 100
+NORMAL_THRESHOLD = 500
 
 
 class CoffeeChatController(Controller):
@@ -87,7 +89,7 @@ class CoffeeChatController(Controller):
         session_id: str | None = Parameter(cookie="session_id", default=None),
     ) -> HTMXTemplate:
         """Serve site root with CSP nonce and conversation history."""
-        conversation_history = []
+        conversation_history: list[schemas.ChatConversationDTO] = []
         if session_id:
             active_session = await session_service.get_active_session(session_id)
             if active_session:
@@ -96,7 +98,41 @@ class CoffeeChatController(Controller):
                     session_id=active_session.id,
                     limit=50,
                 )
-                conversation_history = reversed(history)
+                conversation_history = list(reversed(history))
+
+        return HTMXTemplate(
+            template_name="coffee_chat.html",
+            context={
+                "csp_nonce": self.generate_csp_nonce(),
+                "conversation_history": conversation_history,
+            },
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "X-Frame-Options": "DENY",
+                "X-XSS-Protection": "1; mode=block",
+                "Referrer-Policy": "strict-origin-when-cross-origin",
+                "Permissions-Policy": "camera=(), microphone=()",
+            },
+        )
+
+    @get(path="/chat/{session_id:str}", name="chat.session")
+    async def get_chat_session(
+        self,
+        session_service: UserSessionService,
+        conversation_service: ChatConversationService,
+        request: HTMXRequest,
+        session_id: str,
+    ) -> HTMXTemplate:
+        """Serve chat history for a specific session."""
+        conversation_history: list[schemas.ChatConversationDTO] = []
+        active_session = await session_service.get_active_session(session_id)
+        if active_session:
+            history = await conversation_service.get_conversation_history(
+                user_id=active_session.user_id,
+                session_id=active_session.id,
+                limit=50,
+            )
+            conversation_history = list(reversed(history))
 
         return HTMXTemplate(
             template_name="coffee_chat.html",
@@ -146,12 +182,7 @@ class CoffeeChatController(Controller):
                     "intent_detected": getattr(reply, "intent_detected", "GENERAL_CONVERSATION"),
                     "csp_nonce": csp_nonce,
                 },
-                trigger_event="help:process-complete",
-                params={
-                    "vector_search": "complete",
-                    "llm_generation": "complete",
-                    "query_id": reply.query_id,
-                },
+                trigger_event="newMessage",
                 after="settle",
             )
             response.set_cookie(
@@ -161,6 +192,7 @@ class CoffeeChatController(Controller):
                 secure=request.url.scheme == "https",
                 samesite="lax",
             )
+            response.headers["HX-Push-Url"] = f"/chat/{reply.session_id}"
             return response
 
         response = HTMXTemplate(
@@ -179,46 +211,30 @@ class CoffeeChatController(Controller):
         )
         return response
 
-    @get(path="/chat/stream/{query_id:str}", name="chat.stream")
-    async def stream_response(
+    @get(path="/chat/history", name="chat.history")
+    async def get_chat_history(
         self,
-        query_id: str,
-        recommendation_service: RecommendationService,
-    ) -> Stream:
-        """Stream AI response using Server-Sent Events with validation."""
-        # Validate query_id format (assuming it should be alphanumeric)
-        if not re.match(r"^[a-zA-Z0-9_-]+$", query_id):
+        session_service: UserSessionService,
+        conversation_service: ChatConversationService,
+        request: HTMXRequest,
+        session_id: str | None = Parameter(cookie="session_id", default=None),
+    ) -> HTMXTemplate:
+        """Get chat history."""
+        conversation_history: list[schemas.ChatConversationDTO] = []
+        if session_id:
+            active_session = await session_service.get_active_session(session_id)
+            if active_session:
+                history = await conversation_service.get_conversation_history(
+                    user_id=active_session.user_id,
+                    session_id=active_session.id,
+                    limit=50,
+                )
+                conversation_history = list(reversed(history))
 
-            async def error_generate() -> AsyncGenerator[str, None]:
-                yield "data: {'error': 'Invalid query ID'}\n\n"
-
-            return Stream(error_generate(), media_type="text/event-stream")
-
-        async def generate() -> AsyncGenerator[str, None]:
-            try:
-                # Get the query from cache or session using query_id
-                # For now, use a simple prompt to demonstrate streaming
-                prompt = "Tell me about coffee recommendations briefly"
-
-                async for chunk in recommendation_service.vertex_ai.stream_content(prompt):
-                    # Escape chunk content for JSON
-                    safe_chunk = chunk.replace('"', '\\"').replace("\n", "\\n")
-                    yield f"data: {{'chunk': '{safe_chunk}', 'query_id': '{query_id}'}}\n\n"
-
-                # Send completion signal
-                yield f"data: {{'done': true, 'query_id': '{query_id}'}}\n\n"
-
-            except Exception:  # noqa: BLE001
-                yield f"data: {{'error': 'Service temporarily unavailable', 'query_id': '{query_id}'}}\n\n"
-
-        return Stream(
-            generate(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",  # Disable Nginx buffering
-                "X-Content-Type-Options": "nosniff",
+        return HTMXTemplate(
+            template_name="partials/chat_history.html",
+            context={
+                "conversation_history": conversation_history,
             },
         )
 
@@ -270,72 +286,29 @@ class CoffeeChatController(Controller):
         metrics_service: SearchMetricsService,
         cache_service: ResponseCacheService,
         request: HTMXRequest,
-    ) -> HTMXTemplate:
+    ) -> str:
         """Get summary metrics for dashboard cards."""
         # Get performance stats
         perf_stats = await metrics_service.get_performance_stats(hours=1)
-        cache_stats = await cache_service.get_cache_stats(hours=1)
 
-        # Calculate trends (compare to previous hour)
-        prev_stats = await metrics_service.get_performance_stats(hours=2)
-
-        def calculate_trend(current: float, previous: float) -> tuple[str, float]:
-            if not previous:
-                return "neutral", 0
-            change = ((current - previous) / previous) * 100
-            return ("up" if change > 0 else "down", abs(change))
-
-        # Build metric cards data
-        total_trend, total_change = calculate_trend(
-            perf_stats["total_searches"],
-            prev_stats["total_searches"],
-        )
-
-        metrics_data = {
-            "total_searches": {
-                "label": "Total Searches",
-                "value": f"{perf_stats['total_searches']:,}",
-                "trend": total_trend,
-                "trend_value": f"{total_change:.1f}%",
-            },
-            "avg_response_time": {
-                "label": "Avg Response Time",
-                "value": f"{perf_stats['avg_search_time_ms']:.0f}ms",
-                "trend": "down" if perf_stats["avg_search_time_ms"] < 50 else "up",  # noqa: PLR2004
-                "trend_value": None,
-            },
-            "avg_oracle_time": {
-                "label": "Oracle Vector Time",
-                "value": f"{perf_stats['avg_oracle_time_ms']:.0f}ms",
-                "trend": "neutral",
-                "trend_value": None,
-            },
-            "cache_hit_rate": {
-                "label": "Cache Hit Rate",
-                "value": f"{cache_stats['cache_hit_rate']:.1f}%",
-                "trend": "up" if cache_stats["cache_hit_rate"] > 80 else "down",  # noqa: PLR2004
-                "trend_value": None,
-            },
-        }
-
-        # Check if cache hit rate is high and trigger notification
-        trigger_event = None
-        params = {}
-
-        if cache_stats["cache_hit_rate"] > 90:  # noqa: PLR2004
-            trigger_event = "metrics:high-cache-rate"
-            params = {"rate": cache_stats["cache_hit_rate"]}
-        elif perf_stats["avg_search_time_ms"] > 1000:  # noqa: PLR2004
-            trigger_event = "metrics:slow-response"
-            params = {"time": perf_stats["avg_search_time_ms"]}
-
-        return HTMXTemplate(
-            template_name="partials/_metric_cards.html",
-            context={"metrics": metrics_data},
-            trigger_event=trigger_event,
-            params=params,
-            after="settle" if trigger_event else None,
-        )
+        return f"""
+<div class="metric-item">
+    <div class="metric-value">{perf_stats.get("total_searches", 0)}</div>
+    <div class="metric-label">Total Searches</div>
+</div>
+<div class="metric-item">
+    <div class="metric-value">{round(perf_stats.get("avg_search_time_ms", 0))}ms</div>
+    <div class="metric-label">Avg Response Time</div>
+</div>
+<div class="metric-item">
+    <div class="metric-value">{round(perf_stats.get("avg_oracle_time_ms", 0))}ms</div>
+    <div class="metric-label">Oracle Vector Time</div>
+</div>
+<div class="metric-item">
+    <div class="metric-value">{perf_stats.get("avg_similarity_score", 0):.2f}</div>
+    <div class="metric-label">Avg Similarity</div>
+</div>
+        """
 
     @get(path="/api/metrics/charts", name="metrics.charts")
     async def get_chart_data(
@@ -362,92 +335,28 @@ class CoffeeChatController(Controller):
     async def vector_search_demo(
         self,
         data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
-        vertex_ai_service: VertexAIService,
-        products_service: ProductService,
-        metrics_service: SearchMetricsService,
-        embedding_cache: EmbeddingCache,
+        vector_demo_service: VectorDemoService,
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Interactive vector search demonstration."""
-        # Validate and sanitize input
         query = self.validate_message(data.query)
-
         full_request_start = time.time()
-        detailed_timings: dict[str, float] = {}
+        demo_results, detailed_timings, embedding_cache_hit = await vector_demo_service.search(query)
 
-        # 1. Get embedding for the query
-        embedding_start = time.time()
-        embedding, from_cache = await embedding_cache.get_embedding(query, vertex_ai_service)
-        embedding_time = (time.time() - embedding_start) * 1000
-        detailed_timings["embedding_ms"] = embedding_time
-
-        # 2. Perform vector search
-        search_start = time.time()
-        results, vector_timings = await products_service.search_by_vector_with_timing(embedding, limit=5)
-        vector_timings["embedding_ms"] = embedding_time
-        detailed_timings["similarity_search_total_ms"] = (time.time() - search_start) * 1000
-        detailed_timings.update(vector_timings)  # Merge internal timings
-
-        # For compatibility with existing code
-        embedding_cache_hit = from_cache
-
-        # 2. Time the metrics recording
-        metrics_record_start = time.time()
-        await metrics_service.record_search(
-            schemas.SearchMetricsCreate(
-                query_id=schemas.QueryId(str(uuid.uuid4())),
-                user_id=schemas.UserId("demo_user"),
-                search_time_ms=(time.time() - full_request_start) * 1000,  # Current total
-                embedding_time_ms=detailed_timings["embedding_ms"],
-                oracle_time_ms=detailed_timings["oracle_ms"],
-                ai_time_ms=0,
-                intent_time_ms=0,
-                similarity_score=1 - results[0]["distance"] if results else 0,
-                result_count=len(results),
-            )
-        )
-        detailed_timings["metrics_recording_ms"] = (time.time() - metrics_record_start) * 1000
-
-        # 3. Time results formatting
-        format_results_start = time.time()
-        demo_results = [
-            {
-                "name": r["name"],
-                "description": r["description"],
-                "similarity": f"{(1 - r['distance']) * 100:.1f}%",
-                "distance": r["distance"],
-            }
-            for r in results
-        ]
-        detailed_timings["results_formatting_ms"] = (time.time() - format_results_start) * 1000
-
-        # 4. Calculate total time before template rendering
-        pre_template_total = (time.time() - full_request_start) * 1000
-
-        # Calculate overhead so far
-        known_duration = sum([
-            detailed_timings.get("similarity_search_total_ms", 0),
-            detailed_timings.get("metrics_recording_ms", 0),
-            detailed_timings.get("results_formatting_ms", 0),
-        ])
-        detailed_timings["pre_template_overhead_ms"] = pre_template_total - known_duration
-
-        # Log detailed timings for debugging
-        request.logger.info(
-            "vector_demo_detailed_timings",
-            query=query[:50],
-            timings=detailed_timings,
-            cache_hit=embedding_cache_hit,
+        pre_template_total = (
+            detailed_timings["pre_template_overhead_ms"]
+            + detailed_timings["similarity_search_total_ms"]
+            + detailed_timings["metrics_recording_ms"]
+            + detailed_timings["results_formatting_ms"]
         )
 
-        # Determine performance level and trigger appropriate event
         performance_event = None
         perf_params = {}
 
-        if pre_template_total < 100:  # noqa: PLR2004
+        if pre_template_total < FAST_THRESHOLD:
             performance_event = "vector:search-fast"
             perf_params = {"level": "excellent"}
-        elif pre_template_total < 500:  # noqa: PLR2004
+        elif pre_template_total < NORMAL_THRESHOLD:
             performance_event = "vector:search-normal"
             perf_params = {"level": "good"}
         else:
@@ -461,20 +370,17 @@ class CoffeeChatController(Controller):
             context={
                 "results": demo_results,
                 "search_time": f"{pre_template_total:.0f}ms",
-                "embedding_time": f"{vector_timings['embedding_ms']:.1f}ms",
-                "oracle_time": f"{vector_timings['oracle_ms']:.1f}ms",
+                "embedding_time": f"{detailed_timings['embedding_ms']:.1f}ms",
+                "oracle_time": f"{detailed_timings['oracle_ms']:.1f}ms",
                 "cache_hit": embedding_cache_hit,
-                # Add detailed timing breakdown for debugging
                 "debug_timings": {k: f"{v:.1f}ms" for k, v in detailed_timings.items()},
             },
-            # Trigger performance events
             trigger_event=performance_event,
             params={**perf_params, "total_ms": pre_template_total},
             after="settle",
         )
         detailed_timings["template_creation_ms"] = (time.time() - template_start) * 1000
 
-        # Final log with all timings
         detailed_timings["total_endpoint_ms"] = (time.time() - full_request_start) * 1000
         request.logger.info("vector_demo_final_timings", timings=detailed_timings)
 
@@ -536,6 +442,14 @@ class CoffeeChatController(Controller):
                 "similarity": 0.9,
                 "vector_search_time": 8.7,
             }
+
+    @get(path="/logout", name="logout", sync_to_thread=False)
+    def logout(self, request: HTMXRequest) -> HTMXTemplate:
+        """Log out the user and refresh the page."""
+        response = HTMXTemplate(template_name="coffee_chat.html")
+        response.delete_cookie("session_id")
+        response.headers["HX-Refresh"] = "true"
+        return response
 
     @get(
         path="/favicon.ico",

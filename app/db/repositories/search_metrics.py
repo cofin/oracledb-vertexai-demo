@@ -1,3 +1,5 @@
+import uuid
+
 import oracledb
 
 from app.schemas import SearchMetricsCreate, SearchMetricsDTO
@@ -9,9 +11,11 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
     def __init__(self, connection: oracledb.AsyncConnection) -> None:
         super().__init__(connection, SearchMetricsDTO)
 
-    async def record_search(self, metrics_data: SearchMetricsCreate) -> SearchMetricsDTO:
+    async def record_search(self, metrics_data: SearchMetricsCreate) -> None:
+        metric_id = uuid.uuid4()
         query = """
             INSERT INTO search_metrics (
+                id,
                 query_id,
                 user_id,
                 search_time_ms,
@@ -23,6 +27,7 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
                 result_count
             )
             VALUES (
+                :id,
                 :query_id,
                 :user_id,
                 :search_time_ms,
@@ -33,12 +38,12 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
                 :similarity_score,
                 :result_count
             )
-            RETURNING id INTO :id
         """
         async with self.connection.cursor() as cursor:
             await cursor.execute(
                 query,
                 {
+                    "id": metric_id.bytes,
                     "query_id": metrics_data.query_id,
                     "user_id": metrics_data.user_id,
                     "search_time_ms": metrics_data.search_time_ms,
@@ -48,15 +53,9 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
                     "intent_time_ms": metrics_data.intent_time_ms,
                     "similarity_score": metrics_data.similarity_score,
                     "result_count": metrics_data.result_count,
-                    "id": cursor.var(str),
                 },
             )
-            metric_id = cursor.bindvars["id"].getvalue()[0]
             await self.connection.commit()
-        result = await self.get_by_id(metric_id)
-        if result is None:
-            raise RuntimeError("Failed to create search metric")
-        return result
 
     async def get_by_id(self, metric_id: str) -> SearchMetricsDTO | None:
         query = "SELECT id, query_id, user_id, search_time_ms, embedding_time_ms, oracle_time_ms, ai_time_ms, intent_time_ms, similarity_score, result_count, created_at, updated_at FROM search_metrics WHERE id = :id"
@@ -79,8 +78,8 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
                 MAX(search_time_ms) as max_search_time_ms,
                 MIN(search_time_ms) as min_search_time_ms
             FROM search_metrics
-            WHERE created_at >= SYSTIMESTAMP - INTERVAL '{int(hours)}' HOUR
-        """
+            WHERE created_at >= SYSTIMESTAMP - INTERVAL '{hours}' HOUR
+        """  # noqa: S608
         async with self.connection.cursor() as cursor:
             await cursor.execute(query)
             row = await cursor.fetchone()
@@ -96,9 +95,27 @@ class SearchMetricsRepository(BaseRepository[SearchMetricsDTO]):
                 search_time_ms,
                 similarity_score
             FROM search_metrics
-            WHERE created_at >= SYSTIMESTAMP - INTERVAL '{int(hours)}' HOUR
+            WHERE created_at >= SYSTIMESTAMP - INTERVAL '{hours}' HOUR
             AND similarity_score IS NOT NULL
-        """
+        """  # noqa: S608
+        async with self.connection.cursor() as cursor:
+            await cursor.execute(query)
+            columns = [desc[0].lower() for desc in cursor.description]
+            return [dict(zip(columns, row, strict=False)) async for row in cursor]
+
+    async def get_time_series_data(self, minutes: int = 60) -> list[dict]:
+        """Get time-series performance data for charts."""
+        query = f"""
+            SELECT
+                TO_CHAR(created_at, 'HH24:MI') as time_bucket,
+                AVG(search_time_ms) as total_latency,
+                AVG(oracle_time_ms) as oracle_latency,
+                AVG(embedding_time_ms) as vertex_latency
+            FROM search_metrics
+            WHERE created_at >= SYSTIMESTAMP - INTERVAL '{minutes}' MINUTE
+            GROUP BY TO_CHAR(created_at, 'HH24:MI')
+            ORDER BY time_bucket
+        """  # noqa: S608
         async with self.connection.cursor() as cursor:
             await cursor.execute(query)
             columns = [desc[0].lower() for desc in cursor.description]

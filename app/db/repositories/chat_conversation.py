@@ -1,3 +1,6 @@
+import uuid
+
+import msgspec
 import oracledb
 
 from app.schemas import ChatConversationDTO
@@ -42,33 +45,25 @@ class ChatConversationRepository(BaseRepository[ChatConversationDTO]):
         role: str,
         content: str,
         message_metadata: dict | None = None,
-    ) -> ChatConversationDTO:
-        import msgspec
-
+    ) -> None:
+        message_id = uuid.uuid4()
         query = """
-            INSERT INTO chat_conversation (session_id, user_id, role, content, message_metadata)
-            VALUES (:session_id, :user_id, :role, :content, :message_metadata)
-            RETURNING id INTO :id
+            INSERT INTO chat_conversation (id, session_id, user_id, role, content, message_metadata)
+            VALUES (:id, :session_id, :user_id, :role, :content, :message_metadata)
         """
         async with self.connection.cursor() as cursor:
             await cursor.execute(
                 query,
                 {
+                    "id": message_id.bytes,
                     "session_id": session_id,
                     "user_id": user_id,
                     "role": role,
                     "content": content,
                     "message_metadata": msgspec.json.encode(message_metadata or {}).decode("utf-8"),
-                    "id": cursor.var(str),
                 },
             )
-            message_id = cursor.bindvars["id"].getvalue()[0]
             await self.connection.commit()
-        result = await self.get_by_id(message_id)
-        if result is None:
-            msg = "Failed to create chat message"
-            raise RuntimeError(msg)
-        return result
 
     async def get_by_id(self, message_id: str) -> ChatConversationDTO | None:
         query = "SELECT id, session_id, user_id, role, content, message_metadata, created_at, updated_at FROM chat_conversation WHERE id = :id"
