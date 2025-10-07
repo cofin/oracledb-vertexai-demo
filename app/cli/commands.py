@@ -2,26 +2,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
-import click
+import rich_click as click
 import structlog
 from rich import get_console
 from rich.prompt import Prompt
 from sqlspec.extensions.litestar.cli import database_group
 
-if TYPE_CHECKING:
-    from rich.console import Console
-
-    from app.services.product import ProductService
-    from app.services.vertex_ai import VertexAIService
-
-
 logger = structlog.get_logger()
 
 
 # Add configure command to database group
-@database_group.command(name="configure")
+@database_group.command(name="configure")  # type: ignore[misc]
 def configure_database() -> None:
     """Interactive database configuration wizard for Oracle Autonomous Database."""
     console = get_console()
@@ -42,14 +35,18 @@ def configure_database() -> None:
         tnsnames_path = Path(wallet_location) / "tnsnames.ora"
 
         if tnsnames_path.exists():
-            console.print(f"[green]✓ tnsnames.ora found[/green]")
+            console.print("[green]✓ tnsnames.ora found[/green]")
 
             # Parse available services from tnsnames.ora
             console.print("\n[bold]Available database services:[/bold]")
             with open(tnsnames_path) as f:
                 content = f.read()
                 # Simple parsing - find service names
-                services = [line.split("=")[0].strip() for line in content.split("\n") if "=" in line and not line.strip().startswith("#")]
+                services = [
+                    line.split("=")[0].strip()
+                    for line in content.split("\n")
+                    if "=" in line and not line.strip().startswith("#")
+                ]
                 for i, service in enumerate(services[:5], 1):  # Show first 5
                     console.print(f"  {i}. {service}")
 
@@ -75,7 +72,7 @@ def configure_database() -> None:
 
 # Coffee demo group for application-specific operations
 @click.group(name="coffee", invoke_without_command=False, help="Coffee shop demo and AI operations.")
-@click.pass_context
+@click.pass_context  # pyright: ignore
 def coffee_demo_group(_: dict[str, Any]) -> None:
     """Coffee shop demo and AI operations."""
 
@@ -88,7 +85,7 @@ def coffee_demo_group(_: dict[str, Any]) -> None:
 @click.option("--force", "-f", is_flag=True, help="Re-embed all products, even if they already have embeddings")
 def bulk_embed(batch_size: int, force: bool) -> None:
     """Run bulk embedding job for all products using Vertex AI."""
-    from app.utils.sync_tools import run_
+    from sqlspec.utils.sync_tools import run_
 
     console = get_console()
     console.rule("[bold blue]Bulk Product Embedding", style="blue", align="left")
@@ -115,8 +112,10 @@ def bulk_embed(batch_size: int, force: bool) -> None:
                     )
                     console.print(f"[cyan]Processing ALL {len(products)} products (force mode)[/cyan]")
                 else:
-                    products = await product_service.get_products_without_embeddings()
-                    console.print(f"[cyan]Processing {len(products)} products without embeddings[/cyan]")
+                    products, total = await product_service.get_products_without_embeddings()
+                    console.print(
+                        f"[cyan]Processing {len(products)} products without embeddings from a total of {total}[/cyan]"
+                    )
 
             if not products:
                 if force:
@@ -149,11 +148,8 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
                             # Generate embedding
                             description = product.get("description", "")
-                            combined_text = f"{product_name}: {description}"
-                            embedding = await vertex_ai_service.get_text_embedding(combined_text)
-
-                            # Update product
-                            await product_service.update_product_embedding(product["id"], embedding)
+                            embedding = await vertex_ai_service.create_embedding(f"{product_name}: {description}")
+                            await product_service.update_embedding(product["id"], embedding)
                             total_success += 1
 
                         except Exception as e:  # noqa: BLE001
@@ -195,7 +191,7 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
     By default, clears response_cache and embedding_cache only.
     Intent exemplar embeddings are preserved (expensive to regenerate).
     """
-    from app.utils.sync_tools import run_
+    from sqlspec.utils.sync_tools import run_
 
     console = get_console()
 
@@ -211,7 +207,9 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
             console.print(f"  • {table}")
 
         if include_exemplars:
-            console.print("\n[bold red]⚠️  WARNING: Clearing intent exemplars will require regenerating embeddings![/bold red]")
+            console.print(
+                "\n[bold red]⚠️  WARNING: Clearing intent exemplars will require regenerating embeddings![/bold red]"
+            )
 
         confirm = Prompt.ask(
             "\n[bold red]Are you sure you want to clear these caches?[/bold red]",
@@ -237,10 +235,7 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
             console.print()
 
             # Clear caches using the service
-            deleted_count = await cache_service.invalidate_cache(
-                cache_type=None,
-                include_exemplars=include_exemplars
-            )
+            deleted_count = await cache_service.invalidate_cache(cache_type=None, include_exemplars=include_exemplars)
 
             console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
             console.print()
@@ -263,11 +258,10 @@ def model_info() -> None:
 
     # Show settings
     settings = get_settings()
-    console.print(f"[bold]Chat Model:[/bold] {settings.vertex_ai.CHAT_MODEL}")
-    console.print(f"[bold]Embedding Model:[/bold] {settings.vertex_ai.EMBEDDING_MODEL}")
-    console.print(f"[bold]Google Project:[/bold] {settings.vertex_ai.PROJECT_ID}")
-    console.print(f"[bold]Location:[/bold] {settings.vertex_ai.LOCATION}")
-    console.print(f"[bold]Embedding Dimensions:[/bold] {settings.vertex_ai.EMBEDDING_DIMENSIONS}")
+    console.print(f"[bold]Chat Model:[/bold] {settings.app.GEMINI_MODEL}")
+    console.print(f"[bold]Embedding Model:[/bold] {settings.app.EMBEDDING_MODEL}")
+    console.print(f"[bold]Google Project:[/bold] {settings.app.GOOGLE_PROJECT_ID}")
+    console.print("[bold]Embedding Dimensions:[/bold] 768")
     console.print()
 
     # Test model initialization

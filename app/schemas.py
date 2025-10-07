@@ -33,10 +33,12 @@ __all__ = (
     "ChatMessage",
     "CoffeeChatMessage",
     "CoffeeChatReply",
+    "EmbeddingCache",
     "HistoryMeta",
     "Message",
     "MetricCard",
     "MetricsSummaryResponse",
+    "ResponseCache",
     "SearchMetricsCreate",
     "TimeSeriesData",
     "UserSessionCreate",
@@ -189,3 +191,28 @@ class VectorDemoResult(msgspec.Struct, gc=False, array_like=True, omit_defaults=
     description: str
     similarity_score: float
     search_time_ms: float
+
+
+# Cache schemas
+
+
+class ResponseCache(msgspec.Struct, gc=False, omit_defaults=True):
+    """Response cache entry."""
+
+    id: int
+    cache_key: str
+    response_data: dict[str, Any]
+    created_at: datetime
+    expires_at: datetime | None = None
+
+
+class EmbeddingCache(msgspec.Struct, gc=False, omit_defaults=True):
+    """Embedding cache entry."""
+
+    id: int
+    text_hash: str
+    embedding: list[float]
+    model: str
+    created_at: datetime
+    last_accessed: datetime
+    hit_count: int = 0

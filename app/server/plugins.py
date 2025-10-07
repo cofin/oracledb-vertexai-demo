@@ -23,7 +23,7 @@ from app.server.core import ApplicationCore
 
 settings = get_settings()
 app_config = ApplicationCore()
-sqlspec = SQLSpecPlugin(config.sqlspec)
+sqlspec = SQLSpecPlugin(config.db_manager)
 granian = GranianPlugin()
 structlog = StructlogPlugin(config=config.log)
 htmx = HTMXPlugin()

@@ -20,9 +20,10 @@ import os
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from litestar.utils.module_loader import module_to_os_path
+from sqlspec.adapters.oracledb import OracleAsyncConfig
 
 if TYPE_CHECKING:
     from litestar.data_extractors import RequestExtractorField, ResponseExtractorField
@@ -43,9 +44,7 @@ class DatabaseSettings:
     """Oracle Database URL (for Autonomous DB). Format: oracle+oracledb://user:password@service_name"""
     WALLET_PASSWORD: str | None = field(default_factory=lambda: os.getenv("WALLET_PASSWORD"))
     """Oracle Database Wallet Password (for Autonomous DB)."""
-    WALLET_LOCATION: str | None = field(
-        default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN")
-    )
+    WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
     """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
 
     # Standard/Local Database fields (existing)
@@ -84,7 +83,9 @@ class DatabaseSettings:
     """Pool timeout in seconds."""
     POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
     """Pool recycle time in seconds."""
-    MIGRATION_PATH: str = field(default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", "app/db/migrations"))
+    MIGRATION_PATH: str = field(
+        default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", str(BASE_DIR / "db" / "migrations"))
+    )
     """Database migration path."""
     FIXTURE_PATH: str = f"{BASE_DIR}/db/fixtures"
     """The path to JSON fixture files to load into tables."""
@@ -94,7 +95,7 @@ class DatabaseSettings:
         """Detect if we're using Autonomous Database based on presence of URL and wallet password."""
         return self.URL is not None and self.WALLET_PASSWORD is not None
 
-    def get_connection_params(self) -> dict[str, str]:
+    def get_connection_params(self) -> dict[str, Any]:
         """Extract connection parameters based on connection mode (autonomous vs local)."""
         if self.is_autonomous:
             from urllib.parse import urlparse
@@ -111,6 +112,60 @@ class DatabaseSettings:
             "password": self.PASSWORD,
             "dsn": self.DSN,
         }
+
+    def create_config(self) -> OracleAsyncConfig:
+        """Create Oracle database configuration based on connection mode (autonomous vs local)."""
+        conn_params = self.get_connection_params()
+
+        if self.is_autonomous:
+            # Autonomous Database with wallet
+            if not self.WALLET_LOCATION:
+                msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
+                raise ValueError(msg)
+
+            # Set TNS_ADMIN for wallet location
+            os.environ["TNS_ADMIN"] = self.WALLET_LOCATION
+
+            pool_config = {
+                "user": conn_params["user"],
+                "password": conn_params["password"],
+                "dsn": conn_params["dsn"],
+                "wallet_password": conn_params["wallet_password"],
+                "min": self.POOL_MIN_SIZE,
+                "max": self.POOL_MAX_SIZE,
+            }
+        else:
+            # Local/Standard Database
+            pool_config = {
+                "user": conn_params["user"],
+                "password": conn_params["password"],
+                "dsn": conn_params["dsn"],
+                "min": self.POOL_MIN_SIZE,
+                "max": self.POOL_MAX_SIZE,
+            }
+
+        return OracleAsyncConfig(
+            pool_config=pool_config,
+            migration_config={
+                "version_table_name": "migrations",
+                "script_location": self.MIGRATION_PATH,
+                "project_root": BASE_DIR,
+                "include_extensions": ["adk", "litestar"],
+            },
+            extension_config={
+                "adk": {
+                    "session_table": "adk_sessions",
+                    "events_table": "adk_events",
+                },
+                "litestar": {
+                    "session_table": "app_session",
+                    "commit_mode": "autocommit",
+                    "connection_key": "db_connection",
+                    "pool_key": "db_pool",
+                    "session_key": "db_session",
+                },
+            },
+        )
 
 
 @dataclass
@@ -204,7 +259,6 @@ class AppSettings:
     """CSRF Secure Cookie"""
     GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
     """Google Project ID"""
-    # AI Model Configuration
     GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
     """Gemini model identifier - defaults to latest 2.5 Flash"""
     EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))

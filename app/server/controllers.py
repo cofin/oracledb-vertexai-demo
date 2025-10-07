@@ -39,9 +39,8 @@ if TYPE_CHECKING:
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
-    from app.services.recommendation import RecommendationService
-    from app.services.response_cache import ResponseCacheService
-    from app.services.search_metrics import SearchMetricsService
+    from app.services.cache import CacheService
+    from app.services.metrics import MetricsService
     from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 
@@ -52,14 +51,9 @@ class CoffeeChatController(Controller):
         "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
         "vector_search_service": Provide(deps.provide_oracle_vector_search_service),
         "products_service": Provide(deps.provide_product_service),
-        "shops_service": Provide(deps.provide_shop_service),
-        "session_service": Provide(deps.provide_user_session_service),
-        "conversation_service": Provide(deps.provide_chat_conversation_service),
-        "embedding_cache": Provide(deps.provide_embedding_cache),
-        "cache_service": Provide(deps.provide_response_cache_service),
-        "metrics_service": Provide(deps.provide_search_metrics_service),
-        "exemplar_service": Provide(deps.provide_intent_exemplar_service),
-        "recommendation_service": Provide(deps.provide_recommendation_service),
+        "cache_service": Provide(deps.provide_cache_service),
+        "metrics_service": Provide(deps.provide_metrics_service),
+        "exemplar_service": Provide(deps.provide_exemplar_service),
     }
 
     @staticmethod
@@ -112,7 +106,7 @@ class CoffeeChatController(Controller):
         data: Annotated[
             schemas.CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)
         ],
-        recommendation_service: RecommendationService,
+        vertex_ai_service: VertexAIService,
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests with enhanced security."""
@@ -121,7 +115,7 @@ class CoffeeChatController(Controller):
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
 
-        reply = await recommendation_service.get_recommendation(clean_message, persona=validated_persona)
+        reply, _ = await vertex_ai_service.generate_content(clean_message, temperature=0.7)
 
         if request.htmx:
             return HTMXTemplate(
@@ -157,7 +151,7 @@ class CoffeeChatController(Controller):
     async def stream_response(
         self,
         query_id: str,
-        recommendation_service: RecommendationService,
+        vertex_ai_service: VertexAIService,
     ) -> Stream:
         """Stream AI response using Server-Sent Events with validation."""
         # Validate query_id format (assuming it should be alphanumeric)
@@ -174,7 +168,7 @@ class CoffeeChatController(Controller):
                 # For now, use a simple prompt to demonstrate streaming
                 prompt = "Tell me about coffee recommendations briefly"
 
-                async for chunk in recommendation_service.vertex_ai.stream_content(prompt):
+                async for chunk in vertex_ai_service.stream_content(prompt):
                     # Escape chunk content for JSON
                     safe_chunk = chunk.replace('"', '\\"').replace("\n", "\\n")
                     yield f"data: {{'chunk': '{safe_chunk}', 'query_id': '{query_id}'}}\n\n"
@@ -197,7 +191,7 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/dashboard", name="performance_dashboard")
-    async def performance_dashboard(self, metrics_service: SearchMetricsService) -> HTMXTemplate:
+    async def performance_dashboard(self, metrics_service: MetricsService) -> HTMXTemplate:
         """Display performance dashboard."""
         # Get metrics for dashboard
         metrics = await metrics_service.get_performance_stats(hours=24)
@@ -220,7 +214,7 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: SearchMetricsService, request: HTMXRequest) -> dict | HXStopPolling:
+    async def get_metrics(self, metrics_service: MetricsService, request: HTMXRequest) -> dict | HXStopPolling:
         """Get performance metrics with validation."""
         if request.headers.get("X-Requested-With") != "XMLHttpRequest" and not request.htmx:
             return {"error": "Invalid request"}
@@ -241,8 +235,8 @@ class CoffeeChatController(Controller):
     @get(path="/api/metrics/summary", name="metrics.summary")
     async def get_metrics_summary(
         self,
-        metrics_service: SearchMetricsService,
-        cache_service: ResponseCacheService,
+        metrics_service: MetricsService,
+        cache_service: CacheService,
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Get summary metrics for dashboard cards."""
@@ -314,7 +308,7 @@ class CoffeeChatController(Controller):
     @get(path="/api/metrics/charts", name="metrics.charts")
     async def get_chart_data(
         self,
-        metrics_service: SearchMetricsService,
+        metrics_service: MetricsService,
     ) -> schemas.ChartDataResponse:
         """Get chart data for dashboard visualizations."""
         time_series = await metrics_service.get_time_series_data(minutes=60)
@@ -338,7 +332,7 @@ class CoffeeChatController(Controller):
         data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
         vertex_ai_service: VertexAIService,
         vector_search_service: OracleVectorSearchService,
-        metrics_service: SearchMetricsService,
+        metrics_service: MetricsService,
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Interactive vector search demonstration."""
@@ -445,8 +439,8 @@ class CoffeeChatController(Controller):
     async def get_query_log(
         self,
         message_id: str,
-        metrics_service: SearchMetricsService,
-        recommendation_service: RecommendationService,
+        metrics_service: MetricsService,
+        vertex_ai_service: VertexAIService,
         request: HTMXRequest,
     ) -> dict:
         """Get query execution details for help tooltips."""

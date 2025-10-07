@@ -15,6 +15,7 @@
 # pylint: disable=[invalid-name,import-outside-toplevel]
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
@@ -58,6 +59,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             CacheService,
             ExemplarService,
             MetricsService,
+            OracleVectorSearchService,
             ProductService,
             VertexAIService,
         )
@@ -114,14 +116,15 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
+                "AsyncGenerator": AsyncGenerator,
                 "schemas": schemas,
                 "services": services,
-                # Core services (5 total)
                 "ProductService": ProductService,
                 "CacheService": CacheService,
                 "MetricsService": MetricsService,
                 "ExemplarService": ExemplarService,
                 "VertexAIService": VertexAIService,
+                "OracleVectorSearchService": OracleVectorSearchService,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
             },

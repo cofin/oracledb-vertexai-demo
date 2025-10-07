@@ -9,12 +9,11 @@ import structlog
 
 from app import config
 from app.server import deps
-from app.services.intent_exemplar import IntentExemplarService
-from app.services.intent_router import INTENT_EXEMPLARS
+from app.services.exemplar import ExemplarService
+from app.services.intent import INTENT_EXEMPLARS
 from app.services.product import ProductService
 
 if TYPE_CHECKING:
-    import oracledb
     from litestar import Litestar
 
     from app.services.vertex_ai import VertexAIService
@@ -25,13 +24,12 @@ logger = structlog.get_logger()
 
 
 async def populate_product_exemplars(
-    conn: oracledb.AsyncConnection, exemplar_service: IntentExemplarService, vertex_ai_service: VertexAIService
+    product_service: ProductService, exemplar_service: ExemplarService, vertex_ai_service: VertexAIService
 ) -> None:
     """Add all product names as PRODUCT_RAG exemplars."""
     logger.info("Adding product names as exemplars...")
 
     # Get all products
-    product_service = ProductService(conn)
     products = await product_service.get_all()
 
     # Create exemplars from product names
@@ -52,25 +50,23 @@ async def populate_product_exemplars(
     # Add product exemplars
     count = 0
     for exemplar in product_exemplars:
-        # Check if already exists
-        async with conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT 1 FROM intent_exemplar
-                WHERE intent = :intent AND phrase = :phrase
-                """,
-                {"intent": "PRODUCT_RAG", "phrase": exemplar},
-            )
-            exists = await cursor.fetchone()
+        # Check if already exists using driver
+        result = await exemplar_service.driver.select_one_or_none(
+            """
+            SELECT 1 FROM intent_exemplar
+            WHERE intent = :intent AND phrase = :phrase
+            """,
+            {"intent": "PRODUCT_RAG", "phrase": exemplar},
+        )
 
-            if not exists:
-                # Generate embedding
-                embedding = await vertex_ai_service.create_embedding(exemplar)
-                await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
-                count += 1
+        if not result:
+            # Generate embedding
+            embedding = await vertex_ai_service.create_embedding(exemplar)
+            await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
+            count += 1
 
-                if count % 10 == 0:
-                    logger.info("Added %d product exemplars...", count)
+            if count % 10 == 0:
+                logger.info("Added %d product exemplars...", count)
 
     logger.info("Added %d new product exemplars", count)
 
@@ -80,10 +76,12 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
     logger.info("Starting intent exemplar cache initialization...")
 
     # Get Oracle connection from the async pool
-    async with config.oracle_async.get_connection() as conn:
+    async with config.db_manager.provide_session(config.db) as driver:
         # Create service instances
         vertex_ai_service = await anext(deps.provide_vertex_ai_service())
-        exemplar_service = IntentExemplarService(conn)
+        exemplar_service = ExemplarService(driver)
+        product_service = ProductService(driver)
+
         cached_data = await exemplar_service.get_exemplars_with_phrases()
         if not cached_data:
             logger.info("Populating intent exemplar cache...")
@@ -96,7 +94,7 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
             )
 
         # Add product names as exemplars
-        await populate_product_exemplars(conn, exemplar_service, vertex_ai_service)
+        await populate_product_exemplars(product_service, exemplar_service, vertex_ai_service)
 
 
 async def warm_up_connection_pool(app: Litestar) -> None:
@@ -104,9 +102,8 @@ async def warm_up_connection_pool(app: Litestar) -> None:
     logger.info("Warming up Oracle connection pool...")
 
     # Run a simple query to establish pool connections
-    async with config.oracle_async.get_connection() as conn, conn.cursor() as cursor:
-        await cursor.execute("SELECT 1 FROM DUAL")
-        await cursor.fetchone()
+    async with config.db_manager.provide_session(config.db) as driver:
+        await driver.execute("SELECT 1 FROM DUAL")
 
     logger.info("Connection pool warmed up")
 

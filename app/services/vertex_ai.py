@@ -16,9 +16,8 @@ logger = structlog.get_logger()
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from app.services.embedding_cache import EmbeddingCache
-    from app.services.response_cache import ResponseCacheService
-    from app.services.search_metrics import SearchMetricsService
+    from app.services.cache import CacheService
+    from app.services.metrics import MetricsService
 
 
 class VertexAIService:
@@ -42,10 +41,10 @@ class VertexAIService:
         logger.info("Initialized model", model=self.model_name)
 
         # Oracle services for metrics and caching
-        self.metrics_service: SearchMetricsService | None = None
-        self.cache_service: ResponseCacheService | None = None
+        self.metrics_service: "MetricsService | None" = None
+        self.cache_service: "CacheService | None" = None
 
-    def set_services(self, metrics_service: SearchMetricsService, cache_service: ResponseCacheService) -> None:
+    def set_services(self, metrics_service: "MetricsService", cache_service: "CacheService") -> None:
         """Inject Oracle services."""
         self.metrics_service = metrics_service
         self.cache_service = cache_service
@@ -136,7 +135,7 @@ class VertexAIService:
         prompt: str,
         user_id: str = "default",
         temperature: float = 0.7,
-    ) -> AsyncGenerator[str, None]:
+    ) -> "AsyncGenerator[str, None]":
         """Stream content generation."""
         try:
             # Configure generation with temperature for streaming
@@ -263,7 +262,7 @@ class OracleVectorSearchService:
         self,
         products_service: Any,
         vertex_ai_service: VertexAIService,
-        embedding_cache: EmbeddingCache | None = None,
+        embedding_cache: Any = None,
     ) -> None:
         self.products_service = products_service
         self.vertex_ai_service = vertex_ai_service
@@ -286,9 +285,17 @@ class OracleVectorSearchService:
             embedding_cache_hit = False
             if self.embedding_cache:
                 logger.debug("product_search_using_cache", query=query[:50])
-                query_embedding, embedding_cache_hit = await self.embedding_cache.get_embedding(
-                    query, self.vertex_ai_service
-                )
+                # Try to get from cache
+                cached = await self.embedding_cache.get_cached_embedding(query, self.vertex_ai_service.embedding_model)
+                if cached:
+                    query_embedding = cached.embedding
+                    embedding_cache_hit = True
+                else:
+                    query_embedding = await self.vertex_ai_service.create_embedding(query)
+                    # Cache it
+                    await self.embedding_cache.set_cached_embedding(
+                        query, query_embedding, self.vertex_ai_service.embedding_model
+                    )
             else:
                 logger.debug("product_search_no_cache", query=query[:50])
                 query_embedding = await self.vertex_ai_service.create_embedding(query)

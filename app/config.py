@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from pathlib import Path
 from typing import cast
 
 import structlog
@@ -29,8 +27,8 @@ from litestar.logging.config import (
     default_structlog_standard_lib_processors,
 )
 from litestar.middleware.logging import LoggingMiddlewareConfig
-from litestar.plugins.structlog import StructlogConfig
 from litestar.middleware.session.server_side import ServerSideSessionConfig
+from litestar.plugins.structlog import StructlogConfig
 from litestar.stores.registry import StoreRegistry
 from litestar.template import TemplateConfig
 from sqlspec.adapters.oracledb import OracleAsyncConfig
@@ -51,67 +49,9 @@ cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORI
 
 templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
 
-
-def create_oracle_config() -> OracleAsyncConfig:
-    """Create Oracle database configuration based on connection mode (autonomous vs local)."""
-    conn_params = _settings.db.get_connection_params()
-
-    if _settings.db.is_autonomous:
-        # Autonomous Database with wallet
-        if not _settings.db.WALLET_LOCATION:
-            msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
-            raise ValueError(msg)
-
-        # Set TNS_ADMIN for wallet location
-        os.environ["TNS_ADMIN"] = _settings.db.WALLET_LOCATION
-
-        pool_config = {
-            "user": conn_params["user"],
-            "password": conn_params["password"],
-            "dsn": conn_params["dsn"],
-            "wallet_password": conn_params["wallet_password"],
-            "min": _settings.db.POOL_MIN_SIZE,
-            "max": _settings.db.POOL_MAX_SIZE,
-        }
-    else:
-        # Local/Standard Database
-        pool_config = {
-            "user": conn_params["user"],
-            "password": conn_params["password"],
-            "dsn": conn_params["dsn"],
-            "min": _settings.db.POOL_MIN_SIZE,
-            "max": _settings.db.POOL_MAX_SIZE,
-        }
-
-    return OracleAsyncConfig(
-        pool_config=pool_config,
-        migration_config={
-            "version_table_name": "migrations",
-            "script_location": _settings.db.MIGRATION_PATH,
-            "project_root": Path(__file__).parent.parent,
-            "include_extensions": ["adk", "litestar"],
-        },
-        extension_config={
-            "adk": {
-                "session_table": "adk_sessions",
-                "events_table": "adk_events",
-            },
-            "litestar": {
-                "session_table": "app_session",
-                "commit_mode": "autocommit",
-                "connection_key": "db_connection",
-                "pool_key": "db_pool",
-                "session_key": "db_session",
-            },
-        },
-    )
-
-
-# SQLSpec database manager
-sqlspec = SQLSpec()
-db = sqlspec.add_config(create_oracle_config())
-
-# Litestar session store using Oracle
+db_manager = SQLSpec()
+db = _settings.db.create_config()
+db_manager.add_config(db)
 stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # type: ignore[dict-item]
 session_config = ServerSideSessionConfig(store="sessions")
 

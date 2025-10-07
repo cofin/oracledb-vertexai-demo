@@ -59,7 +59,7 @@ COMMENT ON COLUMN embedding_cache.embedding IS '768-dimensional embedding vector
 CREATE TABLE intent_exemplar (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     intent VARCHAR2(100) NOT NULL,
-    phrase CLOB NOT NULL,
+    phrase VARCHAR2(1000) NOT NULL,
     embedding VECTOR(768, FLOAT32) NOT NULL,
     confidence_threshold NUMBER(3, 2) DEFAULT 0.7,
     usage_count NUMBER DEFAULT 0,
@@ -76,7 +76,7 @@ COMMENT ON COLUMN intent_exemplar.confidence_threshold IS 'Minimum similarity sc
 CREATE TABLE search_metric (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     session_id VARCHAR2(128),
-    query_text CLOB,
+    query_text VARCHAR2(4000),
     intent VARCHAR2(100),
     confidence_score NUMBER(3, 2),
     vector_search_results NUMBER,
@@ -102,22 +102,16 @@ CREATE VECTOR INDEX product_embedding_idx ON product (embedding)
 ORGANIZATION NEIGHBOR PARTITIONS
 WITH TARGET ACCURACY 95;
 
-COMMENT ON INDEX product_embedding_idx IS 'HNSW vector index for fast similarity search';
-
-
 -- Vector similarity index for intent exemplar embeddings
 CREATE VECTOR INDEX intent_exemplar_embedding_idx ON intent_exemplar (embedding)
 ORGANIZATION NEIGHBOR PARTITIONS
 WITH TARGET ACCURACY 95;
-
-COMMENT ON INDEX intent_exemplar_embedding_idx IS 'HNSW vector index for intent classification';
 
 
 -- Standard B-tree indexes for product table
 CREATE INDEX product_category_idx ON product (category);
 CREATE INDEX product_in_stock_idx ON product (in_stock);
 CREATE INDEX product_created_at_idx ON product (created_at);
-CREATE INDEX product_sku_idx ON product (sku);
 
 
 -- Cache indexes for expiration and lookup
@@ -149,7 +143,6 @@ BEGIN
     CTX_DDL.CREATE_PREFERENCE('product_lexer', 'BASIC_LEXER');
     CTX_DDL.SET_ATTRIBUTE('product_lexer', 'index_text', 'YES');
 END;
-/
 
 CREATE INDEX product_name_text_idx ON product (name)
 INDEXTYPE IS CTXSYS.CONTEXT
@@ -168,7 +161,6 @@ FOR EACH ROW
 BEGIN
     :NEW.updated_at := SYSTIMESTAMP;
 END;
-/
 
 CREATE OR REPLACE TRIGGER intent_exemplar_updated_at_trg
 BEFORE UPDATE ON intent_exemplar
@@ -176,7 +168,6 @@ FOR EACH ROW
 BEGIN
     :NEW.updated_at := SYSTIMESTAMP;
 END;
-/
 
 
 -- name: migrate-0001-down
@@ -195,7 +186,6 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN NULL;
 END;
-/
 
 
 -- Drop search metric indexes
@@ -223,7 +213,6 @@ DROP INDEX IF EXISTS response_cache_expires_at_idx;
 
 
 -- Drop product indexes
-DROP INDEX IF EXISTS product_sku_idx;
 DROP INDEX IF EXISTS product_created_at_idx;
 DROP INDEX IF EXISTS product_in_stock_idx;
 DROP INDEX IF EXISTS product_category_idx;

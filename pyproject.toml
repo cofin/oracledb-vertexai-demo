@@ -16,8 +16,7 @@ classifiers = [
 dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
-    "sqlspec[oracle,performance,mypyc] @ git+https://github.com/litestar-org/sqlspec.git@adk-session",
-    "rich-click",
+    "sqlspec[adk,oracledb,performance,mypyc] @ git+https://github.com/litestar-org/sqlspec.git@adk-session",
     "python-dotenv",
     "google-genai",
     "google-generativeai>=0.3.2",
