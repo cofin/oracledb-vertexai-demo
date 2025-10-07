@@ -4,6 +4,8 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 
 ## 🚀 Quick Start
 
+### Local Development (Oracle 23AI Docker)
+
 ```bash
 # Install dependencies with uv
 make install-uv # Installs Astral's UV Python manager
@@ -20,11 +22,11 @@ uv run app load-fixtures
 uv run app run
 ```
 
-**Note: Embedding are included in the gzipped fixtures.**
+**Note: Embeddings are included in the gzipped fixtures.**
 If you'd like to regenerate embeddings, you can use:
 
 ```sh
-uv run app load-vectors
+uv run app db load-vectors
 ```
 
 Visit [http://localhost:5006](http://localhost:5006) to try the demo!
@@ -43,22 +45,31 @@ _Live monitoring of Oracle vector search performance and system metrics_
 
 ## 📚 Documentation
 
-For complete implementation and development guides, see the [`docs/system/`](docs/system/) directory:
+### Core Documentation
 
 - **[Technical Overview](docs/system/01-technical-overview.md)** - High-level technical concepts
 - **[Oracle Architecture](docs/system/02-oracle-architecture.md)** - Oracle 23AI unified platform
 - **[Implementation Guide](docs/system/05-implementation-guide.md)** - Step-by-step build guide
-
-### Recent Architecture Updates
-
-- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements including:
-  - Native HTMX integration with Litestar
-  - Centralized exception handling system
-  - Unified cache information API
-  - Enhanced cache hit tracking
-- **[HTMX Events Reference](docs/htmx-events.md)** - Complete list of custom HTMX events
-- **[HTMX Migration Summary](docs/htmx-migration-summary.md)** - Details of the HTMX native integration
 - **[Demo Scenarios](docs/system/07-demo-scenarios.md)** - Live demonstration scripts
+
+### Architecture & Migration
+
+- **[SQLSpec Migration](MIGRATION.md)** - ✅ Complete migration from litestar-oracledb to SQLSpec
+- **[SQLSpec Patterns](docs/guides/sqlspec-patterns.md)** - Database patterns and best practices
+- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements:
+    - ✅ **SQLSpec Migration** - Modern database abstraction layer
+    - Native HTMX integration with Litestar
+    - Centralized exception handling system
+    - Unified cache information API
+    - Enhanced cache hit tracking
+
+### Technical Guides
+
+- **[Oracle Vector Search](docs/guides/oracle-vector-search.md)** - Vector operations guide
+- **[Autonomous Database Setup](docs/guides/autonomous-database-setup.md)** - GCP deployment
+- **[Litestar Framework](docs/guides/litestar-framework.md)** - Web framework patterns
+- **[HTMX Events Reference](docs/htmx-events.md)** - Custom HTMX events
+- **[HTMX Migration Summary](docs/htmx-migration-summary.md)** - HTMX integration details
 
 ## 🏗️ Architecture
 
@@ -66,9 +77,21 @@ This demo uses:
 
 - **Oracle 23AI** - Complete data platform with native vector search
 - **Vertex AI** - Google's generative AI platform for embeddings and chat
-- **Minimal Abstractions** - Direct Oracle database access for clarity (and performance). No ORM
+- **SQLSpec** - Modern database abstraction with Oracle-specific optimizations
 - **Litestar** - High-performance async Python framework
 - **HTMX** - Real-time UI updates without JavaScript complexity
+
+### Database Layer
+
+The application uses **SQLSpec** for type-safe, efficient database operations:
+
+- ✅ **Automatic Vector Handling** - Native Oracle VECTOR type support
+- ✅ **Connection Pooling** - Optimized async connection management
+- ✅ **Type Safety** - Dict-based results with automatic mapping
+- ✅ **Oracle Features** - Full support for MERGE, RETURNING, JSON operations
+- ✅ **Dual Mode** - Seamless support for local Docker and Autonomous Database
+
+See [MIGRATION.md](MIGRATION.md) for details on the SQLSpec architecture.
 
 ## 🎯 Key Features
 
@@ -84,12 +107,14 @@ This implementation is designed for conference demonstration with:
 ## 🔧 Development Commands
 
 ```bash
-# Database operations
+# Database operations (works with both local and autonomous)
 uv run app load-fixtures        # Load sample data
 uv run app load-vectors         # Generate embeddings
 uv run app truncate-tables      # Reset all data
 uv run app clear-cache          # Clear response cache
 
+# Autonomous Database specific
+uv run app autonomous configure # Interactive setup wizard 
 # Export/Import (for faster demo startup)
 uv run app dump-data           # Export all data with embeddings
 uv run app dump-data --table intent_exemplar  # Export specific table
@@ -99,9 +124,21 @@ uv run app dump-data --path /tmp/backup --no-compress  # Custom options
 uv run app run                 # Start the application
 uv run pytest                  # Run tests
 make lint                      # Code quality checks
+
+# Makefile shortcuts
+make config-autonomous         # Configure autonomous database
+make install-autonomous        # Complete autonomous setup
+make clean-autonomous-db       # Clean autonomous database
 ```
 
 ## 📖 Additional Resources
+
+### Deployment Guides
+
+- [Autonomous Database Setup](docs/guides/autonomous-database-setup.md) - Complete guide for Oracle Autonomous on GCP
+- [Local Development Setup](.env.example) - Docker-based Oracle 23AI setup
+
+### External Documentation
 
 - [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Origin story
 - [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation

@@ -14,6 +14,7 @@
 
 """Response cache service using SQLSpec driver patterns."""
 
+from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime, timedelta
@@ -24,13 +25,13 @@ import msgspec
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.driver import AsyncDriverAdapterBase
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 
 class ResponseCacheService(SQLSpecService):
     """Oracle response caching using SQLSpec driver patterns."""
 
-    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
+    def __init__(self, driver: OracleAsyncDriver) -> None:
         """Initialize the service."""
         super().__init__(driver)
 
@@ -137,7 +138,11 @@ class ResponseCacheService(SQLSpecService):
                 "id": result["id"],
                 "cache_key": result["cache_key"],
                 "query_text": result["query_text"],
-                "response": response_data if isinstance(response_data, dict) else msgspec.json.decode(response_data) if response_data else {},
+                "response": response_data
+                if isinstance(response_data, dict)
+                else msgspec.json.decode(response_data)
+                if response_data
+                else {},
                 "expires_at": result["expires_at"],
                 "hit_count": result["hit_count"],
                 "created_at": result["created_at"],
@@ -157,7 +162,7 @@ class ResponseCacheService(SQLSpecService):
             """,
             now=now,
         )
-        return rowcount
+        return rowcount.rows_affected
 
     async def get_cache_stats(self, hours: int = 24) -> dict:
         """Get cache hit rate and statistics."""

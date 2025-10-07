@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Search metrics service using SQLSpec driver patterns."""
-
+from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.driver import AsyncDriverAdapterBase
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
 
     from app.schemas import SearchMetricsCreate
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class SearchMetricsService(SQLSpecService):
     """Search performance metrics using SQLSpec driver patterns."""
 
-    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
+    def __init__(self, driver: OracleAsyncDriver) -> None:
         """Initialize the service."""
         super().__init__(driver)
 

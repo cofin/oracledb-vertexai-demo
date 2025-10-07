@@ -21,6 +21,7 @@ The embedding_cache stores:
 - Enables fast product matching without regenerating embeddings
 """
 
+from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime, timedelta
@@ -31,7 +32,7 @@ import structlog
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.driver import AsyncDriverAdapterBase
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
 
     from app.services.vertex_ai import VertexAIService
 
@@ -54,7 +55,7 @@ class EmbeddingCache(SQLSpecService):
     This is distinct from ResponseCacheService which caches complete LLM responses.
     """
 
-    def __init__(self, driver: AsyncDriverAdapterBase, ttl_hours: int = 24) -> None:
+    def __init__(self, driver: OracleAsyncDriver, ttl_hours: int = 24) -> None:
         """Initialize with driver.
 
         Args:
@@ -140,12 +141,7 @@ class EmbeddingCache(SQLSpecService):
 
                 # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding_vector = result["embedding"]
-                embedding: list[float]
-                if isinstance(embedding_vector, list):
-                    embedding = embedding_vector
-                else:
-                    # Convert to list if needed
-                    embedding = list(embedding_vector)
+                embedding = embedding_vector if isinstance(embedding_vector, list) else list(embedding_vector)
 
                 # Store in memory cache
                 self._set_in_memory(normalized, embedding)
@@ -231,4 +227,4 @@ class EmbeddingCache(SQLSpecService):
         """)
 
         logger.info("embedding_cache_cleanup", deleted=rowcount)
-        return rowcount
+        return rowcount.rows_affected

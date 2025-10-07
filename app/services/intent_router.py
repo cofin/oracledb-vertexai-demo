@@ -1,5 +1,6 @@
 """Intent detection using Oracle 23AI native vector similarity search."""
 
+from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,7 @@ from app.config import INTENT_THRESHOLDS, VECTOR_SEARCH_CONFIG
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.driver import AsyncDriverAdapterBase
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
 
     from app.services.embedding_cache import EmbeddingCache
     from app.services.vertex_ai import VertexAIService
@@ -153,7 +154,7 @@ class IntentRouter(SQLSpecService):
 
     def __init__(
         self,
-        driver: AsyncDriverAdapterBase,
+        driver: OracleAsyncDriver,
         vertex_ai_service: VertexAIService,
         embedding_cache: EmbeddingCache | None = None,
     ) -> None:

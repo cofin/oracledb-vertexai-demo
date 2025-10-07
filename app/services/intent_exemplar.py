@@ -1,5 +1,6 @@
 """Service for managing cached intent exemplar embeddings."""
 
+from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,7 @@ import structlog
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.driver import AsyncDriverAdapterBase
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
 
     from app.services.vertex_ai import VertexAIService
 
@@ -19,7 +20,7 @@ logger = structlog.get_logger()
 class IntentExemplarService(SQLSpecService):
     """Service for managing intent exemplar embeddings using SQLSpec driver patterns."""
 
-    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
+    def __init__(self, driver: OracleAsyncDriver) -> None:
         """Initialize the service."""
         super().__init__(driver)
 

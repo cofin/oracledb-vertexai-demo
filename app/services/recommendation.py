@@ -1,5 +1,5 @@
 """Native recommendation service using Oracle + Vertex AI."""
-
+from __future__ import annotations
 import time
 import uuid
 from collections.abc import AsyncGenerator, Sequence
@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-if TYPE_CHECKING:
-    from app.services.product import ProductService
-    from app.services.shop import ShopService
 
 from app import schemas
 from app.services.chat_conversation import ChatConversationService
@@ -22,6 +19,9 @@ from app.services.search_metrics import SearchMetricsService
 from app.services.user_session import UserSessionService
 from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
+if TYPE_CHECKING:
+    from app.services.product import ProductService
+    from app.services.shop import ShopService
 logger = structlog.get_logger()
 
 

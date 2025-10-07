@@ -1,5 +1,6 @@
 """Company service using SQLSpec driver patterns."""
 
+from __future__ import annotations
 
 from typing import Any
 
@@ -124,7 +125,7 @@ class CompanyService(SQLSpecService):
             name=name,
         )
 
-        if rowcount > 0:
+        if rowcount.rows_affected > 0:
             return await self.get_by_id(company_id)
         return None
 
@@ -134,7 +135,7 @@ class CompanyService(SQLSpecService):
             "DELETE FROM company WHERE id = :id",
             id=company_id,
         )
-        return rowcount > 0
+        return bool(rowcount.rows_affected > 0)
 
     async def upsert_company(self, name: str) -> dict[str, Any] | None:
         """Insert or update company by name using MERGE."""

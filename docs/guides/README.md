@@ -3,7 +3,8 @@
 > **Purpose**: Canonical documentation for the Oracle Database 23ai + Vertex AI demonstration application
 > **Audience**: Developers, AI agents (Claude Code, etc.), conference attendees
 > **Maintained**: Yes - commit all changes to version control
-> **Last Updated**: 2025-01-06
+> **Last Updated**: 2025-10-07
+> **Migration Status**: ✅ Complete (SQLSpec migration successful)
 
 ## Quick Start Paths
 
@@ -11,9 +12,18 @@
 
 Start here to understand the system:
 
-1. **[Architecture](./architecture.md)** - System overview, components, data flow
-2. **[Oracle Vector Search](./oracle-vector-search.md)** - Core database vector capabilities
-3. **[Litestar Framework](./litestar-framework.md)** - Web framework patterns
+1. **[SQLSpec Migration](../../MIGRATION.md)** - ✅ Complete migration overview (start here!)
+2. **[Architecture](./architecture.md)** - System overview, components, data flow
+3. **[SQLSpec Patterns](./sqlspec-patterns.md)** - Modern database patterns
+4. **[Oracle Vector Search](./oracle-vector-search.md)** - Core database vector capabilities
+
+### Deploying the Application?
+
+Choose your deployment path:
+
+1. **Local Development**: [Deployment Guide](../../DEPLOYMENT.md#local-development-setup) - Docker setup
+2. **Production (Autonomous)**: [Autonomous Setup](./autonomous-database-setup.md) - GCP deployment
+3. **Environment Config**: [Deployment Guide](../../DEPLOYMENT.md#environment-variables) - All variables
 
 ### Adding AI Features?
 
@@ -35,10 +45,19 @@ Optimize database and application performance:
 
 ## All Guides
 
+### Migration & Deployment (NEW)
+
+| Guide | Description | Key Topics |
+|-------|-------------|------------|
+| **[SQLSpec Migration](../../MIGRATION.md)** ✅ | Complete migration from litestar-oracledb | Before/after, breaking changes, benefits, 40% code reduction |
+| **[Deployment Guide](../../DEPLOYMENT.md)** ✅ | All deployment modes (local + autonomous) | Setup, environment vars, troubleshooting, running app |
+| **[Autonomous Database Setup](./autonomous-database-setup.md)** | Oracle Autonomous on GCP | Wallet config, interactive wizard, security, tuning |
+
 ### Database & AI
 
 | Guide | Description | Key Topics |
 |-------|-------------|------------|
+| **[SQLSpec Patterns](./sqlspec-patterns.md)** ✅ | Modern database patterns with SQLSpec | Service classes, sessions, parameter binding, Oracle features |
 | **[Oracle Vector Search](./oracle-vector-search.md)** | Oracle 23ai native vector capabilities | VECTOR type, HNSW/IVFFlat indexes, similarity functions, python-oracledb |
 | **[Oracle JSON](./oracle-json.md)** | JSON Relational Duality features | JSON columns, constraints, duality views, performance |
 | **[Oracle Performance](./oracle-performance.md)** | Database tuning and optimization | Memory parameters, vectorization, index strategies |
@@ -49,7 +68,6 @@ Optimize database and application performance:
 | Guide | Description | Key Topics |
 |-------|-------------|------------|
 | **[Litestar Framework](./litestar-framework.md)** | Async Python web framework patterns | Routing, dependency injection, HTMX, sessions, plugins |
-| **[SQLSpec Patterns](./sqlspec-patterns.md)** | Database service layer patterns | Service classes, sessions, parameter binding, type safety |
 | **[ADK Agent Patterns](./adk-agent-patterns.md)** | Google ADK orchestration | LlmAgent, tools, multi-agent coordination, session management |
 
 ### Architecture & Design
@@ -163,6 +181,7 @@ Update guides when:
 4. **Test code examples** to ensure they still work
 5. **Update cross-references** if moving sections
 6. **Commit with descriptive message**:
+
    ```bash
    git commit -m "docs: update oracle-vector-search for HNSW parameter tuning"
    ```
@@ -190,6 +209,7 @@ When adding a new guide:
 **Flow**: Generate embedding → Cache check → Vector similarity search → Return results
 
 **Example**:
+
 ```python
 # 1. Generate/retrieve embedding
 embedding, cache_hit = await vertex_ai_service.get_text_embedding_with_cache_status(query)
@@ -209,6 +229,7 @@ products = await product_service.vector_similarity_search(
 **Flow**: HTTP request → Litestar routing → Dependency injection → Service layer → Database → Response
 
 **Example**:
+
 ```python
 # Litestar controller with DI
 @post("/search")
@@ -226,6 +247,7 @@ async def search(
 **Flow**: User query → LlmAgent → Tool selection → Tool execution → Response
 
 **Example**:
+
 ```python
 # Define agent with tools
 agent = LlmAgent(

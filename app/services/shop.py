@@ -1,5 +1,5 @@
 """Shop service using SQLSpec driver patterns."""
-
+from __future__ import annoations
 
 from typing import Any
 

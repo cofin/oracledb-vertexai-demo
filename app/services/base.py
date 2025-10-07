@@ -14,6 +14,8 @@
 
 """Base service module following SQLSpec patterns."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from sqlspec.core.filters import (

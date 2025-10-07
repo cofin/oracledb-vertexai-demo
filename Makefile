@@ -32,6 +32,12 @@ help: ## Display this help text for Makefile
 # =============================================================================
 # Installation and Environment Setup
 # =============================================================================
+.PHONY: install-sqlcl
+install-sqlcl: ## Install Oracle SQLcl to ~/.local/bin
+	@echo "${INFO} Installing Oracle SQLcl..."
+	@uv run tools/install_sqlcl.py
+	@echo "${OK} SQLcl installation complete!"
+
 .PHONY: install-uv
 install-uv:                                         ## Install latest version of uv
 	@echo "${INFO} Installing uv..."
@@ -176,7 +182,5 @@ install-autonomous: config-autonomous ## Full autonomous setup (config + db + da
 	@echo ""
 	@echo "${INFO} Start the app with: ${BLUE}uv run app run${NC}"
 
-.PHONY: clean-autonomous-db
-clean-autonomous-db: ## Clean Autonomous Database (drop user and all objects)
-	@echo "${WARN} Cleaning Autonomous Database..."
-	@uv run app autonomous clean-db
+ 
+

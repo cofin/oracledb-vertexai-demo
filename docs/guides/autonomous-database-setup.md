@@ -1,0 +1,414 @@
+# Oracle Autonomous Database Setup Guide
+
+This guide explains how to deploy the coffee recommendation system with Oracle Autonomous Database on Google Cloud Platform.
+
+## Prerequisites
+
+1. **Oracle Autonomous Database on GCP**
+   - Autonomous Database instance provisioned
+   - Downloaded wallet file (wallet.zip)
+   - ADMIN user password
+
+2. **Google Cloud Platform**
+   - GCP project with Vertex AI API enabled
+   - API key or service account credentials
+   - Firewall rules configured (if accessing remotely)
+
+3. **Local Environment**
+   - Python 3.12+
+   - Oracle Instant Client (for sqlplus, optional)
+   - Make utility
+
+## Quick Start
+
+### Option 1: Interactive Setup (Recommended)
+
+The easiest way to configure Autonomous Database is using our interactive wizard:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd oracledb-vertexai-demo
+
+# Run the interactive configuration wizard
+make config-autonomous
+```
+
+The wizard will:
+
+- Discover your wallet file automatically
+- Extract and configure the wallet
+- Parse available TNS service names
+- Prompt for all required credentials
+- Generate a complete .env file
+
+### Option 2: Manual Setup
+
+If you prefer manual configuration:
+
+```bash
+# 1. Copy environment template
+cp .env.autonomous.example .env
+
+# 2. Extract wallet
+mkdir ~/wallet
+unzip ~/Wallet_*.zip -d ~/wallet
+
+# 3. Edit .env file with your credentials
+nano .env
+```
+
+## Detailed Setup Steps
+
+### 1. Download and Prepare Wallet
+
+1. Go to Oracle Cloud Console
+2. Navigate to your Autonomous Database
+3. Click "DB Connection" → "Download Wallet"
+4. Save the password (you'll need it for WALLET_PASSWORD)
+5. Download wallet.zip to your home directory
+
+### 2. Configure Environment Variables
+
+Edit your `.env` file with these required values:
+
+```bash
+# Database connection
+DATABASE_URL="oracle+oracledb://ADMIN:your_password@service_name"
+WALLET_PASSWORD="your_wallet_password"
+WALLET_LOCATION="/home/user/wallet"
+
+# Google Cloud
+GOOGLE_PROJECT_ID=your-project-id
+GOOGLE_API_KEY=your-api-key
+
+# Application
+SECRET_KEY=$(openssl rand -hex 32)
+LITESTAR_PORT=5006
+```
+
+#### Finding Your Service Name
+
+Your wallet contains a `tnsnames.ora` file with available service names:
+
+```bash
+cat ~/wallet/tnsnames.ora | grep "^[a-zA-Z]" | cut -d'=' -f1
+```
+
+Typical service names:
+
+- `yourdb_high` - Maximum performance, fewer connections
+- `yourdb_medium` - Balanced performance (recommended)
+- `yourdb_low` - Cost-optimized, more connections
+
+### 3. Initialize Database
+
+Run the complete setup pipeline:
+
+```bash
+make install-autonomous
+```
+
+This command will:
+
+1. Create Python virtual environment
+2. Install dependencies
+3. Initialize database schema
+4. Create application user
+5. Load sample data
+6. Generate vector embeddings
+
+Or run steps individually:
+
+```bash
+# Initialize database only
+uv run app db upgrade
+
+# Load data
+uv run app load-fixtures
+uv run app load-vectors
+```
+
+### 4. Start the Application
+
+```bash
+uv run app run
+```
+
+Visit `http://localhost:5006` (or your server's IP:5006)
+
+## Database Architecture
+
+### Connection Flow
+
+```
+Application
+    ↓
+Settings (detects autonomous mode)
+    ↓
+Connection Factory
+    ↓
+[Autonomous Mode Detected]
+    ↓
+Set TNS_ADMIN environment variable
+    ↓
+Create pool with wallet_password
+    ↓
+Oracle Autonomous Database
+```
+
+### Users and Schemas
+
+The setup creates two database users:
+
+1. **ADMIN (you provide)**
+   - Used only for initial database setup
+   - Creates the application user
+   - Should not be used by the application
+
+2. **coffee (created automatically)**
+   - Application runtime user
+   - Owns all tables and data
+   - Limited to necessary permissions only
+
+## CLI Commands
+
+### Configure
+
+Run the interactive configuration wizard:
+
+```bash
+uv run app autonomous configure
+```
+
+### Initialize Database
+
+Create schema and application user:
+
+```bash
+uv run app autonomous init-db
+```
+
+### Clean Database
+
+Drop application user and all data (requires confirmation):
+
+```bash
+uv run app autonomous clean-db
+```
+
+## Troubleshooting
+
+### Wallet Issues
+
+**Error: "TNS:could not resolve the connect identifier specified"**
+
+Solution:
+
+```bash
+# Verify wallet location
+ls -la ~/wallet/tnsnames.ora
+
+# Check TNS_ADMIN is set
+echo $TNS_ADMIN
+
+# Verify service name in tnsnames.ora
+grep "service_name" ~/wallet/tnsnames.ora
+```
+
+**Error: "ORA-12578: TNS:wallet open failed"**
+
+Solution:
+
+- Verify WALLET_PASSWORD is correct
+- Check wallet files are readable:
+
+  ```bash
+  chmod 600 ~/wallet/*
+  ```
+
+### Connection Issues
+
+**Error: "ORA-01017: invalid username/password"**
+
+Solution:
+
+- Verify DATABASE_URL credentials
+- Ensure ADMIN password is correct
+- Check password doesn't contain special characters that need escaping
+
+**Error: "No module named 'oracledb'"**
+
+Solution:
+
+```bash
+# Ensure dependencies are installed
+uv sync --all-extras --dev
+```
+
+### API Issues
+
+**Error: "Permission denied: Vertex AI API"**
+
+Solution:
+
+1. Enable Vertex AI API in GCP Console
+2. Verify GOOGLE_PROJECT_ID is correct
+3. Check API key has Vertex AI permissions
+
+## Security Best Practices
+
+### Production Deployment
+
+1. **Credentials Management**
+   - Use secret management (e.g., GCP Secret Manager)
+   - Rotate passwords regularly
+   - Never commit .env files
+
+2. **API Key Restrictions**
+   - Restrict to specific IP addresses
+   - Limit to Vertex AI API only
+   - Use separate keys for dev/prod
+
+3. **Database Security**
+   - Use strong passwords (16+ characters)
+   - Enable mTLS if available
+   - Audit database access logs
+   - Use _high service for production (dedicated resources)
+
+4. **Network Security**
+   - Configure firewall rules appropriately
+   - Use VPC peering for internal connections
+   - Enable HTTPS for web traffic
+
+### Wallet Security
+
+- Store wallet files in secure location with restricted permissions
+- Backup wallet files securely
+- Rotate wallet if credentials are compromised
+- Never include wallet files in version control
+
+## Performance Tuning
+
+### Connection Pooling
+
+Adjust pool settings in .env:
+
+```bash
+# Minimum pool size
+DATABASE_POOL_MIN_SIZE=5
+
+# Maximum pool size
+DATABASE_POOL_MAX_SIZE=20
+
+# Connection timeout (seconds)
+DATABASE_POOL_TIMEOUT=30
+
+# Connection recycle time (seconds)
+DATABASE_POOL_RECYCLE=300
+```
+
+### Service Selection
+
+Choose service based on workload:
+
+- **_high**: Maximum performance, use for production with high concurrency
+- **_medium**: Balanced, use for general production workloads
+- **_low**: Cost-optimized, use for development/testing
+
+## Monitoring and Maintenance
+
+### Database Metrics
+
+Monitor your database through Oracle Cloud Console:
+
+1. Navigate to your Autonomous Database
+2. Click "Performance Hub"
+3. View:
+   - CPU utilization
+   - Storage usage
+   - Active sessions
+   - SQL monitoring
+
+### Application Logs
+
+View application logs:
+
+```bash
+# Set log level in .env
+LOG_LEVEL=INFO  # or DEBUG for verbose logging
+
+# Run with logs visible
+uv run app run
+```
+
+### Cache Management
+
+Clear caches when needed:
+
+```bash
+# Clear all caches
+uv run app clear-cache --force
+
+# Clear specific caches
+uv run app clear-cache --keep-embedding-cache
+```
+
+## Migration from Local Development
+
+### Switching from Docker to Autonomous
+
+If you've been using local Docker Oracle 23AI:
+
+1. Backup your local data:
+
+   ```bash
+   uv run app dump-data --path=./backup
+   ```
+
+2. Configure autonomous:
+
+   ```bash
+   make config-autonomous
+   ```
+
+3. Initialize autonomous database:
+
+   ```bash
+   make install-autonomous
+   ```
+
+4. Your application will now use Autonomous Database automatically
+
+### Running Both Modes
+
+Keep both configurations by using different .env files:
+
+```bash
+# Local development
+cp .env .env.local
+
+# Autonomous
+cp .env .env.autonomous
+
+# Switch between them
+cp .env.local .env     # Use local
+cp .env.autonomous .env  # Use autonomous
+```
+
+## Additional Resources
+
+- [Oracle Autonomous Database Documentation](https://docs.oracle.com/en/cloud/paas/autonomous-database/)
+- [Google Cloud Vertex AI](https://cloud.google.com/vertex-ai/docs)
+- [Project README](../../README.md)
+- [Architecture Guide](./architecture.md)
+- [Oracle Performance Guide](./oracle-performance.md)
+
+## Support
+
+For issues or questions:
+
+1. Check this guide and troubleshooting section
+2. Review application logs
+3. Check Oracle Cloud Console for database alerts
+4. Open an issue on GitHub
