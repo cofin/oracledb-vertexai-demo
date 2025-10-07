@@ -55,16 +55,10 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.server.controllers import CoffeeChatController
         from app.server.exception_handlers import exception_handlers
         from app.services import (
-            ChatConversationService,
-            CompanyService,
-            InventoryService,
-            OracleVectorSearchService,
+            CacheService,
+            ExemplarService,
+            MetricsService,
             ProductService,
-            RecommendationService,
-            ResponseCacheService,
-            SearchMetricsService,
-            ShopService,
-            UserSessionService,
             VertexAIService,
         )
 
@@ -122,17 +116,12 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "WebSocket": WebSocket,
                 "schemas": schemas,
                 "services": services,
+                # Core services (5 total)
                 "ProductService": ProductService,
-                "ShopService": ShopService,
-                "RecommendationService": RecommendationService,
-                "CompanyService": CompanyService,
-                "InventoryService": InventoryService,
+                "CacheService": CacheService,
+                "MetricsService": MetricsService,
+                "ExemplarService": ExemplarService,
                 "VertexAIService": VertexAIService,
-                "OracleVectorSearchService": OracleVectorSearchService,
-                "UserSessionService": UserSessionService,
-                "ChatConversationService": ChatConversationService,
-                "ResponseCacheService": ResponseCacheService,
-                "SearchMetricsService": SearchMetricsService,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
             },
@@ -140,24 +129,13 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli import (
-            autonomous_cli,
-            bulk_embed,
-            clear_cache,
-            dump_data,
-            embed_new,
-            load_fixtures,
-            load_vectors,
-            model_info,
-            truncate_tables,
-        )
+        from sqlspec.extensions.litestar.cli import database_group
 
-        cli.add_command(model_info, name="model-info")
-        cli.add_command(load_fixtures, name="load-fixtures")
-        cli.add_command(load_vectors, name="load-vectors")
-        cli.add_command(bulk_embed, name="bulk-embed")
-        cli.add_command(embed_new, name="embed-new")
-        cli.add_command(clear_cache, name="clear-cache")
-        cli.add_command(truncate_tables, name="truncate-tables")
-        cli.add_command(dump_data, name="dump-data")
-        cli.add_command(autonomous_cli)
+        from app.cli import coffee_demo_group, configure_database
+
+        # Add configure command to database group
+        database_group.add_command(configure_database)
+
+        # Register groups
+        cli.add_command(database_group)
+        cli.add_command(coffee_demo_group)

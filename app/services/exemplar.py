@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-class IntentExemplarService(SQLSpecService):
+class ExemplarService(SQLSpecService):
     """Service for managing intent exemplar embeddings using SQLSpec driver patterns."""
 
     def __init__(self, driver: OracleAsyncDriver) -> None:

@@ -30,8 +30,11 @@ from litestar.logging.config import (
 )
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.plugins.structlog import StructlogConfig
+from litestar.middleware.session.server_side import ServerSideSessionConfig
+from litestar.stores.registry import StoreRegistry
 from litestar.template import TemplateConfig
 from sqlspec.adapters.oracledb import OracleAsyncConfig
+from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 
 from app.lib.settings import BASE_DIR, get_settings
@@ -86,15 +89,20 @@ def create_oracle_config() -> OracleAsyncConfig:
             "version_table_name": "migrations",
             "script_location": _settings.db.MIGRATION_PATH,
             "project_root": Path(__file__).parent.parent,
-            "include_extensions": ["litestar"],
+            "include_extensions": ["adk", "litestar"],
         },
         extension_config={
+            "adk": {
+                "session_table": "adk_sessions",
+                "events_table": "adk_events",
+            },
             "litestar": {
+                "session_table": "app_session",
                 "commit_mode": "autocommit",
                 "connection_key": "db_connection",
                 "pool_key": "db_pool",
                 "session_key": "db_session",
-            }
+            },
         },
     )
 
@@ -102,6 +110,10 @@ def create_oracle_config() -> OracleAsyncConfig:
 # SQLSpec database manager
 sqlspec = SQLSpec()
 db = sqlspec.add_config(create_oracle_config())
+
+# Litestar session store using Oracle
+stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # type: ignore[dict-item]
+session_config = ServerSideSessionConfig(store="sessions")
 
 
 log = StructlogConfig(

@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from app.schemas import SearchMetricsCreate
 
 
-class SearchMetricsService(SQLSpecService):
+class MetricsService(SQLSpecService):
     """Search performance metrics using SQLSpec driver patterns."""
 
     def __init__(self, driver: OracleAsyncDriver) -> None:
