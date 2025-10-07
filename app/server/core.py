@@ -46,7 +46,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.params import Body
         from litestar.plugins.htmx import HTMXRequest
         from litestar.static_files import create_static_files_router
-        from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
+        from sqlspec.adapters.oracledb import OracleAsyncDriver
 
         from app import config, schemas, services
         from app.lib import log
@@ -80,7 +80,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         app_config.plugins.extend(
             [
                 plugins.granian,
-                plugins.oracle,
+                plugins.sqlspec,
                 plugins.structlog,
                 plugins.htmx,
             ],
@@ -113,11 +113,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # signatures
         app_config.signature_namespace.update(
             {
-                # Oracle types
-                "AsyncConnection": AsyncConnection,
-                "Connection": Connection,
-                "AsyncConnectionPool": AsyncConnectionPool,
-                "ConnectionPool": ConnectionPool,
+                # SQLSpec Oracle driver
+                "OracleAsyncDriver": OracleAsyncDriver,
                 "RequestEncodingType": RequestEncodingType,
                 "Body": Body,
                 "State": State,
@@ -144,6 +141,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
 
     def on_cli_init(self, cli: Group) -> None:
         from app.cli import (
+            autonomous_cli,
             bulk_embed,
             clear_cache,
             dump_data,
@@ -162,3 +160,4 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         cli.add_command(clear_cache, name="clear-cache")
         cli.add_command(truncate_tables, name="truncate-tables")
         cli.add_command(dump_data, name="dump-data")
+        cli.add_command(autonomous_cli)

@@ -21,26 +21,24 @@ The embedding_cache stores:
 - Enables fast product matching without regenerating embeddings
 """
 
-from __future__ import annotations
 
-import array
 import hashlib
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import structlog
 
-from app.services.base import BaseService
+from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    import oracledb
+    from sqlspec.driver import AsyncDriverAdapterBase
 
     from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
 
-class EmbeddingCache(BaseService):
+class EmbeddingCache(SQLSpecService):
     """Oracle-based cache for embedding vectors using dedicated embedding_cache table with VECTOR type.
 
     This service provides efficient caching of vector embeddings to avoid expensive re-computation
@@ -56,14 +54,14 @@ class EmbeddingCache(BaseService):
     This is distinct from ResponseCacheService which caches complete LLM responses.
     """
 
-    def __init__(self, connection: oracledb.AsyncConnection, ttl_hours: int = 24) -> None:
-        """Initialize with Oracle connection.
+    def __init__(self, driver: AsyncDriverAdapterBase, ttl_hours: int = 24) -> None:
+        """Initialize with driver.
 
         Args:
-            connection: Oracle database connection
+            driver: SQLSpec async driver adapter
             ttl_hours: Time to live for cache entries in hours
         """
-        super().__init__(connection)
+        super().__init__(driver)
         self.ttl_hours = ttl_hours
         # Memory cache for current session
         self._memory_cache: dict[str, list[float]] = {}
@@ -118,46 +116,41 @@ class EmbeddingCache(BaseService):
         # Try Oracle cache
         cache_key = self._cache_key(query)
         try:
-            async with self.get_cursor() as cursor:
-                # Check cache with non-expired entries
-                await cursor.execute(
-                    """
-                    SELECT embedding
-                    FROM embedding_cache
-                    WHERE cache_key = :cache_key
-                      AND expires_at > CURRENT_TIMESTAMP
+            # Check cache with non-expired entries
+            result = await self.driver.select_one_or_none(
+                """
+                SELECT embedding
+                FROM embedding_cache
+                WHERE cache_key = :cache_key
+                  AND expires_at > CURRENT_TIMESTAMP
                 """,
-                    {"cache_key": cache_key},
+                cache_key=cache_key,
+            )
+
+            if result and result["embedding"]:
+                # Update hit count
+                await self.driver.execute(
+                    """
+                    UPDATE embedding_cache
+                    SET hit_count = hit_count + 1
+                    WHERE cache_key = :cache_key
+                    """,
+                    cache_key=cache_key,
                 )
 
-                result = await cursor.fetchone()
-                if result:
-                    # Update hit count
-                    await cursor.execute(
-                        """
-                        UPDATE embedding_cache
-                        SET hit_count = hit_count + 1
-                        WHERE cache_key = :cache_key
-                    """,
-                        {"cache_key": cache_key},
-                    )
-                    await self.connection.commit()
+                # SQLSpec handles Oracle VECTOR to Python list conversion automatically
+                embedding_vector = result["embedding"]
+                embedding: list[float]
+                if isinstance(embedding_vector, list):
+                    embedding = embedding_vector
+                else:
+                    # Convert to list if needed
+                    embedding = list(embedding_vector)
 
-                    # Convert Oracle VECTOR to Python list
-                    if result[0] is not None:
-                        embedding: list[float]
-                        if isinstance(result[0], array.array):
-                            embedding = result[0].tolist()  # type: ignore[assignment]
-                        elif hasattr(result[0], "to_array"):
-                            embedding = result[0].to_array().tolist()
-                        else:
-                            # Fallback: assume it's already a list and convert to floats
-                            embedding = [float(x) for x in result[0]]
-
-                        # Store in memory cache
-                        self._set_in_memory(normalized, embedding)
-                        logger.debug("embedding_cache_hit", layer="oracle", query=query[:50])
-                        return embedding, True
+                # Store in memory cache
+                self._set_in_memory(normalized, embedding)
+                logger.debug("embedding_cache_hit", layer="oracle", query=query[:50])
+                return embedding, True
 
         except Exception as e:  # noqa: BLE001
             logger.warning("oracle_cache_read_error", error=str(e))
@@ -185,46 +178,40 @@ class EmbeddingCache(BaseService):
         - Fast vector distance calculations
         - Native support for similarity operations
         - Optimized memory usage compared to JSON storage
+
+        SQLSpec automatically handles vector conversions - no need for array.array().
         """
         try:
-            async with self.get_cursor() as cursor:
-                # Calculate expiration
-                expires_at = datetime.now(UTC) + timedelta(hours=self.ttl_hours)
+            # Calculate expiration
+            expires_at = datetime.now(UTC) + timedelta(hours=self.ttl_hours)
 
-                # Convert Python list to Oracle VECTOR format
-                # Oracle expects array.array('f', embedding) for VECTOR type
-                embedding_array = array.array("f", embedding)
-
-                # Upsert into cache
-                await cursor.execute(
-                    """
-                    MERGE INTO embedding_cache ec
-                    USING (SELECT :cache_key AS cache_key FROM dual) src
-                    ON (ec.cache_key = src.cache_key)
-                    WHEN MATCHED THEN
-                        UPDATE SET
-                            query_text = :query_text,
-                            embedding = :embedding,
-                            expires_at = :expires_at,
-                            hit_count = 0
-                    WHEN NOT MATCHED THEN
-                        INSERT (cache_key, query_text, embedding, expires_at, hit_count)
-                        VALUES (:cache_key2, :query_text2, :embedding2, :expires_at2, 0)
+            # Upsert into cache - SQLSpec handles vector conversion automatically
+            await self.driver.execute(
+                """
+                MERGE INTO embedding_cache ec
+                USING (SELECT :cache_key AS cache_key FROM dual) src
+                ON (ec.cache_key = src.cache_key)
+                WHEN MATCHED THEN
+                    UPDATE SET
+                        query_text = :query_text,
+                        embedding = :embedding,
+                        expires_at = :expires_at,
+                        hit_count = 0
+                WHEN NOT MATCHED THEN
+                    INSERT (cache_key, query_text, embedding, expires_at, hit_count)
+                    VALUES (:cache_key2, :query_text2, :embedding2, :expires_at2, 0)
                 """,
-                    {
-                        "cache_key": cache_key,
-                        "cache_key2": cache_key,
-                        "query_text": query,
-                        "query_text2": query,
-                        "embedding": embedding_array,
-                        "embedding2": embedding_array,
-                        "expires_at": expires_at,
-                        "expires_at2": expires_at,
-                    },
-                )
+                cache_key=cache_key,
+                cache_key2=cache_key,
+                query_text=query,
+                query_text2=query,
+                embedding=embedding,
+                embedding2=embedding,
+                expires_at=expires_at,
+                expires_at2=expires_at,
+            )
 
-                await self.connection.commit()
-                logger.debug("embedding_cache_stored", cache_key=cache_key[:20], query=query[:50])
+            logger.debug("embedding_cache_stored", cache_key=cache_key[:20], query=query[:50])
 
         except Exception as e:  # noqa: BLE001
             logger.warning("oracle_cache_write_error", error=str(e))
@@ -238,14 +225,10 @@ class EmbeddingCache(BaseService):
         Returns:
             Number of embedding cache entries cleared
         """
-        async with self.get_cursor() as cursor:
-            await cursor.execute("""
-                DELETE FROM embedding_cache
-                WHERE expires_at < CURRENT_TIMESTAMP
-            """)
+        rowcount = await self.driver.execute("""
+            DELETE FROM embedding_cache
+            WHERE expires_at < CURRENT_TIMESTAMP
+        """)
 
-            deleted = cursor.rowcount
-            await self.connection.commit()
-
-            logger.info("embedding_cache_cleanup", deleted=deleted)
-            return deleted
+        logger.info("embedding_cache_cleanup", deleted=rowcount)
+        return rowcount

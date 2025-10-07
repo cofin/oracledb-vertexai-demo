@@ -12,195 +12,205 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Search metrics service using raw Oracle SQL."""
+"""Search metrics service using SQLSpec driver patterns."""
 
-from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from app.services.base import BaseService
+from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
+    from sqlspec.driver import AsyncDriverAdapterBase
+
     from app.schemas import SearchMetricsCreate
 
 
-class SearchMetricsService(BaseService):
-    """Search performance metrics using raw SQL."""
+class SearchMetricsService(SQLSpecService):
+    """Search performance metrics using SQLSpec driver patterns."""
+
+    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
+        """Initialize the service."""
+        super().__init__(driver)
 
     async def record_search(self, metrics_data: SearchMetricsCreate) -> dict[str, Any]:
         """Record search performance metrics."""
-        async with self.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                INSERT INTO search_metrics (
-                    query_id,
-                    user_id,
-                    search_time_ms,
-                    embedding_time_ms,
-                    oracle_time_ms,
-                    similarity_score,
-                    result_count
-                )
-                VALUES (
-                    :query_id,
-                    :user_id,
-                    :search_time_ms,
-                    :embedding_time_ms,
-                    :oracle_time_ms,
-                    :similarity_score,
-                    :result_count
-                )
-                """,
-                {
-                    "query_id": metrics_data.query_id,
-                    "user_id": metrics_data.user_id,
-                    "search_time_ms": metrics_data.search_time_ms,
-                    "embedding_time_ms": metrics_data.embedding_time_ms,
-                    "oracle_time_ms": metrics_data.oracle_time_ms,
-                    "similarity_score": metrics_data.similarity_score,
-                    "result_count": metrics_data.result_count,
-                },
+        await self.driver.execute(
+            """
+            INSERT INTO search_metrics (
+                query_id,
+                user_id,
+                search_time_ms,
+                embedding_time_ms,
+                oracle_time_ms,
+                similarity_score,
+                result_count
             )
-
-            await self.connection.commit()
-
-            # Get the inserted record
-            await cursor.execute(
-                """
-                SELECT
-                    id,
-                    query_id,
-                    user_id,
-                    search_time_ms,
-                    embedding_time_ms,
-                    oracle_time_ms,
-                    similarity_score,
-                    result_count,
-                    created_at,
-                    updated_at
-                FROM search_metrics
-                WHERE query_id = :query_id
-                ORDER BY created_at DESC
-                FETCH FIRST 1 ROWS ONLY
-                """,
-                {"query_id": metrics_data.query_id},
+            VALUES (
+                :query_id,
+                :user_id,
+                :search_time_ms,
+                :embedding_time_ms,
+                :oracle_time_ms,
+                :similarity_score,
+                :result_count
             )
+            """,
+            query_id=metrics_data.query_id,
+            user_id=metrics_data.user_id,
+            search_time_ms=metrics_data.search_time_ms,
+            embedding_time_ms=metrics_data.embedding_time_ms,
+            oracle_time_ms=metrics_data.oracle_time_ms,
+            similarity_score=metrics_data.similarity_score,
+            result_count=metrics_data.result_count,
+        )
 
-            row = await cursor.fetchone()
-            if not row:
-                msg = "Failed to create search metrics"
-                raise RuntimeError(msg)
+        # Get the inserted record
+        result = await self.driver.select_one_or_none(
+            """
+            SELECT
+                id,
+                query_id,
+                user_id,
+                search_time_ms,
+                embedding_time_ms,
+                oracle_time_ms,
+                similarity_score,
+                result_count,
+                created_at,
+                updated_at
+            FROM search_metrics
+            WHERE query_id = :query_id
+            ORDER BY created_at DESC
+            FETCH FIRST 1 ROWS ONLY
+            """,
+            query_id=metrics_data.query_id,
+        )
 
-            return {
-                "id": row[0],
-                "query_id": row[1],
-                "user_id": row[2],
-                "search_time_ms": row[3],
-                "embedding_time_ms": row[4],
-                "oracle_time_ms": row[5],
-                "similarity_score": row[6],
-                "result_count": row[7],
-                "created_at": row[8],
-                "updated_at": row[9],
-            }
+        if not result:
+            msg = "Failed to create search metrics"
+            raise RuntimeError(msg)
+
+        return {
+            "id": result["id"],
+            "query_id": result["query_id"],
+            "user_id": result["user_id"],
+            "search_time_ms": result["search_time_ms"],
+            "embedding_time_ms": result["embedding_time_ms"],
+            "oracle_time_ms": result["oracle_time_ms"],
+            "similarity_score": result["similarity_score"],
+            "result_count": result["result_count"],
+            "created_at": result["created_at"],
+            "updated_at": result["updated_at"],
+        }
 
     async def get_performance_stats(self, hours: int = 24) -> dict:
         """Get performance statistics."""
         since = datetime.now(UTC) - timedelta(hours=hours)
 
-        async with self.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT
-                    COUNT(id) as total_searches,
-                    AVG(search_time_ms) as avg_search_time,
-                    AVG(embedding_time_ms) as avg_embedding_time,
-                    AVG(oracle_time_ms) as avg_oracle_time,
-                    AVG(similarity_score) as avg_similarity,
-                    MAX(search_time_ms) as max_search_time,
-                    MIN(search_time_ms) as min_search_time
-                FROM search_metrics
-                WHERE created_at > :since
-                """,
-                {"since": since},
-            )
+        result = await self.driver.select_one_or_none(
+            """
+            SELECT
+                COUNT(id) as total_searches,
+                AVG(search_time_ms) as avg_search_time,
+                AVG(embedding_time_ms) as avg_embedding_time,
+                AVG(oracle_time_ms) as avg_oracle_time,
+                AVG(similarity_score) as avg_similarity,
+                MAX(search_time_ms) as max_search_time,
+                MIN(search_time_ms) as min_search_time
+            FROM search_metrics
+            WHERE created_at > :since
+            """,
+            since=since,
+        )
 
-            row = await cursor.fetchone()
-
+        if result:
             return {
-                "total_searches": row[0] or 0,
-                "avg_search_time_ms": round(row[1] or 0, 2),
-                "avg_embedding_time_ms": round(row[2] or 0, 2),
-                "avg_oracle_time_ms": round(row[3] or 0, 2),
-                "avg_similarity_score": round(row[4] or 0, 3),
-                "max_search_time_ms": row[5] or 0,
-                "min_search_time_ms": row[6] or 0,
+                "total_searches": result["total_searches"] or 0,
+                "avg_search_time_ms": round(result["avg_search_time"] or 0, 2),
+                "avg_embedding_time_ms": round(result["avg_embedding_time"] or 0, 2),
+                "avg_oracle_time_ms": round(result["avg_oracle_time"] or 0, 2),
+                "avg_similarity_score": round(result["avg_similarity"] or 0, 3),
+                "max_search_time_ms": result["max_search_time"] or 0,
+                "min_search_time_ms": result["min_search_time"] or 0,
                 "period_hours": hours,
             }
 
+        return {
+            "total_searches": 0,
+            "avg_search_time_ms": 0.0,
+            "avg_embedding_time_ms": 0.0,
+            "avg_oracle_time_ms": 0.0,
+            "avg_similarity_score": 0.0,
+            "max_search_time_ms": 0,
+            "min_search_time_ms": 0,
+            "period_hours": hours,
+        }
+
     async def get_time_series_data(self, minutes: int = 60) -> dict:
         """Get time-series performance data for charts."""
-        async with self.get_cursor() as cursor:
-            since_time = datetime.now(UTC) - timedelta(minutes=minutes)
-            await cursor.execute(
-                """
-                SELECT
-                    TO_CHAR(created_at, 'HH24:MI') as time_bucket,
-                    AVG(search_time_ms) as avg_total,
-                    AVG(oracle_time_ms) as avg_oracle,
-                    AVG(embedding_time_ms) as avg_embedding,
-                    COUNT(*) as request_count
-                FROM search_metrics
-                WHERE created_at > :since_time
-                GROUP BY TO_CHAR(created_at, 'HH24:MI')
-                ORDER BY time_bucket
-                """,
-                {"since_time": since_time},
-            )
+        since_time = datetime.now(UTC) - timedelta(minutes=minutes)
+        results = await self.driver.select(
+            """
+            SELECT
+                TO_CHAR(created_at, 'HH24:MI') as time_bucket,
+                AVG(search_time_ms) as avg_total,
+                AVG(oracle_time_ms) as avg_oracle,
+                AVG(embedding_time_ms) as avg_embedding,
+                COUNT(*) as request_count
+            FROM search_metrics
+            WHERE created_at > :since_time
+            GROUP BY TO_CHAR(created_at, 'HH24:MI')
+            ORDER BY time_bucket
+            """,
+            since_time=since_time,
+        )
 
-            labels = []
-            total_latency = []
-            oracle_latency = []
-            vertex_latency = []
+        labels = []
+        total_latency = []
+        oracle_latency = []
+        vertex_latency = []
 
-            async for row in cursor:
-                labels.append(row[0])
-                total_latency.append(round(row[1] or 0, 2))
-                oracle_latency.append(round(row[2] or 0, 2))
-                vertex_latency.append(round(row[3] or 0, 2))
+        for row in results:
+            labels.append(row["time_bucket"])
+            total_latency.append(round(row["avg_total"] or 0, 2))
+            oracle_latency.append(round(row["avg_oracle"] or 0, 2))
+            vertex_latency.append(round(row["avg_embedding"] or 0, 2))
 
-            return {
-                "labels": labels,
-                "total_latency": total_latency,
-                "oracle_latency": oracle_latency,
-                "vertex_latency": vertex_latency,
-            }
+        return {
+            "labels": labels,
+            "total_latency": total_latency,
+            "oracle_latency": oracle_latency,
+            "vertex_latency": vertex_latency,
+        }
 
     async def get_scatter_data(self, hours: int = 1) -> list[dict]:
         """Get similarity score vs response time for scatter plot."""
-        async with self.get_cursor() as cursor:
-            # Oracle doesn't support bind variables with INTERVAL, so we calculate the timestamp
-            since_time = datetime.now(UTC) - timedelta(hours=hours)
-            await cursor.execute(
-                """
-                SELECT
-                    similarity_score,
-                    oracle_time_ms,
-                    search_time_ms
-                FROM search_metrics
-                WHERE created_at > :since_time
-                AND similarity_score IS NOT NULL
-                ORDER BY created_at DESC
-                FETCH FIRST 500 ROWS ONLY
-                """,
-                {"since_time": since_time},
-            )
+        # Oracle doesn't support bind variables with INTERVAL, so we calculate the timestamp
+        since_time = datetime.now(UTC) - timedelta(hours=hours)
+        results = await self.driver.select(
+            """
+            SELECT
+                similarity_score,
+                oracle_time_ms,
+                search_time_ms
+            FROM search_metrics
+            WHERE created_at > :since_time
+            AND similarity_score IS NOT NULL
+            ORDER BY created_at DESC
+            FETCH FIRST 500 ROWS ONLY
+            """,
+            since_time=since_time,
+        )
 
-            return [
-                {"x": round(row[0] or 0, 3), "y": round(row[1] or 0, 2), "total": round(row[2] or 0, 2)}
-                async for row in cursor
-            ]
+        return [
+            {
+                "x": round(row["similarity_score"] or 0, 3),
+                "y": round(row["oracle_time_ms"] or 0, 2),
+                "total": round(row["search_time_ms"] or 0, 2),
+            }
+            for row in results
+        ]
 
     async def get_performance_breakdown(self) -> dict:
         """Get average time breakdown for doughnut chart."""
@@ -230,39 +240,37 @@ class SearchMetricsService(BaseService):
 
     async def get_query_details(self, query_id: str) -> dict[str, Any] | None:
         """Get detailed metrics for a specific query."""
-        async with self.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT
-                    id,
-                    query_id,
-                    user_id,
-                    search_time_ms,
-                    embedding_time_ms,
-                    oracle_time_ms,
-                    similarity_score,
-                    result_count,
-                    created_at
-                FROM search_metrics
-                WHERE query_id = :query_id
-                ORDER BY created_at DESC
-                FETCH FIRST 1 ROWS ONLY
-                """,
-                {"query_id": query_id},
-            )
+        result = await self.driver.select_one_or_none(
+            """
+            SELECT
+                id,
+                query_id,
+                user_id,
+                search_time_ms,
+                embedding_time_ms,
+                oracle_time_ms,
+                similarity_score,
+                result_count,
+                created_at
+            FROM search_metrics
+            WHERE query_id = :query_id
+            ORDER BY created_at DESC
+            FETCH FIRST 1 ROWS ONLY
+            """,
+            query_id=query_id,
+        )
 
-            row = await cursor.fetchone()
-            if not row:
-                return None
+        if not result:
+            return None
 
-            return {
-                "id": row[0],
-                "query_id": row[1],
-                "user_id": row[2],
-                "search_time_ms": row[3],
-                "embedding_time_ms": row[4],
-                "oracle_time_ms": row[5],
-                "similarity_score": row[6],
-                "result_count": row[7],
-                "created_at": row[8],
-            }
+        return {
+            "id": result["id"],
+            "query_id": result["query_id"],
+            "user_id": result["user_id"],
+            "search_time_ms": result["search_time_ms"],
+            "embedding_time_ms": result["embedding_time_ms"],
+            "oracle_time_ms": result["oracle_time_ms"],
+            "similarity_score": result["similarity_score"],
+            "result_count": result["result_count"],
+            "created_at": result["created_at"],
+        }

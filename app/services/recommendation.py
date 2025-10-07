@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 import structlog
 
 if TYPE_CHECKING:
-    from app.services.embedding_cache import EmbeddingCache
     from app.services.product import ProductService
     from app.services.shop import ShopService
+
 from app import schemas
 from app.services.chat_conversation import ChatConversationService
 from app.services.embedding_cache import EmbeddingCache
@@ -55,9 +55,9 @@ class RecommendationService:
         self.user_id = user_id
 
         # Initialize intent router with embedding cache
-        # Connection will be passed to route_intent method
+        # Driver (session) is passed from products_service
         self.intent_router = IntentRouter(
-            self.products_service.connection,
+            self.products_service.driver,
             vertex_ai_service,
             embedding_cache,
         )

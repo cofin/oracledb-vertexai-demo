@@ -38,6 +38,17 @@ TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
 class DatabaseSettings:
     """Oracle Database connection settings."""
 
+    # Autonomous Database fields (new)
+    URL: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL"))
+    """Oracle Database URL (for Autonomous DB). Format: oracle+oracledb://user:password@service_name"""
+    WALLET_PASSWORD: str | None = field(default_factory=lambda: os.getenv("WALLET_PASSWORD"))
+    """Oracle Database Wallet Password (for Autonomous DB)."""
+    WALLET_LOCATION: str | None = field(
+        default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN")
+    )
+    """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
+
+    # Standard/Local Database fields (existing)
     USER: str = field(
         default_factory=lambda: os.getenv("DATABASE_USER", "app"),
     )
@@ -65,8 +76,41 @@ class DatabaseSettings:
         ),
     )
     """Oracle Database DSN."""
+    POOL_MIN_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MIN_SIZE", "5")))
+    """Minimum pool size."""
+    POOL_MAX_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MAX_SIZE", "20")))
+    """Maximum pool size."""
+    POOL_TIMEOUT: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_TIMEOUT", "30")))
+    """Pool timeout in seconds."""
+    POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
+    """Pool recycle time in seconds."""
+    MIGRATION_PATH: str = field(default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", "app/db/migrations"))
+    """Database migration path."""
     FIXTURE_PATH: str = f"{BASE_DIR}/db/fixtures"
     """The path to JSON fixture files to load into tables."""
+
+    @property
+    def is_autonomous(self) -> bool:
+        """Detect if we're using Autonomous Database based on presence of URL and wallet password."""
+        return self.URL is not None and self.WALLET_PASSWORD is not None
+
+    def get_connection_params(self) -> dict[str, str]:
+        """Extract connection parameters based on connection mode (autonomous vs local)."""
+        if self.is_autonomous:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(self.URL)
+            return {
+                "user": parsed.username or self.USER,
+                "password": parsed.password or self.PASSWORD,
+                "dsn": parsed.hostname or "",
+                "wallet_password": self.WALLET_PASSWORD or "",
+            }
+        return {
+            "user": self.USER,
+            "password": self.PASSWORD,
+            "dsn": self.DSN,
+        }
 
 
 @dataclass

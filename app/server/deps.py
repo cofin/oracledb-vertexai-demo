@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypeVar
 
-from app import config
+from app.config import db, sqlspec
 from app.services import (
     ChatConversationService,
     CompanyService,
@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
 
     from litestar import Request
-    from oracledb import AsyncConnection
 
 
 # Generic service provider factory
@@ -34,15 +33,13 @@ T = TypeVar("T")
 
 
 def create_service_provider(service_cls: type[T]) -> Callable[..., AsyncGenerator[T, None]]:
-    """Create a generic service provider for services that require a db connection."""
+    """Create a generic service provider for SQLSpec-based services."""
 
-    async def provider(db_connection: AsyncConnection | None = None) -> AsyncGenerator[T, None]:
-        """Generic provider function."""
-        if db_connection:
-            yield service_cls(db_connection)  # type: ignore[call-arg]
-            return
-        async with config.oracle_async.get_connection() as conn:
-            yield service_cls(conn)  # type: ignore[call-arg]
+    async def provider() -> AsyncGenerator[T, None]:
+        """Generic provider function using SQLSpec's session management."""
+        # SQLSpec automatically handles connection pooling and lifecycle
+        async with sqlspec.provide_session(db) as session:
+            yield service_cls(session)  # type: ignore[call-arg]
 
     return provider
 
@@ -60,16 +57,10 @@ provide_intent_exemplar_service = create_service_provider(IntentExemplarService)
 
 
 # Provider for EmbeddingCache, which has an extra argument
-async def provide_embedding_cache(
-    db_connection: AsyncConnection | None = None,
-) -> AsyncGenerator[EmbeddingCache, None]:
-    """Provide Embedding Cache service with Oracle connection."""
-    if db_connection:
-        # If a specific connection is provided, use it
-        yield EmbeddingCache(db_connection, ttl_hours=24)
-        return
-    async with config.oracle_async.get_connection() as conn:
-        yield EmbeddingCache(conn, ttl_hours=24)
+async def provide_embedding_cache() -> AsyncGenerator[EmbeddingCache, None]:
+    """Provide Embedding Cache service with SQLSpec session."""
+    async with sqlspec.provide_session(db) as session:
+        yield EmbeddingCache(session, ttl_hours=24)
 
 
 # Providers that don't require a database connection directly

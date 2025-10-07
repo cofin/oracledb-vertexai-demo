@@ -1,17 +1,15 @@
 """Intent detection using Oracle 23AI native vector similarity search."""
 
-from __future__ import annotations
 
-import array
 from typing import TYPE_CHECKING
 
 import structlog
 
 from app.config import INTENT_THRESHOLDS, VECTOR_SEARCH_CONFIG
-from app.services.base import BaseService
+from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    import oracledb
+    from sqlspec.driver import AsyncDriverAdapterBase
 
     from app.services.embedding_cache import EmbeddingCache
     from app.services.vertex_ai import VertexAIService
@@ -150,17 +148,17 @@ INTENT_EXEMPLARS = {
 }
 
 
-class IntentRouter(BaseService):
+class IntentRouter(SQLSpecService):
     """Oracle 23AI native vector similarity search for intent routing."""
 
     def __init__(
         self,
-        connection: oracledb.AsyncConnection,
+        driver: AsyncDriverAdapterBase,
         vertex_ai_service: VertexAIService,
         embedding_cache: EmbeddingCache | None = None,
     ) -> None:
         """Initialize with Vertex AI service and optional embedding cache."""
-        super().__init__(connection)
+        super().__init__(driver)
         self.vertex_ai = vertex_ai_service
         self.cache = embedding_cache
 
@@ -180,47 +178,41 @@ class IntentRouter(BaseService):
         else:
             query_embedding = await self.vertex_ai.create_embedding(query)
 
-        oracle_vector = array.array("f", query_embedding)
-
+        # SQLSpec automatically handles vector conversions - no need for array.array()
         # Execute pure vector similarity search
-        async with self.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT
-                    intent,
-                    phrase,
-                    1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) AS similarity_score
-                FROM intent_exemplar
-                WHERE 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) > :min_threshold
-                ORDER BY similarity_score DESC
-                FETCH FIRST :top_k ROWS ONLY
-                """,
-                {
-                    "query_embedding": oracle_vector,
-                    "min_threshold": VECTOR_SEARCH_CONFIG["min_vector_threshold"],
-                    "top_k": VECTOR_SEARCH_CONFIG["final_top_k"],
-                },
-            )
+        results = await self.driver.select(
+            """
+            SELECT
+                intent,
+                phrase,
+                1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) AS similarity_score
+            FROM intent_exemplar
+            WHERE 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) > :min_threshold
+            ORDER BY similarity_score DESC
+            FETCH FIRST :top_k ROWS ONLY
+            """,
+            query_embedding=query_embedding,
+            min_threshold=VECTOR_SEARCH_CONFIG["min_vector_threshold"],
+            top_k=VECTOR_SEARCH_CONFIG["final_top_k"],
+        )
 
-            results = await cursor.fetchall()
+        # Filter by per-intent thresholds and return
+        filtered_results = [
+            (row["intent"], row["similarity_score"], row["phrase"])  # (intent, score, phrase)
+            for row in results
+            if row["similarity_score"] >= INTENT_THRESHOLDS.get(row["intent"], 0.70)
+        ]
 
-            # Filter by per-intent thresholds and return
-            filtered_results = [
-                (row[0], row[2], row[1])  # (intent, score, phrase)
-                for row in results
-                if row[2] >= INTENT_THRESHOLDS.get(row[0], 0.70)
-            ]
+        # Log search results for debugging
+        logger.info(
+            "vector_search_results",
+            query=query,
+            total_results=len(results),
+            filtered_results=len(filtered_results),
+            top_match=filtered_results[0] if filtered_results else None,
+        )
 
-            # Log search results for debugging
-            logger.info(
-                "vector_search_results",
-                query=query,
-                total_results=len(results),
-                filtered_results=len(filtered_results),
-                top_match=filtered_results[0] if filtered_results else None,
-            )
-
-            return filtered_results, embedding_cache_hit
+        return filtered_results, embedding_cache_hit
 
     async def route_intent_single(self, query: str) -> tuple[str, float, str, bool]:
         """Route to single best intent with fallback to GENERAL_CONVERSATION.

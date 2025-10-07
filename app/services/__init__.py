@@ -13,7 +13,7 @@ from app.services.shop import ShopService
 from app.services.user_session import UserSessionService
 from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
-__all__ = [
+__all__ = (
     "ChatConversationService",
     "CompanyService",
     "IntentExemplarService",
@@ -27,4 +27,4 @@ __all__ = [
     "ShopService",
     "UserSessionService",
     "VertexAIService",
-]
+)

@@ -1,8 +1,5 @@
 """Bulk embedding service for Oracle Database integration with Vertex AI."""
 
-from __future__ import annotations
-
-import array
 import asyncio
 import json
 import uuid
@@ -23,11 +20,6 @@ logger = structlog.get_logger()
 
 # Constants
 RECOMMENDED_BATCH_SIZE: Final[int] = 25000
-
-
-def convert_to_oracle_vector(embedding: list[float]) -> array.array:
-    """Convert a Python list of floats to Oracle VECTOR format."""
-    return array.array("f", embedding)
 
 
 class BulkEmbeddingService:
@@ -65,29 +57,29 @@ class BulkEmbeddingService:
     async def export_products_to_jsonl(self, output_path: str) -> int:
         """Export products without embeddings to JSONL format for batch processing."""
 
-        # Get products that need embeddings (where embedding is NULL)
-        async with self.product_service.get_cursor() as cursor:
-            await cursor.execute("""
-                SELECT id, name, description
-                FROM product
-                WHERE embedding IS NULL
-            """)
+        # Get products that need embeddings (where embedding is NULL) using SQLSpec driver
+        products = await self.product_service.driver.select(
+            """
+            SELECT id, name, description
+            FROM product
+            WHERE embedding IS NULL
+            """
+        )
 
-            batch_data = []
-            async for row in cursor:
-                product_id, name, description = row
-                # Combine product name and description for embedding
-                text_content = f"{name}: {description}"
+        # Format for Vertex AI batch prediction
+        batch_data = []
+        for product in products:
+            # Combine product name and description for embedding
+            text_content = f"{product['name']}: {product['description']}"
 
-                # Format for Vertex AI batch prediction
-                request_data = {
-                    "content": text_content,
-                    "task_type": "RETRIEVAL_DOCUMENT",
-                    "title": name,
-                    # Include product ID for mapping results back
-                    "metadata": {"product_id": str(product_id)},
-                }
-                batch_data.append(request_data)
+            request_data = {
+                "content": text_content,
+                "task_type": "RETRIEVAL_DOCUMENT",
+                "title": product["name"],
+                # Include product ID for mapping results back
+                "metadata": {"product_id": str(product["id"])},
+            }
+            batch_data.append(request_data)
 
         # Write to JSONL file
         bucket = self.storage_client.bucket(self.bucket_name)
@@ -193,21 +185,16 @@ class BulkEmbeddingService:
             await logger.awarn(f"No embedding found for product {product_id}")
             return
 
-        # Update product in database
-        # Convert to Oracle VECTOR format
-        oracle_vector = convert_to_oracle_vector(embedding)
-
-        # Use raw SQL to update product
-        async with self.product_service.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                UPDATE product
-                SET embedding = :embedding
-                WHERE id = :id
-                """,
-                {"embedding": oracle_vector, "id": int(product_id)},
-            )
-            await self.product_service.connection.commit()
+        # Update product in database using SQLSpec driver (automatic vector conversion)
+        await self.product_service.driver.execute(
+            """
+            UPDATE product
+            SET embedding = :embedding
+            WHERE id = :id
+            """,
+            embedding=embedding,  # SQLSpec handles vector conversion automatically
+            id=int(product_id),
+        )
 
         await logger.adebug(f"Updated embedding for product {product_id}")
 
@@ -280,19 +267,16 @@ class OnlineEmbeddingService:
     async def process_new_products(self, product_service: ProductService, limit: int = 200) -> int:
         """Process products that need embeddings using online API."""
 
-        # Get products without embeddings (limit to reasonable batch size)
-        async with product_service.get_cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT id, name, description
-                FROM product
-                WHERE embedding IS NULL
-                FETCH FIRST :limit ROWS ONLY
+        # Get products without embeddings (limit to reasonable batch size) using SQLSpec driver
+        products = await product_service.driver.select(
+            """
+            SELECT id, name, description
+            FROM product
+            WHERE embedding IS NULL
+            FETCH FIRST :limit ROWS ONLY
             """,
-                {"limit": limit},
-            )
-
-            products = [{"id": row[0], "name": row[1], "description": row[2]} async for row in cursor]
+            limit=limit,
+        )
 
         # Use semaphore to limit concurrent requests (avoid rate limiting)
         semaphore = asyncio.Semaphore(16)  # Limit to 16 concurrent requests
@@ -303,19 +287,17 @@ class OnlineEmbeddingService:
                 embedding = await self.embed_single_product(str(product["id"]), text_content)
 
                 if embedding:
-                    oracle_vector = convert_to_oracle_vector(embedding)
-                    # Update product with embedding
-                    async with product_service.get_cursor() as cursor:
-                        await cursor.execute(
-                            """
-                            UPDATE product
-                            SET embedding = :embedding
-                            WHERE id = :id
-                            """,
-                            {"embedding": oracle_vector, "id": product["id"]},
-                        )
-                        await product_service.connection.commit()
-                        return 1
+                    # Update product with embedding using SQLSpec driver (automatic vector conversion)
+                    await product_service.driver.execute(
+                        """
+                        UPDATE product
+                        SET embedding = :embedding
+                        WHERE id = :id
+                        """,
+                        embedding=embedding,  # SQLSpec handles vector conversion automatically
+                        id=product["id"],
+                    )
+                    return 1
                 return 0
 
         # Process all products concurrently

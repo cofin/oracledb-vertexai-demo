@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Metadata for the Project."""
+"""CLI commands for the application."""
 
-import importlib.metadata
+from app.cli.autonomous import autonomous_cli
 
-__all__ = ("__project__", "__version__")
-
-__version__ = importlib.metadata.version("app")
-"""Version of the project."""
-__project__ = importlib.metadata.metadata("app")["Name"]
-"""Name of the project."""
+__all__ = ["autonomous_cli"]

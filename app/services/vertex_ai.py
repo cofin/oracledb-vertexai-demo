@@ -1,16 +1,11 @@
-"""Native Vertex AI service without LangChain."""
-
-from __future__ import annotations
-
-import array
 import time
 import uuid
 from typing import TYPE_CHECKING, Any, cast
 
+import google.generativeai as genai
 import structlog
-from google import genai
 from google.api_core import exceptions as google_exceptions
-from google.genai import types
+from google.generativeai.types import GenerationConfig
 
 from app.lib.settings import get_settings
 from app.schemas import SearchMetricsCreate
@@ -27,21 +22,22 @@ if TYPE_CHECKING:
 
 
 class VertexAIService:
-    """Native Vertex AI service without LangChain."""
+    """Native Vertex AI service using google-generativeai."""
 
     def __init__(self) -> None:
         settings = get_settings()
 
-        # Initialize Google GenAI client
-        self.client = genai.Client(
-            vertexai=True,
-            project=settings.app.GOOGLE_PROJECT_ID,
-            location="us-central1",
+        # TODO: The SDK expects an API key, but we are using a project ID.
+        # This might need to be adjusted based on the authentication method.
+        genai.configure(
+            api_key=settings.app.GOOGLE_PROJECT_ID,
+            transport="rest",
         )
 
         # Initialize models from settings
         self.model_name = settings.app.GEMINI_MODEL
         self.embedding_model = settings.app.EMBEDDING_MODEL
+        self.model = genai.GenerativeModel(self.model_name)
 
         logger.info("Initialized model", model=self.model_name)
 
@@ -96,10 +92,9 @@ class VertexAIService:
 
         try:
             # Configure generation with temperature
-            response = await self.client.aio.models.generate_content(
-                model=self.model_name,
+            response = await self.model.generate_content_async(
                 contents=prompt,
-                config=types.GenerateContentConfig(temperature=temperature),
+                generation_config=GenerationConfig(temperature=temperature),
             )
             content = response.text
 
@@ -145,10 +140,10 @@ class VertexAIService:
         """Stream content generation."""
         try:
             # Configure generation with temperature for streaming
-            async for chunk in await self.client.aio.models.generate_content_stream(
-                model=self.model_name,
+            async for chunk in await self.model.generate_content_async(
                 contents=prompt,
-                config=types.GenerateContentConfig(temperature=temperature),
+                generation_config=GenerationConfig(temperature=temperature),
+                stream=True,
             ):
                 if chunk.text:
                     yield chunk.text
@@ -160,21 +155,17 @@ class VertexAIService:
         """Create embeddings using Google GenAI."""
         try:
             # Use the Google GenAI embedding model
-            response = await self.client.aio.models.embed_content(
+            response = await genai.embed_content_async(
                 model=self.embedding_model,
-                contents=text,
+                content=text,
+                task_type="retrieval_document",
             )
-
-            if response.embeddings and len(response.embeddings) > 0:
-                return cast("list[float]", response.embeddings[0].values)
-            # Fallback to mock embedding for development
+            return response["embedding"]
 
         except Exception:
             # Log the error and fallback to mock embedding
             logger.exception("Embedding generation failed, using fallback")
             return [0.0] * 768  # Standard embedding dimension
-        else:
-            return [0.0] * 768
 
     def create_system_message(
         self, message: str | None = None, intent: str | None = None, persona: str = "enthusiast"
@@ -191,7 +182,7 @@ For general queries or greetings:
 - If asked about topics unrelated to coffee, politely acknowledge that your expertise is in coffee
 - You can engage in light conversation but gently guide back to how you can help with coffee-related questions
 - Never make up information about coffee products that weren't provided in the context
-            """.strip()
+            """
         else:
             base_message = """
 You are a helpful coffee expert for Cymbal Coffee. Give quick, friendly recommendations and advice.
@@ -202,7 +193,7 @@ Keep responses SHORT and conversational - this is a chat interface:
 - Focus on practical recommendations
 - No bullet points or long explanations
 - Sound natural and friendly like you're talking to a customer at the counter
-            """.strip()
+            """
 
         # If a custom message is provided, use it as the base
         if message:
@@ -230,7 +221,7 @@ Keep responses SHORT and conversational - this is a chat interface:
         # Add conversation history
         if conversation_history:
             prompt_parts.append("\n# Conversation History:")
-            for msg in conversation_history[-10:]:  # Last 10 messages
+            for msg in conversation_history[-10:]:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 prompt_parts.append(f"{role.title()}: {content}")
@@ -266,7 +257,7 @@ Keep responses SHORT and conversational - this is a chat interface:
 
 
 class OracleVectorSearchService:
-    """Oracle vector search without LangChain."""
+    """Oracle vector search without LangChain - using SQLSpec driver patterns."""
 
     def __init__(
         self,
@@ -307,41 +298,33 @@ class OracleVectorSearchService:
             # Perform Oracle vector search
             oracle_start = time.time()
 
-            # Convert embedding to Oracle VECTOR format
+            # Execute search using SQLSpec driver - automatic vector conversion
+            products = await self.products_service.driver.select(
+                """
+                SELECT p.id, p.name, p.description,
+                       VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
+                FROM product p
+                WHERE p.embedding IS NOT NULL
+                ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+                FETCH FIRST :limit ROWS ONLY
+                """,
+                query_vector=query_embedding,  # SQLSpec handles vector conversion automatically
+                limit=k,
+            )
 
-            # Convert to float32 array for Oracle VECTOR
-            vector_array = array.array("f", query_embedding)
+            oracle_time = (time.time() - oracle_start) * 1000
 
-            # Execute search using raw Oracle SQL
-            async with self.products_service.get_cursor() as cursor:
-                await cursor.execute(
-                    """
-                    SELECT p.id, p.name, p.description,
-                           VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
-                    FROM product p
-                    WHERE p.embedding IS NOT NULL
-                    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-                    FETCH FIRST :limit ROWS ONLY
-                    """,
-                    {
-                        "query_vector": vector_array,
-                        "limit": k,
-                    },
-                )
-
-                oracle_time = (time.time() - oracle_start) * 1000
-
-                # Format results
-                products = [
-                    {
-                        "id": row[0],
-                        "name": row[1],
-                        "description": row[2],
-                        "distance": row[3],
-                        "metadata": {"id": row[0]},
-                    }
-                    async for row in cursor
-                ]
+            # Format results - driver returns dicts, add metadata field
+            formatted_products = [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "description": row["description"],
+                    "distance": row["distance"],
+                    "metadata": {"id": row["id"]},
+                }
+                for row in products
+            ]
 
             # Calculate total time and return timing data
             total_time = (time.time() - start_time) * 1000
@@ -356,4 +339,4 @@ class OracleVectorSearchService:
             logger.exception("Vector search error", error=str(e))
             return [], False, {"embedding_ms": 0, "oracle_ms": 0, "total_ms": 0}
         else:
-            return products, embedding_cache_hit, timing_data
+            return formatted_products, embedding_cache_hit, timing_data
