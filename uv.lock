@@ -2437,7 +2437,7 @@ wheels = [
 [[package]]
 name = "sqlspec"
 version = "0.26.0"
-source = { git = "https://github.com/litestar-org/sqlspec.git?rev=adk-session#79139d1617267eb65871d830fe0e099814b60321" }
+source = { git = "https://github.com/litestar-org/sqlspec.git?rev=adk-session#5edd6407c6a195f8ed551e90b96500cfc6ae1d01" }
 dependencies = [
     { name = "mypy-extensions" },
     { name = "rich-click" },

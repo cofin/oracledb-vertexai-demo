@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from sqlspec.core.filters import (
@@ -41,7 +42,7 @@ from sqlspec.driver import AsyncDriverAdapterBase
 from sqlspec.typing import ModelDTOT, StatementParameters
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncIterator, Sequence
 
     from sqlspec import QueryBuilder, Statement, StatementConfig
 
@@ -193,3 +194,15 @@ class SQLSpecService:
     async def rollback(self) -> None:
         """Rollback the current database transaction."""
         await self.driver.rollback()
+
+    @asynccontextmanager
+    async def begin_transaction(self) -> AsyncIterator[None]:
+        """Context manager for database transactions."""
+        await self.begin()
+        try:
+            yield
+        except Exception:
+            await self.rollback()
+            raise
+        else:
+            await self.commit()
