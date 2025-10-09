@@ -1,8 +1,8 @@
 """Integration tests for ProductService with SQLSpec."""
 
 import pytest
-from app.services.product import ProductService
 
+from app.services.product import ProductService
 
 pytestmark = pytest.mark.anyio
 
@@ -16,11 +16,11 @@ class TestProductService:
     ) -> None:
         """Test retrieving all products."""
         products = await product_service.get_all()
-        
+
         assert isinstance(products, list)
         # Should have at least some products from seed data
         assert len(products) >= 0
-        
+
         if products:
             # Verify dict-based access (SQLSpec pattern)
             product = products[0]
@@ -37,11 +37,11 @@ class TestProductService:
         """Test retrieving product by ID."""
         # Get all products first
         products = await product_service.get_all()
-        
+
         if products:
             product_id = products[0]["id"]
             product = await product_service.get_by_id(product_id)
-            
+
             assert product is not None
             assert product["id"] == product_id
             assert "name" in product
@@ -62,7 +62,7 @@ class TestProductService:
         """Test text-based description search."""
         # Search for common coffee terms
         results = await product_service.search_by_description("coffee")
-        
+
         assert isinstance(results, list)
         # Verify all results contain the search term
         for result in results:
@@ -76,12 +76,12 @@ class TestProductService:
         products, total_count = await product_service.get_products_without_embeddings(
             limit=10, offset=0
         )
-        
+
         assert isinstance(products, list)
         assert isinstance(total_count, int)
         assert total_count >= 0
         assert len(products) <= 10
-        
+
         # Verify all results have null embeddings
         for product in products:
             assert product["embedding"] is None
@@ -93,22 +93,22 @@ class TestProductService:
         """Test vector similarity search with Oracle VECTOR_DISTANCE."""
         # Create a mock embedding (768 dimensions)
         query_embedding = [0.1] * 768
-        
+
         results = await product_service.search_by_vector(
             query_embedding=query_embedding,
             limit=5,
             similarity_threshold=0.3,
         )
-        
+
         assert isinstance(results, list)
         assert len(results) <= 5
-        
+
         # Verify SQLSpec automatically handles vector conversion
         for result in results:
             assert "similarity_score" in result
             assert 0.0 <= result["similarity_score"] <= 1.0
             # Results should be sorted by similarity (highest first)
-        
+
         if len(results) > 1:
             for i in range(len(results) - 1):
                 assert results[i]["similarity_score"] >= results[i + 1]["similarity_score"]
@@ -122,16 +122,16 @@ class TestProductService:
         products = await product_service.get_all()
         if not products:
             pytest.skip("No products available for testing")
-        
+
         product_id = products[0]["id"]
-        
+
         # Create a test embedding (768 dimensions)
         test_embedding = [0.5] * 768
-        
+
         # Update embedding - SQLSpec should handle vector conversion automatically
         success = await product_service.update_embedding(product_id, test_embedding)
         assert success is True
-        
+
         # Verify the embedding was updated
         updated_product = await product_service.get_by_id(product_id)
         assert updated_product is not None
@@ -147,12 +147,12 @@ class TestProductService:
         products = await product_service.get_all()
         if not products:
             pytest.skip("No products available to get company_id")
-        
+
         company_id = products[0]["company_id"]
-        
+
         # Create a new product with embedding
         test_embedding = [0.1] * 768
-        
+
         new_product = await product_service.create_product(
             name="Test Coffee SQLSpec",
             company_id=company_id,
@@ -161,7 +161,7 @@ class TestProductService:
             description="A test coffee for SQLSpec validation",
             embedding=test_embedding,
         )
-        
+
         assert new_product is not None
         assert new_product["id"] is not None
         assert new_product["name"] == "Test Coffee SQLSpec"
@@ -176,20 +176,20 @@ class TestProductService:
         products = await product_service.get_all()
         if not products:
             pytest.skip("No products available for testing")
-        
+
         product_id = products[0]["id"]
         original_name = products[0]["name"]
-        
+
         # Update product
         updated = await product_service.update_product(
             product_id=product_id,
             updates={"name": "Updated Name", "current_price": 99.99},
         )
-        
+
         assert updated is not None
         assert updated["name"] == "Updated Name"
         assert updated["current_price"] == 99.99
-        
+
         # Restore original name
         await product_service.update_product(
             product_id=product_id,

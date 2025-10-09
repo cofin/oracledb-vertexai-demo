@@ -2,7 +2,6 @@
 
 import pytest
 
-
 pytestmark = pytest.mark.anyio
 
 
@@ -22,7 +21,7 @@ class TestSQLSpecConnection:
         result = await driver.select_one_or_none(
             "SELECT 1 as test_value FROM dual"
         )
-        
+
         assert result is not None
         assert result["test_value"] == 1
 
@@ -30,14 +29,14 @@ class TestSQLSpecConnection:
         """Test that results use dict-based access (SQLSpec pattern)."""
         result = await driver.select_one_or_none(
             """
-            SELECT 
+            SELECT
                 'test' as str_value,
                 123 as int_value,
                 45.67 as float_value
             FROM dual
             """
         )
-        
+
         assert result is not None
         # Dict-based access
         assert result["str_value"] == "test"
@@ -50,7 +49,7 @@ class TestSQLSpecConnection:
             "SELECT :param1 as value FROM dual",
             param1="test_value",
         )
-        
+
         assert result is not None
         assert result["value"] == "test_value"
 
@@ -58,12 +57,12 @@ class TestSQLSpecConnection:
         """Test SELECT returning multiple rows."""
         results = await driver.select(
             """
-            SELECT level as row_num 
-            FROM dual 
+            SELECT level as row_num
+            FROM dual
             CONNECT BY level <= 5
             """
         )
-        
+
         assert isinstance(results, list)
         assert len(results) == 5
         # Verify dict access for each row
@@ -78,28 +77,28 @@ class TestSQLSpecConnection:
             DECLARE
                 table_exists NUMBER;
             BEGIN
-                SELECT COUNT(*) INTO table_exists 
-                FROM user_tables 
+                SELECT COUNT(*) INTO table_exists
+                FROM user_tables
                 WHERE table_name = 'TEST_SQLSPEC_TMP';
-                
+
                 IF table_exists > 0 THEN
                     EXECUTE IMMEDIATE 'DROP TABLE test_sqlspec_tmp';
                 END IF;
-                
+
                 EXECUTE IMMEDIATE 'CREATE TABLE test_sqlspec_tmp (id NUMBER, value VARCHAR2(100))';
             END;
             """
         )
-        
+
         # Insert and check rowcount
         rowcount = await driver.execute(
             "INSERT INTO test_sqlspec_tmp (id, value) VALUES (:id, :value)",
             id=1,
             value="test",
         )
-        
+
         assert rowcount == 1
-        
+
         # Cleanup
         await driver.execute("DROP TABLE test_sqlspec_tmp")
 
@@ -122,7 +121,7 @@ class TestSQLSpecConnection:
             AND column_name = 'EMBEDDING'
             """
         )
-        
+
         if result:
             # Verify VECTOR type is recognized
             assert result["column_name"] == "EMBEDDING"
@@ -137,19 +136,19 @@ class TestSQLSpecConnection:
             DECLARE
                 table_exists NUMBER;
             BEGIN
-                SELECT COUNT(*) INTO table_exists 
-                FROM user_tables 
+                SELECT COUNT(*) INTO table_exists
+                FROM user_tables
                 WHERE table_name = 'TEST_MERGE_TMP';
-                
+
                 IF table_exists > 0 THEN
                     EXECUTE IMMEDIATE 'DROP TABLE test_merge_tmp';
                 END IF;
-                
+
                 EXECUTE IMMEDIATE 'CREATE TABLE test_merge_tmp (id NUMBER PRIMARY KEY, value VARCHAR2(100))';
             END;
             """
         )
-        
+
         # Test MERGE (upsert)
         await driver.execute(
             """
@@ -164,14 +163,14 @@ class TestSQLSpecConnection:
             id=1,
             value="first",
         )
-        
+
         # Verify insert
         result = await driver.select_one_or_none(
             "SELECT value FROM test_merge_tmp WHERE id = :id",
             id=1,
         )
         assert result["value"] == "first"
-        
+
         # Update via MERGE
         await driver.execute(
             """
@@ -186,14 +185,14 @@ class TestSQLSpecConnection:
             id=1,
             value="updated",
         )
-        
+
         # Verify update
         result = await driver.select_one_or_none(
             "SELECT value FROM test_merge_tmp WHERE id = :id",
             id=1,
         )
         assert result["value"] == "updated"
-        
+
         # Cleanup
         await driver.execute("DROP TABLE test_merge_tmp")
 
@@ -205,32 +204,32 @@ class TestSQLSpecConnection:
             DECLARE
                 table_exists NUMBER;
             BEGIN
-                SELECT COUNT(*) INTO table_exists 
-                FROM user_tables 
+                SELECT COUNT(*) INTO table_exists
+                FROM user_tables
                 WHERE table_name = 'TEST_RETURNING_TMP';
-                
+
                 IF table_exists > 0 THEN
                     EXECUTE IMMEDIATE 'DROP TABLE test_returning_tmp';
                 END IF;
-                
+
                 EXECUTE IMMEDIATE 'CREATE TABLE test_returning_tmp (id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, value VARCHAR2(100))';
             END;
             """
         )
-        
+
         # Insert with RETURNING
         result = await driver.select_one_or_none(
             """
-            INSERT INTO test_returning_tmp (value) 
+            INSERT INTO test_returning_tmp (value)
             VALUES (:value)
             RETURNING id
             """,
             value="test_returning",
         )
-        
+
         assert result is not None
         assert "id" in result
         assert result["id"] > 0
-        
+
         # Cleanup
         await driver.execute("DROP TABLE test_returning_tmp")

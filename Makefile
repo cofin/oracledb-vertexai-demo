@@ -182,5 +182,4 @@ install-autonomous: config-autonomous ## Full autonomous setup (config + db + da
 	@echo ""
 	@echo "${INFO} Start the app with: ${BLUE}uv run app run${NC}"
 
- 
 

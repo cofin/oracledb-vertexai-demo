@@ -30,27 +30,24 @@ make install
 ### Step 1.2: Configure Environment
 
 ```bash
-# Copy example configuration
-cp .env.example .env
-
-# Edit with your favorite editor
-nano .env  # or vim, code, etc.
+# Initialize project with interactive configuration
+python3 manage.py init --mode managed
 ```
 
-Required configuration:
+The init command will guide you through all required settings:
 
-```env
-# Oracle Database (auto-configured with Docker)
-DATABASE_USER=app
-DATABASE_PASSWORD=super-secret
-DATABASE_HOST=localhost
-DATABASE_PORT=1521
-DATABASE_SERVICE_NAME=freepdb1
+1. **SECRET_KEY**: Auto-generated secure key (just press Enter)
+2. **Google Cloud Settings**:
+   - GOOGLE_CLOUD_PROJECT: Your GCP project ID
+   - GOOGLE_API_KEY: Your API key (optional)
+3. **Database Settings** (defaults for managed container):
+   - DATABASE_USER: app
+   - DATABASE_PASSWORD: super-secret
+   - DATABASE_HOST: localhost
+   - DATABASE_PORT: 1521
+   - DATABASE_SERVICE_NAME: freepdb1
 
-GOOGLE_API_KEY=my-key
-GOOGLE_PROJECT_ID=your-project-id
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-```
+The `.env` file will be created automatically with all necessary configuration.
 
 ### Step 1.3: Start Oracle Database
 

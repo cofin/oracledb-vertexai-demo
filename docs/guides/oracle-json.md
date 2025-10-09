@@ -29,6 +29,7 @@ Oracle Database 23ai provides native JSON support with:
 - **Type safety**: Schema validation with IS JSON constraints
 
 **Key Capabilities**:
+
 - Store JSON as VARCHAR2, CLOB, or BLOB with validation
 - Query JSON with SQL and dot notation
 - Create updateable views that present tables as JSON collections
@@ -76,12 +77,14 @@ CREATE TABLE products (
 ```
 
 **JSON Column Types**:
+
 - `JSON` (23ai+): Native binary format (OSON), best performance
 - `VARCHAR2(4000)` with `IS JSON` constraint: Small documents
 - `CLOB` with `IS JSON` constraint: Large documents (>4KB)
 - `BLOB` with `IS JSON` constraint: Binary storage
 
 **Native JSON Benefits**:
+
 - Automatic validation at insert/update
 - Optimized storage format (OSON)
 - Faster query performance
@@ -101,6 +104,7 @@ VALUES (
 ```
 
 **Metadata Schema Example**:
+
 ```json
 {
     "origin": "Ethiopia",
@@ -143,6 +147,7 @@ CREATE TABLE products (
 ```
 
 **Validation Modes**:
+
 - `IS JSON`: Lenient (allows duplicate keys)
 - `IS JSON STRICT`: Strict (rejects duplicate keys)
 - `IS JSON (WITH UNIQUE KEYS)`: Explicit uniqueness check
@@ -264,6 +269,7 @@ FROM products;
 ```
 
 **JSON_VALUE Syntax**:
+
 ```sql
 JSON_VALUE(
     json_column,
@@ -301,6 +307,7 @@ FROM products;
 ```
 
 **JSON_QUERY Returns**:
+
 - Objects: `{"key": "value"}`
 - Arrays: `["item1", "item2"]`
 - Always returns JSON string, never scalar
@@ -350,6 +357,7 @@ FROM products p,
 ```
 
 **Result**:
+
 ```
 ID | NAME                    | ORIGIN   | PROCESS | ALTITUDE    | NOTE
 ---|-------------------------|----------|---------|-------------|----------
@@ -397,6 +405,7 @@ JSON Relational Duality Views provide a unified interface for relational and doc
 **Key Concept**: Store data in relational tables, query as JSON documents.
 
 **Benefits**:
+
 - Single source of truth (relational tables)
 - ACID transactions for JSON operations
 - REST API auto-generated from views
@@ -433,6 +442,7 @@ WITH INSERT UPDATE DELETE;
 ```
 
 **View Options**:
+
 - `WITH INSERT`: Allow document inserts
 - `WITH UPDATE`: Allow document updates
 - `WITH DELETE`: Allow document deletes
@@ -554,6 +564,7 @@ ON products (
 ```
 
 **Query Using Index**:
+
 ```sql
 -- Uses idx_product_origin
 SELECT id, name, price
@@ -586,6 +597,7 @@ ON products (
 ```
 
 **Query Using Multivalue Index**:
+
 ```sql
 -- Efficiently find products with specific certification
 SELECT id, name
@@ -867,6 +879,7 @@ FETCH FIRST :limit ROWS ONLY;
 ```
 
 **Python Implementation**:
+
 ```python
 import array
 import json
@@ -1012,11 +1025,13 @@ oracle_conn.commit()
 ### Issue: JSON validation fails
 
 **Symptom**:
+
 ```
 ORA-40441: JSON syntax error
 ```
 
 **Solution**:
+
 ```python
 # Validate JSON before insert
 import json
@@ -1037,12 +1052,14 @@ if validate_json(metadata):
 ### Issue: JSON_VALUE returns NULL
 
 **Symptom**:
+
 ```sql
 SELECT JSON_VALUE(metadata, '$.origin') FROM products;
 -- Returns NULL for all rows
 ```
 
 **Solution**:
+
 ```sql
 -- Check JSON path syntax
 SELECT JSON_QUERY(metadata, '$' PRETTY) FROM products;
@@ -1059,6 +1076,7 @@ SELECT metadata FROM products WHERE metadata IS JSON;
 **Symptom**: Queries with JSON_VALUE in WHERE clause are slow.
 
 **Solution**:
+
 ```sql
 -- Create functional index
 CREATE INDEX idx_product_origin
@@ -1077,6 +1095,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 **Symptom**: Need to update deep nested value without replacing entire document.
 
 **Solution**:
+
 ```sql
 -- Use JSON_TRANSFORM
 UPDATE products
@@ -1105,6 +1124,6 @@ WHERE id = 123;
 
 ## Resources
 
-- Oracle JSON Developer's Guide: https://docs.oracle.com/en/database/oracle/oracle-database/23/adjsn/
-- JSON Relational Duality: https://docs.oracle.com/en/database/oracle/oracle-database/23/jsnvu/
-- python-oracledb JSON support: https://python-oracledb.readthedocs.io/en/latest/user_guide/json_data_type.html
+- Oracle JSON Developer's Guide: <https://docs.oracle.com/en/database/oracle/oracle-database/23/adjsn/>
+- JSON Relational Duality: <https://docs.oracle.com/en/database/oracle/oracle-database/23/jsnvu/>
+- python-oracledb JSON support: <https://python-oracledb.readthedocs.io/en/latest/user_guide/json_data_type.html>

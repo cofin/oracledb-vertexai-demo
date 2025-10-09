@@ -31,7 +31,6 @@ from litestar.middleware.session.server_side import ServerSideSessionConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.stores.registry import StoreRegistry
 from litestar.template import TemplateConfig
-from sqlspec.adapters.oracledb import OracleAsyncConfig
 from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 

@@ -99,6 +99,7 @@ async def response_cache(driver: Any) -> Any:
 async def intent_router(driver: Any) -> Any:
     """Provide IntentRouter for testing."""
     from unittest.mock import MagicMock
+
     from app.services.intent_router import IntentRouter
 
     # Create mock VertexAI service

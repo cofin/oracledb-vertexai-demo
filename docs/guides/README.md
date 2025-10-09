@@ -1,7 +1,7 @@
 # Documentation Guides
 
 > **Purpose**: Canonical documentation for the Oracle Database 23ai + Vertex AI demonstration application
-> **Audience**: Developers, AI agents (Claude Code, etc.), conference attendees
+> **Audience**: Developers, AI agents (Gemini, Claude Code, etc.), conference attendees
 > **Maintained**: Yes - commit all changes to version control
 > **Last Updated**: 2025-10-07
 > **Migration Status**: ✅ Complete (SQLSpec migration successful)
@@ -52,6 +52,10 @@ Optimize database and application performance:
 | **[SQLSpec Migration](../../MIGRATION.md)** ✅ | Complete migration from litestar-oracledb | Before/after, breaking changes, benefits, 40% code reduction |
 | **[Deployment Guide](../../DEPLOYMENT.md)** ✅ | All deployment modes (local + autonomous) | Setup, environment vars, troubleshooting, running app |
 | **[Autonomous Database Setup](./autonomous-database-setup.md)** | Oracle Autonomous on GCP | Wallet config, interactive wizard, security, tuning |
+| **[Manage CLI Guide](./manage-cli-guide.md)** ✨ NEW | Unified DevOps CLI (manage.py) | init, install, doctor, database, wallet, status commands |
+| **[SQLcl Usage Guide](./sqlcl-usage-guide.md)** ✨ NEW | Oracle SQLcl command-line + MCP | Traditional CLI, MCP server mode, AI-powered operations |
+| **[Gemini MCP Integration](./gemini-mcp-integration.md)** ✨ NEW | AI-powered database interactions | SQLcl MCP, Sequential Thinking, Context7, natural language queries |
+| **[Oracle Deployment Tools](./oracle-deployment-tools.md)** | Low-level deployment utilities | Container management, wallet config, SQLcl install |
 
 ### Database & AI
 
@@ -105,7 +109,7 @@ Use absolute paths from repo root when referencing guides:
 
 ```python
 # In agent definitions
-/home/cody/code/g/oracledb-vertexai-demo/docs/guides/oracle-vector-search.md
+/home/cody/code/oracledb-vertexai-demo/docs/guides/oracle-vector-search.md
 ```
 
 ### Agent Assignments

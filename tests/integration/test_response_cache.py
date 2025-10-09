@@ -1,8 +1,8 @@
 """Integration tests for ResponseCacheService with SQLSpec."""
 
 import pytest
-from app.services.response_cache import ResponseCacheService
 
+from app.services.response_cache import ResponseCacheService
 
 pytestmark = pytest.mark.anyio
 
@@ -21,11 +21,11 @@ class TestResponseCacheService:
             "answer": "This is a test response",
             "products": [{"name": "Test Coffee", "price": 9.99}],
         }
-        
+
         # First check - should be miss
         cached = await response_cache.get_cached_response(query, user_id)
         assert cached is None, "First check should be cache miss"
-        
+
         # Store in cache
         stored = await response_cache.cache_response(
             query=query,
@@ -33,11 +33,11 @@ class TestResponseCacheService:
             ttl_minutes=5,
             user_id=user_id,
         )
-        
+
         assert stored is not None
         assert stored["query_text"] == query
         assert stored["hit_count"] == 0
-        
+
         # Second check - should be hit
         cached = await response_cache.get_cached_response(query, user_id)
         assert cached is not None
@@ -50,23 +50,23 @@ class TestResponseCacheService:
         """Test that MERGE properly upserts cache entries."""
         query = "merge test query"
         user_id = "test_user"
-        
+
         # First response
         response1 = {"answer": "First response"}
         stored1 = await response_cache.cache_response(query, response1, user_id=user_id)
         cache_key1 = stored1["cache_key"]
-        
+
         # Update with same query (should MERGE UPDATE)
         response2 = {"answer": "Updated response"}
         stored2 = await response_cache.cache_response(query, response2, user_id=user_id)
         cache_key2 = stored2["cache_key"]
-        
+
         # Should have same cache key (upsert, not insert)
         assert cache_key1 == cache_key2
-        
+
         # Hit count should be reset to 0 on update
         assert stored2["hit_count"] == 0
-        
+
         # Should retrieve updated response
         cached = await response_cache.get_cached_response(query, user_id)
         assert cached["answer"] == "Updated response"
@@ -79,16 +79,16 @@ class TestResponseCacheService:
         query = "hit count test"
         user_id = "test_user"
         response_data = {"answer": "Test"}
-        
+
         # Store in cache
         stored = await response_cache.cache_response(query, response_data, user_id=user_id)
         assert stored["hit_count"] == 0
-        
+
         # Hit cache multiple times
         for i in range(3):
             cached = await response_cache.get_cached_response(query, user_id)
             assert cached is not None
-        
+
         # Verify hit count incremented
         # Get fresh data from database
         cached_fresh = await response_cache.get_cached_response(query, user_id)
@@ -102,7 +102,7 @@ class TestResponseCacheService:
         query = "expiration test"
         user_id = "test_user"
         response_data = {"answer": "Will expire"}
-        
+
         # Store with very short TTL (1 minute)
         await response_cache.cache_response(
             query=query,
@@ -110,11 +110,11 @@ class TestResponseCacheService:
             ttl_minutes=1,
             user_id=user_id,
         )
-        
+
         # Should be available immediately
         cached = await response_cache.get_cached_response(query, user_id)
         assert cached is not None
-        
+
         # Note: Actually waiting for expiration would make test slow
         # This test verifies the expiration check logic works
 
@@ -134,12 +134,12 @@ class TestResponseCacheService:
         """Test cache statistics calculation."""
         # Get cache stats
         stats = await response_cache.get_cache_stats(hours=24)
-        
+
         assert "cache_hit_rate" in stats
         assert "total_cached_queries" in stats
         assert "total_cache_hits" in stats
         assert "avg_hits_per_entry" in stats
-        
+
         assert stats["cache_hit_rate"] >= 0.0
         assert stats["total_cached_queries"] >= 0
 
@@ -150,7 +150,7 @@ class TestResponseCacheService:
         """Test that complex JSON responses are properly stored and retrieved."""
         query = "complex json test"
         user_id = "test_user"
-        
+
         # Complex response with nested structures
         response_data = {
             "answer": "Here are some products",
@@ -173,10 +173,10 @@ class TestResponseCacheService:
                 "total_results": 2,
             },
         }
-        
+
         # Store complex response
         await response_cache.cache_response(query, response_data, user_id=user_id)
-        
+
         # Retrieve and verify structure preserved
         cached = await response_cache.get_cached_response(query, user_id)
         assert cached is not None
@@ -190,17 +190,17 @@ class TestResponseCacheService:
     ) -> None:
         """Test that different users have separate cache entries."""
         query = "same query"
-        
+
         response1 = {"answer": "Response for user 1"}
         response2 = {"answer": "Response for user 2"}
-        
+
         # Store for different users
         await response_cache.cache_response(query, response1, user_id="user1")
         await response_cache.cache_response(query, response2, user_id="user2")
-        
+
         # Verify separate cache entries
         cached1 = await response_cache.get_cached_response(query, user_id="user1")
         cached2 = await response_cache.get_cached_response(query, user_id="user2")
-        
+
         assert cached1["answer"] == "Response for user 1"
         assert cached2["answer"] == "Response for user 2"

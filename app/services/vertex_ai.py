@@ -41,8 +41,8 @@ class VertexAIService:
         logger.info("Initialized model", model=self.model_name)
 
         # Oracle services for metrics and caching
-        self.metrics_service: "MetricsService | None" = None
-        self.cache_service: "CacheService | None" = None
+        self.metrics_service: MetricsService | None = None
+        self.cache_service: CacheService | None = None
 
     def set_services(self, metrics_service: "MetricsService", cache_service: "CacheService") -> None:
         """Inject Oracle services."""

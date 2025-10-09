@@ -52,6 +52,7 @@ Oracle Database 23ai
 This project has been successfully migrated from deprecated `litestar-oracledb` to SQLSpec. Key changes:
 
 **What Changed**:
+
 - ✅ Services now use `SQLSpecService` base class (not `BaseService`)
 - ✅ Services receive `driver` parameter (not `connection`)
 - ✅ Automatic vector handling (no manual `array.array()`)
@@ -59,12 +60,14 @@ This project has been successfully migrated from deprecated `litestar-oracledb` 
 - ✅ Unified dependency injection with `sqlspec.provide_session()`
 
 **What Stayed the Same**:
+
 - ✅ All Oracle 23AI features preserved (VECTOR, MERGE, RETURNING)
 - ✅ SQL syntax unchanged
 - ✅ Parameter binding patterns unchanged
 - ✅ Service method signatures mostly unchanged
 
 **Benefits**:
+
 - 40% code reduction in service layer
 - Automatic connection pooling
 - Better error handling
@@ -756,7 +759,7 @@ async def get_product_rankings(self) -> list[dict[str, Any]]:
 When using Oracle Autonomous Database:
 
 ```python
-# Configuration automatically detects Autonomous mode
+# Configuration automatically detects External mode
 from app.config import create_oracle_config
 
 config = create_oracle_config()
@@ -769,6 +772,7 @@ config = create_oracle_config()
 ```
 
 **Automatic Detection**:
+
 ```python
 # In settings.py
 @property
@@ -1134,6 +1138,7 @@ uv sync --all-extras --dev
 ```
 
 **Service updates needed**:
+
 ```python
 # Old
 from app.services.base import BaseService

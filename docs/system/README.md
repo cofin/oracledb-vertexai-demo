@@ -66,12 +66,13 @@ cd oracledb-vertexai-demo
 make install
 
 # 2. Configure environment (1 minute)
-cp .env.example .env
-# Edit .env with your credentials
+python3 manage.py init --mode managed
+# Interactive prompts will guide you through configuration
 
 # 3. Start Oracle 23AI (3 minutes)
 make start-infra
 
+# 4. Load sample data (2 minutes)
 uv run app load-fixtures
 
 # 5. Launch application (1 minute)
@@ -80,7 +81,7 @@ uv run app run
 # Total time: Under 10 minutes!
 ```
 
-Visit <http://localhost:5005> and start chatting about coffee!
+Visit <http://localhost:5006> and start chatting about coffee!
 
 ## 🌟 Key Features at a Glance
 

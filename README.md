@@ -4,15 +4,54 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 
 ## 🚀 Quick Start
 
-### Local Development (Oracle 23AI Docker)
+### Recommended: Automated Setup (New!)
+
+The fastest way to get started is using our unified management CLI:
 
 ```bash
-# Install dependencies with uv
-make install-uv # Installs Astral's UV Python manager
+# Initialize project and install prerequisites
+uv run manage.py init --run-install
+
+# Verify setup
+uv run manage.py doctor
+
+# Start Oracle 23ai (managed mode - local container)
+uv run manage.py database oracle start
+
+# Load sample data
+uv run app load-fixtures
+
+# Start the application
+uv run app run
+```
+
+Visit [http://localhost:5006](http://localhost:5006) to try the demo!
+
+**Management CLI Commands:**
+
+```bash
+python3 manage.py init                          # Initialize project (creates .env interactively)
+python3 manage.py install all                   # Install all prerequisites
+python3 manage.py doctor                        # Verify setup and prerequisites
+python3 manage.py database oracle start         # Start Oracle container
+python3 manage.py database oracle wallet extract Wallet_*.zip  # Extract wallet
+python3 manage.py database oracle connect test  # Test database connection
+python3 manage.py --help                        # Show all available commands
+```
+
+### Manual Setup
+
+For more control over the setup process:
+
+```bash
+# Install UV Python manager
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
 make install
 
-# Setup environment
-cp .env.example .env  # Edit with your API keys
+# Setup environment (required - creates .env interactively)
+python3 manage.py init
 
 # Start Oracle 23AI
 make start-infra
@@ -28,8 +67,6 @@ If you'd like to regenerate embeddings, you can use:
 ```sh
 uv run app db load-vectors
 ```
-
-Visit [http://localhost:5006](http://localhost:5006) to try the demo!
 
 ## 🖼️ Screenshots
 
@@ -65,6 +102,7 @@ _Live monitoring of Oracle vector search performance and system metrics_
 
 ### Technical Guides
 
+- **[Oracle Deployment Tools](docs/guides/oracle-deployment-tools.md)** - Unified database management CLI
 - **[Oracle Vector Search](docs/guides/oracle-vector-search.md)** - Vector operations guide
 - **[Autonomous Database Setup](docs/guides/autonomous-database-setup.md)** - GCP deployment
 - **[Litestar Framework](docs/guides/litestar-framework.md)** - Web framework patterns
@@ -89,7 +127,7 @@ The application uses **SQLSpec** for type-safe, efficient database operations:
 - ✅ **Connection Pooling** - Optimized async connection management
 - ✅ **Type Safety** - Dict-based results with automatic mapping
 - ✅ **Oracle Features** - Full support for MERGE, RETURNING, JSON operations
-- ✅ **Dual Mode** - Seamless support for local Docker and Autonomous Database
+- ✅ **Flexible Deployment** - Managed container or external database (auto-detects wallet)
 
 See [MIGRATION.md](MIGRATION.md) for details on the SQLSpec architecture.
 
@@ -107,14 +145,14 @@ This implementation is designed for conference demonstration with:
 ## 🔧 Development Commands
 
 ```bash
-# Database operations (works with both local and autonomous)
+# Database operations (works with both managed and external modes)
 uv run app load-fixtures        # Load sample data
 uv run app load-vectors         # Generate embeddings
 uv run app truncate-tables      # Reset all data
 uv run app clear-cache          # Clear response cache
 
 # Autonomous Database specific
-uv run app autonomous configure # Interactive setup wizard 
+uv run app autonomous configure # Interactive setup wizard
 # Export/Import (for faster demo startup)
 uv run app dump-data           # Export all data with embeddings
 uv run app dump-data --table intent_exemplar  # Export specific table
@@ -136,7 +174,7 @@ make clean-autonomous-db       # Clean autonomous database
 ### Deployment Guides
 
 - [Autonomous Database Setup](docs/guides/autonomous-database-setup.md) - Complete guide for Oracle Autonomous on GCP
-- [Local Development Setup](.env.example) - Docker-based Oracle 23AI setup
+- [Management CLI Guide](docs/guides/manage-cli-guide.md) - Complete guide for setup and deployment
 
 ### External Documentation
 

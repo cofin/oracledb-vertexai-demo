@@ -8,66 +8,8 @@ import rich_click as click
 import structlog
 from rich import get_console
 from rich.prompt import Prompt
-from sqlspec.extensions.litestar.cli import database_group
 
 logger = structlog.get_logger()
-
-
-# Add configure command to database group
-@database_group.command(name="configure")  # type: ignore[misc]
-def configure_database() -> None:
-    """Interactive database configuration wizard for Oracle Autonomous Database."""
-    console = get_console()
-    console.rule("[bold blue]Oracle Autonomous Database Configuration", style="blue", align="left")
-    console.print()
-
-    console.print("[yellow]🔍 Checking for Oracle wallet...[/yellow]")
-
-    import os
-    from pathlib import Path
-
-    # Check for TNS_ADMIN or wallet location
-    tns_admin = os.getenv("TNS_ADMIN")
-    wallet_location = os.getenv("WALLET_LOCATION", tns_admin)
-
-    if wallet_location and Path(wallet_location).exists():
-        console.print(f"[green]✓ Wallet found: {wallet_location}[/green]")
-        tnsnames_path = Path(wallet_location) / "tnsnames.ora"
-
-        if tnsnames_path.exists():
-            console.print("[green]✓ tnsnames.ora found[/green]")
-
-            # Parse available services from tnsnames.ora
-            console.print("\n[bold]Available database services:[/bold]")
-            with open(tnsnames_path) as f:
-                content = f.read()
-                # Simple parsing - find service names
-                services = [
-                    line.split("=")[0].strip()
-                    for line in content.split("\n")
-                    if "=" in line and not line.strip().startswith("#")
-                ]
-                for i, service in enumerate(services[:5], 1):  # Show first 5
-                    console.print(f"  {i}. {service}")
-
-            console.print("\n[dim]Configure these in your .env file:[/dim]")
-            console.print(f"  WALLET_LOCATION={wallet_location}")
-            console.print("  DB_SERVICE_NAME=<your_service_name>")
-            console.print("  DB_USERNAME=<your_username>")
-            console.print("  DB_PASSWORD=<your_password>")
-        else:
-            console.print(f"[red]✗ tnsnames.ora not found in {wallet_location}[/red]")
-    else:
-        console.print("[yellow]⚠ No wallet found[/yellow]")
-        console.print("\n[dim]For Autonomous Database, set:[/dim]")
-        console.print("  WALLET_LOCATION=/path/to/wallet")
-        console.print("  DB_SERVICE_NAME=<service_name>_high")
-        console.print("\n[dim]For local Oracle, set:[/dim]")
-        console.print("  DB_HOST=localhost")
-        console.print("  DB_PORT=1521")
-        console.print("  DB_SERVICE_NAME=FREEPDB1")
-
-    console.print()
 
 
 # Coffee demo group for application-specific operations

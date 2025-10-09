@@ -28,7 +28,7 @@ wheels/
 *.egg
 MANIFEST
 .pdm-python
-
+.envs/
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -102,7 +102,6 @@ celerybeat.pid
 # dotenv
 .env
 .env.*
-!.env.example
 env.bak/
 service_account.json
 
@@ -158,6 +157,9 @@ CLAUDE.md
 CLAUDE.*.md
 .tmp
 todo
+
+# Wallet files and environment-specific configs
+.envs/
 
 # Claude/AI migration work artifacts (don't commit)
 ARCHITECTURE_ALIGNMENT_PLAN.md
