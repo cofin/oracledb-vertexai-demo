@@ -33,16 +33,24 @@ help: ## Display this help text for Makefile
 # Installation and Environment Setup
 # =============================================================================
 .PHONY: install-sqlcl
-install-sqlcl: ## Install Oracle SQLcl to ~/.local/bin
-	@echo "${INFO} Installing Oracle SQLcl..."
-	@uv run tools/install_sqlcl.py
-	@echo "${OK} SQLcl installation complete!"
+install-sqlcl: ## Install Oracle SQLcl to ~/.local/bin (idempotent)
+	@if command -v sql >/dev/null 2>&1; then \
+		echo "${OK} SQLcl already installed: $$(sql -V 2>&1 | head -n1)"; \
+	else \
+		echo "${INFO} Installing Oracle SQLcl..."; \
+		uv run python manage.py install sqlcl; \
+		echo "${OK} SQLcl installation complete!"; \
+	fi
 
 .PHONY: install-uv
-install-uv:                                         ## Install latest version of uv
-	@echo "${INFO} Installing uv..."
-	@curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
-	@echo "${OK} UV installed successfully"
+install-uv:                                         ## Install latest version of uv (idempotent)
+	@if command -v uv >/dev/null 2>&1; then \
+		echo "${OK} UV already installed: $$(uv --version)"; \
+	else \
+		echo "${INFO} Installing uv..."; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; \
+		echo "${OK} UV installed successfully"; \
+	fi
 
 .PHONY: install
 install: destroy clean ## Install the project, dependencies, and pre-commit

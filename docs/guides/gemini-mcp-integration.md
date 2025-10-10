@@ -106,7 +106,7 @@ DATABASE_PORT=1521
 DATABASE_SERVICE_NAME=freepdb1
 
 # Creates SQLcl saved connection (note the // before host):
-conn -save mcp_demo -savepwd app/super-secret@//localhost:1521/freepdb1
+conn -save cymbal_coffee -savepwd app/super-secret@//localhost:1521/freepdb1
 ```
 
 **Configuration Files:**
@@ -358,7 +358,7 @@ cat .env | grep -E 'DATABASE_(USER|PASSWORD|HOST|PORT|SERVICE_NAME)'
 python3 manage.py install sqlcl --force
 
 # Verify saved connection works
-sql mcp_demo
+sql cymbal_coffee
 ```
 
 ### Node.js Extensions Not Loading
@@ -373,8 +373,8 @@ node --version  # Should be 18+
 # Test npx can access packages
 npx -y @modelcontextprotocol/server-sequential-thinking --version
 
-# Reinstall Gemini CLI
-python3 manage.py install gemini-cli --if-missing
+# Reinstall Gemini CLI (idempotent - safe to re-run)
+python3 manage.py install gemini-cli
 ```
 
 ### Gemini CLI Not Detecting Extensions
@@ -465,9 +465,11 @@ gemini
 ### CI/CD Integration
 
 ```bash
-# Non-interactive installation
-python3 manage.py install gemini-cli --if-missing
-# Skips MCP prompts in CI/CD environments
+# Non-interactive mode not currently supported
+# Use standard installation with defaults:
+python3 manage.py install gemini-cli
+# Or skip if already installed:
+python3 manage.py install gemini-cli  # Will skip if present
 ```
 
 ## Benefits

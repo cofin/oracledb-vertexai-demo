@@ -240,11 +240,150 @@ def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
         return 1, "", str(e)
 
 
-def configure_sqlcl_connection_with_password(connection_name: str = "mcp_demo") -> tuple[bool, str]:
+def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[bool, str]:
+    """Check if a tool is installed and available in PATH.
+
+    Args:
+        tool_name: Name of the executable to check (e.g., 'uv', 'sql', 'gemini')
+        version_flag: Flag to get version (default: '--version')
+
+    Returns:
+        tuple[bool, str]: (is_installed, version_string)
+    """
+    if not shutil.which(tool_name):
+        return False, ""
+
+    try:
+        returncode, stdout, _ = run_command([tool_name, version_flag], check=False)
+        if returncode == 0:
+            return True, stdout.strip()
+    except Exception:
+        pass
+
+    return False, ""
+
+
+def is_mcp_server_configured(server_name: str) -> bool:
+    """Check if an MCP server is already configured in Gemini settings.
+
+    Args:
+        server_name: Name of the MCP server (e.g., 'sqlcl', 'sequential-thinking')
+
+    Returns:
+        bool: True if server is already configured
+    """
+    import json
+
+    gemini_settings_path = Path.home() / ".gemini" / "settings.json"
+    if not gemini_settings_path.exists():
+        return False
+
+    try:
+        with open(gemini_settings_path) as f:
+            settings = json.load(f)
+        mcp_servers = settings.get("mcpServers", {})
+        # Check if server exists and is not None/null
+        return server_name in mcp_servers and mcp_servers[server_name] is not None
+    except Exception:
+        return False
+
+
+def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
+    """Check if a SQLcl saved connection exists.
+
+    Args:
+        connection_name: Name of the saved connection
+
+    Returns:
+        bool: True if connection is saved
+    """
+    if not shutil.which("sql"):
+        return False
+
+    try:
+        # Use sql -L to list saved connections
+        result = subprocess.run(
+            ["sql", "-L"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        # Check if connection_name appears in the output
+        return connection_name in result.stdout
+    except Exception:
+        return False
+
+
+def migrate_sqlcl_connection(
+    old_name: str = "mcp_demo",
+    new_name: str = "cymbal_coffee"
+) -> tuple[bool, str]:
+    """Migrate old SQLcl connection name to new name.
+
+    Args:
+        old_name: Old connection name to rename
+        new_name: New connection name
+
+    Returns:
+        tuple[bool, str]: (success, message)
+    """
+    from dotenv import dotenv_values
+
+    # Check if old connection exists
+    if not is_sqlcl_connection_saved(old_name):
+        return True, f"No '{old_name}' connection to migrate"
+
+    # Check if new connection already exists
+    if is_sqlcl_connection_saved(new_name):
+        return True, f"Connection '{new_name}' already exists"
+
+    # Load credentials from .env
+    env_path = Path(".env")
+    if not env_path.exists():
+        return False, ".env file not found"
+
+    env_vars = dotenv_values(env_path)
+    user = env_vars.get("DATABASE_USER")
+    password = env_vars.get("DATABASE_PASSWORD")
+    host = env_vars.get("DATABASE_HOST")
+    port = env_vars.get("DATABASE_PORT", "1521")
+    service_name = env_vars.get("DATABASE_SERVICE_NAME")
+
+    if not all([user, password, host, service_name]):
+        return False, "Missing database credentials in .env"
+
+    # Create new connection with new name
+    conn_string = f"{user}/{password}@//{host}:{port}/{service_name}"
+    conn_cmd = f"conn -save {new_name} -savepwd {conn_string}\nexit"
+
+    try:
+        result = subprocess.run(
+            ["sql", "/nolog"],
+            check=False,
+            input=conn_cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode == 0:
+            # NOTE: SQLcl doesn't have a delete command for saved connections
+            # The old connection will still exist but won't be used
+            return True, f"Created connection '{new_name}' (old '{old_name}' still exists)"
+        return False, "Failed to create new connection"
+
+    except subprocess.TimeoutExpired:
+        return False, "SQLcl command timed out"
+    except Exception as e:
+        return False, f"Error migrating connection: {e}"
+
+
+def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:
     """Configure SQLcl saved connection with password from .env.
 
     Args:
-        connection_name: Name for the saved connection (default: mcp_demo)
+        connection_name: Name for the saved connection (default: cymbal_coffee)
 
     Returns:
         tuple[bool, str]: Success status and message
@@ -256,6 +395,19 @@ def configure_sqlcl_connection_with_password(connection_name: str = "mcp_demo") 
         conn -save <name> -savepwd username/password@//host:port/service
     """
     from dotenv import dotenv_values
+
+    # Check if connection already exists
+    if is_sqlcl_connection_saved(connection_name):
+        return True, f"Connection '{connection_name}' already configured"
+
+    # Check for old connection name and migrate
+    if connection_name == "cymbal_coffee" and is_sqlcl_connection_saved("mcp_demo"):
+        console.print("[yellow]🔄 Migrating old connection 'mcp_demo' to 'cymbal_coffee'...[/yellow]")
+        success, message = migrate_sqlcl_connection("mcp_demo", "cymbal_coffee")
+        if success:
+            return True, message
+        console.print(f"[yellow]⚠ Migration warning: {message}[/yellow]")
+        # Continue to create new connection even if migration failed
 
     # Load .env values
     env_path = Path(".env")
@@ -317,7 +469,7 @@ def configure_gemini_mcp_sqlcl() -> bool:
     """Configure SQLcl as a Gemini MCP server.
 
     Returns:
-        bool: True if configuration was successful, False otherwise
+        bool: True if configuration was successful or already exists, False otherwise
 
     Adds or updates SQLcl MCP server configuration in ~/.gemini/settings.json.
     Configuration format:
@@ -331,6 +483,10 @@ def configure_gemini_mcp_sqlcl() -> bool:
     }
     """
     import json
+
+    # Check if already configured
+    if is_mcp_server_configured("sqlcl"):
+        return True  # Already configured, no need to modify
 
     gemini_settings_path = Path.home() / ".gemini" / "settings.json"
 
@@ -364,6 +520,51 @@ def configure_gemini_mcp_sqlcl() -> bool:
         return True
     except Exception:
         return False
+
+
+def _configure_missing_mcp_extensions() -> None:
+    """Configure MCP extensions that are not already configured.
+
+    Checks for:
+    - SQLcl (if installed and not configured)
+    - Sequential Thinking (if not configured)
+    - Context7 (if not configured)
+
+    Only prompts for missing extensions.
+    """
+    # Check SQLcl
+    sqlcl_path = shutil.which("sql")
+    if sqlcl_path and not is_mcp_server_configured("sqlcl"):
+        console.print()
+        console.print("[bold cyan]SQLcl (Oracle Database)[/bold cyan]")
+        console.print("[dim]Oracle database operations and SQL execution[/dim]")
+        if Confirm.ask("Configure SQLcl MCP server?", default=True):
+            # Step 1: Configure saved connection with password
+            success, message = configure_sqlcl_connection_with_password()
+            if success:
+                console.print(f"[green]✓[/green] {message}")
+            else:
+                console.print(f"[yellow]⚠[/yellow] Password config: {message}")
+
+            # Step 2: Configure Gemini MCP server
+            if configure_gemini_mcp_sqlcl():
+                console.print("[green]✓[/green] SQLcl MCP server configured")
+    elif sqlcl_path:
+        console.print("[dim]ℹ SQLcl MCP server already configured[/dim]")
+
+    # Configure other MCP extensions (only missing ones)
+    results = configure_gemini_mcp_extensions(interactive=True)
+
+    # Show summary
+    console.print()
+    console.print("[bold]MCP Configuration Summary:[/bold]")
+    if sqlcl_path and is_mcp_server_configured("sqlcl"):
+        console.print("  [green]✓[/green] sqlcl (Oracle Database)")
+    for key, success in results.items():
+        if success:
+            console.print(f"  [green]✓[/green] {key}")
+        else:
+            console.print(f"  [dim]⊘ {key} (skipped)[/dim]")
 
 
 def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]:
@@ -424,12 +625,14 @@ def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]
 
     # Configure each extension
     for key, ext in extensions.items():
-        # Check if already configured
-        if key in settings["mcpServers"]:
-            results[key] = True  # Already exists, consider it a success
+        # Check if already configured (SKIP if exists)
+        if is_mcp_server_configured(key):
+            if interactive:
+                console.print(f"[dim]ℹ {ext['name']} already configured (skipping)[/dim]")
+            results[key] = True  # Already configured = success
             continue
 
-        # Interactive prompt
+        # Interactive prompt for NEW extensions only
         should_install = True
         if interactive:
             console.print()
@@ -622,9 +825,9 @@ def install() -> None:
     help="Install prerequisites for specific mode (auto-detect if not specified)",
 )
 @click.option(
-    "--if-missing",
+    "--force",
     is_flag=True,
-    help="Only install if not already present",
+    help="Force reinstall even if already installed",
 )
 @click.option(
     "--yes",
@@ -632,8 +835,10 @@ def install() -> None:
     is_flag=True,
     help="Skip confirmation prompts",
 )
-def install_all(mode: str | None, if_missing: bool, yes: bool) -> None:
+def install_all(mode: str | None, force: bool, yes: bool) -> None:
     """Install all prerequisites for deployment mode.
+
+    Idempotent: Safe to run multiple times. Skips if already installed unless --force is used.
 
     Mode-specific installations:
     - managed: UV, Docker check
@@ -662,7 +867,7 @@ def install_all(mode: str | None, if_missing: bool, yes: bool) -> None:
 
     # Install UV
     ctx = click.get_current_context()
-    ctx.invoke(install_uv, if_missing=if_missing)
+    ctx.invoke(install_uv, force=force)
 
     # For managed mode, check Docker/Podman
     if mode == "managed":
@@ -747,12 +952,15 @@ def install_list() -> None:
     help="Specific version to install (default: latest)",
 )
 @click.option(
-    "--if-missing",
+    "--force",
     is_flag=True,
-    help="Only install if UV not already present",
+    help="Force reinstall even if already installed",
 )
-def install_uv(version: str | None, if_missing: bool) -> None:
+def install_uv(version: str | None, force: bool) -> None:
     """Install Astral's UV package manager.
+
+    Idempotent: Safe to run multiple times. Skips installation if UV is already
+    installed unless --force flag is used.
 
     UV is a fast Python package manager and project manager.
     Required for all deployment modes.
@@ -762,18 +970,25 @@ def install_uv(version: str | None, if_missing: bool) -> None:
     - Installs to: ~/.local/bin or %USERPROFILE%\\.local\\bin
     - Adds to PATH if needed
     """
-    console.print("[yellow]📦 Installing UV package manager...[/yellow]")
+    console.print("[yellow]📦 Checking UV installation...[/yellow]")
     console.print()
 
-    # Check if already installed
-    uv_path = shutil.which("uv")
-    if uv_path and if_missing:
-        # Get version
-        returncode, stdout, _ = run_command(["uv", "--version"], check=False)
-        if returncode == 0:
-            console.print(f"[green]✓ UV already installed: {stdout.strip()}[/green]")
-            console.print(f"[dim]  Location: {uv_path}[/dim]")
-            return
+    # ALWAYS check if already installed (not just when flag is set)
+    is_installed, version_str = is_tool_installed("uv")
+    if is_installed and not force:
+        console.print(f"[green]✓ UV already installed: {version_str}[/green]")
+        uv_path = shutil.which("uv")
+        console.print(f"[dim]  Location: {uv_path}[/dim]")
+        console.print("[dim]  Use --force to reinstall[/dim]")
+        return
+
+    # Proceed with installation
+    if is_installed and force:
+        console.print("[yellow]⚠ Reinstalling UV (--force flag used)[/yellow]")
+        console.print()
+    else:
+        console.print("[yellow]📦 Installing UV package manager...[/yellow]")
+        console.print()
 
     # Platform-specific installation
     if sys.platform.startswith("win"):
@@ -843,8 +1058,16 @@ def install_uv(version: str | None, if_missing: bool) -> None:
     is_flag=True,
     help="Reinstall even if already installed",
 )
-def install_sqlcl(install_dir: str | None, force: bool) -> None:
+@click.option(
+    "--connection-name",
+    default="cymbal_coffee",
+    help="Name for saved SQLcl connection (default: cymbal_coffee)",
+)
+def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) -> None:
     """Install Oracle SQLcl command-line tool.
+
+    Idempotent: Safe to run multiple times. Skips installation if SQLcl is already
+    installed unless --force flag is used.
 
     Optional tool for advanced Oracle database operations.
     Requires Java 11 or higher to be installed.
@@ -853,10 +1076,10 @@ def install_sqlcl(install_dir: str | None, force: bool) -> None:
     """
     from tools.oracle_deploy import cli as oracle_cli
 
-    console.print("[yellow]📦 Installing Oracle SQLcl...[/yellow]")
+    console.print("[yellow]📦 Checking SQLcl installation...[/yellow]")
     console.print()
 
-    # Check for Java before installing
+    # Check for Java before proceeding
     java_path = shutil.which("java")
     if not java_path:
         console.print("[red]✗ Java not found![/red]")
@@ -887,8 +1110,48 @@ def install_sqlcl(install_dir: str | None, force: bool) -> None:
     returncode, stdout, _ = run_command(["java", "-version"], check=False)
     if returncode == 0:
         console.print("[green]✓ Java found[/green]")
-        # Java version is in stderr, but we can at least confirm it exists
         console.print()
+
+    # Check if already installed
+    is_installed, version_str = is_tool_installed("sql", "-V")
+    if is_installed and not force:
+        console.print(f"[green]✓ SQLcl already installed: {version_str.split(chr(10))[0]}[/green]")
+        sqlcl_path = shutil.which("sql")
+        console.print(f"[dim]  Location: {sqlcl_path}[/dim]")
+        console.print("[dim]  Use --force to reinstall[/dim]")
+
+        # Still check for Gemini MCP configuration
+        gemini_path = shutil.which("gemini")
+        if gemini_path:
+            console.print()
+            console.print("[yellow]🔐 Checking Gemini MCP integration...[/yellow]")
+
+            # Check if already configured
+            if is_mcp_server_configured("sqlcl"):
+                console.print("[green]✓ SQLcl MCP server already configured[/green]")
+            else:
+                console.print("[yellow]🔐 Configuring SQLcl for Gemini MCP...[/yellow]")
+
+                # Step 1: Configure saved connection with password
+                success, message = configure_sqlcl_connection_with_password(connection_name)
+                if success:
+                    console.print(f"[green]✓ {message}[/green]")
+                else:
+                    console.print(f"[yellow]⚠ Password configuration: {message}[/yellow]")
+
+                # Step 2: Configure Gemini MCP server
+                if configure_gemini_mcp_sqlcl():
+                    console.print("[green]✓ Configured SQLcl as Gemini MCP server[/green]")
+
+        return
+
+    # If force flag, show warning
+    if is_installed and force:
+        console.print("[yellow]⚠ Reinstalling SQLcl (--force flag used)[/yellow]")
+        console.print()
+
+    console.print("[yellow]📦 Installing Oracle SQLcl...[/yellow]")
+    console.print()
 
     # Delegate to existing implementation
     args = ["sqlcl", "install"]
@@ -917,7 +1180,7 @@ def install_sqlcl(install_dir: str | None, force: bool) -> None:
         console.print("[yellow]🔐 Configuring SQLcl MCP integration...[/yellow]")
 
         # Step 1: Configure saved connection with password
-        success, message = configure_sqlcl_connection_with_password()
+        success, message = configure_sqlcl_connection_with_password(connection_name)
         if success:
             console.print(f"[green]✓ {message}[/green]")
         else:
@@ -940,12 +1203,21 @@ def install_sqlcl(install_dir: str | None, force: bool) -> None:
 
 @install.command(name="gemini-cli")
 @click.option(
-    "--if-missing",
+    "--force",
     is_flag=True,
-    help="Only install if not already present",
+    help="Force reinstall even if already installed",
 )
-def install_gemini_cli(if_missing: bool) -> None:
+@click.option(
+    "--configure-mcp",
+    is_flag=True,
+    default=True,
+    help="Configure MCP extensions (default: True)",
+)
+def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
     """Install Google Gemini CLI.
+
+    Idempotent: Safe to run multiple times. Skips installation if Gemini CLI is
+    already installed unless --force flag is used.
 
     AI-powered terminal assistant with access to Gemini 2.5 Pro.
     Requires Node.js 18 or higher.
@@ -955,16 +1227,24 @@ def install_gemini_cli(if_missing: bool) -> None:
     - 1M token context window
     - Built-in tools: Google Search, file ops, shell commands
     """
-    console.print("[yellow]📦 Installing Google Gemini CLI...[/yellow]")
+    console.print("[yellow]📦 Checking Gemini CLI installation...[/yellow]")
     console.print()
 
-    # Check if already installed
-    gemini_path = shutil.which("gemini")
-    if gemini_path and if_missing:
-        returncode, stdout, _ = run_command(["gemini", "--version"], check=False)
-        if returncode == 0:
-            console.print(f"[green]✓ Gemini CLI already installed: {stdout.strip()}[/green]")
-            return
+    # ALWAYS check if already installed
+    is_installed, version_str = is_tool_installed("gemini")
+    if is_installed and not force:
+        console.print(f"[green]✓ Gemini CLI already installed: {version_str}[/green]")
+        gemini_path = shutil.which("gemini")
+        console.print(f"[dim]  Location: {gemini_path}[/dim]")
+        console.print("[dim]  Use --force to reinstall[/dim]")
+
+        # Still check for MCP configuration
+        if configure_mcp:
+            console.print()
+            console.print("[yellow]🔧 Checking MCP configuration...[/yellow]")
+            _configure_missing_mcp_extensions()
+
+        return
 
     # Check for Node.js
     node_path = shutil.which("node")
@@ -1072,31 +1352,45 @@ def install_gemini_cli(if_missing: bool) -> None:
 
 @install.command(name="mcp-toolbox")
 @click.option(
-    "--if-missing",
+    "--force",
     is_flag=True,
-    help="Only install if not already present",
+    help="Force reinstall even if already installed",
 )
 @click.option(
     "--version",
     default="v0.16.0",
     help="Specific version to install (default: v0.16.0)",
 )
-def install_mcp_toolbox(if_missing: bool, version: str) -> None:
+def install_mcp_toolbox(force: bool, version: str) -> None:
     """Install MCP Toolbox for Databases.
+
+    Idempotent: Safe to run multiple times. Skips installation if MCP Toolbox
+    is already installed unless --force flag is used.
 
     Open-source MCP server for databases (AlloyDB, Spanner, Cloud SQL, etc.)
     Requires Go 1.21 or higher for installation from source.
 
     Binary downloads available for Linux, macOS (Intel/ARM), and Windows.
     """
-    console.print("[yellow]📦 Installing MCP Toolbox for Databases...[/yellow]")
+    console.print("[yellow]📦 Checking MCP Toolbox installation...[/yellow]")
     console.print()
 
-    # Check if already installed
-    toolbox_path = shutil.which("toolbox")
-    if toolbox_path and if_missing:
-        console.print(f"[green]✓ MCP Toolbox already installed at {toolbox_path}[/green]")
+    # ALWAYS check if already installed
+    is_installed, version_str = is_tool_installed("toolbox")
+    if is_installed and not force:
+        console.print("[green]✓ MCP Toolbox already installed[/green]")
+        toolbox_path = shutil.which("toolbox")
+        console.print(f"[dim]  Location: {toolbox_path}[/dim]")
+        console.print("[dim]  Use --force to reinstall[/dim]")
         return
+
+    # If force flag, show warning
+    if is_installed and force:
+        console.print("[yellow]⚠ Reinstalling MCP Toolbox (--force flag used)[/yellow]")
+        console.print()
+
+    console.print("[yellow]📦 Installing MCP Toolbox for Databases...[/yellow]")
+    console.print()
 
     # Detect platform
     import platform
