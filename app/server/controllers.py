@@ -291,21 +291,30 @@ class CoffeeChatController(Controller):
         # Get performance stats
         perf_stats = await metrics_service.get_performance_stats(hours=1)
 
+        avg_search_time = perf_stats.get("avg_search_time_ms")
+        avg_search_time_str = f"{round(avg_search_time)}ms" if avg_search_time is not None else "N/A"
+
+        avg_oracle_time = perf_stats.get("avg_oracle_time_ms")
+        avg_oracle_time_str = f"{round(avg_oracle_time)}ms" if avg_oracle_time is not None else "N/A"
+
+        avg_similarity_score = perf_stats.get("avg_similarity_score")
+        avg_similarity_score_str = f"{avg_similarity_score:.2f}" if avg_similarity_score is not None else "N/A"
+
         return f"""
 <div class="metric-item">
     <div class="metric-value">{perf_stats.get("total_searches", 0)}</div>
     <div class="metric-label">Total Searches</div>
 </div>
 <div class="metric-item">
-    <div class="metric-value">{round(perf_stats.get("avg_search_time_ms", 0))}ms</div>
+    <div class="metric-value">{avg_search_time_str}</div>
     <div class="metric-label">Avg Response Time</div>
 </div>
 <div class="metric-item">
-    <div class="metric-value">{round(perf_stats.get("avg_oracle_time_ms", 0))}ms</div>
+    <div class="metric-value">{avg_oracle_time_str}</div>
     <div class="metric-label">Oracle Vector Time</div>
 </div>
 <div class="metric-item">
-    <div class="metric-value">{perf_stats.get("avg_similarity_score", 0):.2f}</div>
+    <div class="metric-value">{avg_similarity_score_str}</div>
     <div class="metric-label">Avg Similarity</div>
 </div>
         """
