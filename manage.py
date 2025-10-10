@@ -1345,7 +1345,7 @@ def oracle_group() -> None:
     """
 
 
-@oracle_group.command(name="start")
+@oracle_group.command(name="start-local-container")
 @click.option("--pull", is_flag=True, help="Pull latest image before starting")
 @click.option("--recreate", is_flag=True, help="Remove and recreate container if exists")
 def oracle_start(pull: bool, recreate: bool) -> None:
@@ -1364,7 +1364,7 @@ def oracle_start(pull: bool, recreate: bool) -> None:
         pass
 
 
-@oracle_group.command(name="stop")
+@oracle_group.command(name="stop-local-container")
 @click.option("--timeout", default=30, help="Seconds to wait before forcing stop")
 def oracle_stop(timeout: int) -> None:
     """Stop Oracle database container."""
@@ -1385,6 +1385,42 @@ def oracle_status(verbose: bool) -> None:
     args = ["database", "status"]
     if verbose:
         args.append("--verbose")
+
+    try:
+        oracle_cli.main(args, standalone_mode=False)
+    except SystemExit:
+        pass
+
+
+@oracle_group.command(name="local-container-logs")
+@click.option("--follow", "-f", is_flag=True, help="Follow log output")
+@click.option("--tail", default=50, help="Number of lines to show from end of logs")
+def oracle_logs(follow: bool, tail: int) -> None:
+    """View database container logs."""
+    from tools.oracle_deploy import cli as oracle_cli
+
+    args = ["database", "logs", "--tail", str(tail)]
+    if follow:
+        args.append("--follow")
+
+    try:
+        oracle_cli.main(args, standalone_mode=False)
+    except SystemExit:
+        pass
+
+
+@oracle_group.command(name="wipe-local-container")
+@click.option("--volumes", is_flag=True, help="Remove volumes as well")
+@click.option("--force", is_flag=True, help="Force removal without confirmation")
+def oracle_remove(volumes: bool, force: bool) -> None:
+    """Remove Oracle database container."""
+    from tools.oracle_deploy import cli as oracle_cli
+
+    args = ["database", "remove"]
+    if volumes:
+        args.append("--volumes")
+    if force:
+        args.append("--force")
 
     try:
         oracle_cli.main(args, standalone_mode=False)

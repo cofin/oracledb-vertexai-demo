@@ -104,13 +104,13 @@ class AgentToolsService(SQLSpecService):
             for product in products
         ]
 
-        # Include actual SQL query template for UI display
+        # Include actual SQL query template for UI display (Oracle syntax)
         sql_query = """SELECT p.id, p.name, p.description, p.price,
-       1 - (p.embedding <=> %s) as similarity
+       1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as similarity
 FROM product p
-WHERE 1 - (p.embedding <=> %s) > %s
+WHERE 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
 ORDER BY similarity DESC
-LIMIT %s"""
+FETCH FIRST :limit ROWS ONLY"""
 
         return {
             "products": product_list,
@@ -171,18 +171,18 @@ LIMIT %s"""
             result = await self.intent_service.classify_intent(query)
             total_ms = (time.time() - start_time) * 1000
 
-            # Include actual PostgreSQL query for intent classification
+            # Include actual Oracle query for intent classification
             sql_query = """WITH query_embedding AS (
         SELECT intent, phrase,
-            1 - (embedding <=> $1) AS similarity,
+            1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) AS similarity,
             confidence_threshold,
             usage_count
         FROM intent_exemplar)
 SELECT intent, phrase, similarity, confidence_threshold, usage_count
 FROM query_embedding
-WHERE similarity > $2
+WHERE similarity > :min_threshold
 ORDER BY similarity DESC
-LIMIT $3"""
+FETCH FIRST :limit ROWS ONLY"""
 
             return {
                 "intent": result.intent,

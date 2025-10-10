@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from google.adk import Runner
 from google.genai import errors, types
-from sqlspec.adapters.asyncpg.adk.store import AsyncpgADKStore
+from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db, db_manager, service_locator
@@ -43,7 +43,7 @@ class ADKOrchestrator:
 
     def __init__(self) -> None:
         """Initialize the ADK orchestrator with SQLSpec session service."""
-        store = AsyncpgADKStore(config=db)
+        store = OracleAsyncADKStore(config=db)
         self.session_service = SQLSpecSessionService(store)
         self.runner = Runner(
             agent=CoffeeAssistantAgent,
@@ -132,7 +132,7 @@ class ADKOrchestrator:
 
                     except errors.ServerError as e:
                         # If all retries failed, return a graceful fallback
-                        if getattr(e, "status", None) == HTTP_SERVICE_UNAVAILABLE:
+                        if e.status == HTTP_SERVICE_UNAVAILABLE:
                             logger.exception("ADK service unavailable after retries")
                             event_data = {
                                 "final_response_text": "I apologize, but I'm experiencing some technical difficulties connecting to the AI service. Please try again in a moment.",
@@ -258,7 +258,7 @@ class ADKOrchestrator:
                 )
             except errors.ServerError as e:
                 # Check if it's a timeout or other retryable error
-                if getattr(e, "status", None) == HTTP_SERVICE_UNAVAILABLE and attempt < max_retries - 1:
+                if e.status == HTTP_SERVICE_UNAVAILABLE and attempt < max_retries - 1:
                     logger.warning(
                         "ADK request timed out, retrying...",
                         attempt=attempt + 1,
@@ -281,7 +281,7 @@ class ADKOrchestrator:
         """Extract text parts from an event."""
         if not (event.content and event.content.parts):
             return []
-        return [part.text for part in event.content.parts if hasattr(part, "text") and part.text]
+        return [part.text for part in event.content.parts if part.text]
 
     def _should_filter_text(self, text: str) -> bool:
         """Check if text should be filtered out."""

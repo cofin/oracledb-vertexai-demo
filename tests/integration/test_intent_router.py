@@ -20,7 +20,7 @@ class TestIntentRouter:
         # Create mock embedding
         mock_vertex = MagicMock()
         query_embedding = [0.1] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         # Mock the vertex_ai service
         intent_router.vertex_ai = mock_vertex
@@ -45,7 +45,7 @@ class TestIntentRouter:
         """Test single intent routing with fallback."""
         mock_vertex = MagicMock()
         query_embedding = [0.2] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         intent_router.vertex_ai = mock_vertex
 
@@ -67,7 +67,7 @@ class TestIntentRouter:
         """Test that VECTOR_DISTANCE returns proper similarity scores."""
         mock_vertex = MagicMock()
         query_embedding = [0.3] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         intent_router.vertex_ai = mock_vertex
 
@@ -89,7 +89,7 @@ class TestIntentRouter:
         """Test that intent-specific thresholds filter results correctly."""
         mock_vertex = MagicMock()
         query_embedding = [0.4] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         intent_router.vertex_ai = mock_vertex
 
@@ -117,7 +117,7 @@ class TestIntentRouter:
         mock_vertex = MagicMock()
         # Create embedding as Python list (not array.array)
         query_embedding = [float(i) / 768 for i in range(768)]
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         intent_router.vertex_ai = mock_vertex
 
@@ -134,7 +134,7 @@ class TestIntentRouter:
         """Test LLM fallback for medium-confidence queries."""
         mock_vertex = MagicMock()
         query_embedding = [0.5] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         # Mock LLM response
         mock_vertex.generate_content = AsyncMock(return_value=("PRODUCT_RAG", {}))
@@ -159,7 +159,7 @@ class TestIntentRouter:
         mock_vertex = MagicMock()
         # Create embedding that won't match anything
         query_embedding = [0.0] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=query_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=query_embedding)
 
         intent_router.vertex_ai = mock_vertex
 

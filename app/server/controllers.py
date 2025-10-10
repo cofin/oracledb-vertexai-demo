@@ -39,15 +39,17 @@ if TYPE_CHECKING:
     from litestar.enums import RequestEncodingType
     from litestar.params import Body
 
+    from app.services.adk.orchestrator import ADKOrchestrator
     from app.services.cache import CacheService
     from app.services.metrics import MetricsService
     from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 
 class CoffeeChatController(Controller):
-    """Coffee Chat Controller with enhanced security measures."""
+    """Coffee Chat Controller with ADK-based agent system."""
 
     dependencies = {
+        "adk_orchestrator": Provide(deps.provide_adk_orchestrator),
         "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
         "vector_search_service": Provide(deps.provide_oracle_vector_search_service),
         "products_service": Provide(deps.provide_product_service),
@@ -106,43 +108,73 @@ class CoffeeChatController(Controller):
         data: Annotated[
             schemas.CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)
         ],
-        vertex_ai_service: VertexAIService,
+        adk_orchestrator: ADKOrchestrator,
         request: HTMXRequest,
     ) -> HTMXTemplate:
-        """Handle both full page and HTMX partial requests with enhanced security."""
+        """Handle both full page and HTMX partial requests using the ADK agent system."""
 
         csp_nonce = self.generate_csp_nonce()
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
+        query_id = str(uuid.uuid4())  # Keep for message fingerprinting
 
-        reply, _ = await vertex_ai_service.generate_content(clean_message, temperature=0.7)
+        # Get or create session_id for persistence across requests
+        session_id = request.session.get("session_id")
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            request.session["session_id"] = session_id
+
+        try:
+            # Process through ADK orchestrator with persistent session_id
+            agent_response = await adk_orchestrator.process_request(
+                query=clean_message,
+                user_id="web_user",
+                session_id=session_id,  # Use persistent session_id
+                persona=validated_persona,
+            )
+
+        except Exception as e:  # noqa: BLE001
+            agent_response = {
+                "answer": f"I apologize, but I'm having trouble processing your request right now. Error: {e!s}",
+                "products": [],
+                "debug_info": {"intent": {"intent": "error"}},
+                "agent_used": "error_fallback",
+            }
 
         if request.htmx:
+            debug_info = agent_response.get("debug_info", {})
+            intent_info = debug_info.get("intent", {})
+            search_info = debug_info.get("search", {})
+
             return HTMXTemplate(
                 template_name="partials/chat_response.html",
                 context={
+                    "ai_response": agent_response.get("answer", ""),
                     "user_message": clean_message,
-                    "ai_response": reply.answer,
-                    "query_id": reply.query_id,
-                    "metrics": reply.search_metrics,
-                    "from_cache": getattr(reply, "from_cache", False),
-                    "embedding_cache_hit": getattr(reply, "embedding_cache_hit", False),
-                    "intent_detected": getattr(reply, "intent_detected", "GENERAL_CONVERSATION"),
+                    "query_id": query_id,
+                    "products": agent_response.get("products", []),
+                    "debug_info": debug_info,
+                    "intent_detected": intent_info.get("intent", "GENERAL"),
+                    "intent_confidence": intent_info.get("confidence", 0.0),
+                    "intent_sql": intent_info.get("sql_query", ""),
+                    "search_sql": search_info.get("sql", ""),
+                    "search_results_count": search_info.get("results_count", 0),
+                    "search_params": search_info.get("params", {}),
+                    "from_cache": agent_response.get("from_cache", False),
+                    "embedding_cache_hit": debug_info.get("timings", {}).get("embedding_cache_hit", False),
                     "csp_nonce": csp_nonce,
                 },
-                trigger_event="help:process-complete",
-                params={
-                    "vector_search": "complete",
-                    "llm_generation": "complete",
-                    "query_id": reply.query_id,
-                },
+                trigger_event="chat:response-complete",
+                params={"query_id": query_id, "agent": agent_response.get("agent_used", "ADK")},
                 after="settle",
             )
 
         return HTMXTemplate(
             template_name="coffee_chat.html",
             context={
-                "answer": reply.answer,
+                "answer": agent_response.get("answer", ""),
+                "products": agent_response.get("products", []),
+                "agent_used": agent_response.get("agent_used", "ADK"),
                 "csp_nonce": csp_nonce,
             },
         )

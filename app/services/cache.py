@@ -226,16 +226,16 @@ class CacheService(SQLSpecService):
 
         if cache_type in (None, "response"):
             result = await self.driver.execute("DELETE FROM response_cache")
-            deleted_count += result.rows_affected if hasattr(result, "rows_affected") else 0
+            deleted_count += result.rows_affected
 
         if cache_type in (None, "embedding"):
             result = await self.driver.execute("DELETE FROM embedding_cache")
-            deleted_count += result.rows_affected if hasattr(result, "rows_affected") else 0
+            deleted_count += result.rows_affected
 
         # Only clear exemplars if explicitly requested (expensive to regenerate)
         if include_exemplars:
             result = await self.driver.execute("UPDATE intent_exemplar SET embedding = NULL")
-            deleted_count += result.rows_affected if hasattr(result, "rows_affected") else 0
+            deleted_count += result.rows_affected
 
         return deleted_count
 
@@ -248,7 +248,7 @@ class CacheService(SQLSpecService):
         result = await self.driver.execute(
             "DELETE FROM response_cache WHERE expires_at IS NOT NULL AND expires_at < SYSTIMESTAMP",
         )
-        return result.rows_affected if hasattr(result, "rows_affected") else 0
+        return result.rows_affected
 
     async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.

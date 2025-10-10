@@ -35,8 +35,10 @@ from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 
 from app.lib.settings import BASE_DIR, get_settings
+from app.services.locator import ServiceLocator
 
 _settings = get_settings()
+settings = _settings  # Alias for compatibility
 
 csrf = CSRFConfig(
     secret=_settings.app.SECRET_KEY,
@@ -51,8 +53,11 @@ templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=J
 db_manager = SQLSpec()
 db = _settings.db.create_config()
 db_manager.add_config(db)
+db_manager.load_sql_files(BASE_DIR / "db" / "sql")
+
 stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # type: ignore[dict-item]
 session_config = ServerSideSessionConfig(store="sessions")
+service_locator = ServiceLocator()
 
 
 log = StructlogConfig(
@@ -71,7 +76,22 @@ log = StructlogConfig(
                 },
             },
             loggers={
+                "sqlspec": {
+                    "propagate": False,
+                    "level": "INFO",
+                    "handlers": ["queue_listener"],
+                },
+                "sqlglot": {
+                    "propagate": False,
+                    "level": "ERROR",
+                    "handlers": ["queue_listener"],
+                },
                 "_granian": {
+                    "propagate": False,
+                    "level": _settings.log.GRANIAN_ERROR_LEVEL,
+                    "handlers": ["queue_listener"],
+                },
+                "granian.server": {
                     "propagate": False,
                     "level": _settings.log.GRANIAN_ERROR_LEVEL,
                     "handlers": ["queue_listener"],
@@ -79,6 +99,26 @@ log = StructlogConfig(
                 "granian.access": {
                     "propagate": False,
                     "level": _settings.log.GRANIAN_ACCESS_LEVEL,
+                    "handlers": ["queue_listener"],
+                },
+                "google.adk": {
+                    "propagate": False,
+                    "level": _settings.log.LEVEL,
+                    "handlers": ["queue_listener"],
+                },
+                "google.genai": {
+                    "propagate": False,
+                    "level": _settings.log.LEVEL,
+                    "handlers": ["queue_listener"],
+                },
+                "google_genai": {
+                    "propagate": False,
+                    "level": _settings.log.LEVEL,
+                    "handlers": ["queue_listener"],
+                },
+                "google_genai.types": {
+                    "propagate": False,
+                    "level": _settings.log.LEVEL,
                     "handlers": ["queue_listener"],
                 },
             },

@@ -16,11 +16,14 @@ classifiers = [
 dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
+    "litestar-mcp",
     "sqlspec[adk,oracledb,performance,mypyc] @ git+https://github.com/litestar-org/sqlspec.git@main",
     "python-dotenv",
+    "google-cloud-aiplatform",
     "google-genai",
-    "google-generativeai>=0.3.2",
-    "numpy",
+    "msgspec",
+    "rich-click",
+    "numpy>=2.3.3",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
@@ -32,7 +35,7 @@ requires-python = ">=3.11,<3.13"
 version = "0.2.0"
 
 [project.scripts]
-app = "app.__init__:run_cli"
+app = "app.__main__:run_cli"
 
 [build-system]
 build-backend = "hatchling.build"
@@ -45,6 +48,9 @@ allow-direct-references = true
 dev-mode-dirs = ["./"]
 include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini"]
 packages = ["app"]
+
+[tool.uv.sources]
+sqlspec = { path = "../../litestar/sqlspec", editable = true }
 
 [dependency-groups]
 build = ["bump-my-version"]

@@ -20,7 +20,7 @@ class TestEmbeddingCache:
         # Create mock VertexAI service
         mock_vertex = MagicMock()
         test_embedding = [0.1] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=test_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=test_embedding)
 
         query = "test query for caching"
 
@@ -28,14 +28,14 @@ class TestEmbeddingCache:
         embedding1, cache_hit1 = await embedding_cache.get_embedding(query, mock_vertex)
         assert not cache_hit1, "First call should be cache miss"
         assert len(embedding1) == 768
-        assert mock_vertex.create_embedding.called
+        assert mock_vertex.get_text_embedding.called
 
         # Second call - should be cache hit (memory cache)
-        mock_vertex.create_embedding.reset_mock()
+        mock_vertex.get_text_embedding.reset_mock()
         embedding2, cache_hit2 = await embedding_cache.get_embedding(query, mock_vertex)
         assert cache_hit2, "Second call should be cache hit"
         assert embedding1 == embedding2
-        assert not mock_vertex.create_embedding.called, "Should not call Vertex AI on cache hit"
+        assert not mock_vertex.get_text_embedding.called, "Should not call Vertex AI on cache hit"
 
     async def test_oracle_cache_persistence(
         self,
@@ -45,7 +45,7 @@ class TestEmbeddingCache:
         # Create mock VertexAI service
         mock_vertex = MagicMock()
         test_embedding = [0.2] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=test_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=test_embedding)
 
         query = "oracle persistence test"
 
@@ -71,7 +71,7 @@ class TestEmbeddingCache:
         """Test that SQLSpec automatically handles Oracle VECTOR type conversion."""
         mock_vertex = MagicMock()
         test_embedding = [float(i) / 768 for i in range(768)]  # Unique values
-        mock_vertex.create_embedding = AsyncMock(return_value=test_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=test_embedding)
 
         query = "vector conversion test"
 
@@ -90,7 +90,7 @@ class TestEmbeddingCache:
         """Test that queries are normalized for consistent caching."""
         mock_vertex = MagicMock()
         test_embedding = [0.3] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=test_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=test_embedding)
 
         # Different case and whitespace should hit same cache
         queries = [
@@ -118,7 +118,7 @@ class TestEmbeddingCache:
         # Create a cache entry
         mock_vertex = MagicMock()
         test_embedding = [0.4] * 768
-        mock_vertex.create_embedding = AsyncMock(return_value=test_embedding)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=test_embedding)
 
         query = "expiration test"
         await embedding_cache.get_embedding(query, mock_vertex)
@@ -143,7 +143,7 @@ class TestEmbeddingCache:
         query = "merge test"
 
         # First insert
-        mock_vertex.create_embedding = AsyncMock(return_value=embedding1)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=embedding1)
         result1, _ = await embedding_cache.get_embedding(query, mock_vertex)
         assert result1 == embedding1
 
@@ -152,7 +152,7 @@ class TestEmbeddingCache:
 
         # Update with new embedding (simulating re-generation)
         # This should trigger MERGE UPDATE path
-        mock_vertex.create_embedding = AsyncMock(return_value=embedding2)
+        mock_vertex.get_text_embedding = AsyncMock(return_value=embedding2)
 
         # Store new embedding directly to test MERGE
         await embedding_cache._store_in_oracle(

@@ -101,7 +101,7 @@ All database services extend `SQLSpecService` for consistent patterns.
 from sqlspec.driver import AsyncDriverAdapterBase
 from typing import TypeVar, Any
 
-ModelDTOT = TypeVar("ModelDTOT")
+SchemaT = TypeVar("SchemaT")
 
 class SQLSpecService:
     """Base service for SQLSpec database operations."""
@@ -115,10 +115,10 @@ class SQLSpecService:
         statement: str,
         /,
         *parameters: dict,
-        schema_type: type[ModelDTOT],
+        schema_type: type[SchemaT],
         error_message: str | None = None,
         **kwargs: Any,
-    ) -> ModelDTOT:
+    ) -> SchemaT:
         """Get single record or raise 404 error."""
         result = await self.driver.select_one_or_none(
             statement,

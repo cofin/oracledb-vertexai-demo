@@ -90,7 +90,7 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
                             # Generate embedding
                             description = product.get("description", "")
-                            embedding = await vertex_ai_service.create_embedding(f"{product_name}: {description}")
+                            embedding = await vertex_ai_service.get_text_embedding(f"{product_name}: {description}")
                             await product_service.update_embedding(product["id"], embedding)
                             total_success += 1
 

@@ -136,7 +136,7 @@ class BulkEmbeddingService:
                 break
             if state in ["JOB_STATE_FAILED", "JOB_STATE_CANCELLED"]:
                 error_msg = f"Batch job failed with state: {state}"
-                if hasattr(job, "error"):
+                if job.error:
                     error_msg += f" Error: {job.error}"
                 await logger.aerror(error_msg)
                 raise RuntimeError(error_msg)
@@ -258,7 +258,7 @@ class OnlineEmbeddingService:
         """Generate embedding for a single product using online API."""
         try:
             # Use the correct vertex AI service method
-            return await self.vertex_ai_service.create_embedding(text_content)
+            return await self.vertex_ai_service.get_text_embedding(text_content)
 
         except Exception:
             logger.exception("Failed to generate embedding for product", product_id=product_id)

@@ -139,47 +139,24 @@ format: ## Run code formatters
 .PHONY: start-infra
 start-infra: ## Start local containers
 	@echo "${INFO} Starting local Oracle 23AI instance..."
-	@docker compose -f docker-compose.yml up -d --force-recreate
+	@uv run python manage.py database oracle start-local-container --recreate
 	@echo "${OK} Infrastructure started"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
 	@echo "${INFO} Stopping local Oracle 23AI instance..."
-	@docker compose -f docker-compose.yml down
+	@uv run python manage.py database oracle stop-local-container
 	@echo "${OK} Infrastructure stopped"
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
 	@echo "${INFO} Wiping local Oracle 23AI instance..."
-	@docker compose -f docker-compose.yml down -v --remove-orphans
+	@uv run python manage.py database oracle wipe-local-container --volumes
 	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
 	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
-	@docker compose -f docker-compose.yml logs -f
-
-# =============================================================================
-# Autonomous Database Setup
-# =============================================================================
-.PHONY: config-autonomous
-config-autonomous: install-uv ## Configure Autonomous Database interactively
-	@echo "${INFO} Starting Autonomous Database configuration wizard..."
-	@uv python pin 3.12 >/dev/null 2>&1
-	@uv venv >/dev/null 2>&1
-	@uv sync --all-extras --dev >/dev/null 2>&1
-	@uv run app autonomous configure
-	@echo "${OK} Configuration complete!"
-
-.PHONY: install-autonomous
-install-autonomous: config-autonomous ## Full autonomous setup (config + db + data)
-	@echo "${INFO} Initializing Autonomous Database..."
-	@uv run app autonomous init-db
-	@echo "${INFO} Loading fixtures and embeddings..."
-	@uv run app load-fixtures
-	@uv run app load-vectors
-	@echo "${OK} Autonomous installation complete! 🎉"
-	@echo ""
-	@echo "${INFO} Start the app with: ${BLUE}uv run app run${NC}"
-
+	@uv run python manage.py database oracle local-container-logs --follow
+ 
 

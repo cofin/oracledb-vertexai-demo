@@ -61,7 +61,7 @@ async def populate_product_exemplars(
 
         if not result:
             # Generate embedding
-            embedding = await vertex_ai_service.create_embedding(exemplar)
+            embedding = await vertex_ai_service.get_text_embedding(exemplar)
             await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
             count += 1
 

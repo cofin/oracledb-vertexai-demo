@@ -63,6 +63,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             ProductService,
             VertexAIService,
         )
+        from app.services.adk.orchestrator import ADKOrchestrator
 
         settings = get_settings()
         # logging
@@ -125,6 +126,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "ExemplarService": ExemplarService,
                 "VertexAIService": VertexAIService,
                 "OracleVectorSearchService": OracleVectorSearchService,
+                "ADKOrchestrator": ADKOrchestrator,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
             },
@@ -134,10 +136,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     def on_cli_init(self, cli: Group) -> None:
         from sqlspec.extensions.litestar.cli import database_group
 
-        from app.cli import coffee_demo_group, configure_database
-
-        # Add configure command to database group
-        database_group.add_command(configure_database)
+        from app.cli import coffee_demo_group
 
         # Register groups
         cli.add_command(database_group)

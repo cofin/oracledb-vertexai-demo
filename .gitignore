@@ -162,13 +162,7 @@ todo
 .envs/
 
 # Claude/AI migration work artifacts (don't commit)
-ARCHITECTURE_ALIGNMENT_PLAN.md
-MIGRATION_EXECUTION_SUMMARY.md
-MIGRATION_PROGRESS.md
-*_RECOMMENDATIONS.md
-*_SUMMARY.md
-*_REPORT.md
-TESTING*.md
+.agents/*
+.claude/
+.gemini
 AGENTS.md
-DEPLOYMENT.md
-MIGRATION.md

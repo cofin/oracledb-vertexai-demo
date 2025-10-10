@@ -10,6 +10,9 @@ from app.services import CacheService, ExemplarService, MetricsService, ProductS
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
 
+    from app.services.adk.orchestrator import ADKOrchestrator
+    from app.services.vertex_ai import OracleVectorSearchService
+
 
 # Generic service provider factory
 T = TypeVar("T")
@@ -45,7 +48,7 @@ async def provide_oracle_vector_search_service(
     products_service: ProductService,
     vertex_ai_service: VertexAIService,
     cache_service: CacheService,
-) -> AsyncGenerator:
+) -> AsyncGenerator["OracleVectorSearchService", None]:
     """Provide Oracle vector search service with required dependencies."""
     from app.services.vertex_ai import OracleVectorSearchService
 
@@ -59,7 +62,7 @@ async def provide_oracle_vector_search_service(
 
 
 # ADK Orchestrator (when needed)
-async def provide_adk_orchestrator() -> AsyncGenerator:
+async def provide_adk_orchestrator() -> AsyncGenerator["ADKOrchestrator", None]:
     """Provide ADK orchestrator for agent-based workflows."""
     from app.services.adk.orchestrator import ADKOrchestrator
 

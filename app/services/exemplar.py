@@ -127,7 +127,7 @@ class ExemplarService(SQLSpecService):
 
                 if not result or not result["embedding"]:
                     # Generate embedding
-                    embedding = await vertex_ai_service.create_embedding(phrase)
+                    embedding = await vertex_ai_service.get_text_embedding(phrase)
                     await self.cache_exemplar(intent, phrase, embedding)
                     count += 1
 
