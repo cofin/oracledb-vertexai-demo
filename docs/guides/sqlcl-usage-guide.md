@@ -391,6 +391,106 @@ SQLcl MCP server provides these tools to AI models:
 
 ---
 
+### Best Practices for AI Agent Interaction with the `sqlcl` MCP Server
+
+When using the `sqlcl` MCP server with an AI agent like Gemini, it's important to follow best practices to ensure efficient, safe, and predictable interactions. This section provides guidelines for developers on how to "teach" their agents to use the `sqlcl` MCP server effectively.
+
+#### Agent Prompting Guide
+
+The key to successful interaction with the `sqlcl` MCP server is to use clear, specific, and unambiguous prompts. Agents should be guided to ask for information in a way that minimizes the risk of data overload and avoids open-ended questions that can lead to loops.
+
+**Good Prompts:**
+
+*   "Show me a summary of the database schemas and the number of tables in each."
+*   "List the first 10 products and the total number of products."
+*   "Describe the schema of the 'products' table."
+*   "What are the constraints on the 'orders' table?"
+*   "Generate a sales report for the last 7 days, grouped by product category."
+
+**Bad Prompts (to avoid):**
+
+*   "Show me the database." (Too broad, could return a huge amount of data)
+*   "Analyze the data." (Too vague, the agent might get into a loop of running different queries)
+*   "Fix the database." (Too open-ended, could lead to unintended DDL/DML operations)
+
+#### Tool Selection Guide
+
+The `sqlcl` MCP server provides a variety of tools. Agents should be guided to use the most appropriate tool for the task at hand.
+
+*   **For schema exploration:** Use the `DESCRIBE` command or ask for the schema of a specific table. This is much more efficient than running `SELECT *` and trying to infer the schema from the data.
+*   **For data retrieval:** Be specific in your `SELECT` statements. Use `WHERE` clauses to filter the data and `LIMIT` (or `FETCH FIRST N ROWS ONLY` in Oracle) to limit the number of rows returned.
+*   **For data modification (DML):** Always include a `WHERE` clause in your `UPDATE` and `DELETE` statements to avoid modifying more data than intended.
+*   **For schema modification (DDL):** Be very careful with `CREATE`, `ALTER`, and `DROP` statements. These should ideally be reviewed by a human before execution.
+
+#### Avoiding Common Pitfalls
+
+*   **Loops:** Loops often occur when the agent is given a vague goal and tries to achieve it by repeatedly running the same or similar queries. To avoid this, provide the agent with clear, specific instructions and encourage it to ask clarifying questions if it's unsure how to proceed.
+*   **Data Overload:** To avoid being overwhelmed with data, always ask for summarized or paginated results. For example, ask for the `COUNT(*)` of a table before asking for the data itself.
+
+#### Caching Strategies
+
+To improve performance and reduce the load on the database, consider implementing a caching strategy.
+
+##### Application-Level Caching
+
+You can implement a caching layer in your application that sits between the agent and the `sqlcl` MCP server. This can be done by creating a wrapper tool that caches the results of frequently executed queries.
+
+**Example `cached_sql_query` Tool:**
+
+```python
+import functools
+import time
+
+# A simple in-memory cache with a timeout
+def timed_lru_cache(seconds: int, maxsize: int = 128):
+    def wrapper_cache(func):
+        @functools.lru_cache(maxsize=maxsize)
+        def cached_func(args, kw, hashable_time):
+            return func(args, kw)
+
+        @functools.wraps(func)
+        def wrapper_func(*args, **kwargs):
+            return cached_func(args, frozenset(kwargs.items()), hashable_time=time.time() // seconds)
+
+        return wrapper_func
+    return wrapper_cache
+
+@timed_lru_cache(seconds=300)
+def cached_sql_query(sql: str) -> str:
+    ''''''
+    Executes a SQL query using the sqlcl MCP server and caches the result.
+    ''''''
+    # In a real implementation, this would call the sqlcl MCP server
+    print(f"Executing query: {sql}")
+    # result = call_sqlcl_mcp_server(sql)
+    # return result
+    return f"Result for query: {sql}"
+```
+
+##### Database-Level Caching (Oracle Result Cache)
+
+Oracle provides a powerful feature called the **Oracle Result Cache** that can cache the results of queries at the database level. This is a very efficient way to speed up frequently executed queries.
+
+To use the Oracle Result Cache, you can add the `/*+ RESULT_CACHE */` hint to your SQL queries.
+
+**Example:**
+
+```sql
+SELECT /*+ RESULT_CACHE */ product_id, name, price
+FROM products
+WHERE category = 'Coffee';
+```
+
+The database will automatically cache the result of this query. The next time the same query is executed, the result will be fetched from the cache, which is much faster than re-executing the query.
+
+**When to use Oracle Result Cache:**
+
+*   For queries that are executed frequently.
+*   For queries that access data that doesn't change often.
+*   For queries that are complex and time-consuming to execute.
+
+By combining smart prompting, appropriate tool selection, and caching, you can build powerful and efficient AI agents that can safely and effectively interact with your Oracle database through the `sqlcl` MCP server.
+
 ## Security Best Practices
 
 ### MCP Security Considerations

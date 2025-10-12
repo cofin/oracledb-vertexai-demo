@@ -3,7 +3,6 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "httpx>=0.28.1",
-#     "rich>=13.9.4",
 #     "rich-click>=1.8.0",
 #     "oracledb>=2.0.0",
 #     "python-dotenv>=1.0.0",
@@ -315,10 +314,7 @@ def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
         return False
 
 
-def migrate_sqlcl_connection(
-    old_name: str = "mcp_demo",
-    new_name: str = "cymbal_coffee"
-) -> tuple[bool, str]:
+def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal_coffee") -> tuple[bool, str]:
     """Migrate old SQLcl connection name to new name.
 
     Args:

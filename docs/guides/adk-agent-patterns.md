@@ -328,6 +328,46 @@ agent = LlmAgent(
 - Custom data sources
 - Pre-built MCP servers
 
+#### Database Interaction with `sqlcl` MCP Server
+
+A powerful use case for MCP tools is interacting with databases. This project includes an MCP server for Oracle Database using `sqlcl`.
+
+While you can create a generic `MCPToolset` for `sqlcl`, it is **highly recommended** that you follow the best practices outlined in the **[Oracle SQLcl Usage Guide](sqlcl-usage-guide.md#best-practices-for-ai-agent-interaction-with-the-sqlcl-mcp-server)** to ensure safe and efficient database interactions.
+
+This guide provides detailed information on:
+*   **Agent Prompting:** How to write effective prompts for database queries.
+*   **Tool Selection:** How to choose the right MCP tool for your task.
+*   **Avoiding Pitfalls:** How to avoid common issues like loops and data overload.
+*   **Caching Strategies:** How to improve performance with application-level and database-level caching.
+
+**Example `MCPToolset` for `sqlcl`:**
+
+```python
+from google.adk.tools.mcp_tool.mcp_toolset import (
+    MCPToolset,
+    StdioServerParameters,
+    StdioConnectionParams
+)
+
+# Connect to the sqlcl MCP server
+sqlcl_mcp_tools = MCPToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command="sql",
+            args=["-mcp"]
+        )
+    )
+)
+
+# Use sqlcl MCP tools in an agent
+agent = LlmAgent(
+    model="gemini-2.5-pro",
+    name="database_assistant",
+    instruction="Use the available tools to answer questions about the Oracle database. Refer to the SQLcl Usage Guide for best practices.",
+    tools=[sqlcl_mcp_tools]
+)
+```
+
 ### Tool Best Practices
 
 1. **Clear Docstrings**:

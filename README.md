@@ -94,11 +94,11 @@ _Live monitoring of Oracle vector search performance and system metrics_
 - **[SQLSpec Migration](MIGRATION.md)** - ✅ Complete migration from litestar-oracledb to SQLSpec
 - **[SQLSpec Patterns](docs/guides/sqlspec-patterns.md)** - Database patterns and best practices
 - **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements:
-    - ✅ **SQLSpec Migration** - Modern database abstraction layer
-    - Native HTMX integration with Litestar
-    - Centralized exception handling system
-    - Unified cache information API
-    - Enhanced cache hit tracking
+  - ✅ **SQLSpec Migration** - Modern database abstraction layer
+  - Native HTMX integration with Litestar
+  - Centralized exception handling system
+  - Unified cache information API
+  - Enhanced cache hit tracking
 
 ### Technical Guides
 

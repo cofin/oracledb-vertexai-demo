@@ -10,19 +10,16 @@ Tests cover:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 if TYPE_CHECKING:
-    from tools.oracle.connection import ConnectionConfig, DeploymentMode
     from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-    from tools.oracle.health import HealthChecker, SystemHealth
-    from tools.oracle.wallet import WalletConfigurator, WalletInfo
+    from tools.oracle.database import DatabaseConfig
+    from tools.oracle.health import HealthChecker
+    from tools.oracle.wallet import WalletConfigurator
 
 
 pytestmark = pytest.mark.anyio
@@ -208,7 +205,7 @@ class TestConnectionTesting:
 
     def test_deployment_mode_detection_managed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test managed mode detection."""
-        from tools.oracle.connection import detect_deployment_mode, DeploymentMode
+        from tools.oracle.connection import DeploymentMode, detect_deployment_mode
 
         # Clear any existing database environment variables
         for key in ["DATABASE_URL", "WALLET_PASSWORD", "DATABASE_HOST"]:
@@ -219,7 +216,7 @@ class TestConnectionTesting:
 
     def test_deployment_mode_detection_external_with_host(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test external mode detection with DATABASE_HOST."""
-        from tools.oracle.connection import detect_deployment_mode, DeploymentMode
+        from tools.oracle.connection import DeploymentMode, detect_deployment_mode
 
         monkeypatch.delenv("DATABASE_URL", raising=False)
         monkeypatch.setenv("DATABASE_HOST", "remote.example.com")
@@ -229,7 +226,7 @@ class TestConnectionTesting:
 
     def test_deployment_mode_detection_external_with_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test external mode detection with DATABASE_URL."""
-        from tools.oracle.connection import detect_deployment_mode, DeploymentMode
+        from tools.oracle.connection import DeploymentMode, detect_deployment_mode
 
         monkeypatch.setenv("DATABASE_URL", "oracle+oracledb://user:pass@service_high")
 

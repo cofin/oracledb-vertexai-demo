@@ -166,5 +166,4 @@ wipe-infra: ## Remove local container info
 infra-logs: ## Tail development infrastructure logs
 	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
 	@uv run python manage.py database oracle local-container-logs --follow
- 
 

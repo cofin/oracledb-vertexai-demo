@@ -154,7 +154,6 @@ install-pdm.py
 
 demo.py
 CLAUDE.md
-CLAUDE.*.md
 .tmp
 todo
 
@@ -163,6 +162,10 @@ todo
 
 # Claude/AI migration work artifacts (don't commit)
 .agents/*
-.claude/
-.gemini
-AGENTS.md
+.envs/
+.claude/*
+specs/archive/*
+!specs/archive/.gitkeep
+specs/*
+!specs/example-requirement
+!specs/README.md
