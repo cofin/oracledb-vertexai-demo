@@ -160,9 +160,6 @@ class DatabaseSettings:
                 "litestar": {
                     "session_table": "app_session",
                     "commit_mode": "autocommit",
-                    "connection_key": "db_connection",
-                    "pool_key": "db_pool",
-                    "session_key": "db_session",
                 },
             },
         )
@@ -285,15 +282,22 @@ class AppSettings:
 class VertexAISettings:
     """Vertex AI configuration settings."""
 
-    PROJECT_ID: str = field(default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_PROJECT_ID", ""))
+    PROJECT_ID: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_PROJECT_ID", "")
+    )
     """Google Cloud Project ID for Vertex AI."""
     LOCATION: str = field(default_factory=lambda: os.getenv("VERTEX_AI_LOCATION", "us-central1"))
     """Vertex AI location/region."""
-    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL") or os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
+    EMBEDDING_MODEL: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL")
+        or os.getenv("EMBEDDING_MODEL", "text-embedding-004")
+    )
     """Vertex AI embedding model."""
     EMBEDDING_DIMENSIONS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_EMBEDDING_DIMENSIONS", "768")))
     """Embedding vector dimensions."""
-    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite"))
+    CHAT_MODEL: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    )
     """Vertex AI chat model."""
 
     # Context Caching Settings
@@ -305,7 +309,9 @@ class VertexAISettings:
     # Streaming Settings
     STREAM_BUFFER_SIZE: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_BUFFER_SIZE", "1024")))
     """Buffer size for streaming responses."""
-    STREAM_TIMEOUT_SECONDS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_TIMEOUT_SECONDS", "30")))
+    STREAM_TIMEOUT_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_TIMEOUT_SECONDS", "30"))
+    )
     """Timeout for streaming responses."""
 
 
@@ -315,11 +321,15 @@ class AgentSettings:
 
     INTENT_THRESHOLD: float = field(default_factory=lambda: float(os.getenv("AGENT_INTENT_THRESHOLD", "0.8")))
     """Intent detection confidence threshold."""
-    VECTOR_SEARCH_THRESHOLD: float = field(default_factory=lambda: float(os.getenv("AGENT_VECTOR_SEARCH_THRESHOLD", "0.7")))
+    VECTOR_SEARCH_THRESHOLD: float = field(
+        default_factory=lambda: float(os.getenv("AGENT_VECTOR_SEARCH_THRESHOLD", "0.7"))
+    )
     """Vector search similarity threshold."""
     VECTOR_SEARCH_LIMIT: int = field(default_factory=lambda: int(os.getenv("AGENT_VECTOR_SEARCH_LIMIT", "5")))
     """Maximum number of vector search results."""
-    CONVERSATION_HISTORY_LIMIT: int = field(default_factory=lambda: int(os.getenv("AGENT_CONVERSATION_HISTORY_LIMIT", "10")))
+    CONVERSATION_HISTORY_LIMIT: int = field(
+        default_factory=lambda: int(os.getenv("AGENT_CONVERSATION_HISTORY_LIMIT", "10"))
+    )
     """Maximum conversation history to maintain."""
     SESSION_EXPIRE_HOURS: int = field(default_factory=lambda: int(os.getenv("AGENT_SESSION_EXPIRE_HOURS", "24")))
     """Session expiration in hours."""
@@ -331,7 +341,9 @@ class CacheSettings:
 
     RESPONSE_TTL_MINUTES: int = field(default_factory=lambda: int(os.getenv("CACHE_RESPONSE_TTL_MINUTES", "5")))
     """Response cache TTL in minutes."""
-    EMBEDDING_CACHE_ENABLED: bool = field(default_factory=lambda: os.getenv("CACHE_EMBEDDING_ENABLED", "True") in TRUE_VALUES)
+    EMBEDDING_CACHE_ENABLED: bool = field(
+        default_factory=lambda: os.getenv("CACHE_EMBEDDING_ENABLED", "True") in TRUE_VALUES
+    )
     """Enable embedding caching."""
 
 

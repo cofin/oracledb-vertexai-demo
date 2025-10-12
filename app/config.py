@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import warnings
 from typing import cast
 
 import structlog
@@ -28,12 +30,14 @@ from litestar.logging.config import (
 )
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.server_side import ServerSideSessionConfig
+from litestar.plugins.problem_details import ProblemDetailsConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.stores.registry import StoreRegistry
 from litestar.template import TemplateConfig
 from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 
+from app.lib import log as log_conf
 from app.lib.settings import BASE_DIR, get_settings
 from app.services.locator import ServiceLocator
 
@@ -47,6 +51,7 @@ csrf = CSRFConfig(
     header_name=_settings.app.CSRF_HEADER_NAME,
 )
 cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORIGINS))
+problem_details = ProblemDetailsConfig(enable_for_all_http_exceptions=True)
 
 templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
 
@@ -130,14 +135,47 @@ log = StructlogConfig(
     ),
 )
 
-# Intent routing configuration
-INTENT_THRESHOLDS = {
-    "PRODUCT_RAG": 0.60,  # Lower threshold for product queries (more inclusive)
-    "GENERAL_CONVERSATION": 0.70,
-}
 
-# Vector search configuration
-VECTOR_SEARCH_CONFIG = {
-    "min_vector_threshold": 0.5,
-    "final_top_k": 5,
-}
+def setup_logging() -> None:
+    """Return a configured logger for the given name.
+
+    Args:
+        args: positional arguments to pass to the bound logger instance
+        kwargs: keyword arguments to pass to the bound logger instance
+
+    """
+    if log.structlog_logging_config.standard_lib_logging_config:
+        log.structlog_logging_config.standard_lib_logging_config.configure()
+    log.structlog_logging_config.configure()
+    structlog.configure(
+        cache_logger_on_first_use=True,
+        logger_factory=log.structlog_logging_config.logger_factory,
+        processors=log.structlog_logging_config.processors,
+        wrapper_class=structlog.make_filtering_bound_logger(settings.log.LEVEL),
+    )
+
+    # Capture Python warnings into logging so we can filter them
+    logging.captureWarnings(True)
+
+    # Add filter to suppress specific ADK/GenAI warnings
+    adk_warning_filter = log_conf.SuppressADKWarningsFilter()
+
+    # Apply to py.warnings logger (where Python warnings get captured)
+    py_warnings_logger = logging.getLogger("py.warnings")
+    py_warnings_logger.addFilter(adk_warning_filter)
+
+    # Apply to specific Google loggers
+    for logger_name in ["google.adk", "google.genai", "google_genai", "google_genai.types"]:
+        logger = logging.getLogger(logger_name)
+        logger.addFilter(adk_warning_filter)
+
+    # Also apply to root logger and queue_listener handlers to catch in listener thread
+    logging.root.addFilter(adk_warning_filter)
+
+    # Suppress at Python warnings level too (belt and suspenders)
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*non-text parts in the response.*function_call.*",
+        category=Warning,
+        module=r"google_(?:genai|generativeai)(?:\..*)?$",
+    )

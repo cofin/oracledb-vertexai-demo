@@ -77,6 +77,7 @@ class FixtureProcessor:
                 cleaned = value.replace("\n", " ")
                 # Normalize multiple spaces to single space
                 import re
+
                 cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
                 try:
@@ -94,7 +95,9 @@ class FixtureProcessor:
                 except (ValueError, TypeError):
                     # If parsing fails, skip this field and continue
                     continue
-            elif key in ("created_at", "updated_at", "last_activity", "expires_at", "last_accessed") and isinstance(value, str):
+            elif key in ("created_at", "updated_at", "last_activity", "expires_at", "last_accessed") and isinstance(
+                value, str
+            ):
                 # Convert ISO timestamp strings to datetime objects
                 prepared[key] = datetime.fromisoformat(value)
             else:
@@ -211,10 +214,7 @@ class FixtureLoader:
                 # Use upsert (INSERT ... ON CONFLICT DO UPDATE) with SQLSpec
                 # This will insert new records or update existing ones based on id
                 insert_query = (
-                    sql.insert(table_name)
-                    .values(**processed_record)
-                    .on_conflict("id")
-                    .do_update(**processed_record)
+                    sql.insert(table_name).values(**processed_record).on_conflict("id").do_update(**processed_record)
                 )
                 await self.driver.execute(insert_query)
                 upserted += 1
@@ -266,7 +266,10 @@ class FixtureExporter:
         self.table_order = table_order or []
 
     async def export_all_fixtures(
-        self, tables: list[str] | None = None, output_dir: Path | None = None, compress: bool = True,
+        self,
+        tables: list[str] | None = None,
+        output_dir: Path | None = None,
+        compress: bool = True,
     ) -> dict[str, str]:
         """Export database tables to fixture files.
 
@@ -339,7 +342,7 @@ class FixtureExporter:
 
         output_file = output_dir / filename
 
-        json_bytes = to_json(json_data)
+        json_bytes = to_json(json_data, as_bytes=True)
 
         if compress:
             with gzip.open(output_file, "wb") as f:

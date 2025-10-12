@@ -1,55 +1,114 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""Logging configuration and utilities for DMA."""
 
 from __future__ import annotations
 
 import logging
 import re
 import sys
+from functools import lru_cache
 from inspect import isawaitable
 from typing import TYPE_CHECKING
 
 import structlog
 from litestar.data_extractors import ConnectionDataExtractor, ResponseDataExtractor
 from litestar.enums import ScopeType
-from litestar.exceptions import (
-    HTTPException,
-)
-from litestar.status_codes import (
-    HTTP_500_INTERNAL_SERVER_ERROR,
-)
+from litestar.exceptions import HTTPException
+from litestar.status_codes import HTTP_500_INTERNAL_SERVER_ERROR
 from litestar.utils.empty import value_or_default
 from litestar.utils.scope.state import ScopeState
 from structlog.contextvars import bind_contextvars
 
-from app.lib.exceptions import ApplicationError
 from app.lib.settings import get_settings
+from app.utils.serialization import to_json
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from typing import Any, Literal
 
     from litestar.connection import Request
     from litestar.types.asgi_types import ASGIApp, Message, Receive, Scope, Send
     from structlog.types import EventDict, WrappedLogger
+    from structlog.typing import Processor
 
 LOGGER = structlog.getLogger()
+
+
+class SuppressADKWarningsFilter(logging.Filter):
+    """Filter to suppress specific ADK/GenAI warnings that clutter demo logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Return False to suppress log record."""
+        msg = record.getMessage()
+        # Suppress the "non-text parts in the response" warning
+        if "non-text parts in the response" in msg and "function_call" in msg:
+            return False
+        return "returning concatenated text result from text parts" not in msg
+
 
 HTTP_RESPONSE_START: Literal["http.response.start"] = "http.response.start"
 HTTP_RESPONSE_BODY: Literal["http.response.body"] = "http.response.body"
 REQUEST_BODY_FIELD: Literal["body"] = "body"
 
 settings = get_settings()
+
+
+@lru_cache
+def is_tty() -> bool:
+    return bool(sys.stderr.isatty() or sys.stdout.isatty())
+
+
+def structlog_json_serializer(value: EventDict, **_: Any) -> bytes:
+    return to_json(value, as_bytes=True)
+
+
+def stdlib_json_serializer(value: EventDict, **_: Any) -> str:
+    return to_json(value)
+
+
+def add_logger_name_safe(logger: WrappedLogger, _: str, event_dict: EventDict) -> EventDict:
+    """Safely add logger name, handling both stdlib and native structlog loggers.
+
+    Args:
+        logger: Wrapped logger object.
+        _: Name of the wrapped method.
+        event_dict: Current context with current event.
+
+    Returns:
+        Modified event_dict with logger field.
+    """
+    # Check if this is a stdlib LogRecord
+    record = event_dict.get("_record")
+    if record is not None:
+        event_dict["logger"] = record.name
+    # For structlog native loggers, check if logger has a name attribute
+    elif hasattr(logger, "name"):
+        event_dict["logger"] = logger.name
+    # Fallback: try to infer from the logger object itself
+    elif hasattr(logger, "_name"):
+        event_dict["logger"] = logger._name  # noqa: SLF001
+    return event_dict
+
+
+def add_logger_source(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
+    """Add logger source tag from full logger name for tracking log origin.
+
+    Keeps full logger name but renames field to 'source' for clarity.
+    Examples: 'app.services.adk.orchestrator', 'google.genai', '_granian'
+
+    Args:
+        _: Wrapped logger object.
+        __: Name of the wrapped method.
+        event_dict: Current context with current event.
+
+    Returns:
+        Modified event_dict with source field containing full logger name.
+    """
+    if logger_name := event_dict.get("logger"):
+        # Move logger to source field for display
+        event_dict["source"] = logger_name
+        # Remove the original logger field to avoid duplication
+        event_dict.pop("logger", None)
+    return event_dict
 
 
 def add_google_cloud_attributes(_: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
@@ -63,12 +122,52 @@ def add_google_cloud_attributes(_: WrappedLogger, __: str, event_dict: EventDict
     Returns:
         `event_dict` for further processing if it does not represent a successful health check.
     """
-    event_dict["severity"] = event_dict.pop("level")
+    event_dict["severity"] = event_dict.get("level")
     event_dict["labels"] = None
     event_dict["resource"] = None
     if event_dict.get("logger"):
         event_dict["python_logger"] = event_dict.pop("logger")
     return event_dict
+
+
+class EventFilter:
+    """Remove keys from the log event.
+
+    Add an instance to the processor chain.
+
+    Examples:
+        structlog.configure(
+            ...,
+            processors=[
+                ...,
+                EventFilter(["color_message"]),
+                ...,
+            ]
+        )
+    """
+
+    def __init__(self, filter_keys: Iterable[str]) -> None:
+        """Event filter.
+
+        Args:
+        filter_keys: Iterable of string keys to be excluded from the log event.
+        """
+        self.filter_keys = filter_keys
+
+    def __call__(self, _: WrappedLogger, __: str, event_dict: EventDict) -> EventDict:
+        """Receive the log event, and filter keys.
+
+        Args:
+            _ ():
+            __ ():
+            event_dict (): The data to be logged.
+
+        Returns:
+            The log event with any key in `self.filter_keys` removed.
+        """
+        for key in self.filter_keys:
+            event_dict.pop(key, None)
+        return event_dict
 
 
 # This is so that it shows up properly in the litestar ui.  instead of reading `middleware_factory`, we use something that make sense.
@@ -96,7 +195,7 @@ def StructlogMiddleware(app: ASGIApp) -> ASGIApp:  # noqa: N802
     return middleware
 
 
-async def after_exception_hook_handler(exc: Exception, _scope: Scope) -> None:
+def after_exception_hook_handler(exc: Exception, _scope: Scope) -> None:
     """Binds `exc_info` key with exception instance as value to structlog
     context vars.
 
@@ -106,8 +205,6 @@ async def after_exception_hook_handler(exc: Exception, _scope: Scope) -> None:
         exc: the exception that was raised.
         _scope: scope of the request
     """
-    if isinstance(exc, ApplicationError):
-        return
     if isinstance(exc, HTTPException) and exc.status_code < HTTP_500_INTERNAL_SERVER_ERROR:
         return
     bind_contextvars(exc_info=sys.exc_info())
@@ -195,11 +292,8 @@ class BeforeSendHandler:
 
         Args:
             scope: The ASGI connection scope.
-
-        Returns:
-            None
         """
-        extracted_data = await self.extract_request_data(request=scope["app"].request_class(scope))
+        extracted_data = await self.extract_request_data(request=scope["app"].request_class(scope))  # pyright: ignore
         structlog.contextvars.bind_contextvars(**extracted_data)
 
     async def log_response(self, scope: Scope) -> None:
@@ -207,18 +301,18 @@ class BeforeSendHandler:
 
         Args:
             scope: The ASGI connection scope.
-
-        Returns:
-            None
         """
         extracted_data = self.extract_response_data(scope=scope)
         structlog.contextvars.bind_contextvars(**extracted_data)
 
-    async def extract_request_data(self, request: Request) -> dict[str, Any]:
+    async def extract_request_data(self, request: Request[Any, Any, Any]) -> dict[str, Any]:
         """Create a dictionary of values for the log.
 
         Args:
-            request: A [Request][litestar.connection.request.Request] instance.
+            request: A request instance.
+
+        Raises:
+            RuntimeError:
 
         Returns:
             An OrderedDict.
@@ -266,3 +360,80 @@ class BeforeSendHandler:
                 continue
             data[key] = value
         return data
+
+
+def structlog_processors(as_json: bool) -> list[Processor]:
+    """Set the default processors for structlog.
+
+    Returns:
+        An optional list of processors.
+    """
+    try:
+        import structlog
+        from structlog.dev import RichTracebackFormatter
+
+        if as_json:
+            return [
+                structlog.contextvars.merge_contextvars,
+                structlog.processors.add_log_level,
+                add_logger_name_safe,
+                add_logger_source,
+                structlog.processors.format_exc_info,
+                add_google_cloud_attributes,
+                structlog.processors.TimeStamper(fmt="iso"),
+                structlog.processors.JSONRenderer(serializer=structlog_json_serializer),
+            ]
+        return [
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            add_logger_name_safe,
+            add_logger_source,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.ConsoleRenderer(
+                colors=True,
+                exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80),
+            ),
+        ]
+    except ImportError:
+        return []
+
+
+def stdlib_logger_processors(as_json: bool) -> list[Processor]:
+    """Set the default processors for structlog stdlib.
+
+    Returns:
+        An optional list of processors.
+    """
+    try:
+        import structlog
+        from structlog.dev import RichTracebackFormatter
+
+        if as_json:
+            return [
+                structlog.processors.TimeStamper(fmt="iso"),
+                structlog.stdlib.add_log_level,
+                add_logger_name_safe,
+                add_logger_source,
+                structlog.stdlib.ExtraAdder(),
+                EventFilter(["color_message"]),
+                structlog.processors.EventRenamer("message"),
+                add_google_cloud_attributes,
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.processors.JSONRenderer(serializer=stdlib_json_serializer),
+            ]
+        return [
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.stdlib.add_log_level,
+            add_logger_name_safe,
+            add_logger_source,
+            structlog.stdlib.ExtraAdder(),
+            EventFilter(["color_message"]),
+            EventFilter(["message"]),
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.dev.ConsoleRenderer(
+                colors=True,
+                exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80),
+            ),
+        ]
+    except ImportError:
+        return []
