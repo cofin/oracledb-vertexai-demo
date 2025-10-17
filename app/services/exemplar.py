@@ -35,10 +35,11 @@ class ExemplarService(SQLSpecService):
 
         result: dict[str, list[tuple[str, list[float]]]] = {}
         for row in results:
-            intent = row["intent"]
-            phrase = row["phrase"]
-            embedding_vector = row["embedding"]
-            if embedding_vector:
+            # Oracle returns column names in uppercase by default
+            intent = row.get("intent") or row.get("INTENT")
+            phrase = row.get("phrase") or row.get("PHRASE")
+            embedding_vector = row.get("embedding") or row.get("EMBEDDING")
+            if embedding_vector is not None:
                 # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
                 if intent not in result:
@@ -58,9 +59,10 @@ class ExemplarService(SQLSpecService):
 
         result: dict[str, list[list[float]]] = {}
         for row in results:
-            intent = row["intent"]
-            embedding_vector = row["embedding"]
-            if embedding_vector:
+            # Oracle returns column names in uppercase by default
+            intent = row.get("intent") or row.get("INTENT")
+            embedding_vector = row.get("embedding") or row.get("EMBEDDING")
+            if embedding_vector is not None:
                 # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
                 if intent not in result:
@@ -125,7 +127,9 @@ class ExemplarService(SQLSpecService):
                     phrase=phrase,
                 )
 
-                if not result or not result["embedding"]:
+                # Oracle returns column names in uppercase by default
+                embedding_value = result.get("embedding") or result.get("EMBEDDING") if result else None
+                if not embedding_value:
                     # Generate embedding
                     embedding = await vertex_ai_service.get_text_embedding(phrase)
                     await self.cache_exemplar(intent, phrase, embedding)

@@ -146,10 +146,10 @@ Project settings: `.gemini/settings.json` (not checked in)
 
 ## Workspace Management
 
-All work happens in `.agents/{requirement-slug}/`:
+All work happens in `specs/{requirement-slug}/`:
 
 ```
-.agents/vector-search-caching/
+specs/vector-search-caching/
 ├── prd.md              # Product Requirements Document
 ├── tasks.md            # Task checklist
 ├── recovery.md         # How to resume work
@@ -165,7 +165,7 @@ The Docs & Vision agent (`/prompt review`) MUST:
 
 1. Remove all `tmp/` directories
 2. Remove loose scratch files
-3. Archive completed requirement to `.agents/archive/`
+3. Archive completed requirement to `specs/archive/`
 4. Keep only last 3 active requirements
 5. Update archive index
 
@@ -227,7 +227,7 @@ From `CLAUDE.md` (enforced by all agents):
 | Agent definitions | Prompts + docs     | `.claude/agents/` with frontmatter |
 | Invocation        | `/prompt {name}`   | `/{name}`                          |
 | MCP support       | ✅ Yes             | ✅ Yes                             |
-| Workspace         | `.agents/`         | `.agents/`                         |
+| Workspace         | `specs/`           | `specs/`                           |
 
 ## Getting Started
 

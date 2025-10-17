@@ -7,13 +7,13 @@ This directory contains database migration files.
 Migration files use SQLFileLoader's named query syntax with versioned names:
 
 ```sql
--- name: migrate-0001-up
+-- name: migrate-20251011120000-up
 CREATE TABLE example (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL
 );
 
--- name: migrate-0001-down
+-- name: migrate-20251011120000-down
 DROP TABLE example;
 ```
 
@@ -23,13 +23,36 @@ DROP TABLE example;
 
 Format: `{version}_{description}.sql`
 
-- Version: Zero-padded 4-digit number (0001, 0002, etc.)
+- Version: Timestamp in YYYYMMDDHHmmss format (UTC)
 - Description: Brief description using underscores
-- Example: `0001_create_users_table.sql`
+- Example: `20251011120000_create_users_table.sql`
 
 ### Query Names
 
 - Upgrade: `migrate-{version}-up`
 - Downgrade: `migrate-{version}-down`
 
-This naming ensures proper sorting and avoids conflicts when loading multiple files.
+## Version Format
+
+Migrations use **timestamp-based versioning** (YYYYMMDDHHmmss):
+
+- **Format**: 14-digit UTC timestamp
+- **Example**: `20251011120000` (October 11, 2025 at 12:00:00 UTC)
+- **Benefits**: Eliminates merge conflicts when multiple developers create migrations concurrently
+
+### Creating Migrations
+
+Use the CLI to generate timestamped migrations:
+
+```bash
+sqlspec create-migration "add user table"
+# Creates: 20251011120000_add_user_table.sql
+```
+
+The timestamp is automatically generated in UTC timezone.
+
+## Migration Execution
+
+Migrations are applied in chronological order based on their timestamps.
+The database tracks both version and execution order separately to handle
+out-of-order migrations gracefully (e.g., from late-merging branches).

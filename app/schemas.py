@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
+from uuid import UUID
 
 import msgspec
 
 from app.lib.schema import BaseStruct, CamelizedBaseStruct, Message, camel_case
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
 
 __all__ = (
     "BaseStruct",
@@ -35,11 +31,13 @@ __all__ = (
     "CoffeeChatReply",
     "EmbeddingCache",
     "HistoryMeta",
+    "IntentResult",
     "Message",
     "MetricCard",
     "MetricsSummaryResponse",
     "ResponseCache",
     "SearchMetricsCreate",
+    "SimilarIntent",
     "TimeSeriesData",
     "UserSessionCreate",
     "UserSessionRead",
@@ -47,6 +45,25 @@ __all__ = (
     "VectorDemoResult",
     "camel_case",
 )
+
+
+class SimilarIntent(msgspec.Struct, array_like=True, omit_defaults=True):
+    """Represents a similar intent found by vector search."""
+
+    intent: str
+    phrase: str
+    similarity: float
+    confidence_threshold: float
+
+
+class IntentResult(msgspec.Struct, array_like=True, omit_defaults=True):
+    """Result of intent classification."""
+
+    intent: str
+    confidence: float
+    exemplar_phrase: str
+    embedding_cache_hit: bool
+    fallback_used: bool
 
 
 class CoffeeChatMessage(msgspec.Struct):
@@ -59,14 +76,14 @@ class CoffeeChatMessage(msgspec.Struct):
 # Oracle-specific DTOs
 
 
-class UserSessionCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class UserSessionCreate(msgspec.Struct, array_like=True, omit_defaults=True):
     """Session creation payload."""
 
     user_id: str
     data: dict = {}
 
 
-class UserSessionRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class UserSessionRead(msgspec.Struct, array_like=True, omit_defaults=True):
     """Session response payload."""
 
     id: UUID
@@ -77,7 +94,7 @@ class UserSessionRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
     created_at: datetime
 
 
-class ChatConversationCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class ChatConversationCreate(msgspec.Struct, array_like=True, omit_defaults=True):
     """Conversation creation payload."""
 
     session_id: UUID
@@ -87,7 +104,7 @@ class ChatConversationCreate(msgspec.Struct, gc=False, array_like=True, omit_def
     message_metadata: dict = {}
 
 
-class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class ChatConversationRead(msgspec.Struct, array_like=True, omit_defaults=True):
     """Conversation response payload."""
 
     id: UUID
@@ -98,7 +115,7 @@ class ChatConversationRead(msgspec.Struct, gc=False, array_like=True, omit_defau
     created_at: datetime
 
 
-class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaults=True, kw_only=True):
+class SearchMetricsCreate(msgspec.Struct, array_like=True, omit_defaults=True, kw_only=True):
     """Metrics creation payload."""
 
     query_id: str
@@ -112,14 +129,14 @@ class SearchMetricsCreate(msgspec.Struct, gc=False, array_like=True, omit_defaul
     result_count: int
 
 
-class ChatMessage(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class ChatMessage(msgspec.Struct, array_like=True, omit_defaults=True):
     """Individual chat message."""
 
     message: str
     source: str  # 'human' | 'ai' | 'system'
 
 
-class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class CoffeeChatReply(msgspec.Struct, array_like=True, omit_defaults=True):
     """Complete chat response."""
 
     message: str
@@ -133,7 +150,7 @@ class CoffeeChatReply(msgspec.Struct, gc=False, array_like=True, omit_defaults=T
 
 
 # Legacy TypedDict for compatibility (to be removed)
-class HistoryMeta(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class HistoryMeta(msgspec.Struct, array_like=True, omit_defaults=True):
     """History metadata."""
 
     conversation_id: str
@@ -143,7 +160,7 @@ class HistoryMeta(msgspec.Struct, gc=False, array_like=True, omit_defaults=True)
 # Dashboard API DTOs
 
 
-class MetricCard(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class MetricCard(msgspec.Struct, array_like=True, omit_defaults=True):
     """Metric card data for dashboard."""
 
     label: str
@@ -152,7 +169,7 @@ class MetricCard(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
     trend_value: float | None = None
 
 
-class MetricsSummaryResponse(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class MetricsSummaryResponse(msgspec.Struct, array_like=True, omit_defaults=True):
     """Metrics summary response."""
 
     total_searches: MetricCard
@@ -161,7 +178,7 @@ class MetricsSummaryResponse(msgspec.Struct, gc=False, array_like=True, omit_def
     cache_hit_rate: MetricCard
 
 
-class TimeSeriesData(msgspec.Struct, gc=False, omit_defaults=True):
+class TimeSeriesData(msgspec.Struct, omit_defaults=True):
     """Time series data for charts."""
 
     labels: list[str]
@@ -170,7 +187,7 @@ class TimeSeriesData(msgspec.Struct, gc=False, omit_defaults=True):
     vertex_latency: list[float]
 
 
-class ChartDataResponse(msgspec.Struct, gc=False, omit_defaults=True):
+class ChartDataResponse(msgspec.Struct, omit_defaults=True):
     """Chart data response."""
 
     time_series: TimeSeriesData
@@ -178,13 +195,13 @@ class ChartDataResponse(msgspec.Struct, gc=False, omit_defaults=True):
     breakdown_data: dict[str, Any]
 
 
-class VectorDemoRequest(msgspec.Struct, gc=False, omit_defaults=True):
+class VectorDemoRequest(msgspec.Struct, omit_defaults=True):
     """Vector search demo request."""
 
     query: str
 
 
-class VectorDemoResult(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class VectorDemoResult(msgspec.Struct, array_like=True, omit_defaults=True):
     """Vector search demo result."""
 
     product_name: str
@@ -196,7 +213,7 @@ class VectorDemoResult(msgspec.Struct, gc=False, array_like=True, omit_defaults=
 # Cache schemas
 
 
-class ResponseCache(msgspec.Struct, gc=False, omit_defaults=True):
+class ResponseCache(msgspec.Struct, omit_defaults=True):
     """Response cache entry."""
 
     id: int
@@ -206,7 +223,7 @@ class ResponseCache(msgspec.Struct, gc=False, omit_defaults=True):
     expires_at: datetime | None = None
 
 
-class EmbeddingCache(msgspec.Struct, gc=False, omit_defaults=True):
+class EmbeddingCache(msgspec.Struct, omit_defaults=True):
     """Embedding cache entry."""
 
     id: int

@@ -88,7 +88,7 @@ mcp__context7__get_library_docs(
 
 # Step 3: Save findings
 Write(
-    file_path=".agents/{slug}/research/python-oracledb-vectors.md",
+    file_path="specs/{slug}/research/python-oracledb-vectors.md",
     content="# Findings\n\n..."
 )
 ```
@@ -126,8 +126,8 @@ FETCH FIRST 5 ROWS ONLY;
 
 **Where to write files**:
 
-- Research findings: `.agents/{slug}/research/*.md`
-- Scratch work: `.agents/{slug}/tmp/*`
+- Research findings: `specs/{slug}/research/*.md`
+- Scratch work: `specs/{slug}/tmp/*`
 - Never: Loose files in project root
 
 **Clean as you go**:

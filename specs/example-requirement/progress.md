@@ -59,6 +59,6 @@ This is an example progress log. Real requirements will have entries like:
 ✅ Code quality verified
 ✅ Documentation updated (oracle-performance.md, architecture.md)
 ✅ Cleanup complete (tmp/ deleted, no loose files)
-✅ Requirement archived to .agents/archive/
+✅ Requirement archived to specs/archive/
 
 **Status**: ✅ Complete

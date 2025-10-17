@@ -10,7 +10,7 @@ from app.services import CacheService, ExemplarService, MetricsService, ProductS
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
 
-    from app.services.adk.orchestrator import ADKOrchestrator
+    from app.services.adk import ADKRunner
     from app.services.vertex_ai import OracleVectorSearchService
 
 
@@ -61,10 +61,10 @@ async def provide_oracle_vector_search_service(
     yield service
 
 
-# ADK Orchestrator (when needed)
-async def provide_adk_orchestrator() -> AsyncGenerator[ADKOrchestrator, None]:
-    """Provide ADK orchestrator for agent-based workflows."""
-    from app.services.adk.orchestrator import ADKOrchestrator
+# New ADK Runner
+async def provide_adk_runner() -> AsyncGenerator[ADKRunner, None]:
+    """Provide the modern ADKRunner service."""
+    from app.services.adk import ADKRunner
 
-    orchestrator = ADKOrchestrator()
-    yield orchestrator
+    runner = ADKRunner()
+    yield runner

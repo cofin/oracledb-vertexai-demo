@@ -59,7 +59,7 @@ Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
 
 1. Clean tmp/ directories:
    ```bash
-   find .agents/{slug}/tmp -type f -delete
+   find specs/{slug}/tmp -type f -delete
    ```
 2. Remove loose files:
    - Find scratch files: `*scratch*`, `*tmp_*`, `*debug_*`
@@ -67,10 +67,10 @@ Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
    - Find loose `.md` and `.sql` files
 3. Archive completed requirement:
    ```bash
-   mv .agents/{slug} .agents/archive/
+   mv specs/{slug} specs/archive/
    ```
 4. Keep only last 3 active requirements
-5. Update .agents/README.md with completion note
+5. Update specs/README.md with completion note
 
 ### Phase 4: Summary
 

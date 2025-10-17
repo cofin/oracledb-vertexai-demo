@@ -17,6 +17,9 @@ from sqlspec import sql
 
 from app.utils.serialization import from_json, to_json
 
+# Oracle VARCHAR2 maximum length (use CLOB for larger values)
+VARCHAR2_MAX_LENGTH = 4000
+
 
 class FixtureProcessor:
     """Handles fixture data processing with proper serialization."""
@@ -188,58 +191,97 @@ class FixtureLoader:
         return results
 
     async def _load_table_fixtures(self, table_name: str, fixture_file: Path) -> dict[str, Any]:
-        """Load fixtures for a specific table using upsert.
+        """Load fixtures using Oracle JSON_TABLE with MERGE for single-call bulk upsert.
+
+        Uses JSON_TABLE to pass all records in a single JSON payload, then MERGE
+        from the JSON_TABLE result. This combines INSERT and UPDATE in one operation.
 
         Args:
             table_name: Name of the table
             fixture_file: Path to fixture file
 
         Returns:
-            Loading result statistics
+            Loading result statistics with keys: upserted, failed, total
+
+        Raises:
+            Exception: Any database error during fixture loading (no fallback)
         """
         fixture_data = self.processor.load_fixture_data(fixture_file)
 
         if not fixture_data:
             return {"upserted": 0, "failed": 0, "total": 0}
 
-        upserted = 0
-        failed = 0
         total = len(fixture_data)
-        first_error = None
 
-        for record in fixture_data:
-            try:
-                processed_record = dict(self.processor.prepare_record(record))
+        # Process all records
+        processed_records = [dict(self.processor.prepare_record(record)) for record in fixture_data]
 
-                # Use upsert (INSERT ... ON CONFLICT DO UPDATE) with SQLSpec
-                # This will insert new records or update existing ones based on id
-                insert_query = (
-                    sql.insert(table_name).values(**processed_record).on_conflict("id").do_update(**processed_record)
-                )
-                await self.driver.execute(insert_query)
-                upserted += 1
+        if not processed_records:
+            return {"upserted": 0, "failed": 0, "total": 0}
 
-            except Exception as e:  # noqa: BLE001
-                failed += 1
-                if first_error is None:
-                    # Include more debug info in error message
-                    first_error = str(e)
+        # Get column information from first record
+        # Note: We include 'id' in all operations to preserve fixture IDs for idempotent loading
+        first_record = processed_records[0]
+        all_columns = [col for col in first_record if first_record[col] is not None]
+        update_columns = [col for col in all_columns if col != "id"]  # UPDATE doesn't change id
+        insert_columns = all_columns  # INSERT includes id to preserve fixture IDs
 
-        return {"upserted": upserted, "failed": failed, "total": total, "error": first_error}
+        # Build JSON_TABLE column definitions with type inference
+        json_columns = []
+        for col in all_columns:
+            val = first_record[col]
+            if isinstance(val, bool):
+                oracle_type = "NUMBER(1)"  # JSON_TABLE doesn't support BOOLEAN
+            elif isinstance(val, (int, float)):
+                oracle_type = "NUMBER"
+            elif isinstance(val, (dict, list)):
+                oracle_type = "JSON"
+            elif isinstance(val, datetime):
+                oracle_type = "TIMESTAMP"
+            elif hasattr(val, "__len__") and len(str(val)) > VARCHAR2_MAX_LENGTH:
+                oracle_type = "CLOB"
+            else:
+                oracle_type = f"VARCHAR2({VARCHAR2_MAX_LENGTH})"
 
-    async def _record_exists(self, table_name: str, record_id: str | int) -> bool:
-        """Check if a record already exists in the table.
+            json_columns.append(f"{col} {oracle_type} PATH '$.{col}'")
 
-        Args:
-            table_name: Name of the table
-            record_id: ID of the record to check
+        # Build MERGE statement with JSON_TABLE
+        # table_name is from internal COFFEE_SHOP_TABLES list, not user input
+        merge_sql = f"""
+            MERGE INTO {table_name} t
+            USING (
+                SELECT {", ".join([f"jt.{col}" for col in all_columns])}
+                FROM JSON_TABLE(
+                    :payload, '$[*]'
+                    COLUMNS (
+                        {", ".join(json_columns)}
+                    )
+                ) jt
+            ) src
+            ON (t.id = src.id)
+            WHEN MATCHED THEN UPDATE SET
+                {", ".join([f"t.{col} = src.{col}" for col in update_columns])}
+            WHEN NOT MATCHED THEN INSERT ({", ".join(insert_columns)})
+                VALUES ({", ".join([f"src.{col}" for col in insert_columns])})
+        """  # noqa: S608
 
-        Returns:
-            True if record exists
-        """
-        check_query = sql.select("1").from_(table_name).where(sql.column("id") == record_id).limit(1)
-        result = await self.driver.select(check_query)
-        return len(result) > 0
+        # Convert records to JSON payload using project's serialization
+        payload = to_json(processed_records, as_bytes=False)
+
+        # Execute MERGE with JSON payload bound as CLOB to handle large payloads (>1MB)
+        import oracledb
+
+        async with self.driver.with_cursor(self.driver.connection) as cursor:
+            # Create a temporary CLOB and write the JSON payload to it
+            # This is necessary because the payload can exceed VARCHAR2 limits (>32KB)
+            temp_clob = await self.driver.connection.createlob(oracledb.DB_TYPE_CLOB)
+            await temp_clob.write(payload)
+
+            # Execute MERGE with the CLOB object
+            await cursor.execute(merge_sql.strip(), {"payload": temp_clob})
+            upserted = cursor.rowcount if cursor.rowcount > 0 else total
+
+        return {"upserted": upserted, "failed": 0, "total": total}
 
     def _generate_missing_fixtures_results(self) -> dict[str, dict[str, Any] | str]:
         """Generate error results for missing fixture files.

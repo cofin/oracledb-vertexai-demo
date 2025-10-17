@@ -63,7 +63,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             ProductService,
             VertexAIService,
         )
-        from app.services.adk.orchestrator import ADKOrchestrator
+        from app.services.adk.runner import ADKRunner
 
         settings = get_settings()
         # logging
@@ -126,7 +126,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "ExemplarService": ExemplarService,
                 "VertexAIService": VertexAIService,
                 "OracleVectorSearchService": OracleVectorSearchService,
-                "ADKOrchestrator": ADKOrchestrator,
+                "ADKRunner": ADKRunner,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
             },
@@ -137,6 +137,10 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from sqlspec.extensions.litestar.cli import database_group
 
         from app.cli import coffee_demo_group
+        from app.cli.commands import load_fixtures_cmd
+
+        # Register custom database commands to the database group
+        database_group.add_command(load_fixtures_cmd)  # type: ignore[arg-type]
 
         # Register groups
         cli.add_command(database_group)

@@ -2,7 +2,7 @@ Invoke the Planner agent to create a comprehensive requirement workspace.
 
 **What this does:**
 
-- Creates `.agents/{feature-slug}/` directory structure
+- Creates `specs/{feature-slug}/` directory structure
 - Writes detailed PRD with Oracle, Vertex AI, and ADK considerations
 - Creates actionable task list
 - Generates recovery guide for resuming work
@@ -17,7 +17,7 @@ Invoke the Planner agent to create a comprehensive requirement workspace.
 **The Planner will:**
 
 1. Analyze the requirement and existing codebase patterns
-2. Create workspace: `.agents/vector-search-caching/`
+2. Create workspace: `specs/vector-search-caching/`
 3. Write comprehensive PRD covering:
    - Oracle 23ai vector search patterns
    - Vertex AI embedding integration
@@ -32,7 +32,7 @@ Invoke the Planner agent to create a comprehensive requirement workspace.
 **Output Structure:**
 
 ```
-.agents/vector-search-caching/
+specs/vector-search-caching/
 ├── prd.md          # Product Requirements Document
 ├── tasks.md        # Phase-by-phase task checklist
 ├── recovery.md     # Recovery guide for resuming work

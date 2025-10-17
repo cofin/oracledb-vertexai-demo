@@ -161,7 +161,7 @@ todo
 .envs/
 
 # Claude/AI migration work artifacts (don't commit)
-.agents/*
+specs/*
 .envs/
 .claude/*
 specs/archive/*

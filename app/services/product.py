@@ -10,44 +10,44 @@ class ProductService(SQLSpecService):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def get_all(self) -> list[dict[str, Any]]:
-        """Get all products with company information."""
+        """Get all products."""
         return await self.driver.select(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            ORDER BY p.name
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            FROM product
+            ORDER BY name
             """
         )
 
     async def get_by_id(self, product_id: int) -> dict[str, Any] | None:
-        """Get product by ID with company information."""
+        """Get product by ID."""
         return await self.driver.select_one_or_none(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            WHERE p.id = :id
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            FROM product
+            WHERE id = :id
             """,
             id=product_id,
         )
@@ -57,19 +57,19 @@ class ProductService(SQLSpecService):
         return await self.driver.select_one_or_none(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            WHERE p.name = :name
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            FROM product
+            WHERE name = :name
             """,
             name=name,
         )
@@ -79,20 +79,20 @@ class ProductService(SQLSpecService):
         return await self.driver.select(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            WHERE UPPER(p.description) LIKE UPPER(:search_term)
-            ORDER BY p.name
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            FROM product
+            WHERE UPPER(description) LIKE UPPER(:search_term)
+            ORDER BY name
             """,
             search_term=f"%{search_term}%",
         )
@@ -109,26 +109,27 @@ class ProductService(SQLSpecService):
             WHERE embedding IS NULL
             """
         )
-        total_count = count_result["total_count"] if count_result else 0
+        # Oracle returns column names in uppercase
+        total_count = (count_result.get("total_count") or count_result.get("TOTAL_COUNT")) if count_result else 0
 
         # Get paginated results
         products = await self.driver.select(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            WHERE p.embedding IS NULL
-            ORDER BY p.id
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at
+            FROM product
+            WHERE embedding IS NULL
+            ORDER BY id
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
             """,
             limit=limit,
@@ -148,21 +149,21 @@ class ProductService(SQLSpecService):
         results = await self.driver.select(
             """
             SELECT
-                p.id,
-                p.name,
-                p.current_price,
-                p.description,
-                p.embedding,
-                p.embedding_generated_on,
-                p.created_at,
-                p.updated_at,
-                p.company_id,
-                c.name as company_name,
-                VECTOR_DISTANCE(p.embedding, :query_embedding, COSINE) as similarity_score
-            FROM product p
-            JOIN company c ON p.company_id = c.id
-            WHERE p.embedding IS NOT NULL
-            AND VECTOR_DISTANCE(p.embedding, :query_embedding, COSINE) <= :threshold
+                id,
+                name,
+                price,
+                description,
+                category,
+                sku,
+                in_stock,
+                metadata,
+                embedding,
+                created_at,
+                updated_at,
+                VECTOR_DISTANCE(embedding, :query_embedding, COSINE) as similarity_score
+            FROM product
+            WHERE embedding IS NOT NULL
+            AND VECTOR_DISTANCE(embedding, :query_embedding, COSINE) <= :threshold
             ORDER BY similarity_score
             FETCH FIRST :limit ROWS ONLY
             """,
@@ -171,9 +172,10 @@ class ProductService(SQLSpecService):
             limit=limit,
         )
 
-        # Convert distance back to similarity score
+        # Convert distance back to similarity score (handle Oracle uppercase column names)
         for result in results:
-            result["similarity_score"] = 1 - result["similarity_score"]
+            score_key = "similarity_score" if "similarity_score" in result else "SIMILARITY_SCORE"
+            result[score_key] = 1 - result[score_key]
 
         return results
 
@@ -198,10 +200,12 @@ class ProductService(SQLSpecService):
     async def create_product(
         self,
         name: str,
-        company_id: int,
-        current_price: float,
-        size: str,
+        price: float,
         description: str,
+        category: str | None = None,
+        sku: str | None = None,
+        in_stock: bool = True,
+        metadata: dict | None = None,
         embedding: list[float] | None = None,
     ) -> dict[str, Any] | None:
         """Create a new product."""
@@ -209,22 +213,25 @@ class ProductService(SQLSpecService):
         result = await self.driver.select_one_or_none(
             """
             INSERT INTO product (
-                company_id, name, current_price, description, embedding, embedding_generated_on
+                name, price, description, category, sku, in_stock, metadata, embedding
             ) VALUES (
-                :company_id, :name, :current_price, :description, :embedding,
-                CASE WHEN :embedding IS NOT NULL THEN SYSTIMESTAMP ELSE NULL END
+                :name, :price, :description, :category, :sku, :in_stock, :metadata, :embedding
             )
             RETURNING id
             """,
-            company_id=company_id,
             name=name,
-            current_price=current_price,
+            price=price,
             description=description,
+            category=category,
+            sku=sku,
+            in_stock=in_stock,
+            metadata=metadata,
             embedding=embedding,
         )
 
         if result:
-            product_id = result["id"]
+            # Oracle returns column names in uppercase
+            product_id = result.get("id") or result.get("ID")
             # Return the created product
             return await self.get_by_id(product_id)
 
@@ -235,8 +242,12 @@ class ProductService(SQLSpecService):
         # Build UPDATE statement with safe field mapping
         field_mapping = {
             "name": "name = :name",
-            "current_price": "current_price = :current_price",
+            "price": "price = :price",
             "description": "description = :description",
+            "category": "category = :category",
+            "sku": "sku = :sku",
+            "in_stock": "in_stock = :in_stock",
+            "metadata": "metadata = :metadata",
         }
 
         set_clauses = []

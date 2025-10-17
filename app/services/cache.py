@@ -23,7 +23,8 @@ class CacheService(SQLSpecService):
         """
         return await self.driver.select_one_or_none(
             """
-            SELECT id, cache_key, response_data, expires_at, created_at
+            SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
+                   expires_at AS "expires_at", created_at AS "created_at"
             FROM response_cache
             WHERE cache_key = :cache_key
               AND (expires_at IS NULL OR expires_at > SYSTIMESTAMP)
@@ -76,7 +77,8 @@ class CacheService(SQLSpecService):
         # Fetch the result
         return await self.driver.select_one(
             """
-            SELECT id, cache_key, response_data, expires_at, created_at
+            SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
+                   expires_at AS "expires_at", created_at AS "created_at"
             FROM response_cache
             WHERE cache_key = :cache_key
             """,
@@ -98,7 +100,8 @@ class CacheService(SQLSpecService):
         """
         return await self.get_or_404(
             """
-            SELECT id, cache_key, response_data, expires_at, created_at
+            SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
+                   expires_at AS "expires_at", created_at AS "created_at"
             FROM response_cache
             WHERE id = :cache_id
             """,
@@ -121,7 +124,9 @@ class CacheService(SQLSpecService):
 
         result = await self.driver.select_one_or_none(
             """
-            SELECT id, text_hash, embedding, model, hit_count, last_accessed, created_at
+            SELECT id AS "id", text_hash AS "text_hash", embedding AS "embedding",
+                   model AS "model", hit_count AS "hit_count", last_accessed AS "last_accessed",
+                   created_at AS "created_at"
             FROM embedding_cache
             WHERE text_hash = :text_hash
               AND model = :model_name
@@ -179,7 +184,6 @@ class CacheService(SQLSpecService):
             WHEN MATCHED THEN
                 UPDATE SET
                     ec.embedding = src.embedding,
-                    ec.hit_count = ec.hit_count + 1,
                     ec.last_accessed = SYSTIMESTAMP
             WHEN NOT MATCHED THEN
                 INSERT (text_hash, embedding, model, hit_count, last_accessed, created_at)
@@ -191,9 +195,12 @@ class CacheService(SQLSpecService):
         )
 
         # Fetch result WITHOUT embedding to avoid vector serialization issues
+        # Use AS with quoted aliases to get lowercase column names
         result = await self.driver.select_one(
             """
-            SELECT id, text_hash, model, hit_count, last_accessed, created_at
+            SELECT id AS "id", text_hash AS "text_hash", model AS "model",
+                   hit_count AS "hit_count", last_accessed AS "last_accessed",
+                   created_at AS "created_at"
             FROM embedding_cache
             WHERE text_hash = :text_hash AND model = :model_name
             """,

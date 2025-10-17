@@ -25,8 +25,8 @@
 
 **MUST COMPLETE** before proceeding to documentation:
 
-1. **Read PRD** - Load `.agents/{slug}/prd.md` acceptance criteria
-2. **Verify Tasks** - Check `.agents/{slug}/tasks.md` all completed
+1. **Read PRD** - Load `specs/{slug}/prd.md` acceptance criteria
+2. **Verify Tasks** - Check `specs/{slug}/tasks.md` all completed
 3. **Run Tests**:
    ```bash
    pytest tests/ --cov=app --cov-report=term
@@ -119,8 +119,8 @@ Comprehensive guide for {feature description}.
 
 1. **Clean tmp/ directories**:
    ```bash
-   find .agents/*/tmp -type f -delete
-   find .agents/*/tmp -type d -empty -delete
+   find specs/*/tmp -type f -delete
+   find specs/*/tmp -type d -empty -delete
    ```
 
 2. **Remove loose files**:
@@ -130,18 +130,18 @@ Comprehensive guide for {feature description}.
 
 3. **Archive completed requirement**:
    ```bash
-   mv .agents/{slug} .agents/archive/{slug}-$(date +%Y%m%d)
+   mv specs/{slug} specs/archive/{slug}-$(date +%Y%m%d)
    ```
 
 4. **Keep only last 3 active requirements**:
    ```bash
    # If more than 3 active, move oldest to archive
-   cd .agents
+   cd specs
    ls -t | grep -v archive | tail -n +4 | xargs -I {} mv {} archive/
    ```
 
 5. **Update archive index**:
-   - Update `.agents/archive/README.md` with completion note
+   - Update `specs/archive/README.md` with completion note
    - Include date, summary, outcome
 
 ## Documentation Standards
@@ -186,7 +186,7 @@ mcp__zen__analyze(
 
 ## Completion Report
 
-Generate `.agents/{slug}/completion-report.md`:
+Generate `specs/{slug}/completion-report.md`:
 
 ```markdown
 # Completion Report: {Feature Name}
@@ -223,7 +223,7 @@ Generate `.agents/{slug}/completion-report.md`:
 {What should be done next, if anything}
 
 ## Archive Location
-`.agents/archive/{slug}-{date}/`
+`specs/archive/{slug}-{date}/`
 ```
 
 ## Quality Gate Checklist

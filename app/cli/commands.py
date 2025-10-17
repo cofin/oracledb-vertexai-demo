@@ -214,3 +214,219 @@ def model_info() -> None:
     except Exception as e:  # noqa: BLE001
         console.print(f"[bold red]✗ Model initialization failed: {e}[/bold red]")
     console.print()
+
+
+# Database fixture commands
+@click.command(name="load-fixtures", help="Load application fixture data into the database.")
+@click.option("--tables", "-t", help="Comma-separated list of specific tables to load (loads all if not specified)")
+@click.option("--list", "list_fixtures", is_flag=True, help="List available fixture files")
+def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
+    """Load application fixture data into the database."""
+
+    if list_fixtures:
+        _display_fixture_list()
+        return
+
+    _load_fixture_data(tables)
+
+
+def _display_fixture_list() -> None:
+    """Display available fixture files."""
+    from pathlib import Path
+
+    from rich.table import Table
+
+    from app.lib.settings import get_settings
+
+    console = get_console()
+    console.rule("[bold blue]Available Fixture Files", style="blue", align="left")
+    console.print()
+
+    fixtures_dir = Path(get_settings().db.FIXTURE_PATH)
+    if not fixtures_dir.exists():
+        console.print(f"[yellow]Fixtures directory not found: {fixtures_dir}[/yellow]")
+        return
+
+    # Get all .json and .json.gz files
+    fixture_files = sorted(fixtures_dir.glob("*.json")) + sorted(fixtures_dir.glob("*.json.gz"))
+
+    if not fixture_files:
+        console.print("[yellow]No fixture files found in fixtures directory[/yellow]")
+        return
+
+    table = Table(show_header=True, header_style="bold blue", expand=True)
+    table.add_column("Table", style="cyan", ratio=2)
+    table.add_column("File", style="dim", ratio=3)
+    table.add_column("Records", justify="right", ratio=1)
+    table.add_column("Size", justify="right", ratio=1)
+    table.add_column("Status", ratio=2)
+
+    for fixture_file in fixture_files:
+        # Extract table name from filename (remove .json or .json.gz)
+        table_name = fixture_file.name.replace(".json.gz", "").replace(".json", "")
+        try:
+            import gzip
+            import json
+
+            # Load data to count records
+            if fixture_file.suffix == ".gz":
+                with gzip.open(fixture_file, "rt", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                with open(fixture_file, encoding="utf-8") as f:
+                    data = json.load(f)
+
+            records = str(len(data)) if isinstance(data, list) else "1"
+            size_bytes = fixture_file.stat().st_size
+            size_mb = size_bytes / 1024 / 1024
+            size = f"{size_mb:.1f} MB" if size_mb > 1 else f"{size_bytes / 1024:.1f} KB"
+            status = "[green]Ready[/green]"
+        except (OSError, PermissionError, json.JSONDecodeError) as e:
+            records = "[dim]N/A[/dim]"
+            size = "[dim]N/A[/dim]"
+            status = f"[red]Error: {e}[/red]"
+
+        table.add_row(table_name, fixture_file.name, records, size, status)
+
+    console.print(table)
+    console.print()
+
+
+def _load_fixture_data(tables: str | None) -> None:
+    """Load fixture data into database."""
+    from sqlspec.utils.sync_tools import run_
+
+    console = get_console()
+    console.rule("[bold blue]Loading Database Fixtures", style="blue", align="left")
+    console.print()
+
+    # Parse tables if provided
+    table_list = None
+    if tables:
+        table_list = [t.strip() for t in tables.split(",")]
+        console.print(f"[dim]Loading specific tables: {', '.join(table_list)}[/dim]")
+    else:
+        console.print("[dim]Loading all available fixtures[/dim]")
+    console.print()
+
+    async def _load_fixtures() -> None:
+        from app.db.utils import load_fixtures
+        from app.server.deps import create_service_provider
+        from app.services.base import SQLSpecService
+
+        provider = create_service_provider(SQLSpecService)
+        service_gen = provider()
+
+        try:
+            _service = await anext(service_gen)
+            with console.status("[bold yellow]Loading fixtures...", spinner="dots"):
+                results = await load_fixtures(table_list)
+
+            if not results:
+                console.print("[yellow]No fixture files found to load[/yellow]")
+                return
+
+            _display_fixture_results(results)
+        finally:
+            await service_gen.aclose()
+
+    run_(_load_fixtures)()
+
+
+def _display_fixture_results(results: dict) -> None:
+    """Display fixture loading results."""
+    from rich.table import Table
+
+    console = get_console()
+    table = Table(show_header=True, header_style="bold blue")
+    table.add_column("Table", style="cyan", width=35)
+    table.add_column("Status", width=100)
+
+    total_upserted = 0
+    total_failed = 0
+    total_records = 0
+
+    for table_name, result in results.items():
+        row_data = _process_fixture_result(table_name, result)
+        table.add_row(row_data["row"][0], row_data["row"][4])  # Only Table and Status columns
+
+        total_upserted += row_data["upserted"]
+        total_failed += row_data["failed"]
+        total_records += row_data["total"]
+
+    console.print(table)
+    console.print()
+    _print_fixture_summary(total_upserted, total_failed, total_records)
+
+
+def _process_fixture_result(table_name: str, result: dict | int | str) -> dict:
+    """Process individual fixture result for display."""
+    if isinstance(result, dict):
+        upserted = result.get("upserted", 0)
+        failed = result.get("failed", 0)
+        total = result.get("total", 0)
+        error = result.get("error")
+
+        status = _get_fixture_status(upserted, failed, error)
+
+        return {
+            "row": [
+                table_name,
+                str(upserted) if upserted > 0 else "[dim]0[/dim]",
+                str(failed) if failed > 0 else "[dim]0[/dim]",
+                str(total),
+                status,
+            ],
+            "upserted": upserted,
+            "failed": failed,
+            "total": total,
+        }
+    if isinstance(result, int):
+        # Legacy format
+        status = "[green]✓ Success[/green]" if result > 0 else "[yellow]⚠ No new records[/yellow]"
+        return {
+            "row": [table_name, str(result), "[dim]0[/dim]", "[dim]-[/dim]", status],
+            "upserted": result,
+            "failed": 0,
+            "total": 0,
+        }
+    # Error case
+    status = f"[red]✗ {result}[/red]"
+    return {
+        "row": [table_name, "[dim]0[/dim]", "[dim]0[/dim]", "[dim]0[/dim]", status],
+        "upserted": 0,
+        "failed": 0,
+        "total": 0,
+    }
+
+
+def _get_fixture_status(upserted: int, failed: int, error: str | None) -> str:
+    """Get status text for fixture result."""
+    max_error_length = 500
+
+    if upserted > 0 and failed == 0:
+        return f"[green]✓ {upserted} upserted[/green]"
+    if upserted > 0 and failed > 0:
+        return f"[yellow]⚠ {upserted} upserted, {failed} failed[/yellow]"
+    if failed > 0:
+        status = f"[red]✗ {failed} failed[/red]"
+        if error:
+            # Show detailed error information
+            if len(error) > max_error_length:
+                # Show first part of error with ellipsis
+                status += f"\n[dim]{error[:max_error_length-3]}...[/dim]"
+            else:
+                status += f"\n[dim]{error}[/dim]"
+        return status
+    return "[dim]Empty fixture[/dim]"
+
+
+def _print_fixture_summary(total_upserted: int, total_failed: int, total_records: int) -> None:
+    """Print fixture loading summary."""
+    console = get_console()
+    console.print("[bold]Summary:[/bold]")
+    console.print(f"  • [green]Upserted: {total_upserted}[/green]")
+    if total_failed > 0:
+        console.print(f"  • [red]Failed: {total_failed}[/red]")
+    console.print(f"  • [dim]Total records in fixtures: {total_records}[/dim]")
+    console.print()

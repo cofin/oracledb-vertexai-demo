@@ -19,6 +19,8 @@ class ServiceLocator:
 
     def __init__(self) -> None:
         """Initializes the service locator."""
+        # from app.services.adk import ADKRunner
+
         self._cache: dict[type, Any] = {}
         self._singletons: set[type] = {VertexAIService}
 
@@ -34,7 +36,7 @@ class ServiceLocator:
             An instance of the requested service.
         """
         # Import here to avoid circular imports
-        from app.services.adk.tool_service import AgentToolsService
+        from app.services.adk import AgentToolsService
         from app.services.intent import IntentService
 
         # 1. Handle Singletons: If the class is marked as a singleton,

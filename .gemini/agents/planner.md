@@ -19,7 +19,7 @@
 2. **PRD Creation** - Write detailed Product Requirements Documents
 3. **Task Breakdown** - Create actionable task lists with agent assignments
 4. **Research Coordination** - Identify what Expert needs to research
-5. **Workspace Setup** - Create `.agents/{slug}/` structure
+5. **Workspace Setup** - Create `specs/{slug}/` structure
 
 ## Research Priority Order
 
@@ -32,7 +32,7 @@
 ## Workspace Structure
 
 ```
-.agents/{requirement-slug}/
+specs/{requirement-slug}/
 ├── prd.md          # Product Requirements Document
 ├── tasks.md        # Phase-by-phase task checklist
 ├── recovery.md     # Recovery guide for resuming work

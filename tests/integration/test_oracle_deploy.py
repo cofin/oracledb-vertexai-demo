@@ -64,7 +64,6 @@ class TestDatabaseLifecycle:
             app_user="testuser",
             app_user_password="testpass123",
             data_volume_name="oracle23ai-test-data",
-            init_script_path=None,
         )
 
     @pytest.fixture

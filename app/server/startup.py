@@ -35,7 +35,10 @@ async def populate_product_exemplars(
     # Create exemplars from product names
     product_exemplars = []
     for product in products:
-        name = product["name"]
+        # Oracle returns column names in uppercase by default
+        name = product.get("name") or product.get("NAME")
+        if not name:
+            continue
         # Add various query patterns for each product
         product_exemplars.extend([
             f"tell me about {name}",
@@ -93,8 +96,14 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
                 exemplar_count=sum(len(v) for v in cached_data.values()),
             )
 
-        # Add product names as exemplars
-        await populate_product_exemplars(product_service, exemplar_service, vertex_ai_service)
+        # Add product names as exemplars (only if Vertex AI is available)
+        try:
+            await populate_product_exemplars(product_service, exemplar_service, vertex_ai_service)
+        except RuntimeError as e:
+            if "not initialized" in str(e):
+                logger.warning("Skipping product exemplar population - Vertex AI not initialized")
+            else:
+                raise
 
 
 async def warm_up_connection_pool(app: Litestar) -> None:

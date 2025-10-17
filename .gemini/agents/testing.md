@@ -155,7 +155,7 @@ async def sample_products(product_service):
 
 ## Test Strategy Template
 
-Write to `.agents/{slug}/test-strategy.md`:
+Write to `specs/{slug}/test-strategy.md`:
 
 ```markdown
 # Test Strategy: {Feature Name}
@@ -257,7 +257,7 @@ mcp__zen__debug(
 
 ## Test Documentation
 
-Update `.agents/{slug}/progress.md` with:
+Update `specs/{slug}/progress.md` with:
 
 - Tests created
 - Test results

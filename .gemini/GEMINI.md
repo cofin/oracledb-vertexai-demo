@@ -28,13 +28,13 @@ Comprehensive guide for the Oracle 23ai + Vertex AI + ADK agent system, covering
 1. Research guides and use `google_web_search`
 2. Create structured plan with `planner` tool
 3. Get consensus on complex decisions (`consensus` tool)
-4. Create workspace in `.agents/{requirement-slug}/`
+4. Create workspace in `specs/{requirement-slug}/`
 5. Write PRD, tasks, research, recovery docs
 
 **Output:**
 
 ```
-.agents/{requirement-slug}/
+specs/{requirement-slug}/
 ├── prd.md          # Product Requirements Document
 ├── tasks.md        # Implementation checklist
 ├── research/       # Research findings
@@ -118,7 +118,7 @@ Comprehensive guide for the Oracle 23ai + Vertex AI + ADK agent system, covering
 
 3. **Cleanup (MANDATORY):**
    - Remove all tmp/ directories
-   - Archive requirement to .agents/archive/
+   - Archive requirement to specs/archive/
    - Keep only last 3 active requirements
    - Remove loose files
 
@@ -261,7 +261,7 @@ print(default_api.google_web_search(query="Oracle 23ai HNSW index best practices
 ### Structure
 
 ```
-.agents/
+specs/
 ├── {requirement-1}/      # Active requirement
 │   ├── prd.md
 │   ├── tasks.md
@@ -285,13 +285,13 @@ print(default_api.google_web_search(query="Oracle 23ai HNSW index best practices
 1. Remove all tmp/ directories:
 
    ```bash
-   find .agents/*/tmp -type d -exec rm -rf {} +
+   find specs/*/tmp -type d -exec rm -rf {} +
    ```
 
 2. Archive completed requirement:
 
    ```bash
-   mv .agents/{requirement} .agents/archive/{requirement}
+   mv specs/{requirement} specs/archive/{requirement}
    ```
 
 3. Keep only last 3 active requirements:

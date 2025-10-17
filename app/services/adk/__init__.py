@@ -1,20 +1,13 @@
-"""ADK (Agent Development Kit) service submodule.
-
-This module contains all ADK-related functionality including:
-- Agent orchestration
-- Tool definitions
-- Session management
-- Business logic for agent operations
-"""
+"""Modern ADK implementation for the Coffee Assistant System."""
 
 from __future__ import annotations
 
-from app.services.adk.agent import CoffeeAssistantAgent
-from app.services.adk.orchestrator import ADKOrchestrator
+# from app.services.adk.orchestrator import ADKOrchestrator
+from app.services.adk.runner import ADKRunner
 from app.services.adk.tool_service import AgentToolsService
 
 __all__ = [
-    "ADKOrchestrator",
+    # "ADKOrchestrator",
+    "ADKRunner",
     "AgentToolsService",
-    "CoffeeAssistantAgent",
 ]

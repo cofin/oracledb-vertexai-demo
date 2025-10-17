@@ -1,5 +1,18 @@
 """Intent exemplars for semantic intent routing."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+import structlog
+
+from app.schemas import IntentResult, SimilarIntent
+from app.services.base import SQLSpecService
+
+if TYPE_CHECKING:
+    from app.services.exemplar import ExemplarService
+    from app.services.vertex_ai import VertexAIService
+
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": [
         # Formal queries
@@ -109,3 +122,104 @@ INTENT_EXEMPLARS = {
         "perfect",
     ],
 }
+
+logger = structlog.get_logger()
+
+
+class IntentService(SQLSpecService):
+    """PostgreSQL native vector similarity search for intent routing."""
+
+    def __init__(
+        self,
+        driver: Any,
+        exemplar_service: ExemplarService,
+        vertex_ai_service: VertexAIService,
+    ) -> None:
+        """Initialize intent service."""
+        super().__init__(driver)
+        self.exemplar_service = exemplar_service
+        self.vertex_ai_service = vertex_ai_service
+
+    async def search_similar_intents(
+        self,
+        query_embedding: list[float],
+        min_threshold: float,
+        limit: int,
+    ) -> list[SimilarIntent]:
+        """Search for similar intents in the exemplar table."""
+        return await self.driver.select(
+            """
+            SELECT intent, phrase, 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) as similarity, confidence_threshold
+            FROM intent_exemplar
+            WHERE 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) > :min_threshold
+            ORDER BY similarity DESC
+            FETCH FIRST :limit ROWS ONLY
+            """,
+            query_embedding=query_embedding,
+            min_threshold=min_threshold,
+            limit=limit,
+            schema_type=SimilarIntent,
+        )
+
+    async def increment_usage_by_phrase(self, intent: str, phrase: str) -> None:
+        """Increment the usage count for a given exemplar."""
+        await self.driver.execute(
+            """
+            UPDATE intent_exemplar
+            SET usage_count = usage_count + 1
+            WHERE intent = :intent AND phrase = :phrase
+            """,
+            intent=intent,
+            phrase=phrase,
+        )
+
+    async def classify_intent(
+        self,
+        query: str,
+        user_embedding: list[float] | None = None,
+        min_threshold: float = 0.6,
+        max_results: int = 5,
+    ) -> IntentResult:
+        """Classify intent using vector similarity with exemplars."""
+        if user_embedding is None:
+            user_embedding, embedding_cache_hit = await self.vertex_ai_service.get_text_embedding_with_cache_status(
+                query
+            )
+        else:
+            embedding_cache_hit = True
+
+        similar_intents = await self.search_similar_intents(
+            query_embedding=user_embedding,
+            min_threshold=min_threshold,
+            limit=max_results,
+        )
+
+        if not similar_intents:
+            return IntentResult(
+                intent="GENERAL_CONVERSATION",
+                confidence=0.0,
+                exemplar_phrase="",
+                embedding_cache_hit=embedding_cache_hit,
+                fallback_used=True,
+            )
+
+        best_match = similar_intents[0]
+
+        if best_match.similarity >= best_match.confidence_threshold:
+            await self.increment_usage_by_phrase(best_match.intent, best_match.phrase)
+
+            return IntentResult(
+                intent=best_match.intent,
+                confidence=best_match.similarity,
+                exemplar_phrase=best_match.phrase,
+                embedding_cache_hit=embedding_cache_hit,
+                fallback_used=False,
+            )
+
+        return IntentResult(
+            intent="GENERAL_CONVERSATION",
+            confidence=best_match.similarity,
+            exemplar_phrase=best_match.phrase,
+            embedding_cache_hit=embedding_cache_hit,
+            fallback_used=True,
+        )
