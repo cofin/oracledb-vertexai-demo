@@ -159,7 +159,7 @@ stop-infra: ## Stop local containers
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
 	@echo "${INFO} Wiping local Oracle 23AI instance..."
-	@uv run python manage.py database oracle wipe-local-container --volumes
+	@uv run python manage.py database oracle wipe-local-container --volumes --force
 	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
