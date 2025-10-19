@@ -3,18 +3,15 @@
 import asyncio
 import json
 import uuid
-from typing import TYPE_CHECKING, Any, Final
+from typing import Any, Final
 
 import structlog
 from google.cloud import aiplatform, storage  # type: ignore[attr-defined]
+from google.cloud.aiplatform import BatchPredictionJob
 
 from app.lib.settings import get_settings
-
-if TYPE_CHECKING:
-    from google.cloud.aiplatform import BatchPredictionJob
-
-    from app.services.product import ProductService
-    from app.services.vertex_ai import VertexAIService
+from app.services.product import ProductService
+from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 

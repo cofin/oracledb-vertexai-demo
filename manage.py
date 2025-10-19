@@ -29,6 +29,7 @@ Usage:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import subprocess
@@ -89,7 +90,7 @@ def generate_secret_key() -> str:
     return secrets.token_hex(32)
 
 
-def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:
+def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # noqa: C901, PLR0915
     """Create .env file interactively based on deployment mode.
 
     Args:
@@ -135,7 +136,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:
         # Managed mode: container with known defaults
         if non_interactive:
             db_user = "app"
-            db_password = "super-secret"
+            db_password = "super-secret"  # noqa: S105
             db_host = "localhost"
             db_port = "1521"
             db_service = "freepdb1"
@@ -157,7 +158,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:
     elif non_interactive:
         use_wallet = False
         db_user = "app"
-        db_password = "your-password"
+        db_password = "your-password"  # noqa: S105
         db_host = "your-oracle-host"
         db_port = "1521"
         db_service = "your-service-name"
@@ -217,26 +218,28 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:
     try:
         env_path.write_text(env_content)
         console.print("[green]✓ Created .env file[/green]")
-        return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         console.print(f"[red]✗ Failed to create .env: {e}[/red]")
         return False
+    else:
+        return True
 
 
 def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
     """Run shell command and return exit code, stdout, stderr."""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
             check=check,
         )
-        return result.returncode, result.stdout, result.stderr
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout, e.stderr
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return 1, "", str(e)
+    else:
+        return result.returncode, result.stdout, result.stderr
 
 
 def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[bool, str]:
@@ -256,7 +259,7 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
         returncode, stdout, _ = run_command([tool_name, version_flag], check=False)
         if returncode == 0:
             return True, stdout.strip()
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         pass
 
     return False, ""
@@ -278,12 +281,12 @@ def is_mcp_server_configured(server_name: str) -> bool:
         return False
 
     try:
-        with open(gemini_settings_path) as f:
+        with gemini_settings_path.open() as f:
             settings = json.load(f)
         mcp_servers = settings.get("mcpServers", {})
         # Check if server exists and is not None/null
         return server_name in mcp_servers and mcp_servers[server_name] is not None
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -302,19 +305,20 @@ def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
     try:
         # Use sql -L to list saved connections
         result = subprocess.run(
-            ["sql", "-L"],
+            ["sql", "-L"],  # noqa: S607
             capture_output=True,
             text=True,
             timeout=5,
             check=False,
         )
+    except Exception:  # noqa: BLE001
+        return False
+    else:
         # Check if connection_name appears in the output
         return connection_name in result.stdout
-    except Exception:
-        return False
 
 
-def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal_coffee") -> tuple[bool, str]:
+def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: PLR0911
     """Migrate old SQLcl connection name to new name.
 
     Args:
@@ -355,7 +359,7 @@ def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal
 
     try:
         result = subprocess.run(
-            ["sql", "/nolog"],
+            ["sql", "/nolog"],  # noqa: S607
             check=False,
             input=conn_cmd,
             capture_output=True,
@@ -367,15 +371,16 @@ def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal
             # NOTE: SQLcl doesn't have a delete command for saved connections
             # The old connection will still exist but won't be used
             return True, f"Created connection '{new_name}' (old '{old_name}' still exists)"
-        return False, "Failed to create new connection"
 
     except subprocess.TimeoutExpired:
         return False, "SQLcl command timed out"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return False, f"Error migrating connection: {e}"
+    else:
+        return False, "Failed to create new connection"
 
 
-def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:
+def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: C901, PLR0911
     """Configure SQLcl saved connection with password from .env.
 
     Args:
@@ -441,7 +446,7 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
 
     try:
         result = subprocess.run(
-            ["sql", "/nolog"],
+            ["sql", "/nolog"],  # noqa: S607
             check=False,
             input=conn_cmd,
             capture_output=True,
@@ -453,12 +458,13 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
         if result.returncode == 0:
             return True, f"Saved connection '{connection_name}' configured for {user}@//{host}:{port}/{service_name}"
         error_msg = result.stderr or result.stdout
-        return False, f"Failed to save connection: {error_msg}"
 
     except subprocess.TimeoutExpired:
         return False, "SQLcl command timed out"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return False, f"Error running SQLcl: {e}"
+    else:
+        return False, f"Failed to save connection: {error_msg}"
 
 
 def configure_gemini_mcp_sqlcl() -> bool:
@@ -490,16 +496,16 @@ def configure_gemini_mcp_sqlcl() -> bool:
     if not gemini_settings_path.parent.exists():
         try:
             gemini_settings_path.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
 
     # Read existing settings or create new
     settings: dict[str, Any] = {}
     if gemini_settings_path.exists():
         try:
-            with open(gemini_settings_path) as f:
+            with gemini_settings_path.open() as f:
                 settings = json.load(f)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
 
     # Ensure mcpServers key exists
@@ -511,11 +517,12 @@ def configure_gemini_mcp_sqlcl() -> bool:
 
     # Write back to file
     try:
-        with open(gemini_settings_path, "w") as f:
+        with gemini_settings_path.open("w") as f:
             json.dump(settings, f, indent=2)
-        return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
+    else:
+        return True
 
 
 def _configure_missing_mcp_extensions() -> None:
@@ -546,7 +553,7 @@ def _configure_missing_mcp_extensions() -> None:
             if configure_gemini_mcp_sqlcl():
                 console.print("[green]✓[/green] SQLcl MCP server configured")
     elif sqlcl_path:
-        console.print("[dim]ℹ SQLcl MCP server already configured[/dim]")
+        console.print("[dim]i SQLcl MCP server already configured[/dim]")
 
     # Configure other MCP extensions (only missing ones)
     results = configure_gemini_mcp_extensions(interactive=True)
@@ -563,7 +570,7 @@ def _configure_missing_mcp_extensions() -> None:
             console.print(f"  [dim]⊘ {key} (skipped)[/dim]")
 
 
-def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]:
+def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]:  # noqa: C901
     """Configure popular Gemini MCP extensions.
 
     Args:
@@ -585,16 +592,16 @@ def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]
     if not gemini_settings_path.parent.exists():
         try:
             gemini_settings_path.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return {"error": False}
 
     # Read existing settings or create new
     settings: dict[str, Any] = {}
     if gemini_settings_path.exists():
         try:
-            with open(gemini_settings_path) as f:
+            with gemini_settings_path.open() as f:
                 settings = json.load(f)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return {"error": False}
 
     # Ensure mcpServers key exists
@@ -624,7 +631,7 @@ def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]
         # Check if already configured (SKIP if exists)
         if is_mcp_server_configured(key):
             if interactive:
-                console.print(f"[dim]ℹ {ext['name']} already configured (skipping)[/dim]")
+                console.print(f"[dim]i {ext['name']} already configured (skipping)[/dim]")
             results[key] = True  # Already configured = success
             continue
 
@@ -644,11 +651,12 @@ def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]
 
     # Write back to file
     try:
-        with open(gemini_settings_path, "w") as f:
+        with gemini_settings_path.open("w") as f:
             json.dump(settings, f, indent=2)
-        return results
-    except Exception:
+    except Exception:  # noqa: BLE001
         return dict.fromkeys(extensions.keys(), False)
+    else:
+        return results
 
 
 # ============================================================================
@@ -695,7 +703,7 @@ def cli() -> None:
     is_flag=True,
     help="Skip interactive prompts (use defaults/env vars)",
 )
-def init(mode: str | None, run_install: bool, run_doctor: bool, non_interactive: bool) -> None:
+def init(mode: str | None, run_install: bool, run_doctor: bool, non_interactive: bool) -> None:  # noqa: PLR0915, C901
     """Initialize project environment from scratch.
 
     This command:
@@ -773,14 +781,16 @@ def init(mode: str | None, run_install: bool, run_doctor: bool, non_interactive:
         console.rule("[bold yellow]Running Installation", style="yellow")
         console.print()
         ctx = click.get_current_context()
-        ctx.invoke(install_all, mode=mode)
+        if ctx:
+            ctx.invoke(install_all, mode=mode)
 
     # Step 5: Optional auto-doctor
     if run_doctor:
         console.rule("[bold yellow]Running Health Check", style="yellow")
         console.print()
         ctx = click.get_current_context()
-        ctx.invoke(doctor, mode=mode, json_output=False, verbose=False)
+        if ctx:
+            ctx.invoke(doctor, mode=mode, json_output=False, verbose=False)
 
     # Final message
     console.print()
@@ -856,14 +866,14 @@ def install_all(mode: str | None, force: bool, yes: bool) -> None:
         console.print("  • Docker or Podman (checked, not auto-installed)")
         console.print()
 
-    if not yes:
-        if not Confirm.ask("Proceed with installation?", default=True):
-            console.print("[yellow]Installation cancelled[/yellow]")
-            return
+    if not yes and not Confirm.ask("Proceed with installation?", default=True):
+        console.print("[yellow]Installation cancelled[/yellow]")
+        return
 
     # Install UV
     ctx = click.get_current_context()
-    ctx.invoke(install_uv, force=force)
+    if ctx:
+        ctx.invoke(install_uv, force=force)
 
     # For managed mode, check Docker/Podman
     if mode == "managed":
@@ -952,8 +962,8 @@ def install_list() -> None:
     is_flag=True,
     help="Force reinstall even if already installed",
 )
-def install_uv(version: str | None, force: bool) -> None:
-    """Install Astral's UV package manager.
+def install_uv(version: str | None, force: bool) -> None:  # noqa: PLR0915
+    r"""Install Astral's UV package manager.
 
     Idempotent: Safe to run multiple times. Skips installation if UV is already
     installed unless --force flag is used.
@@ -1005,8 +1015,8 @@ def install_uv(version: str | None, force: bool) -> None:
     console.print()
 
     try:
-        result = subprocess.run(
-            install_cmd,
+        subprocess.run(  # noqa: S602
+            install_cmd,  # Secure: curl from official source, no user input
             shell=True,
             check=True,
             text=True,
@@ -1039,7 +1049,7 @@ def install_uv(version: str | None, force: bool) -> None:
 
     except subprocess.CalledProcessError as e:
         console.print(f"[red]✗ Installation failed: {e}[/red]")
-        raise click.Abort()
+        raise click.Abort from e
 
 
 @install.command(name="sqlcl")
@@ -1059,7 +1069,7 @@ def install_uv(version: str | None, force: bool) -> None:
     default="cymbal_coffee",
     help="Name for saved SQLcl connection (default: cymbal_coffee)",
 )
-def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) -> None:
+def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) -> None:  # noqa: C901, PLR0915
     """Install Oracle SQLcl command-line tool.
 
     Idempotent: Safe to run multiple times. Skips installation if SQLcl is already
@@ -1100,10 +1110,10 @@ def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) ->
         console.print("  • Download from: [dim]https://adoptium.net/[/dim]")
         console.print()
         console.print("[dim]After installing Java, run this command again.[/dim]")
-        raise click.Abort()
+        raise click.Abort
 
     # Check Java version
-    returncode, stdout, _ = run_command(["java", "-version"], check=False)
+    returncode, _stdout, _ = run_command(["java", "-version"], check=False)
     if returncode == 0:
         console.print("[green]✓ Java found[/green]")
         console.print()
@@ -1156,11 +1166,9 @@ def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) ->
     if force:
         args.append("--force")
 
-    ctx = click.get_current_context()
-    try:
+    click.get_current_context()
+    with contextlib.suppress(SystemExit):  # Click may raise SystemExit(0)
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass  # Click may raise SystemExit(0)
 
     # Post-installation instructions
     console.print()
@@ -1209,7 +1217,7 @@ def install_sqlcl(install_dir: str | None, force: bool, connection_name: str) ->
     default=True,
     help="Configure MCP extensions (default: True)",
 )
-def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
+def install_gemini_cli(force: bool, configure_mcp: bool) -> None:  # noqa: C901, PLR0915
     """Install Google Gemini CLI.
 
     Idempotent: Safe to run multiple times. Skips installation if Gemini CLI is
@@ -1261,7 +1269,7 @@ def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
         console.print("  • macOS: [cyan]brew install node@20[/cyan]")
         console.print("  • Download from: [dim]https://nodejs.org/[/dim]")
         console.print()
-        raise click.Abort()
+        raise click.Abort
 
     # Check Node.js version
     returncode, stdout, _ = run_command(["node", "--version"], check=False)
@@ -1276,8 +1284,8 @@ def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
     console.print()
 
     try:
-        result = subprocess.run(
-            ["npm", "install", "-g", "@google/gemini-cli"],
+        subprocess.run(
+            ["npm", "install", "-g", "@google/gemini-cli"],  # noqa: S607
             check=True,
             text=True,
         )
@@ -1343,7 +1351,7 @@ def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
 
     except subprocess.CalledProcessError as e:
         console.print(f"[red]✗ Installation failed: {e}[/red]")
-        raise click.Abort()
+        raise click.Abort from e
 
 
 @install.command(name="mcp-toolbox")
@@ -1357,7 +1365,7 @@ def install_gemini_cli(force: bool, configure_mcp: bool) -> None:
     default="v0.16.0",
     help="Specific version to install (default: v0.16.0)",
 )
-def install_mcp_toolbox(force: bool, version: str) -> None:
+def install_mcp_toolbox(force: bool, version: str) -> None:  # noqa: PLR0915
     """Install MCP Toolbox for Databases.
 
     Idempotent: Safe to run multiple times. Skips installation if MCP Toolbox
@@ -1372,7 +1380,7 @@ def install_mcp_toolbox(force: bool, version: str) -> None:
     console.print()
 
     # ALWAYS check if already installed
-    is_installed, version_str = is_tool_installed("toolbox")
+    is_installed, _version_str = is_tool_installed("toolbox")
     if is_installed and not force:
         console.print("[green]✓ MCP Toolbox already installed[/green]")
         toolbox_path = shutil.which("toolbox")
@@ -1405,7 +1413,7 @@ def install_mcp_toolbox(force: bool, version: str) -> None:
         os_arch = "windows/amd64"
     else:
         console.print(f"[red]✗ Unsupported platform: {system}/{machine}[/red]")
-        raise click.Abort()
+        raise click.Abort
 
     console.print(f"[cyan]Detected platform: {os_arch}[/cyan]")
     console.print()
@@ -1427,7 +1435,7 @@ def install_mcp_toolbox(force: bool, version: str) -> None:
             install_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Download file
-            with open(install_path, "wb") as f:
+            with install_path.open("wb") as f:
                 f.writelines(response.iter_bytes(chunk_size=8192))
 
         # Make executable
@@ -1451,7 +1459,7 @@ def install_mcp_toolbox(force: bool, version: str) -> None:
         console.print()
         console.print("[yellow]Alternative: Install via Go[/yellow]")
         console.print(f"  [cyan]go install github.com/googleapis/genai-toolbox@{version}[/cyan]")
-        raise click.Abort()
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -1477,7 +1485,7 @@ def install_mcp_toolbox(force: bool, version: str) -> None:
     is_flag=True,
     help="Show detailed diagnostic information",
 )
-def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
+def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:  # noqa: C901, PLR0915
     """Verify all prerequisites and configuration.
 
     Checks:
@@ -1490,7 +1498,6 @@ def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
     - 0: All checks passed
     - 1: One or more checks failed
     """
-    import json
 
     if mode is None:
         mode = detect_deployment_mode()
@@ -1540,11 +1547,13 @@ def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
     if not json_output:
         console.print(f"[yellow]🔧 Checking '{mode}' mode prerequisites...[/yellow]")
 
+    mode_specific: dict[str, bool] = {}
+
     if mode == "managed":
         # Check Docker/Podman
         has_docker = shutil.which("docker") is not None
         has_podman = shutil.which("podman") is not None
-        checks["mode_specific"]["container_runtime"] = has_docker or has_podman
+        mode_specific["container_runtime"] = has_docker or has_podman
 
         if not json_output:
             if has_docker:
@@ -1559,22 +1568,22 @@ def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
         # Check wallet location (if configured - wallet is optional for external)
         wallet_location = os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN")
         if wallet_location:
-            checks["mode_specific"]["wallet_configured"] = True
+            mode_specific["wallet_configured"] = True
             wallet_path = Path(wallet_location)
-            checks["mode_specific"]["wallet_exists"] = wallet_path.exists()
+            mode_specific["wallet_exists"] = wallet_path.exists()
 
             if wallet_path.exists():
                 cwallet = wallet_path / "cwallet.sso"
                 tnsnames = wallet_path / "tnsnames.ora"
-                checks["mode_specific"]["wallet_valid"] = cwallet.exists() and tnsnames.exists()
+                mode_specific["wallet_valid"] = cwallet.exists() and tnsnames.exists()
             else:
-                checks["mode_specific"]["wallet_valid"] = False
+                mode_specific["wallet_valid"] = False
 
             if not json_output:
                 console.print(f"[green]✓ Wallet location configured: {wallet_location}[/green]")
-                if checks["mode_specific"].get("wallet_exists"):
+                if mode_specific.get("wallet_exists"):
                     console.print("[green]✓ Wallet directory exists[/green]")
-                    if checks["mode_specific"].get("wallet_valid"):
+                    if mode_specific.get("wallet_valid"):
                         console.print("[green]✓ Wallet files valid[/green]")
                     else:
                         console.print("[red]✗ Wallet missing required files[/red]")
@@ -1582,14 +1591,20 @@ def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
                     console.print("[red]✗ Wallet directory not found[/red]")
         # Wallet not configured - this is OK for external mode
         elif not json_output:
-            console.print("[dim]ℹ No wallet configured (using standard connection)[/dim]")
+            console.print("[dim]i No wallet configured (using standard connection)[/dim]")
 
-    # Overall status
-    checks["overall"] = checks["env_file"] and checks["uv_installed"] and all(checks["mode_specific"].values())
+    checks["mode_specific"] = mode_specific
+    # Overall status - ensure we have bool values
+    env_file_check = bool(checks.get("env_file", False))
+    uv_check = bool(checks.get("uv_installed", False))
+    mode_checks = all(mode_specific.values()) if mode_specific else True
+    checks["overall"] = env_file_check and uv_check and mode_checks
 
     # Output results
     if json_output:
-        print(json.dumps(checks, indent=2))
+        import json as json_module
+
+        console.print(json_module.dumps(checks, indent=2))
     else:
         console.print()
         if checks["overall"]:
@@ -1606,11 +1621,12 @@ def doctor(mode: str | None, json_output: bool, verbose: bool) -> None:
                 console.print("  • Run [cyan]python manage.py init[/cyan]")
             if not checks["uv_installed"]:
                 console.print("  • Run [cyan]python manage.py install uv[/cyan]")
-            if not all(checks["mode_specific"].values()):
+            mode_specific_dict = checks.get("mode_specific", {})
+            if isinstance(mode_specific_dict, dict) and not all(mode_specific_dict.values()):
                 console.print("  • Check mode-specific requirements above")
 
     if not checks["overall"]:
-        raise click.Abort()
+        raise click.Abort
 
 
 # ============================================================================
@@ -1648,10 +1664,8 @@ def oracle_start(pull: bool, recreate: bool) -> None:
     if recreate:
         args.append("--recreate")
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.command(name="stop-local-container")
@@ -1660,10 +1674,8 @@ def oracle_stop(timeout: int) -> None:
     """Stop Oracle database container."""
     from tools.oracle_deploy import cli as oracle_cli
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(["database", "stop", "--timeout", str(timeout)], standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.command(name="status")
@@ -1676,10 +1688,8 @@ def oracle_status(verbose: bool) -> None:
     if verbose:
         args.append("--verbose")
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.command(name="local-container-logs")
@@ -1693,10 +1703,8 @@ def oracle_logs(follow: bool, tail: int) -> None:
     if follow:
         args.append("--follow")
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.command(name="wipe-local-container")
@@ -1712,10 +1720,8 @@ def oracle_remove(volumes: bool, force: bool) -> None:
     if force:
         args.append("--force")
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.group(name="wallet")
@@ -1737,10 +1743,8 @@ def wallet_extract(wallet_zip: str, dest: str | None) -> None:
     if dest:
         args.extend(["--dest", dest])
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @wallet_group.command(name="configure")
@@ -1756,10 +1760,8 @@ def wallet_configure(wallet_dir: str | None, non_interactive: bool) -> None:
     if non_interactive:
         args.append("--non-interactive")
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @oracle_group.group(name="connect")
@@ -1785,10 +1787,8 @@ def connect_test(mode: str | None, timeout: int) -> None:
     if mode:
         args.extend(["--mode", mode])
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 @cli.command(name="status")
@@ -1816,10 +1816,8 @@ def status(verbose: bool, mode: str | None) -> None:
     if mode:
         args.extend(["--mode", mode])
 
-    try:
+    with contextlib.suppress(SystemExit):
         oracle_cli.main(args, standalone_mode=False)
-    except SystemExit:
-        pass
 
 
 # ============================================================================
@@ -1834,7 +1832,7 @@ def main() -> None:
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
 

@@ -10,12 +10,13 @@ Tests cover:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from tools.oracle.container import ContainerRuntime
     from tools.oracle.database import DatabaseConfig
     from tools.oracle.health import HealthChecker
@@ -43,7 +44,7 @@ class TestContainerRuntime:
         runtime = ContainerRuntime()
 
         # Test version command (run_command returns tuple: (return_code, stdout, stderr))
-        return_code, stdout, stderr = runtime.run_command(["--version"])
+        return_code, stdout, _stderr = runtime.run_command(["--version"])
         assert return_code == 0
         assert len(stdout) > 0
 
@@ -60,9 +61,9 @@ class TestDatabaseLifecycle:
             container_name="oracle23ai-test",
             image="gvenzl/oracle-free:latest",
             host_port=1522,  # Use different port to avoid conflicts
-            oracle_system_password="TestPassword123!",
+            oracle_system_password="TestPassword123!",  # noqa: S106
             app_user="testuser",
-            app_user_password="testpass123",
+            app_user_password="testpass123",  # noqa: S106
             data_volume_name="oracle23ai-test-data",
         )
 
@@ -85,9 +86,9 @@ class TestDatabaseLifecycle:
         config = DatabaseConfig.from_env()
 
         assert config.host_port == 1523
-        assert config.oracle_system_password == "EnvPassword123!"
+        assert config.oracle_system_password == "EnvPassword123!"  # noqa: S105
         assert config.app_user == "envuser"
-        assert config.app_user_password == "envpass123"
+        assert config.app_user_password == "envpass123"  # noqa: S105
 
     @pytest.mark.slow
     def test_database_status_check(self, runtime: ContainerRuntime, db_config: DatabaseConfig) -> None:
@@ -253,7 +254,7 @@ class TestConnectionTesting:
 
         assert config.mode == DeploymentMode.MANAGED
         assert config.user == "manageduser"
-        assert config.password == "managedpass"
+        assert config.password == "managedpass"  # noqa: S105
 
 
 class TestHealthChecker:

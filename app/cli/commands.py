@@ -14,9 +14,77 @@ logger = structlog.get_logger()
 
 # Coffee demo group for application-specific operations
 @click.group(name="coffee", invoke_without_command=False, help="Coffee shop demo and AI operations.")
-@click.pass_context  # pyright: ignore
-def coffee_demo_group(_: dict[str, Any]) -> None:
+@click.pass_context
+def coffee_demo_group(_: click.Context) -> None:
     """Coffee shop demo and AI operations."""
+
+
+async def _fetch_products_to_embed(product_service: Any, force: bool) -> tuple[list[dict[str, Any]], str]:
+    """Fetch products that need embeddings."""
+    from rich import get_console
+
+    console = get_console()
+    with console.status("[bold yellow]Finding products to process...", spinner="dots"):
+        if force:
+            products = await product_service.driver.select(
+                "SELECT id, name, description, embedding FROM product ORDER BY id",
+            )
+            message = f"[cyan]Processing ALL {len(products)} products (force mode)[/cyan]"
+        else:
+            products, total = await product_service.get_products_without_embeddings()
+            message = f"[cyan]Processing {len(products)} products without embeddings from a total of {total}[/cyan]"
+
+    return products, message
+
+
+async def _process_product_batch(
+    batch: list[dict[str, Any]],
+    product_service: Any,
+    vertex_ai_service: Any,
+    start_idx: int,
+    total_products: int,
+) -> tuple[int, int]:
+    """Process a batch of products for embedding generation.
+
+    Returns:
+        Tuple of (success_count, error_count)
+    """
+    from rich import get_console
+
+    console = get_console()
+    success_count = 0
+    error_count = 0
+
+    with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
+        for i, product in enumerate(batch):
+            try:
+                product_name = product.get("name", f"Product {product['id']}")
+                global_idx = start_idx + i + 1
+                status.update(f"[bold yellow]Processing {global_idx}/{total_products}: {product_name}...")
+
+                # Generate embedding
+                description = product.get("description", "")
+                embedding = await vertex_ai_service.get_text_embedding(f"{product_name}: {description}")
+                await product_service.update_embedding(product["id"], embedding)
+                success_count += 1
+
+            except Exception as e:  # noqa: BLE001
+                error_count += 1
+                logger.warning("Failed to process product", product_id=product.get("id"), error=str(e))
+
+    return success_count, error_count
+
+
+def _print_embedding_results(total_success: int, total_errors: int) -> None:
+    """Print final embedding results."""
+    from rich import get_console
+
+    console = get_console()
+    console.print("[bold]Final Results:[/bold]")
+    console.print(f"[bold green]✓ Successfully processed: {total_success} products[/bold green]")
+    if total_errors > 0:
+        console.print(f"[bold red]✗ Failed to process: {total_errors} products[/bold red]")
+    console.print()
 
 
 @coffee_demo_group.command(
@@ -47,17 +115,8 @@ def bulk_embed(batch_size: int, force: bool) -> None:
             vertex_ai_service = await anext(vertex_ai_service_gen)
 
             # Get products to embed
-            with console.status("[bold yellow]Finding products to process...", spinner="dots"):
-                if force:
-                    products = await product_service.driver.select(
-                        "SELECT id, name, description, embedding FROM product ORDER BY id",
-                    )
-                    console.print(f"[cyan]Processing ALL {len(products)} products (force mode)[/cyan]")
-                else:
-                    products, total = await product_service.get_products_without_embeddings()
-                    console.print(
-                        f"[cyan]Processing {len(products)} products without embeddings from a total of {total}[/cyan]"
-                    )
+            products, message = await _fetch_products_to_embed(product_service, force)
+            console.print(message)
 
             if not products:
                 if force:
@@ -81,32 +140,17 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
                 console.print(f"[bold]Processing batch {batch_num + 1}/{total_batches} ({len(batch)} products)[/bold]")
 
-                with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
-                    for i, product in enumerate(batch):
-                        try:
-                            product_name = product.get("name", f"Product {product['id']}")
-                            global_idx = start_idx + i + 1
-                            status.update(f"[bold yellow]Processing {global_idx}/{len(products)}: {product_name}...")
-
-                            # Generate embedding
-                            description = product.get("description", "")
-                            embedding = await vertex_ai_service.get_text_embedding(f"{product_name}: {description}")
-                            await product_service.update_embedding(product["id"], embedding)
-                            total_success += 1
-
-                        except Exception as e:  # noqa: BLE001
-                            total_errors += 1
-                            logger.warning("Failed to process product", product_id=product.get("id"), error=str(e))
+                success, errors = await _process_product_batch(
+                    batch, product_service, vertex_ai_service, start_idx, len(products)
+                )
+                total_success += success
+                total_errors += errors
 
                 console.print(f"[green]✓ Batch {batch_num + 1} complete[/green]")
                 console.print()
 
             # Show final results
-            console.print("[bold]Final Results:[/bold]")
-            console.print(f"[bold green]✓ Successfully processed: {total_success} products[/bold green]")
-            if total_errors > 0:
-                console.print(f"[bold red]✗ Failed to process: {total_errors} products[/bold red]")
-            console.print()
+            _print_embedding_results(total_success, total_errors)
 
         finally:
             await product_service_gen.aclose()
@@ -273,7 +317,7 @@ def _display_fixture_list() -> None:
                 with gzip.open(fixture_file, "rt", encoding="utf-8") as f:
                     data = json.load(f)
             else:
-                with open(fixture_file, encoding="utf-8") as f:
+                with fixture_file.open(encoding="utf-8") as f:
                     data = json.load(f)
 
             records = str(len(data)) if isinstance(data, list) else "1"
@@ -414,7 +458,7 @@ def _get_fixture_status(upserted: int, failed: int, error: str | None) -> str:
             # Show detailed error information
             if len(error) > max_error_length:
                 # Show first part of error with ellipsis
-                status += f"\n[dim]{error[:max_error_length-3]}...[/dim]"
+                status += f"\n[dim]{error[: max_error_length - 3]}...[/dim]"
             else:
                 status += f"\n[dim]{error}[/dim]"
         return status

@@ -192,7 +192,7 @@ class CoffeeChatController(Controller):
                 # For now, use a simple prompt to demonstrate streaming
                 prompt = "Tell me about coffee recommendations briefly"
 
-                async for chunk in vertex_ai_service.stream_content(prompt):
+                async for chunk in vertex_ai_service.generate_chat_response_stream([{"role": "user", "content": prompt}]):
                     # Escape chunk content for JSON
                     safe_chunk = chunk.replace('"', '\\"').replace("\n", "\\n")
                     yield f"data: {{'chunk': '{safe_chunk}', 'query_id': '{query_id}'}}\n\n"
@@ -266,7 +266,7 @@ class CoffeeChatController(Controller):
         """Get summary metrics for dashboard cards."""
         # Get performance stats
         perf_stats = await metrics_service.get_performance_stats(hours=1)
-        cache_stats = await cache_service.get_cache_stats(hours=1)
+        cache_stats = await cache_service.get_cache_stats()
 
         # Calculate trends (compare to previous hour)
         prev_stats = await metrics_service.get_performance_stats(hours=2)

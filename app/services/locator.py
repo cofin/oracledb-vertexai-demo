@@ -19,8 +19,6 @@ class ServiceLocator:
 
     def __init__(self) -> None:
         """Initializes the service locator."""
-        # from app.services.adk import ADKRunner
-
         self._cache: dict[type, Any] = {}
         self._singletons: set[type] = {VertexAIService}
 
@@ -45,7 +43,8 @@ class ServiceLocator:
             if service_cls not in self._cache:
                 # Singletons are created without a session.
                 self._cache[service_cls] = self._create_instance(service_cls, None)
-            return self._cache[service_cls]  # type: ignore[return-value]
+            # Type narrowing is difficult here, so we use type: ignore
+            return self._cache[service_cls]  # type: ignore[no-any-return]
 
         # 2. Handle complex services with special dependency injection needs
         if service_cls == IntentService:

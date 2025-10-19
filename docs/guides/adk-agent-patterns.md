@@ -1032,47 +1032,6 @@ def create_app() -> Litestar:
     )
 ```
 
-## Migration from Legacy Patterns
-
-### Deprecated Router Pattern
-
-**OLD (Deprecated)**:
-```python
-# Router pattern (deprecated in 2025)
-from google.adk.routers import Router
-
-router = Router(
-    agents={
-        "search": search_agent,
-        "analytics": analytics_agent
-    }
-)
-```
-
-**NEW (2025 Pattern)**:
-```python
-# LlmAgent with dynamic tool selection
-agent = LlmAgent(
-    model="gemini-2.5-pro",
-    instruction="Route queries to appropriate tools.",
-    tools=[
-        FunctionTool(func=search_tool),
-        FunctionTool(func=analytics_tool)
-    ]
-)
-```
-
-### Migration Checklist
-
-- [ ] Replace `Router` with `LlmAgent`
-- [ ] Update to ADK v1.0.0+
-- [ ] Use `gemini-2.5-pro` or `gemini-2.5-flash`
-- [ ] Wrap functions with `FunctionTool`
-- [ ] Implement `Runner` for execution
-- [ ] Add `VertexAiSessionService` for production
-- [ ] Update error handling
-- [ ] Test tool calling behavior
-
 ## Troubleshooting
 
 ### Issue: Agent Not Calling Tools

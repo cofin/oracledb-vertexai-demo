@@ -54,7 +54,9 @@ class AgentToolsService(SQLSpecService):
         start_time = time.time()
 
         embedding_start = time.time()
-        query_embedding, embedding_cache_hit = await self.vertex_ai_service.get_text_embedding_with_cache_status(query)
+        query_embedding, embedding_cache_hit = await self.vertex_ai_service.get_text_embedding(
+            query, return_cache_status=True
+        )
         embedding_ms = (time.time() - embedding_start) * 1000
 
         search_start = time.time()
@@ -111,13 +113,13 @@ FETCH FIRST :limit ROWS ONLY"""
             return {"error": "Product not found"}
 
         return {
-            "id": str(product.get("id")),
-            "name": product.get("name"),
-            "description": product.get("description"),
-            "price": float(product.get("current_price", 0.0)),
-            "category": None,  # Not in the product schema
-            "in_stock": None,  # Not in the product schema
-            "metadata": {},  # Not in the product schema
+            "id": str(product.id),
+            "name": product.name,
+            "description": product.description,
+            "price": float(product.price),
+            "category": product.category,
+            "in_stock": product.in_stock,
+            "metadata": product.metadata or {},
         }
 
     async def classify_intent(self, query: str) -> dict[str, Any]:

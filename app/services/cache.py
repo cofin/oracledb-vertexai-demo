@@ -21,7 +21,7 @@ class CacheService(SQLSpecService):
         Returns:
             Cached response or None if not found or expired
         """
-        return await self.driver.select_one_or_none(
+        return await self.driver.select_one_or_none(  # type: ignore[no-any-return]
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -75,7 +75,7 @@ class CacheService(SQLSpecService):
         )
 
         # Fetch the result
-        return await self.driver.select_one(
+        return await self.driver.select_one(  # type: ignore[no-any-return]
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -98,7 +98,7 @@ class CacheService(SQLSpecService):
         Raises:
             ValueError: If cache entry not found
         """
-        return await self.get_or_404(
+        return await self.get_or_404(  # type: ignore[no-any-return]
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -148,7 +148,7 @@ class CacheService(SQLSpecService):
                 result_id=result.id,
             )
 
-        return result
+        return result  # type: ignore[no-any-return]
 
     async def set_cached_embedding(
         self,
@@ -255,7 +255,7 @@ class CacheService(SQLSpecService):
         result = await self.driver.execute(
             "DELETE FROM response_cache WHERE expires_at IS NOT NULL AND expires_at < SYSTIMESTAMP",
         )
-        return result.rows_affected
+        return result.rows_affected  # type: ignore[no-any-return]
 
     async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.

@@ -329,7 +329,7 @@ class WalletConfigurator:
                 errors.append(f"Failed to parse tnsnames.ora: {e}")
 
         # Create wallet info
-        wallet_info = WalletInfo(
+        return WalletInfo(
             wallet_dir=wallet_dir,
             has_cwallet=has_cwallet,
             has_ewallet=has_ewallet,
@@ -342,7 +342,6 @@ class WalletConfigurator:
             validation_errors=errors if errors else None,
         )
 
-        return wallet_info
 
     def parse_tnsnames(self, wallet_dir: Path) -> list[str]:
         """Parse tnsnames.ora for service names.
@@ -365,17 +364,16 @@ class WalletConfigurator:
             raise TNSParseError(f"tnsnames.ora not found in {wallet_dir}")
 
         try:
-            with open(tnsnames_path) as f:
+            with tnsnames_path.open() as f:
                 content = f.read()
 
             # Parse service names (simple parsing matching app/cli/commands.py logic)
-            services = [
+            return [
                 line.split("=")[0].strip()
                 for line in content.split("\n")
                 if "=" in line and not line.strip().startswith("#") and line.split("=")[0].strip()
             ]
 
-            return services
         except Exception as e:
             raise TNSParseError(f"Failed to parse tnsnames.ora: {e}") from e
 
@@ -542,7 +540,7 @@ class WalletConfigurator:
                 elif "TNS_ADMIN" in os.environ:
                     del os.environ["TNS_ADMIN"]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.console.print(f"[red]✗ Connection test failed: {e}[/red]")
             return False
 

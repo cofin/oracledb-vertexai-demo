@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 from rich.panel import Panel
@@ -19,6 +18,9 @@ from tools.oracle.connection import ConnectionTester, DeploymentMode
 from tools.oracle.container import ContainerRuntime
 from tools.oracle.sqlcl_installer import SQLclInstaller
 from tools.oracle.wallet import WalletConfigurator
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class HealthStatus(str, Enum):
@@ -104,7 +106,7 @@ class HealthChecker:
             4. Wallet configuration (if wallet configured)
             5. Database connectivity
         """
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         # Auto-detect mode if not specified
         if deployment_mode is None:
@@ -145,7 +147,7 @@ class HealthChecker:
             overall_status=overall_status,
             deployment_mode=deployment_mode,
             components=components,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     def check_runtime(self) -> ComponentHealth:
@@ -209,13 +211,15 @@ class HealthChecker:
 
         # Check health status
         status = self.runtime.get_container_status(config.container_name)
-        if status and "healthy" in status.lower():
-            return ComponentHealth(
-                name="Database Container",
-                status=HealthStatus.HEALTHY,
-                message="Container is running and healthy",
-                details={"container": config.container_name, "status": status},
-            )
+        if status:
+            status_str = str(status)  # Convert to string explicitly
+            if "healthy" in status_str.lower():
+                return ComponentHealth(
+                    name="Database Container",
+                    status=HealthStatus.HEALTHY,
+                    message="Container is running and healthy",
+                    details={"container": config.container_name, "status": status_str},
+                )
 
         return ComponentHealth(
             name="Database Container",
@@ -254,12 +258,16 @@ class HealthChecker:
                 details={"version": version, "in_path": True},
             )
 
+        instructions = self.sqlcl_installer.get_path_instructions()
+        # Convert str to list[str] for suggestions
+        suggestions_list: list[str] = [instructions]
+
         return ComponentHealth(
             name="SQLcl",
             status=HealthStatus.DEGRADED,
             message=f"SQLcl {version} installed but not in PATH",
             details={"version": version, "in_path": False},
-            suggestions=self.sqlcl_installer.get_path_instructions(),
+            suggestions=suggestions_list,
         )
 
     def check_wallet(self, wallet_dir: Path | None = None) -> ComponentHealth:
@@ -362,7 +370,7 @@ class HealthChecker:
                 suggestions=result.suggestions,
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             return ComponentHealth(
                 name="Database Connectivity",
                 status=HealthStatus.UNHEALTHY,
@@ -532,7 +540,7 @@ class HealthChecker:
         return mapping.get(status, "?")
 
 
-def get_troubleshooting_suggestions(
+def get_troubleshooting_suggestions(  # noqa: PLR0911
     component: ComponentHealth,
 ) -> list[str]:
     """Get troubleshooting suggestions for component.

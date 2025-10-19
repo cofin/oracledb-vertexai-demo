@@ -140,7 +140,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.cli.commands import load_fixtures_cmd
 
         # Register custom database commands to the database group
-        database_group.add_command(load_fixtures_cmd)  # type: ignore[arg-type]
+        database_group.add_command(load_fixtures_cmd)
 
         # Register groups
         cli.add_command(database_group)

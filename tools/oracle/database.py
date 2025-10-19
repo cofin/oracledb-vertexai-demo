@@ -158,7 +158,7 @@ class OracleDatabase:
         # Start container
         self.console.print("[cyan]Creating and starting container...[/cyan]")
         try:
-            _, stdout, stderr = self.runtime.run_command(run_cmd)
+            _, stdout, _stderr = self.runtime.run_command(run_cmd)
             container_id = stdout.strip()[:12]
             self.console.print(f"[green]✓[/green] Container created: [dim]{container_id}[/dim]")
         except Exception as e:
@@ -240,11 +240,10 @@ class OracleDatabase:
         self.runtime.run_command(remove_cmd)
         self.console.print("[green]✓[/green] Container removed")
 
-        if volumes:
-            if self.runtime.volume_exists(self.config.data_volume_name):
-                self.console.print("[cyan]Removing volume...[/cyan]")
-                self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
-                self.console.print("[green]✓[/green] Volume removed")
+        if volumes and self.runtime.volume_exists(self.config.data_volume_name):
+            self.console.print("[cyan]Removing volume...[/cyan]")
+            self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
+            self.console.print("[green]✓[/green] Volume removed")
 
     def logs(
         self,
@@ -345,7 +344,7 @@ class OracleDatabase:
             )
             health_status = stdout.strip()
             return health_status == "healthy"
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
 
     def wait_for_healthy(

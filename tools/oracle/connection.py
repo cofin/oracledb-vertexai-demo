@@ -341,7 +341,7 @@ class ConnectionTester:
                 elif "TNS_ADMIN" in os.environ:
                     del os.environ["TNS_ADMIN"]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             error_msg = str(e)
             suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
 
@@ -544,19 +544,19 @@ class ConnectionTester:
             return {"username": result[0] if result else "unknown"}
 
 
-class ConnectionError(Exception):
+class OracleConnectionError(Exception):
     """Base exception for connection errors."""
 
 
-class LocalConnectionError(ConnectionError):
+class LocalConnectionError(OracleConnectionError):
     """Raised when local connection fails."""
 
 
-class RemoteConnectionError(ConnectionError):
+class RemoteConnectionError(OracleConnectionError):
     """Raised when remote connection fails."""
 
 
-class AutonomousConnectionError(ConnectionError):
+class AutonomousConnectionError(OracleConnectionError):
     """Raised when autonomous connection fails."""
 
 

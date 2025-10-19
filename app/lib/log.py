@@ -58,11 +58,11 @@ def is_tty() -> bool:
 
 
 def structlog_json_serializer(value: EventDict, **_: Any) -> bytes:
-    return to_json(value, as_bytes=True)
+    return to_json(value, as_bytes=True)  # type: ignore[no-any-return]
 
 
 def stdlib_json_serializer(value: EventDict, **_: Any) -> str:
-    return to_json(value)
+    return to_json(value)  # type: ignore[no-any-return]
 
 
 def add_logger_name_safe(logger: WrappedLogger, _: str, event_dict: EventDict) -> EventDict:

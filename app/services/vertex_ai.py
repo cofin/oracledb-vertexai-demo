@@ -92,6 +92,15 @@ class VertexAIService:
     @overload
     async def get_text_embedding(
         self,
+        text: str,
+        model: str | None = None,
+        *,
+        return_cache_status: bool = True,
+    ) -> tuple[list[float], bool]: ...
+
+    @overload
+    async def get_text_embedding(
+        self,
         text: list[str],
         model: str | None = None,
     ) -> list[list[float]]: ...
@@ -162,29 +171,6 @@ class VertexAIService:
         if return_cache_status:
             return embedding, cache_hit
         return embedding
-
-    async def get_text_embedding_with_cache_status(
-        self,
-        text: str,
-        model: str | None = None,
-    ) -> tuple[list[float], bool]:
-        """Generate text embedding with cache hit status.
-
-        .. deprecated::
-            Use get_text_embedding(text, model, return_cache_status=True) instead.
-
-        Args:
-            text: Text to embed
-            model: Optional model override
-
-        Returns:
-            Tuple of (embedding vector, cache_hit)
-
-        Raises:
-            RuntimeError: If Vertex AI not initialized
-            ValueError: If embedding generation fails
-        """
-        return await self.get_text_embedding(text, model, return_cache_status=True)  # type: ignore[return-value]
 
     async def generate_chat_response_stream(
         self,

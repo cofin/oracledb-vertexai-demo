@@ -1,17 +1,17 @@
 """Product service using SQLSpec driver patterns."""
 
-
 from typing import Any
 
+from app.schemas import Product
 from app.services.base import SQLSpecService
 
 
 class ProductService(SQLSpecService):
     """Handles database operations for products using SQLSpec patterns."""
 
-    async def get_all(self) -> list[dict[str, Any]]:
+    async def get_all(self) -> list[Product]:
         """Get all products."""
-        return await self.driver.select(
+        results: list[Product] = await self.driver.select(
             """
             SELECT
                 id,
@@ -27,12 +27,14 @@ class ProductService(SQLSpecService):
                 updated_at
             FROM product
             ORDER BY name
-            """
+            """,
+            schema_type=Product,
         )
+        return results
 
-    async def get_by_id(self, product_id: int) -> dict[str, Any] | None:
+    async def get_by_id(self, product_id: int) -> Product | None:
         """Get product by ID."""
-        return await self.driver.select_one_or_none(
+        result: Product | None = await self.driver.select_one_or_none(
             """
             SELECT
                 id,
@@ -50,11 +52,13 @@ class ProductService(SQLSpecService):
             WHERE id = :id
             """,
             id=product_id,
+            schema_type=Product,
         )
+        return result
 
-    async def get_by_name(self, name: str) -> dict[str, Any] | None:
+    async def get_by_name(self, name: str) -> Product | None:
         """Get product by name."""
-        return await self.driver.select_one_or_none(
+        result: Product | None = await self.driver.select_one_or_none(
             """
             SELECT
                 id,
@@ -72,11 +76,13 @@ class ProductService(SQLSpecService):
             WHERE name = :name
             """,
             name=name,
+            schema_type=Product,
         )
+        return result
 
-    async def search_by_description(self, search_term: str) -> list[dict[str, Any]]:
+    async def search_by_description(self, search_term: str) -> list[Product]:
         """Search products by description."""
-        return await self.driver.select(
+        results: list[Product] = await self.driver.select(
             """
             SELECT
                 id,
@@ -95,11 +101,11 @@ class ProductService(SQLSpecService):
             ORDER BY name
             """,
             search_term=f"%{search_term}%",
+            schema_type=Product,
         )
+        return results
 
-    async def get_products_without_embeddings(
-        self, limit: int = 100, offset: int = 0
-    ) -> tuple[list[dict[str, Any]], int]:
+    async def get_products_without_embeddings(self, limit: int = 100, offset: int = 0) -> tuple[list[Product], int]:
         """Get products that have null embeddings with pagination."""
         # Get total count
         count_result = await self.driver.select_one_or_none(
@@ -113,7 +119,7 @@ class ProductService(SQLSpecService):
         total_count = (count_result.get("total_count") or count_result.get("TOTAL_COUNT")) if count_result else 0
 
         # Get paginated results
-        products = await self.driver.select(
+        products, total_count = await self.driver.select_with_total(
             """
             SELECT
                 id,
@@ -134,6 +140,7 @@ class ProductService(SQLSpecService):
             """,
             limit=limit,
             offset=offset,
+            schema_type=Product,
         )
 
         return products, total_count
@@ -144,9 +151,11 @@ class ProductService(SQLSpecService):
         """Search products by vector similarity using Oracle 23AI.
 
         SQLSpec automatically handles vector conversions - no need for array.array().
+
+        Note: Returns dict instead of Product because includes similarity_score field.
         """
         # Oracle 23AI vector similarity search
-        results = await self.driver.select(
+        results: list[dict[str, Any]] = await self.driver.select(
             """
             SELECT
                 id,
@@ -184,18 +193,18 @@ class ProductService(SQLSpecService):
 
         SQLSpec automatically handles vector conversions - no need for array.array().
         """
-        rowcount = await self.driver.execute(
+        result = await self.driver.execute(
             """
             UPDATE product
             SET embedding = :embedding,
-                embedding_generated_on = SYSTIMESTAMP
+                updated_at = SYSTIMESTAMP
             WHERE id = :id
             """,
             id=product_id,
             embedding=embedding,
         )
 
-        return rowcount > 0
+        return bool(result.rows_affected > 0)
 
     async def create_product(
         self,
@@ -207,10 +216,10 @@ class ProductService(SQLSpecService):
         in_stock: bool = True,
         metadata: dict | None = None,
         embedding: list[float] | None = None,
-    ) -> dict[str, Any] | None:
+    ) -> Product | None:
         """Create a new product."""
         # Insert and get the generated ID
-        result = await self.driver.select_one_or_none(
+        result: dict[str, Any] | None = await self.driver.select_one_or_none(
             """
             INSERT INTO product (
                 name, price, description, category, sku, in_stock, metadata, embedding
@@ -231,13 +240,16 @@ class ProductService(SQLSpecService):
 
         if result:
             # Oracle returns column names in uppercase
-            product_id = result.get("id") or result.get("ID")
+            id_value = result.get("id") or result.get("ID")
+            if id_value is None:
+                return None
+            product_id: int = int(id_value)
             # Return the created product
             return await self.get_by_id(product_id)
 
         return None
 
-    async def update_product(self, product_id: int, updates: dict[str, Any]) -> dict[str, Any] | None:
+    async def update_product(self, product_id: int, updates: dict[str, Any]) -> Product | None:
         """Update a product."""
         # Build UPDATE statement with safe field mapping
         field_mapping = {
@@ -263,16 +275,16 @@ class ProductService(SQLSpecService):
 
         sql = f"UPDATE product SET {', '.join(set_clauses)} WHERE id = :id"  # noqa: S608
 
-        rowcount = await self.driver.execute(sql, **params)
+        result = await self.driver.execute(sql, **params)
 
-        if rowcount > 0:
+        if result.rows_affected > 0:
             return await self.get_by_id(product_id)
         return None
 
     async def delete_product(self, product_id: int) -> bool:
         """Delete a product."""
-        rowcount = await self.driver.execute(
+        result = await self.driver.execute(
             "DELETE FROM product WHERE id = :id",
             id=product_id,
         )
-        return rowcount > 0
+        return bool(result.rows_affected > 0)

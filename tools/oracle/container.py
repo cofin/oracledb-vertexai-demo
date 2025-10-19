@@ -224,13 +224,19 @@ class ContainerRuntime:
             container_name,
         ])
 
+        min_parts_for_status = 2
+        min_parts_for_id = 3
+        min_parts_for_image = 4
+        min_parts_for_created = 5
+        short_id_length = 12
+
         parts = stdout.strip().split("|")
         status_dict = {
             "name": parts[0].lstrip("/") if parts[0] else container_name,
-            "status": parts[1] if len(parts) > 1 else "unknown",
-            "id": parts[2][:12] if len(parts) > 2 else "",  # Short ID
-            "image": parts[3] if len(parts) > 3 else "",
-            "created": parts[4] if len(parts) > 4 else "",
+            "status": parts[1] if len(parts) > min_parts_for_status - 1 else "unknown",
+            "id": parts[2][:short_id_length] if len(parts) > min_parts_for_id - 1 else "",  # Short ID
+            "image": parts[3] if len(parts) > min_parts_for_image - 1 else "",
+            "created": parts[4] if len(parts) > min_parts_for_created - 1 else "",
         }
 
         # Get port mappings

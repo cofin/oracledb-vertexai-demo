@@ -22,13 +22,12 @@ class TestProductService:
         assert len(products) >= 0
 
         if products:
-            # Verify dict-based access (SQLSpec pattern)
+            # Verify Product schema attributes
             product = products[0]
-            assert "id" in product
-            assert "name" in product
-            assert "current_price" in product
-            assert "description" in product
-            assert "company_name" in product
+            assert product.id is not None
+            assert product.name is not None
+            assert product.price is not None
+            assert product.description is not None
 
     async def test_get_by_id(
         self,
@@ -39,13 +38,12 @@ class TestProductService:
         products = await product_service.get_all()
 
         if products:
-            product_id = products[0]["id"]
+            product_id = products[0].id
             product = await product_service.get_by_id(product_id)
 
             assert product is not None
-            assert product["id"] == product_id
-            assert "name" in product
-            assert "company_name" in product
+            assert product.id == product_id
+            assert product.name is not None
 
     async def test_get_by_id_not_found(
         self,
@@ -66,7 +64,7 @@ class TestProductService:
         assert isinstance(results, list)
         # Verify all results contain the search term
         for result in results:
-            assert "coffee" in result["description"].lower()
+            assert "coffee" in result.description.lower()
 
     async def test_get_products_without_embeddings(
         self,
@@ -84,7 +82,7 @@ class TestProductService:
 
         # Verify all results have null embeddings
         for product in products:
-            assert product["embedding"] is None
+            assert product.embedding is None
 
     async def test_vector_search(
         self,
@@ -123,7 +121,7 @@ class TestProductService:
         if not products:
             pytest.skip("No products available for testing")
 
-        product_id = products[0]["id"]
+        product_id = products[0].id
 
         # Create a test embedding (768 dimensions)
         test_embedding = [0.5] * 768
@@ -135,38 +133,32 @@ class TestProductService:
         # Verify the embedding was updated
         updated_product = await product_service.get_by_id(product_id)
         assert updated_product is not None
-        assert updated_product["embedding"] is not None
-        assert updated_product["embedding_generated_on"] is not None
+        assert updated_product.embedding is not None
+        assert updated_product.updated_at is not None
 
     async def test_create_product_with_returning(
         self,
         product_service: ProductService,
     ) -> None:
         """Test creating product with RETURNING clause."""
-        # Get a valid company_id
-        products = await product_service.get_all()
-        if not products:
-            pytest.skip("No products available to get company_id")
-
-        company_id = products[0]["company_id"]
-
         # Create a new product with embedding
         test_embedding = [0.1] * 768
 
         new_product = await product_service.create_product(
             name="Test Coffee SQLSpec",
-            company_id=company_id,
-            current_price=12.99,
-            size="12oz",
+            price=12.99,
             description="A test coffee for SQLSpec validation",
+            category="Coffee",
+            sku="TEST-SKU-001",
+            in_stock=True,
             embedding=test_embedding,
         )
 
         assert new_product is not None
-        assert new_product["id"] is not None
-        assert new_product["name"] == "Test Coffee SQLSpec"
-        assert new_product["current_price"] == 12.99
-        assert new_product["embedding"] is not None
+        assert new_product.id is not None
+        assert new_product.name == "Test Coffee SQLSpec"
+        assert new_product.price == 12.99
+        assert new_product.embedding is not None
 
     async def test_update_product(
         self,
@@ -177,18 +169,18 @@ class TestProductService:
         if not products:
             pytest.skip("No products available for testing")
 
-        product_id = products[0]["id"]
-        original_name = products[0]["name"]
+        product_id = products[0].id
+        original_name = products[0].name
 
         # Update product
         updated = await product_service.update_product(
             product_id=product_id,
-            updates={"name": "Updated Name", "current_price": 99.99},
+            updates={"name": "Updated Name", "price": 99.99},
         )
 
         assert updated is not None
-        assert updated["name"] == "Updated Name"
-        assert updated["current_price"] == 99.99
+        assert updated.name == "Updated Name"
+        assert updated.price == 99.99
 
         # Restore original name
         await product_service.update_product(

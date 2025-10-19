@@ -35,8 +35,7 @@ async def populate_product_exemplars(
     # Create exemplars from product names
     product_exemplars = []
     for product in products:
-        # Oracle returns column names in uppercase by default
-        name = product.get("name") or product.get("NAME")
+        name = product.name
         if not name:
             continue
         # Add various query patterns for each product

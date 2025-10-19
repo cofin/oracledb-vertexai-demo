@@ -1,4 +1,3 @@
-# ruff: noqa: PLR0911
 """Environment variable utilities with type-safe parsing."""
 
 from __future__ import annotations
@@ -66,43 +65,37 @@ def get_env(
     type_hint: type[T] | UnsetType = _UNSET,
 ) -> Callable[[], ParseTypes | T | None]:
     """Return a lambda that gets configuration value from environment."""
-    return lambda: get_config_val(key=key, default=default, type_hint=type_hint)  # type: ignore[arg-type]
+    return lambda: get_config_val(key=key, default=default, type_hint=type_hint)
 
 
-@overload
-def get_config_val(key: str, default: bool, type_hint: UnsetType = _UNSET) -> bool: ...
+def _determine_final_type(default: ParseTypes | None, type_hint: type[T] | UnsetType) -> type | None:
+    """Determine the final type for parsing."""
+    if type_hint != _UNSET and isinstance(type_hint, type):
+        return type_hint
+    if default is not None:
+        return type(default)
+    return None
 
 
-@overload
-def get_config_val(key: str, default: int, type_hint: UnsetType = _UNSET) -> int: ...
-
-
-@overload
-def get_config_val(key: str, default: float, type_hint: UnsetType = _UNSET) -> float: ...
-
-
-@overload
-def get_config_val(key: str, default: str, type_hint: UnsetType = _UNSET) -> str: ...
-
-
-@overload
-def get_config_val(key: str, default: Path, type_hint: UnsetType = _UNSET) -> Path: ...
-
-
-@overload
-def get_config_val(key: str, default: list[str], type_hint: UnsetType = _UNSET) -> list[str]: ...
-
-
-@overload
-def get_config_val(key: str, default: None, type_hint: UnsetType = _UNSET) -> None: ...
-
-
-@overload
-def get_config_val(key: str, default: ParseTypes | None, type_hint: type[T]) -> T: ...
-
-
-@overload
-def get_config_val(key: str, default: dict[str, Any], type_hint: UnsetType = _UNSET) -> dict[str, Any]: ...
+def _parse_basic_type(key: str, value: str, final_type: type | None, default: ParseTypes | None) -> ParseTypes | None:
+    """Parse basic types (str, int, float, bool)."""
+    if final_type is str or default is None:
+        return value
+    if final_type is int:
+        try:
+            return int(value)
+        except ValueError as e:
+            msg = f"Cannot convert '{value}' to int for key '{key}'"
+            raise ValueError(msg) from e
+    if final_type is float:
+        try:
+            return float(value)
+        except ValueError as e:
+            msg = f"Cannot convert '{value}' to float for key '{key}'"
+            raise ValueError(msg) from e
+    if final_type is bool:
+        return value in TRUE_VALUES
+    return value
 
 
 def get_config_val(
@@ -129,13 +122,7 @@ def get_config_val(
         return default
 
     value: str = str_value
-
-    # Determine final type
-    final_type: type | None = None
-    if type_hint != _UNSET and isinstance(type_hint, type):
-        final_type = type_hint
-    elif default is not None:
-        final_type = type(default)
+    final_type = _determine_final_type(default, type_hint)
 
     # Handle Path type
     if final_type is Path or isinstance(default, Path):
@@ -153,24 +140,7 @@ def get_config_val(
         return _parse_dict(key, value)
 
     # Handle basic types
-    if final_type is str or default is None:
-        return value
-    if final_type is int:
-        try:
-            return int(value)
-        except ValueError as e:
-            msg = f"Cannot convert '{value}' to int for key '{key}'"
-            raise ValueError(msg) from e
-    elif final_type is float:
-        try:
-            return float(value)
-        except ValueError as e:
-            msg = f"Cannot convert '{value}' to float for key '{key}'"
-            raise ValueError(msg) from e
-    elif final_type is bool:
-        return value in TRUE_VALUES
-
-    return value
+    return _parse_basic_type(key, value, final_type, default)
 
 
 def _parse_list(key: str, value: str, item_constructor: type[T]) -> list[T]:

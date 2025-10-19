@@ -17,8 +17,7 @@ async def search_products_by_vector(
     limit: int,
     similarity_threshold: float,
 ) -> list[dict[str, Any]]:
-    """Search for coffee products using vector similarity with fresh session.
-    """
+    """Search for coffee products using vector similarity with fresh session."""
     # Apply defaults within function to avoid ADK schema issues
     limit = limit or 5
     similarity_threshold = similarity_threshold or 0.7
@@ -30,8 +29,7 @@ async def search_products_by_vector(
 
 
 async def get_product_details(product_id: str) -> dict[str, Any]:
-    """Get detailed information about a specific product by ID or name with fresh session.
-    """
+    """Get detailed information about a specific product by ID or name with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
@@ -39,8 +37,7 @@ async def get_product_details(product_id: str) -> dict[str, Any]:
 
 
 async def classify_intent(query: str) -> dict[str, Any]:
-    """Classify user intent using vector-based classification with fresh session.
-    """
+    """Classify user intent using vector-based classification with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
@@ -55,8 +52,7 @@ async def record_search_metric(
     vector_search_time_ms: int,
     vector_results: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    """Record metrics for search performance with fresh session.
-    """
+    """Record metrics for search performance with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
@@ -75,8 +71,7 @@ async def record_search_metric(
 
 
 async def get_store_locations() -> list[dict[str, Any]]:
-    """Get all store locations and information with fresh session.
-    """
+    """Get all store locations and information with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
@@ -84,8 +79,7 @@ async def get_store_locations() -> list[dict[str, Any]]:
 
 
 async def find_stores_by_location(city: str | None, state: str | None) -> list[dict[str, Any]]:
-    """Find stores in a specific location with fresh session.
-    """
+    """Find stores in a specific location with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
@@ -93,8 +87,7 @@ async def find_stores_by_location(city: str | None, state: str | None) -> list[d
 
 
 async def get_store_hours(store_id: int) -> dict[str, Any]:
-    """Get store hours for a specific store with fresh session.
-    """
+    """Get store hours for a specific store with fresh session."""
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)

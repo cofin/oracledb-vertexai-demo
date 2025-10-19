@@ -85,7 +85,7 @@ def database_start(pull: bool, recreate: bool, env_file: str | None) -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @database_group.command(name="stop")
@@ -110,7 +110,7 @@ def database_stop(timeout: int) -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Failed to stop database: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @database_group.command(name="restart")
@@ -131,7 +131,7 @@ def database_restart(timeout: int) -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Failed to restart database: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @database_group.command(name="remove")
@@ -149,12 +149,12 @@ def database_remove(volumes: bool, force: bool) -> None:
         db = OracleDatabase(runtime=runtime, config=config, console=console)
 
         console.print("[yellow]Removing Oracle database container...[/yellow]")
-        db.remove(remove_volumes=volumes, force=force)
+        db.remove(volumes=volumes, force=force)
         console.print("[green]✓ Database container removed[/green]")
 
     except Exception as e:
         console.print(f"[red]✗ Failed to remove database: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @database_group.command(name="logs")
@@ -181,7 +181,7 @@ def database_logs(follow: bool, tail: int | None, since: str | None) -> None:
         console.print("\n[dim]Stopped following logs[/dim]")
     except Exception as e:
         console.print(f"[red]✗ Failed to get logs: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @database_group.command(name="status")
@@ -216,7 +216,7 @@ def database_status(verbose: bool) -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Failed to get status: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -265,7 +265,7 @@ def sqlcl_install(install_dir: str | None, force: bool) -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Installation failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @sqlcl_group.command(name="verify")
@@ -282,7 +282,7 @@ def sqlcl_verify() -> None:
         if not installer.is_installed():
             console.print("[yellow]SQLcl is not installed[/yellow]")
             console.print("\nInstall with: uv run python tools/oracle_deploy.py sqlcl install")
-            raise click.Abort()
+            raise click.Abort
 
         version = installer.get_version()
         in_path = installer.is_in_path()
@@ -302,12 +302,12 @@ def sqlcl_verify() -> None:
             console.print("\n[green]✓ SQLcl is working correctly[/green]")
         else:
             console.print("\n[red]✗ SQLcl verification failed[/red]")
-            raise click.Abort()
+            raise click.Abort
 
     except Exception as e:
         if not isinstance(e, click.Abort):
             console.print(f"[red]✗ Verification failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @sqlcl_group.command(name="uninstall")
@@ -329,7 +329,7 @@ def sqlcl_uninstall() -> None:
 
     except Exception as e:
         console.print(f"[red]✗ Uninstall failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -366,7 +366,7 @@ def wallet_extract(wallet_zip: str, dest: str | None) -> None:
         console.print(f"[green]✓ Wallet extracted to: {extracted_dir}[/green]")
     except Exception as e:
         console.print(f"[red]✗ Failed to extract wallet: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @wallet_group.command(name="configure")
@@ -391,7 +391,7 @@ def wallet_configure(wallet_dir: str | None, non_interactive: bool) -> None:
             console.print("[green]✓ Wallet configuration complete![/green]")
     except Exception as e:
         console.print(f"[red]✗ Configuration failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @wallet_group.command(name="list-services")
@@ -414,7 +414,7 @@ def wallet_list_services(wallet_dir: str | None) -> None:
         found = configurator.find_wallet()
         if not found:
             console.print("[yellow]⚠ No wallet found. Please specify --wallet-dir[/yellow]")
-            raise click.Abort()
+            raise click.Abort
         wallet_path = found if found.is_dir() else configurator.extract_wallet(found)
 
     try:
@@ -423,7 +423,7 @@ def wallet_list_services(wallet_dir: str | None) -> None:
             console.print("[yellow]No services found in wallet[/yellow]")
     except Exception as e:
         console.print(f"[red]✗ Failed to list services: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @wallet_group.command(name="validate")
@@ -446,7 +446,7 @@ def wallet_validate(wallet_dir: str | None) -> None:
         found = configurator.find_wallet()
         if not found:
             console.print("[yellow]⚠ No wallet found. Please specify --wallet-dir[/yellow]")
-            raise click.Abort()
+            raise click.Abort
         wallet_path = found if found.is_dir() else configurator.extract_wallet(found)
 
     try:
@@ -462,10 +462,10 @@ def wallet_validate(wallet_dir: str | None) -> None:
             console.print("[red]✗ Wallet validation failed[/red]")
             for error in wallet_info.validation_errors or []:
                 console.print(f"  • {error}")
-            raise click.Abort()
+            raise click.Abort
     except Exception as e:
         console.print(f"[red]✗ Validation failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -512,12 +512,12 @@ def connect_test(mode: str | None, timeout: int) -> None:
         result = tester.test(config, timeout=timeout, display=True)
 
         if not result.success:
-            raise click.Abort()
+            raise click.Abort
 
     except Exception as e:
         if not isinstance(e, click.Abort):
             console.print(f"[red]✗ Test failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 @connect_group.command(name="info")
@@ -535,7 +535,7 @@ def connect_info() -> None:
         tester.display_connection_info(info)
     except Exception as e:
         console.print(f"[red]✗ Failed to get connection info: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -577,12 +577,12 @@ def status(verbose: bool, mode: str | None) -> None:
 
         # Exit with error code if unhealthy
         if not health.is_healthy:
-            raise click.Abort()
+            raise click.Abort
 
     except Exception as e:
         if not isinstance(e, click.Abort):
             console.print(f"[red]✗ Health check failed: {e}[/red]")
-        raise click.Abort() from e
+        raise click.Abort from e
 
 
 # ============================================================================
@@ -597,7 +597,7 @@ def main() -> None:
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
 

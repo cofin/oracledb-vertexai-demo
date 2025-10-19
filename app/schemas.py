@@ -35,6 +35,7 @@ __all__ = (
     "Message",
     "MetricCard",
     "MetricsSummaryResponse",
+    "Product",
     "ResponseCache",
     "SearchMetricsCreate",
     "SimilarIntent",
@@ -64,6 +65,22 @@ class IntentResult(msgspec.Struct, array_like=True, omit_defaults=True):
     exemplar_phrase: str
     embedding_cache_hit: bool
     fallback_used: bool
+
+
+class Product(msgspec.Struct, omit_defaults=True):
+    """Product entity from database."""
+
+    id: int
+    name: str
+    price: float
+    description: str
+    category: str | None = None
+    sku: str | None = None
+    in_stock: bool = True
+    metadata: dict[str, Any] | None = None
+    embedding: list[float] | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class CoffeeChatMessage(msgspec.Struct):

@@ -147,7 +147,7 @@ class IntentService(SQLSpecService):
         limit: int,
     ) -> list[SimilarIntent]:
         """Search for similar intents in the exemplar table."""
-        return await self.driver.select(
+        return await self.driver.select(  # type: ignore[no-any-return]
             """
             SELECT intent, phrase, 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) as similarity, confidence_threshold
             FROM intent_exemplar
@@ -182,8 +182,8 @@ class IntentService(SQLSpecService):
     ) -> IntentResult:
         """Classify intent using vector similarity with exemplars."""
         if user_embedding is None:
-            user_embedding, embedding_cache_hit = await self.vertex_ai_service.get_text_embedding_with_cache_status(
-                query
+            user_embedding, embedding_cache_hit = await self.vertex_ai_service.get_text_embedding(
+                query, return_cache_status=True
             )
         else:
             embedding_cache_hit = True
