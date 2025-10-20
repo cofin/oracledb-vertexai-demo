@@ -37,7 +37,7 @@ class MetricsService(SQLSpecService):
         """Record search performance metrics."""
         await self.driver.execute(
             """
-            INSERT INTO search_metrics (
+            INSERT INTO search_metric (
                 query_id,
                 user_id,
                 search_time_ms,
@@ -79,7 +79,7 @@ class MetricsService(SQLSpecService):
                 result_count AS "result_count",
                 created_at AS "created_at",
                 updated_at AS "updated_at"
-            FROM search_metrics
+            FROM search_metric
             WHERE query_id = :query_id
             ORDER BY created_at DESC
             FETCH FIRST 1 ROWS ONLY
@@ -118,7 +118,7 @@ class MetricsService(SQLSpecService):
                 AVG(similarity_score) AS "avg_similarity",
                 MAX(search_time_ms) AS "max_search_time",
                 MIN(search_time_ms) AS "min_search_time"
-            FROM search_metrics
+            FROM search_metric
             WHERE created_at > :since
             """,
             since=since,
@@ -158,7 +158,7 @@ class MetricsService(SQLSpecService):
                 AVG(oracle_time_ms) AS "avg_oracle",
                 AVG(embedding_time_ms) AS "avg_embedding",
                 COUNT(*) AS "request_count"
-            FROM search_metrics
+            FROM search_metric
             WHERE created_at > :since_time
             GROUP BY TO_CHAR(created_at, 'HH24:MI')
             ORDER BY "time_bucket"
@@ -194,7 +194,7 @@ class MetricsService(SQLSpecService):
                 similarity_score AS "similarity_score",
                 oracle_time_ms AS "oracle_time_ms",
                 search_time_ms AS "search_time_ms"
-            FROM search_metrics
+            FROM search_metric
             WHERE created_at > :since_time
             AND similarity_score IS NOT NULL
             ORDER BY created_at DESC
@@ -252,7 +252,7 @@ class MetricsService(SQLSpecService):
                 similarity_score AS "similarity_score",
                 result_count AS "result_count",
                 created_at AS "created_at"
-            FROM search_metrics
+            FROM search_metric
             WHERE query_id = :query_id
             ORDER BY created_at DESC
             FETCH FIRST 1 ROWS ONLY

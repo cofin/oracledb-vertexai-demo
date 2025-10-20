@@ -73,6 +73,9 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # security
         app_config.cors_config = config.cors
         app_config.csrf_config = config.csrf
+        # session
+        app_config.stores = config.stores
+        app_config.middleware.append(config.session_config.middleware)
         # plugins
         app_config.plugins.extend(
             [

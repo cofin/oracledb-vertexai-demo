@@ -60,7 +60,7 @@ db = _settings.db.create_config()
 db_manager.add_config(db)
 db_manager.load_sql_files(BASE_DIR / "db" / "sql")
 
-stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # type: ignore[dict-item]
+stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # pyright: ignore
 session_config = ServerSideSessionConfig(store="sessions")
 service_locator = ServiceLocator()
 

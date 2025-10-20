@@ -53,27 +53,12 @@ class TestProductService:
         product = await product_service.get_by_id(99999999)
         assert product is None
 
-    async def test_search_by_description(
-        self,
-        product_service: ProductService,
-    ) -> None:
-        """Test text-based description search."""
-        # Search for common coffee terms
-        results = await product_service.search_by_description("coffee")
-
-        assert isinstance(results, list)
-        # Verify all results contain the search term
-        for result in results:
-            assert "coffee" in result.description.lower()
-
     async def test_get_products_without_embeddings(
         self,
         product_service: ProductService,
     ) -> None:
         """Test pagination of products without embeddings."""
-        products, total_count = await product_service.get_products_without_embeddings(
-            limit=10, offset=0
-        )
+        products, total_count = await product_service.get_products_without_embeddings(limit=10, offset=0)
 
         assert isinstance(products, list)
         assert isinstance(total_count, int)

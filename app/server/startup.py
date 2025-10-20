@@ -49,38 +49,21 @@ async def populate_product_exemplars(
             name,  # Just the product name itself
         ])
 
-    # Add product exemplars
-    count = 0
-
-    # Bail out early if the exemplar table already contains the expected number of product phrases.
-    existing_count = await exemplar_service.driver.select_value(
+    # Fetch all existing PRODUCT_RAG phrases in a single query
+    existing_phrases = await exemplar_service.driver.select(
         """
-        SELECT COUNT(*)
-        FROM intent_exemplar
+        SELECT phrase FROM intent_exemplar
         WHERE intent = :intent
         """,
         {"intent": "PRODUCT_RAG"},
     )
+    existing_phrases_set = {row["phrase"] for row in existing_phrases}
 
-    if existing_count and existing_count >= len(product_exemplars):
-        logger.info(
-            "Product exemplars already populated",
-            existing_count=existing_count,
-            expected=len(product_exemplars),
-        )
-        return
-
+    # Add product exemplars
+    count = 0
     for exemplar in product_exemplars:
-        # Check if already exists using driver
-        result = await exemplar_service.driver.select_value_or_none(
-            """
-            SELECT 1 FROM intent_exemplar
-            WHERE intent = :intent AND phrase = :phrase
-            """,
-            {"intent": "PRODUCT_RAG", "phrase": exemplar},
-        )
-
-        if not result:
+        # Check if already exists in the set
+        if exemplar not in existing_phrases_set:
             # Generate embedding
             embedding = await vertex_ai_service.get_text_embedding(exemplar)
             await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
@@ -88,7 +71,7 @@ async def populate_product_exemplars(
 
             if count % 10 == 0:
                 logger.info("Added %d product exemplars...", count)
-
+    await exemplar_service.commit()
     logger.info("Added %d new product exemplars", count)
 
 

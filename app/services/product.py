@@ -80,43 +80,18 @@ class ProductService(SQLSpecService):
         )
         return result
 
-    async def search_by_description(self, search_term: str) -> list[Product]:
-        """Search products by description."""
-        results: list[Product] = await self.driver.select(
-            """
-            SELECT
-                id AS "id",
-                name AS "name",
-                price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
-                category AS "category",
-                sku AS "sku",
-                NVL(in_stock, TRUE) AS "in_stock",
-                metadata AS "metadata",
-                embedding AS "embedding",
-                created_at AS "created_at",
-                updated_at AS "updated_at"
-            FROM product
-            WHERE UPPER(description) LIKE UPPER(:search_term)
-            ORDER BY name
-            """,
-            search_term=f"%{search_term}%",
-            schema_type=Product,
-        )
-        return results
-
     async def get_products_without_embeddings(self, limit: int = 100, offset: int = 0) -> tuple[list[Product], int]:
         """Get products that have null embeddings with pagination."""
         # Get total count
         count_result = await self.driver.select_one_or_none(
             """
-            SELECT COUNT(*) AS "total_count"
+            SELECT COUNT(1) AS "total_count"
             FROM product
             WHERE embedding IS NULL
             """
         )
         # Oracle returns column names in uppercase
-        total_count = (count_result.get("total_count") or count_result.get("TOTAL_COUNT")) if count_result else 0
+        total_count = count_result.get("total_count") if count_result else 0
 
         # Get paginated results
         products, total_count = await self.driver.select_with_total(
