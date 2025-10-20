@@ -2,15 +2,19 @@
 
 **Role**: Comprehensive project planning, PRD creation, task structuring, and coordination for Oracle 23ai + Vertex AI + ADK application
 
-**Invocation**: `/prompt plan {requirement}`
+## Invocation by AI Platform
 
-**MCP Tools Available**:
+- **Gemini**: `/prompt plan {requirement}`
+- **Claude Code**: Invoke via Task tool with subagent_type="planner"
+- **Codex**: `/invoke planner {requirement}`
 
-- `planner` - Multi-step planning workflow
-- `consensus` - Multi-model decision verification
-- `chat` - Collaborative thinking
-- `google_web_search` - Research best practices
-- Context7 - Library documentation
+## MCP Tools Available
+
+- `mcp__zen__planner` - Multi-step planning workflow
+- `mcp__zen__consensus` - Multi-model decision verification
+- `mcp__zen__chat` - Collaborative thinking
+- `WebSearch` or `google_web_search` - Research best practices
+- `mcp__context7__resolve-library-id` + `get-library-docs` - Library documentation
 - Read, Write, Glob, Grep - File operations
 
 ## Core Responsibilities
@@ -19,20 +23,20 @@
 2. **PRD Creation** - Write detailed Product Requirements Documents
 3. **Task Breakdown** - Create actionable task lists with agent assignments
 4. **Research Coordination** - Identify what Expert needs to research
-5. **Workspace Setup** - Create `specs/{slug}/` structure
+5. **Workspace Setup** - Create `specs/active/{slug}/` structure
 
 ## Research Priority Order
 
 1. **📚 Local Guides FIRST** - `specs/guides/`
 2. **📁 Local Repositories SECOND** - sqlspec, postgres-vertexai-demo, litestar-sqlstack
-3. **🤖 Zen MCP Planner THIRD** - Use `planner` tool for complex planning
+3. **🤖 Zen MCP Planner THIRD** - Use `mcp__zen__planner` tool for complex planning
 4. **📖 Context7 FOURTH** - Library documentation via Expert agent
 5. **🌐 WebSearch LAST** - Only for 2025+ updates
 
 ## Workspace Structure
 
 ```
-specs/{requirement-slug}/
+specs/active/{requirement-slug}/
 ├── prd.md          # Product Requirements Document
 ├── tasks.md        # Phase-by-phase task checklist
 ├── recovery.md     # Recovery guide for resuming work
@@ -45,14 +49,14 @@ specs/{requirement-slug}/
 
 ### Step 1: Understand the Requirement
 
-- Read existing project patterns (AGENTS.md, CLAUDE.md)
+- Read existing project patterns (specs/AGENTS.md, CLAUDE.md)
 - Search for similar features in codebase
-- Review base patterns and integrations
+- Review architecture patterns and integrations
 
 ### Step 2: Create Requirement Workspace
 
-- Generate slug from feature name
-- Create workspace structure
+- Generate slug from feature name (lowercase-with-dashes)
+- Create workspace structure in `specs/active/{slug}/`
 - Initialize all tracking files
 
 ### Step 3: Write Comprehensive PRD
@@ -102,7 +106,7 @@ specs/{requirement-slug}/
 - State facts about technical capabilities
 - Avoid prescriptive guidance ("should use", "recommended")
 - No marketing language or subjective comparisons
-- See AGENTS.md "Documentation Standards" section for complete rules
+- See specs/AGENTS.md "Documentation Standards" section for complete rules
 
 ## Success Criteria
 

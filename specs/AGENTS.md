@@ -1,6 +1,6 @@
-# Gemini Agent Coordination Guide
+# Universal Agent Coordination Guide
 
-Comprehensive guide for the Oracle 23ai + Vertex AI + ADK agent system, covering agent responsibilities, workflow patterns, tool usage, and workspace management.
+Comprehensive guide for the Oracle 23ai + Vertex AI + ADK multi-AI agent system. Works with Gemini (primary), Claude Code, and Codex. Covers agent responsibilities, workflow patterns, tool usage, and workspace management.
 
 ## Agent Responsibilities Matrix
 
@@ -28,13 +28,13 @@ Comprehensive guide for the Oracle 23ai + Vertex AI + ADK agent system, covering
 1. Research guides and use `google_web_search`
 2. Create structured plan with `planner` tool
 3. Get consensus on complex decisions (`consensus` tool)
-4. Create workspace in `specs/{requirement-slug}/`
+4. Create workspace in `specs/active/{requirement-slug}/`
 5. Write PRD, tasks, research, recovery docs
 
 **Output:**
 
 ```
-specs/{requirement-slug}/
+specs/active/{requirement-slug}/
 ├── prd.md          # Product Requirements Document
 ├── tasks.md        # Implementation checklist
 ├── research/       # Research findings

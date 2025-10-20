@@ -213,7 +213,7 @@ async def search(
 ### Tool Priority (ALWAYS FOLLOW)
 
 1. **📚 Local Guides FIRST**
-   - Location: `/home/cody/code/g/oracledb-vertexai-demo/docs/guides/`
+   - Location: `specs/guides/`
    - Read before any external tool
    - Most comprehensive, project-specific
 

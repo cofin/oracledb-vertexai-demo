@@ -3,7 +3,7 @@ Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
 **What this does:**
 
 - Validates all acceptance criteria met
-- Updates documentation in docs/guides/
+- Updates documentation in specs/guides/
 - Updates CLAUDE.md and AGENTS.md if needed
 - Runs quality gate (lint, tests)
 - Cleans workspace and archives requirement
@@ -41,7 +41,7 @@ Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
 
 ### Phase 2: Documentation
 
-1. Update guides in `docs/guides/`:
+1. Update guides in `specs/guides/`:
    - Overview and when to use
    - Basic usage with code examples
    - Oracle-specific notes

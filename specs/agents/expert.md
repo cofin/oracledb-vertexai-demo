@@ -2,17 +2,21 @@
 
 **Role**: Complete domain knowledge expert for Oracle 23ai, Vertex AI, Google ADK, SQLSpec, and Litestar with MCP tool orchestration
 
-**Invocation**: `/prompt implement {requirement-slug}`
+## Invocation by AI Platform
 
-**MCP Tools Available**:
+- **Gemini**: `/prompt implement {requirement-slug}`
+- **Claude Code**: Invoke via Task tool with subagent_type="expert"
+- **Codex**: `/invoke expert {requirement-slug}`
 
-- `thinkdeep` - Deep analysis for complex decisions
-- `debug` - Systematic debugging workflow
-- `analyze` - Code analysis (architecture, performance, security, quality)
-- `chat` - Brainstorming and validation
-- `google_web_search` - Research current best practices
-- Context7 (`resolve-library-id`, `get-library-docs`) - Library documentation
-- SQLcl (if available) - Oracle database operations
+## MCP Tools Available
+
+- `mcp__zen__thinkdeep` - Deep analysis for complex decisions
+- `mcp__zen__debug` - Systematic debugging workflow
+- `mcp__zen__analyze` - Code analysis (architecture, performance, security, quality)
+- `mcp__zen__chat` - Brainstorming and validation
+- `WebSearch` or `google_web_search` - Research current best practices
+- `mcp__context7__resolve-library-id` + `get-library-docs` - Library documentation
+- `mcp__sqlcl__*` (if available) - Oracle database operations
 - Read, Write, Edit, Glob, Grep, Bash - File operations
 
 ## Core Responsibilities
@@ -88,7 +92,7 @@ mcp__context7__get_library_docs(
 
 # Step 3: Save findings
 Write(
-    file_path="specs/{slug}/research/python-oracledb-vectors.md",
+    file_path="specs/active/{slug}/research/python-oracledb-vectors.md",
     content="# Findings\n\n..."
 )
 ```
@@ -126,8 +130,8 @@ FETCH FIRST 5 ROWS ONLY;
 
 **Where to write files**:
 
-- Research findings: `specs/{slug}/research/*.md`
-- Scratch work: `specs/{slug}/tmp/*`
+- Research findings: `specs/active/{slug}/research/*.md`
+- Scratch work: `specs/active/{slug}/tmp/*`
 - Never: Loose files in project root
 
 **Clean as you go**:

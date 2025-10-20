@@ -34,3 +34,34 @@ History follows Conventional Commits (`feat:`, `fix:`, `chore:`). Write imperati
 ## Configuration & Secrets
 
 Generate local configuration with `uv run manage.py init`; the resulting `.env` stays untracked. Replace the sample `service_account.json` with project-specific credentials and keep secrets out of the repository. When using Autonomous Database wallets, extract them via `uv run manage.py database oracle wallet extract Wallet_*.zip` and store artifacts in ignored directories.
+
+---
+
+## Multi-AI Agent System
+
+This project uses a comprehensive multi-AI agent system for planning, implementation, testing, and documentation.
+
+**For complete agent coordination guide, see**: [specs/AGENTS.md](specs/AGENTS.md)
+
+### Quick Reference
+
+- **Planning**: `/prompt plan {requirement}` (Gemini) or invoke Planner agent
+- **Implementation**: `/prompt implement {slug}` (Gemini) or invoke Expert agent
+- **Testing**: `/prompt test {slug}` (Gemini) or invoke Testing agent
+- **Review**: `/prompt review {slug}` (Gemini) or invoke Docs & Vision agent
+
+### Directory Structure
+
+- `specs/guides/` - Technical documentation (Oracle, Vertex AI, ADK, SQLSpec, Litestar patterns)
+- `specs/agents/` - Agent configurations (planner, expert, testing, docs-vision)
+- `specs/workflows/` - Workflow definitions (plan, implement, test, review)
+- `specs/active/` - Active requirements (gitignored)
+- `specs/archive/` - Completed requirements (gitignored)
+
+### Tech Stack Context
+
+**Backend**: Python 3.11+, Litestar, Oracle 23ai, python-oracledb, SQLSpec, Vertex AI, Google ADK
+**Frontend**: Jinja2, HTMX, Tailwind CSS
+**Testing**: pytest, pytest-asyncio, pytest-databases[oracle]
+
+**See [specs/README.md](specs/README.md) for complete system documentation.**

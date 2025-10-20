@@ -146,10 +146,10 @@ Project settings: `.gemini/settings.json` (not checked in)
 
 ## Workspace Management
 
-All work happens in `specs/{requirement-slug}/`:
+All work happens in `specs/active/{requirement-slug}/`:
 
 ```
-specs/vector-search-caching/
+specs/active/vector-search-caching/
 ├── prd.md              # Product Requirements Document
 ├── tasks.md            # Task checklist
 ├── recovery.md         # How to resume work
@@ -191,7 +191,7 @@ From `GEMINI.md`:
 
 ## Research Priority
 
-1. **📚 Local Guides FIRST** - `docs/guides/`
+1. **📚 Local Guides FIRST** - `specs/guides/`
 2. **📁 Local Repositories SECOND** - sqlspec, postgres-vertexai-demo, litestar-sqlstack
 3. **🤖 Zen MCP THIRD** - Complex planning and analysis
 4. **📖 Context7 FOURTH** - Library documentation
@@ -222,12 +222,12 @@ From `CLAUDE.md` (enforced by all agents):
 
 | Feature           | Gemini CLI         | Claude Code                        |
 | ----------------- | ------------------ | ---------------------------------- |
-| Context file      | `GEMINI.md`        | `AGENTS.md`                        |
+| Context file      | specs/AGENTS.md    | specs/AGENTS.md                    |
 | Custom commands   | `.gemini/prompts/` | `.claude/commands/`                |
-| Agent definitions | Prompts + docs     | `.claude/agents/` with frontmatter |
+| Agent definitions | specs/agents/      | specs/agents/                      |
 | Invocation        | `/prompt {name}`   | `/{name}`                          |
 | MCP support       | ✅ Yes             | ✅ Yes                             |
-| Workspace         | `specs/`           | `specs/`                           |
+| Workspace         | `specs/active/`    | `specs/active/`                    |
 
 ## Getting Started
 
@@ -259,7 +259,7 @@ From `CLAUDE.md` (enforced by all agents):
 
 - **Gemini CLI Docs**: https://geminicli.dev
 - **MCP Protocol**: https://modelcontextprotocol.io
-- **Project Guides**: `../docs/guides/`
+- **Project Guides**: `../specs/guides/`
 - **Project Standards**: `../CLAUDE.md`, `../AGENTS.md`
 
 ---
