@@ -160,12 +160,24 @@ todo
 # Wallet files and environment-specific configs
 .envs/
 
-# Claude/AI migration work artifacts (don't commit)
-specs/*
-.envs/
-.claude/*
+# Multi-AI agent system
+# AI-specific invocation layers (gitignored, created locally)
+.claude/
+.gemini/
+.codex/
+
+# Workspace content (gitignored)
+specs/active/*
+!specs/active/.gitkeep
 specs/archive/*
 !specs/archive/.gitkeep
-specs/*
-!specs/example-requirement
-!specs/README.md
+!specs/guides/
+!specs/agents/
+!specs/workflows/
+# What gets committed in specs/
+# - specs/guides/ (technical documentation)
+# - specs/agents/ (agent configurations)
+# - specs/workflows/ (workflow definitions)
+# - specs/AGENTS.md (coordination guide)
+# - specs/README.md (system documentation)
+# - specs/example-requirement/ (template)
