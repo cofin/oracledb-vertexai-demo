@@ -47,6 +47,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.params import Body
         from litestar.plugins.htmx import HTMXRequest
         from litestar.static_files import create_static_files_router
+        from sqlspec import AsyncDriverAdapterBase
         from sqlspec.adapters.oracledb import OracleAsyncDriver
 
         from app import config, schemas, services
@@ -132,6 +133,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "ADKRunner": ADKRunner,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
+                "AsyncDriverAdapterBase": AsyncDriverAdapterBase,
             },
         )
         return app_config

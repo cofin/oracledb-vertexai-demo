@@ -24,6 +24,7 @@ dependencies = [
     "msgspec",
     "rich-click",
     "numpy>=2.3.3",
+    "dishka>=1.7.2",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]

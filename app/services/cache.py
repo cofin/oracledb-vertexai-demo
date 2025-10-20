@@ -261,16 +261,23 @@ class CacheService(SQLSpecService):
         """Get cache statistics.
 
         Returns:
-            Dictionary with cache statistics
+            Dictionary with cache statistics including hit rate
         """
         response_count = await self.driver.select_value("SELECT COUNT(*) FROM response_cache")
         embedding_count = await self.driver.select_value("SELECT COUNT(*) FROM embedding_cache")
         embedding_hits = await self.driver.select_value("SELECT NVL(SUM(hit_count), 0) FROM embedding_cache")
 
+        # Calculate cache hit rate (percentage of requests that hit the cache)
+        # This is an approximation based on embedding cache hits vs total embedding entries
+        cache_hit_rate = 0.0
+        if embedding_count and embedding_count > 0:
+            cache_hit_rate = (embedding_hits / max(embedding_count, 1)) * 100
+
         return {
             "response_cache_entries": response_count,
             "embedding_cache_entries": embedding_count,
             "total_embedding_hits": embedding_hits,
+            "cache_hit_rate": cache_hit_rate,
         }
 
     async def get(self, cache_key: str) -> dict[str, Any] | None:

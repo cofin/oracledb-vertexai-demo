@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 from typing import Any, TypeVar, get_type_hints
 
+from sqlspec.adapters.oracledb import OracleAsyncDriver
 from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.services.vertex_ai import VertexAIService
@@ -101,7 +102,12 @@ class ServiceLocator:
             return service_cls()
 
         # Get resolved type hints to handle forward references and string annotations
-        type_hints = get_type_hints(service_cls.__init__)
+        # Provide global namespace with common driver types for forward reference resolution
+        globalns = {
+            "OracleAsyncDriver": OracleAsyncDriver,
+            "AsyncDriverAdapterBase": AsyncDriverAdapterBase,
+        }
+        type_hints = get_type_hints(service_cls.__init__, globalns=globalns)
 
         dependencies: dict[str, Any] = {}
         # Iterate over constructor parameters, skipping 'self'

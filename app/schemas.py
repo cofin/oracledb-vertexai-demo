@@ -39,6 +39,7 @@ __all__ = (
     "ResponseCache",
     "SearchMetricsCreate",
     "SimilarIntent",
+    "Store",
     "TimeSeriesData",
     "UserSessionCreate",
     "UserSessionRead",
@@ -81,6 +82,22 @@ class Product(msgspec.Struct, omit_defaults=True):
     embedding: list[float] | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+class Store(msgspec.Struct, omit_defaults=True):
+    """Store location entity from database."""
+
+    id: int
+    name: str
+    address: str
+    created_at: datetime
+    updated_at: datetime
+    city: str | None = None
+    state: str | None = None
+    zip: str | None = None
+    phone: str | None = None
+    hours: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class CoffeeChatMessage(msgspec.Struct):

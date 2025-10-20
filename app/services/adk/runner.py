@@ -17,6 +17,10 @@ from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db
 from app.services.adk.agent import CoffeeAssistantAgent
+from app.services.adk.monkey_patches import apply_genai_client_patch
+
+# Apply monkey patches for ADK library issues
+apply_genai_client_patch()
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

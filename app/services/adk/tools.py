@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from app.config import db, db_manager
 from app.services.adk.tool_service import AgentToolsService
+from app.utils.serialization import from_json
 
 
 async def search_products_by_vector(
@@ -49,16 +50,29 @@ async def record_search_metric(
     query_text: str,
     intent: str,
     response_time_ms: float,
-    vector_search_time_ms: int,
-    vector_results: list[dict[str, Any]] | None,
+    vector_search_time_ms: int = 0,
+    vector_results_json: str = "[]",
 ) -> dict[str, Any]:
-    """Record metrics for search performance with fresh session."""
+    """Record metrics for search performance with fresh session.
+
+    Args:
+        session_id: Session identifier
+        query_text: The search query text
+        intent: Detected intent
+        response_time_ms: Total response time in milliseconds
+        vector_search_time_ms: Time spent on vector search (default: 0)
+        vector_results_json: JSON string of vector search results (default: "[]")
+
+    Returns:
+        Dictionary containing the recorded metrics
+    """
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
+
         tools_service = service_locator.get(AgentToolsService, session)
-        # Apply defaults within function to avoid ADK schema issues
-        vector_search_time_ms = vector_search_time_ms or 0
-        vector_results = vector_results or []
+
+        # Decode JSON string to list using SQLSpec's from_json utility
+        vector_results = from_json(vector_results_json) if vector_results_json else []
 
         return await tools_service.record_search_metric(
             session_id=session_id,
@@ -78,12 +92,23 @@ async def get_store_locations() -> list[dict[str, Any]]:
         return await tools_service.get_all_store_locations()
 
 
-async def find_stores_by_location(city: str | None, state: str | None) -> list[dict[str, Any]]:
-    """Find stores in a specific location with fresh session."""
+async def find_stores_by_location(city: str = "", state: str = "") -> list[dict[str, Any]]:
+    """Find stores in a specific location with fresh session.
+
+    Args:
+        city: City name to search for stores (optional, use empty string for no filter)
+        state: State abbreviation to search for stores (optional, use empty string for no filter)
+
+    Returns:
+        List of stores matching the location criteria
+    """
     async with db_manager.provide_session(db) as session:
         from app.config import service_locator
         tools_service = service_locator.get(AgentToolsService, session)
-        return await tools_service.find_stores_by_location(city, state)
+        # Convert empty strings to None for the service layer
+        city_filter = city if city else None
+        state_filter = state if state else None
+        return await tools_service.find_stores_by_location(city_filter, state_filter)
 
 
 async def get_store_hours(store_id: int) -> dict[str, Any]:

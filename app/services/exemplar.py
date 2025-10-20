@@ -10,7 +10,7 @@ import structlog
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec.adapters.oracledb import OracleAsyncDriver
+    from sqlspec import AsyncDriverAdapterBase
 
     from app.services.vertex_ai import VertexAIService
 
@@ -20,7 +20,7 @@ logger = structlog.get_logger()
 class ExemplarService(SQLSpecService):
     """Service for managing intent exemplar embeddings using SQLSpec driver patterns."""
 
-    def __init__(self, driver: OracleAsyncDriver) -> None:
+    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
         """Initialize the service."""
         super().__init__(driver)
 

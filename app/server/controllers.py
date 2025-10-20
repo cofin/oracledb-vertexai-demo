@@ -20,6 +20,7 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Annotated
 
+import structlog
 from litestar import Controller, get, post
 from litestar.di import Provide
 from litestar.plugins.htmx import (
@@ -28,6 +29,7 @@ from litestar.plugins.htmx import (
     HXStopPolling,
 )
 from litestar.response import File, Stream
+from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app import schemas
 from app.server import deps
@@ -44,6 +46,8 @@ if TYPE_CHECKING:
     from app.services.metrics import MetricsService
     from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
+logger = structlog.get_logger()
+
 
 class CoffeeChatController(Controller):
     """Coffee Chat Controller with ADK-based agent system."""
@@ -57,6 +61,7 @@ class CoffeeChatController(Controller):
         "metrics_service": Provide(deps.provide_metrics_service),
         "exemplar_service": Provide(deps.provide_exemplar_service),
     }
+    signature_namespace = {"OracleAsyncDriver": OracleAsyncDriver}
 
     @staticmethod
     def generate_csp_nonce() -> str:
@@ -130,9 +135,18 @@ class CoffeeChatController(Controller):
                 session_id=session_id,
             )
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
+            logger.exception(
+                "Error processing chat request",
+                error=str(e),
+                error_type=type(e).__name__,
+                query=clean_message[:100],  # Log first 100 chars of query
+                user_id="web_user",
+                session_id=session_id,
+            )
+            # Return a generic error message to the user (don't expose internal details)
             agent_response = {
-                "answer": f"I apologize, but I'm having trouble processing your request right now. Error: {e!s}",
+                "answer": "I apologize, but I'm having trouble processing your request right now. Please try again in a moment.",
             }
 
         if request.htmx:
@@ -192,7 +206,9 @@ class CoffeeChatController(Controller):
                 # For now, use a simple prompt to demonstrate streaming
                 prompt = "Tell me about coffee recommendations briefly"
 
-                async for chunk in vertex_ai_service.generate_chat_response_stream([{"role": "user", "content": prompt}]):
+                async for chunk in vertex_ai_service.generate_chat_response_stream([
+                    {"role": "user", "content": prompt}
+                ]):
                     # Escape chunk content for JSON
                     safe_chunk = chunk.replace('"', '\\"').replace("\n", "\\n")
                     yield f"data: {{'chunk': '{safe_chunk}', 'query_id': '{query_id}'}}\n\n"

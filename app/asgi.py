@@ -16,8 +16,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.services.adk.monkey_patches import apply_genai_client_patch
+
 if TYPE_CHECKING:
     from litestar import Litestar
+
+apply_genai_client_patch()
 
 
 def create_app() -> Litestar:

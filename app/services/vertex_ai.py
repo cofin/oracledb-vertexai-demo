@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, overload
 
 import structlog
 from google import genai
-from google.auth import default as google_auth_default
 
 from app.lib.settings import get_settings
 from app.services.cache import CacheService
@@ -30,7 +29,6 @@ class VertexAIService:
             cache_service: Optional cache service for embedding caching
         """
         from google import genai
-        from google.cloud import aiplatform
 
         self.settings = get_settings()
         self._genai_client: genai.Client | None = None
@@ -38,23 +36,13 @@ class VertexAIService:
 
         # Initialize Vertex AI
         if self.settings.vertex_ai.PROJECT_ID:
-            aiplatform.init(
-                project=self.settings.vertex_ai.PROJECT_ID,
-                location=self.settings.vertex_ai.LOCATION,
-            )
-            credentials, _ = google_auth_default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-
             if self.settings.vertex_ai.API_KEY:
                 logger.warning(
                     "API key provided but Vertex AI requires ADC/service account credentials; ignoring api_key",
                 )
 
-            self._genai_client = genai.Client(
-                vertexai=True,
-                project=self.settings.vertex_ai.PROJECT_ID,
-                location=self.settings.vertex_ai.LOCATION,
-                credentials=credentials,
-            )
+            # genai.Client automatically uses GOOGLE_APPLICATION_CREDENTIALS or ADC
+            self._genai_client = genai.Client()
             logger.info(
                 "Vertex AI initialized",
                 project=self.settings.vertex_ai.PROJECT_ID,
