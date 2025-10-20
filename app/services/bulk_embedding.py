@@ -57,7 +57,10 @@ class BulkEmbeddingService:
         # Get products that need embeddings (where embedding is NULL) using SQLSpec driver
         products = await self.product_service.driver.select(
             """
-            SELECT id, name, description
+            SELECT
+                id AS "id",
+                name AS "name",
+                description AS "description"
             FROM product
             WHERE embedding IS NULL
             """
@@ -267,7 +270,10 @@ class OnlineEmbeddingService:
         # Get products without embeddings (limit to reasonable batch size) using SQLSpec driver
         products = await product_service.driver.select(
             """
-            SELECT id, name, description
+            SELECT
+                id AS "id",
+                name AS "name",
+                description AS "description"
             FROM product
             WHERE embedding IS NULL
             FETCH FIRST :limit ROWS ONLY

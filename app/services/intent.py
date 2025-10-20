@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 
@@ -10,6 +10,8 @@ from app.schemas import IntentResult, SimilarIntent
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
+    from sqlspec import AsyncDriverAdapterBase
+
     from app.services.exemplar import ExemplarService
     from app.services.vertex_ai import VertexAIService
 
@@ -131,7 +133,7 @@ class IntentService(SQLSpecService):
 
     def __init__(
         self,
-        driver: Any,
+        driver: AsyncDriverAdapterBase,
         exemplar_service: ExemplarService,
         vertex_ai_service: VertexAIService,
     ) -> None:
@@ -147,12 +149,16 @@ class IntentService(SQLSpecService):
         limit: int,
     ) -> list[SimilarIntent]:
         """Search for similar intents in the exemplar table."""
-        return await self.driver.select(  # type: ignore[no-any-return]
+        return await self.driver.select(
             """
-            SELECT intent, phrase, 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) as similarity, confidence_threshold
+            SELECT
+                intent AS "intent",
+                phrase AS "phrase",
+                1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) AS "similarity",
+                confidence_threshold AS "confidence_threshold"
             FROM intent_exemplar
             WHERE 1 - VECTOR_DISTANCE(embedding, :query_embedding, COSINE) > :min_threshold
-            ORDER BY similarity DESC
+            ORDER BY "similarity" DESC
             FETCH FIRST :limit ROWS ONLY
             """,
             query_embedding=query_embedding,

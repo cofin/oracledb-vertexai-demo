@@ -14,17 +14,17 @@ class ProductService(SQLSpecService):
         results: list[Product] = await self.driver.select(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM product
             ORDER BY name
             """,
@@ -37,17 +37,17 @@ class ProductService(SQLSpecService):
         result: Product | None = await self.driver.select_one_or_none(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM product
             WHERE id = :id
             """,
@@ -61,17 +61,17 @@ class ProductService(SQLSpecService):
         result: Product | None = await self.driver.select_one_or_none(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM product
             WHERE name = :name
             """,
@@ -85,17 +85,17 @@ class ProductService(SQLSpecService):
         results: list[Product] = await self.driver.select(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM product
             WHERE UPPER(description) LIKE UPPER(:search_term)
             ORDER BY name
@@ -110,7 +110,7 @@ class ProductService(SQLSpecService):
         # Get total count
         count_result = await self.driver.select_one_or_none(
             """
-            SELECT COUNT(*) as total_count
+            SELECT COUNT(*) AS "total_count"
             FROM product
             WHERE embedding IS NULL
             """
@@ -122,17 +122,17 @@ class ProductService(SQLSpecService):
         products, total_count = await self.driver.select_with_total(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM product
             WHERE embedding IS NULL
             ORDER BY id
@@ -158,22 +158,22 @@ class ProductService(SQLSpecService):
         results: list[dict[str, Any]] = await self.driver.select(
             """
             SELECT
-                id,
-                name,
-                price,
-                description,
-                category,
-                sku,
-                in_stock,
-                metadata,
-                embedding,
-                created_at,
-                updated_at,
-                VECTOR_DISTANCE(embedding, :query_embedding, COSINE) as similarity_score
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at",
+                VECTOR_DISTANCE(embedding, :query_embedding, COSINE) AS "similarity_score"
             FROM product
             WHERE embedding IS NOT NULL
             AND VECTOR_DISTANCE(embedding, :query_embedding, COSINE) <= :threshold
-            ORDER BY similarity_score
+            ORDER BY "similarity_score"
             FETCH FIRST :limit ROWS ONLY
             """,
             query_embedding=query_embedding,

@@ -288,6 +288,15 @@ class VertexAISettings:
     """Google Cloud Project ID for Vertex AI."""
     LOCATION: str = field(default_factory=lambda: os.getenv("VERTEX_AI_LOCATION") or "us-central1")
     """Vertex AI location/region."""
+    API_KEY: str | None = field(
+        default_factory=lambda: (
+            os.getenv("VERTEX_AI_API_KEY")
+            or os.getenv("GOOGLE_AI_API_KEY")
+            or os.getenv("GOOGLE_API_KEY")
+            or os.getenv("GENAI_API_KEY")
+        )
+    )
+    """Optional API key for Google AI clients."""
     EMBEDDING_MODEL: str = field(
         default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL")
         or os.getenv("EMBEDDING_MODEL")

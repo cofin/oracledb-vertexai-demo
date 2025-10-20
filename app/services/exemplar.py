@@ -27,7 +27,10 @@ class ExemplarService(SQLSpecService):
     async def get_exemplars_with_phrases(self) -> dict[str, list[tuple[str, list[float]]]]:
         """Get all exemplars with their phrases and embeddings."""
         results = await self.driver.select("""
-            SELECT intent, phrase, embedding
+            SELECT
+                intent AS "intent",
+                phrase AS "phrase",
+                embedding AS "embedding"
             FROM intent_exemplar
             WHERE embedding IS NOT NULL
             ORDER BY intent, phrase
@@ -38,7 +41,9 @@ class ExemplarService(SQLSpecService):
             # Oracle returns column names in uppercase by default
             intent = row.get("intent") or row.get("INTENT")
             phrase = row.get("phrase") or row.get("PHRASE")
-            embedding_vector = row.get("embedding") or row.get("EMBEDDING")
+            embedding_vector = row.get("embedding")
+            if embedding_vector is None:
+                embedding_vector = row.get("EMBEDDING")
             if embedding_vector is not None:
                 # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
@@ -51,7 +56,9 @@ class ExemplarService(SQLSpecService):
     async def load_all_exemplars(self) -> dict[str, np.ndarray]:
         """Load all cached exemplar embeddings grouped by intent."""
         results = await self.driver.select("""
-            SELECT intent, embedding
+            SELECT
+                intent AS "intent",
+                embedding AS "embedding"
             FROM intent_exemplar
             WHERE embedding IS NOT NULL
             ORDER BY intent
@@ -61,7 +68,9 @@ class ExemplarService(SQLSpecService):
         for row in results:
             # Oracle returns column names in uppercase by default
             intent = row.get("intent") or row.get("INTENT")
-            embedding_vector = row.get("embedding") or row.get("EMBEDDING")
+            embedding_vector = row.get("embedding")
+            if embedding_vector is None:
+                embedding_vector = row.get("EMBEDDING")
             if embedding_vector is not None:
                 # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
@@ -120,7 +129,7 @@ class ExemplarService(SQLSpecService):
                 # Check if already cached
                 result = await self.driver.select_one_or_none(
                     """
-                    SELECT embedding FROM intent_exemplar
+                    SELECT embedding AS "embedding" FROM intent_exemplar
                     WHERE intent = :intent AND phrase = :phrase
                     """,
                     intent=intent,
@@ -128,8 +137,10 @@ class ExemplarService(SQLSpecService):
                 )
 
                 # Oracle returns column names in uppercase by default
-                embedding_value = result.get("embedding") or result.get("EMBEDDING") if result else None
-                if not embedding_value:
+                embedding_value = result.get("embedding") if result else None
+                if embedding_value is None and result:
+                    embedding_value = result.get("EMBEDDING")
+                if embedding_value is None:
                     # Generate embedding
                     embedding = await vertex_ai_service.get_text_embedding(phrase)
                     await self.cache_exemplar(intent, phrase, embedding)

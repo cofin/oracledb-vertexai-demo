@@ -51,9 +51,28 @@ async def populate_product_exemplars(
 
     # Add product exemplars
     count = 0
+
+    # Bail out early if the exemplar table already contains the expected number of product phrases.
+    existing_count = await exemplar_service.driver.select_value(
+        """
+        SELECT COUNT(*)
+        FROM intent_exemplar
+        WHERE intent = :intent
+        """,
+        {"intent": "PRODUCT_RAG"},
+    )
+
+    if existing_count and existing_count >= len(product_exemplars):
+        logger.info(
+            "Product exemplars already populated",
+            existing_count=existing_count,
+            expected=len(product_exemplars),
+        )
+        return
+
     for exemplar in product_exemplars:
         # Check if already exists using driver
-        result = await exemplar_service.driver.select_one_or_none(
+        result = await exemplar_service.driver.select_value_or_none(
             """
             SELECT 1 FROM intent_exemplar
             WHERE intent = :intent AND phrase = :phrase

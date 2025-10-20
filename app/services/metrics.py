@@ -69,16 +69,16 @@ class MetricsService(SQLSpecService):
         result = await self.driver.select_one_or_none(
             """
             SELECT
-                id,
-                query_id,
-                user_id,
-                search_time_ms,
-                embedding_time_ms,
-                oracle_time_ms,
-                similarity_score,
-                result_count,
-                created_at,
-                updated_at
+                id AS "id",
+                query_id AS "query_id",
+                user_id AS "user_id",
+                search_time_ms AS "search_time_ms",
+                embedding_time_ms AS "embedding_time_ms",
+                oracle_time_ms AS "oracle_time_ms",
+                similarity_score AS "similarity_score",
+                result_count AS "result_count",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
             FROM search_metrics
             WHERE query_id = :query_id
             ORDER BY created_at DESC
@@ -111,13 +111,13 @@ class MetricsService(SQLSpecService):
         result = await self.driver.select_one_or_none(
             """
             SELECT
-                COUNT(id) as total_searches,
-                AVG(search_time_ms) as avg_search_time,
-                AVG(embedding_time_ms) as avg_embedding_time,
-                AVG(oracle_time_ms) as avg_oracle_time,
-                AVG(similarity_score) as avg_similarity,
-                MAX(search_time_ms) as max_search_time,
-                MIN(search_time_ms) as min_search_time
+                COUNT(id) AS "total_searches",
+                AVG(search_time_ms) AS "avg_search_time",
+                AVG(embedding_time_ms) AS "avg_embedding_time",
+                AVG(oracle_time_ms) AS "avg_oracle_time",
+                AVG(similarity_score) AS "avg_similarity",
+                MAX(search_time_ms) AS "max_search_time",
+                MIN(search_time_ms) AS "min_search_time"
             FROM search_metrics
             WHERE created_at > :since
             """,
@@ -153,15 +153,15 @@ class MetricsService(SQLSpecService):
         results = await self.driver.select(
             """
             SELECT
-                TO_CHAR(created_at, 'HH24:MI') as time_bucket,
-                AVG(search_time_ms) as avg_total,
-                AVG(oracle_time_ms) as avg_oracle,
-                AVG(embedding_time_ms) as avg_embedding,
-                COUNT(*) as request_count
+                TO_CHAR(created_at, 'HH24:MI') AS "time_bucket",
+                AVG(search_time_ms) AS "avg_total",
+                AVG(oracle_time_ms) AS "avg_oracle",
+                AVG(embedding_time_ms) AS "avg_embedding",
+                COUNT(*) AS "request_count"
             FROM search_metrics
             WHERE created_at > :since_time
             GROUP BY TO_CHAR(created_at, 'HH24:MI')
-            ORDER BY time_bucket
+            ORDER BY "time_bucket"
             """,
             since_time=since_time,
         )
@@ -191,9 +191,9 @@ class MetricsService(SQLSpecService):
         results = await self.driver.select(
             """
             SELECT
-                similarity_score,
-                oracle_time_ms,
-                search_time_ms
+                similarity_score AS "similarity_score",
+                oracle_time_ms AS "oracle_time_ms",
+                search_time_ms AS "search_time_ms"
             FROM search_metrics
             WHERE created_at > :since_time
             AND similarity_score IS NOT NULL
@@ -243,15 +243,15 @@ class MetricsService(SQLSpecService):
         result = await self.driver.select_one_or_none(
             """
             SELECT
-                id,
-                query_id,
-                user_id,
-                search_time_ms,
-                embedding_time_ms,
-                oracle_time_ms,
-                similarity_score,
-                result_count,
-                created_at
+                id AS "id",
+                query_id AS "query_id",
+                user_id AS "user_id",
+                search_time_ms AS "search_time_ms",
+                embedding_time_ms AS "embedding_time_ms",
+                oracle_time_ms AS "oracle_time_ms",
+                similarity_score AS "similarity_score",
+                result_count AS "result_count",
+                created_at AS "created_at"
             FROM search_metrics
             WHERE query_id = :query_id
             ORDER BY created_at DESC

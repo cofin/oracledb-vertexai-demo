@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, overload
 
 import structlog
 from google import genai
+from google.auth import default as google_auth_default
 
 from app.lib.settings import get_settings
 from app.services.cache import CacheService
@@ -41,8 +42,19 @@ class VertexAIService:
                 project=self.settings.vertex_ai.PROJECT_ID,
                 location=self.settings.vertex_ai.LOCATION,
             )
-            # Initialize Google GenAI client
-            self._genai_client = genai.Client()
+            credentials, _ = google_auth_default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+
+            if self.settings.vertex_ai.API_KEY:
+                logger.warning(
+                    "API key provided but Vertex AI requires ADC/service account credentials; ignoring api_key",
+                )
+
+            self._genai_client = genai.Client(
+                vertexai=True,
+                project=self.settings.vertex_ai.PROJECT_ID,
+                location=self.settings.vertex_ai.LOCATION,
+                credentials=credentials,
+            )
             logger.info(
                 "Vertex AI initialized",
                 project=self.settings.vertex_ai.PROJECT_ID,
@@ -51,8 +63,13 @@ class VertexAIService:
                 chat_model=self.settings.vertex_ai.CHAT_MODEL,
             )
         else:
-            self._genai_client = None
-            logger.warning("Vertex AI not initialized: PROJECT_ID not configured")
+            api_key = self.settings.vertex_ai.API_KEY
+            if api_key:
+                self._genai_client = genai.Client(api_key=api_key)
+                logger.info("Google AI client initialized using API key")
+            else:
+                self._genai_client = None
+                logger.warning("Vertex AI not initialized: PROJECT_ID not configured and no API key provided")
 
     async def _get_batch_text_embeddings(self, texts: list[str], model_name: str) -> list[list[float]]:
         """Handle batch embedding generation with rate limiting."""
@@ -358,8 +375,11 @@ class OracleVectorSearchService:
             # Execute search using SQLSpec driver - automatic vector conversion
             products = await self.products_service.driver.select(
                 """
-                SELECT p.id, p.name, p.description,
-                       VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) as distance
+                SELECT
+                    p.id AS "id",
+                    p.name AS "name",
+                    p.description AS "description",
+                    VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS "distance"
                 FROM product p
                 WHERE p.embedding IS NOT NULL
                 ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)

@@ -17,7 +17,7 @@ dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp",
-    "sqlspec[adk,oracledb,performance,mypyc] @ git+https://github.com/litestar-org/sqlspec.git@feat/hybrid-versioning",
+    "sqlspec[adk,oracledb,performance,mypyc]",
     "python-dotenv",
     "google-cloud-aiplatform",
     "google-genai",
@@ -48,9 +48,6 @@ allow-direct-references = true
 dev-mode-dirs = ["./"]
 include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini"]
 packages = ["app"]
-
-[tool.uv.sources]
-sqlspec = { path = "../../litestar/sqlspec", editable = true }
 
 [dependency-groups]
 build = ["bump-my-version"]
