@@ -299,7 +299,7 @@ Solution:
    - Use strong passwords (16+ characters)
    - Enable mTLS if available
    - Audit database access logs
-   - Use _high service for production (dedicated resources)
+   - Use \_high service for production (dedicated resources)
 
 4. **Network Security**
    - Configure firewall rules appropriately
@@ -337,9 +337,9 @@ DATABASE_POOL_RECYCLE=300
 
 Choose service based on workload:
 
-- **_high**: Maximum performance, use for production with high concurrency
-- **_medium**: Balanced, use for general production workloads
-- **_low**: Cost-optimized, use for development/testing
+- **\_high**: Maximum performance, use for production with high concurrency
+- **\_medium**: Balanced, use for general production workloads
+- **\_low**: Cost-optimized, use for development/testing
 
 ## Monitoring and Maintenance
 

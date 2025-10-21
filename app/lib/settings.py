@@ -159,7 +159,6 @@ class DatabaseSettings:
                 },
                 "litestar": {
                     "session_table": "app_session",
-                    "commit_mode": "autocommit",
                 },
             },
         )

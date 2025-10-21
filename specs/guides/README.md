@@ -47,37 +47,37 @@ Optimize database and application performance:
 
 ### Migration & Deployment (NEW)
 
-| Guide | Description | Key Topics |
-|-------|-------------|------------|
-| **[SQLSpec Migration](../../MIGRATION.md)** ✅ | Complete migration from litestar-oracledb | Before/after, breaking changes, benefits, 40% code reduction |
-| **[Deployment Guide](../../DEPLOYMENT.md)** ✅ | All deployment modes (local + autonomous) | Setup, environment vars, troubleshooting, running app |
-| **[Autonomous Database Setup](./autonomous-database-setup.md)** | Oracle Autonomous on GCP | Wallet config, interactive wizard, security, tuning |
-| **[Manage CLI Guide](./manage-cli-guide.md)** ✨ NEW | Unified DevOps CLI (manage.py) | init, install, doctor, database, wallet, status commands |
-| **[SQLcl Usage Guide](./sqlcl-usage-guide.md)** ✨ NEW | Oracle SQLcl command-line + MCP | Traditional CLI, MCP server mode, AI-powered operations |
-| **[Gemini MCP Integration](./gemini-mcp-integration.md)** ✨ NEW | AI-powered database interactions | SQLcl MCP, Sequential Thinking, Context7, natural language queries |
-| **[Oracle Deployment Tools](./oracle-deployment-tools.md)** | Low-level deployment utilities | Container management, wallet config, SQLcl install |
+| Guide                                                            | Description                               | Key Topics                                                         |
+| ---------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| **[SQLSpec Migration](../../MIGRATION.md)** ✅                   | Complete migration from litestar-oracledb | Before/after, breaking changes, benefits, 40% code reduction       |
+| **[Deployment Guide](../../DEPLOYMENT.md)** ✅                   | All deployment modes (local + autonomous) | Setup, environment vars, troubleshooting, running app              |
+| **[Autonomous Database Setup](./autonomous-database-setup.md)**  | Oracle Autonomous on GCP                  | Wallet config, interactive wizard, security, tuning                |
+| **[Manage CLI Guide](./manage-cli-guide.md)** ✨ NEW             | Unified DevOps CLI (manage.py)            | init, install, doctor, database, wallet, status commands           |
+| **[SQLcl Usage Guide](./sqlcl-usage-guide.md)** ✨ NEW           | Oracle SQLcl command-line + MCP           | Traditional CLI, MCP server mode, AI-powered operations            |
+| **[Gemini MCP Integration](./gemini-mcp-integration.md)** ✨ NEW | AI-powered database interactions          | SQLcl MCP, Sequential Thinking, Context7, natural language queries |
+| **[Oracle Deployment Tools](./oracle-deployment-tools.md)**      | Low-level deployment utilities            | Container management, wallet config, SQLcl install                 |
 
 ### Database & AI
 
-| Guide | Description | Key Topics |
-|-------|-------------|------------|
-| **[SQLSpec Patterns](./sqlspec-patterns.md)** ✅ | Modern database patterns with SQLSpec | Service classes, sessions, parameter binding, Oracle features |
-| **[Oracle Vector Search](./oracle-vector-search.md)** | Oracle 23ai native vector capabilities | VECTOR type, HNSW/IVFFlat indexes, similarity functions, python-oracledb |
-| **[Oracle JSON](./oracle-json.md)** | JSON Relational Duality features | JSON columns, constraints, duality views, performance |
-| **[Oracle Performance](./oracle-performance.md)** | Database tuning and optimization | Memory parameters, vectorization, index strategies |
-| **[Vertex AI Integration](./vertex-ai-integration.md)** | Google AI services integration | text-embedding-004, Gemini 2.0, caching, error handling |
+| Guide                                                   | Description                            | Key Topics                                                               |
+| ------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
+| **[SQLSpec Patterns](./sqlspec-patterns.md)** ✅        | Modern database patterns with SQLSpec  | Service classes, sessions, parameter binding, Oracle features            |
+| **[Oracle Vector Search](./oracle-vector-search.md)**   | Oracle 23ai native vector capabilities | VECTOR type, HNSW/IVFFlat indexes, similarity functions, python-oracledb |
+| **[Oracle JSON](./oracle-json.md)**                     | JSON Relational Duality features       | JSON columns, constraints, duality views, performance                    |
+| **[Oracle Performance](./oracle-performance.md)**       | Database tuning and optimization       | Memory parameters, vectorization, index strategies                       |
+| **[Vertex AI Integration](./vertex-ai-integration.md)** | Google AI services integration         | text-embedding-004, Gemini 2.0, caching, error handling                  |
 
 ### Application Framework
 
-| Guide | Description | Key Topics |
-|-------|-------------|------------|
-| **[Litestar Framework](./litestar-framework.md)** | Async Python web framework patterns | Routing, dependency injection, HTMX, sessions, plugins |
-| **[ADK Agent Patterns](./adk-agent-patterns.md)** | Google ADK orchestration | LlmAgent, tools, multi-agent coordination, session management |
+| Guide                                             | Description                         | Key Topics                                                    |
+| ------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
+| **[Litestar Framework](./litestar-framework.md)** | Async Python web framework patterns | Routing, dependency injection, HTMX, sessions, plugins        |
+| **[ADK Agent Patterns](./adk-agent-patterns.md)** | Google ADK orchestration            | LlmAgent, tools, multi-agent coordination, session management |
 
 ### Architecture & Design
 
-| Guide | Description | Key Topics |
-|-------|-------------|------------|
+| Guide                                 | Description           | Key Topics                                                |
+| ------------------------------------- | --------------------- | --------------------------------------------------------- |
 | **[Architecture](./architecture.md)** | Overall system design | Component interaction, data flow, deployment architecture |
 
 ---
@@ -114,11 +114,11 @@ Use absolute paths from repo root when referencing guides:
 
 ### Agent Assignments
 
-| Agent | Scope | Primary Guides |
-|-------|-------|----------------|
-| **backend-expert** | Oracle, Vertex AI, ADK, SQLSpec, caching | oracle-vector-search.md, oracle-json.md, oracle-performance.md, vertex-ai-integration.md, adk-agent-patterns.md, sqlspec-patterns.md |
-| **frontend-expert** | Litestar, HTMX, routing, sessions, templates | litestar-framework.md |
-| **planner** | Task planning, parallel work coordination | architecture.md, oracle-vector-search.md, litestar-framework.md |
+| Agent               | Scope                                        | Primary Guides                                                                                                                       |
+| ------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **backend-expert**  | Oracle, Vertex AI, ADK, SQLSpec, caching     | oracle-vector-search.md, oracle-json.md, oracle-performance.md, vertex-ai-integration.md, adk-agent-patterns.md, sqlspec-patterns.md |
+| **frontend-expert** | Litestar, HTMX, routing, sessions, templates | litestar-framework.md                                                                                                                |
+| **planner**         | Task planning, parallel work coordination    | architecture.md, oracle-vector-search.md, litestar-framework.md                                                                      |
 
 ---
 
@@ -142,24 +142,31 @@ Each guide follows a consistent format:
 > Context, Audience, Last Updated
 
 ## Quick Reference
+
 [Tables with key information for fast lookup]
 
 ## Table of Contents
+
 [Detailed sections]
 
 ## Core Concepts
+
 [Fundamentals explained clearly]
 
 ## Implementation Patterns
+
 [Practical patterns with code]
 
 ## Code Examples
+
 [Real, working code from the project]
 
 ## Troubleshooting
+
 [Common issues and solutions]
 
 ## References
+
 [Links to external docs]
 ```
 

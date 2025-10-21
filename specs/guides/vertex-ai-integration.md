@@ -25,6 +25,7 @@ Comprehensive guide to integrating Google Vertex AI with Oracle Database 23ai us
 This application uses **modern Google GenAI SDK patterns** with the Google Agent Development Kit (ADK) for sophisticated agent orchestration:
 
 **Key Components**:
+
 - **google.genai SDK**: Modern async SDK for Vertex AI services
 - **Google ADK Runner**: Production-ready agent orchestration framework
 - **OracleAsyncADKStore**: SQLSpec adapter for persisting ADK sessions/events
@@ -32,6 +33,7 @@ This application uses **modern Google GenAI SDK patterns** with the Google Agent
 - **Oracle Vector Search**: Native VECTOR type for storing embeddings
 
 **Architecture Flow**:
+
 ```
 User Query
     ↓
@@ -57,6 +59,7 @@ User
 ```
 
 **This Guide Uses 2025 Modern Patterns**:
+
 - ✅ `google.genai` SDK (NOT `google-generativeai`)
 - ✅ `genai.Client()` with async patterns
 - ✅ `embed_content()` method (NOT `create_embedding()`)
@@ -67,14 +70,14 @@ User
 
 ## Quick Reference
 
-| Operation | Code | Notes |
-|-----------|------|-------|
-| Initialize SDK | `genai.Client()` | Async client for all operations |
-| Embed content | `client.aio.models.embed_content(model=MODEL, contents=text)` | Returns `EmbedContentResponse` |
-| Get vector | `response.embeddings[0].values` | List of float values |
-| Generate content | `client.aio.models.generate_content_stream(model=MODEL, contents=messages)` | Async streaming |
-| ADK Runner | `Runner(agent=Agent, session_service=service)` | Orchestrates agents |
-| ADK Session | `SQLSpecSessionService(OracleAsyncADKStore(config))` | Persists to Oracle |
+| Operation        | Code                                                                        | Notes                           |
+| ---------------- | --------------------------------------------------------------------------- | ------------------------------- |
+| Initialize SDK   | `genai.Client()`                                                            | Async client for all operations |
+| Embed content    | `client.aio.models.embed_content(model=MODEL, contents=text)`               | Returns `EmbedContentResponse`  |
+| Get vector       | `response.embeddings[0].values`                                             | List of float values            |
+| Generate content | `client.aio.models.generate_content_stream(model=MODEL, contents=messages)` | Async streaming                 |
+| ADK Runner       | `Runner(agent=Agent, session_service=service)`                              | Orchestrates agents             |
+| ADK Session      | `SQLSpecSessionService(OracleAsyncADKStore(config))`                        | Persists to Oracle              |
 
 ## SDK Setup
 
@@ -92,6 +95,7 @@ pip install "sqlspec[adk,oracledb]"
 ```
 
 **Package includes**:
+
 - Modern `google.genai` client
 - Google ADK framework (Runner, LlmAgent, tools)
 - SQLSpec ADK adapter (OracleAsyncADKStore)
@@ -114,12 +118,14 @@ client = genai.Client()
 ```
 
 **Location Options**:
+
 - `us-central1`: US (Iowa)
 - `us-east4`: US (Virginia)
 - `europe-west4`: Europe (Netherlands)
 - `asia-southeast1`: Asia (Singapore)
 
 **Best Practice**: Store configuration in settings:
+
 ```python
 # app/lib/settings.py
 class VertexAISettings:
@@ -171,6 +177,7 @@ aiplatform.init(project=PROJECT_ID, location=LOCATION)
 ### Model Overview
 
 **text-embedding-004** features:
+
 - **768-dimensional vectors** (standard)
 - **Task-type optimization**: RETRIEVAL_QUERY vs RETRIEVAL_DOCUMENT
 - **Async API** via `genai.Client()`
@@ -215,6 +222,7 @@ embeddings = [list(emb.values) for emb in response.embeddings]
 ```
 
 **Batch Size Guidelines**:
+
 - Recommended: 5-20 texts per request (rate limiting)
 - Use delays between batches for large datasets
 
@@ -250,10 +258,10 @@ await driver.insert(
 
 **Gemini Model Options**:
 
-| Model | Use Case | Context | Speed |
-|-------|----------|---------|-------|
-| `gemini-2.5-pro` | Complex reasoning | 1M tokens | Slower |
-| `gemini-2.5-flash` | Fast responses | 32K tokens | Fast |
+| Model              | Use Case          | Context    | Speed  |
+| ------------------ | ----------------- | ---------- | ------ |
+| `gemini-2.5-pro`   | Complex reasoning | 1M tokens  | Slower |
+| `gemini-2.5-flash` | Fast responses    | 32K tokens | Fast   |
 
 **Recommendation**: Use `gemini-2.5-flash` for product recommendations
 
@@ -304,6 +312,7 @@ async for chunk in await client.aio.models.generate_content_stream(
 ```
 
 **Parameter Guidelines**:
+
 - **temperature**:
   - `0.0-0.3`: Factual, deterministic
   - `0.4-0.7`: Balanced (recommended)
@@ -348,6 +357,7 @@ events = runner.run_async(
 ADK sessions and events are persisted to Oracle via SQLSpec:
 
 **Database Tables** (created by SQLSpec ADK extension):
+
 - `adk_sessions`: Session metadata and state
 - `adk_events`: Event history for each session
 
@@ -612,6 +622,7 @@ class CacheService:
 ```
 
 **Cache Table Schema**:
+
 ```sql
 CREATE TABLE embedding_cache (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -705,11 +716,13 @@ async def batch_embed_products(
 ### Issue: Authentication Failed
 
 **Symptom**:
+
 ```
 google.auth.exceptions.DefaultCredentialsError: Could not automatically determine credentials
 ```
 
 **Solution**:
+
 ```bash
 # Set up Application Default Credentials
 gcloud auth application-default login
@@ -721,11 +734,13 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/key.json"
 ### Issue: Rate Limit Errors
 
 **Symptom**:
+
 ```
 google.genai.errors.ServerError: 503 Service Unavailable
 ```
 
 **Solutions**:
+
 1. Implement exponential backoff retry
 2. Reduce batch size (use 5 instead of 20)
 3. Add delays between requests
@@ -736,6 +751,7 @@ google.genai.errors.ServerError: 503 Service Unavailable
 **Symptom**: Embeddings taking >500ms per request
 
 **Solutions**:
+
 1. **Use batch embeddings** (5-20 texts per request)
 2. **Enable caching** for repeated queries
 3. **Choose correct region** (minimize latency)
@@ -757,6 +773,7 @@ google.genai.errors.ServerError: 503 Service Unavailable
 ## Changelog
 
 ### 2025-10-10
+
 - Updated to reflect modern `google.genai` SDK (NOT `google-generativeai`)
 - Added Google ADK Runner architecture
 - Added OracleAsyncADKStore for session persistence
@@ -766,4 +783,5 @@ google.genai.errors.ServerError: 503 Service Unavailable
 - Updated method names: `get_text_embedding()`, `generate_content_stream()`
 
 ### 2025-01-15
+
 - Initial version with Vertex AI SDK patterns

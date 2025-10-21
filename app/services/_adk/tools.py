@@ -13,7 +13,7 @@ from typing import Any, cast
 
 from dishka import AsyncContainer
 
-from app.services.adk.tool_service import AgentToolsService
+from app.services._adk.tool_service import AgentToolsService
 from app.utils.serialization import from_json
 
 # Global container reference set by the application
@@ -26,7 +26,7 @@ def set_app_container(container: AsyncContainer) -> None:
     This should be called during application startup to provide
     the container to tool functions.
     """
-    global _app_container
+    global _app_container  # noqa: PLW0603
     _app_container = container
 
 
@@ -101,7 +101,11 @@ async def record_search_metric(
     async with container() as request_container:
         tools_service = await request_container.get(AgentToolsService)
 
-        # Decode JSON string to list using SQLSpec's from_json utility
+        from app.lib.context import QueryContext
+
+        query_context = await request_container.get(QueryContext | None)
+        query_id = query_context.query_id if query_context else None
+
         vector_results = from_json(vector_results_json) if vector_results_json else []
 
         return await tools_service.record_search_metric(
@@ -111,6 +115,7 @@ async def record_search_metric(
             vector_results=vector_results,
             total_response_time_ms=int(response_time_ms),
             vector_search_time_ms=vector_search_time_ms,
+            query_id=query_id,
         )
 
 

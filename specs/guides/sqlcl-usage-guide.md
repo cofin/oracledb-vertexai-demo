@@ -21,7 +21,7 @@ Complete guide to using Oracle SQLcl for database operations, including traditio
 
 Oracle SQLcl (SQL Command Line) is Oracle's modern command-line interface for working with Oracle Database. It provides:
 
-- **Traditional CLI**: All SQL*Plus functionality plus modern enhancements
+- **Traditional CLI**: All SQL\*Plus functionality plus modern enhancements
 - **MCP Server Mode**: AI-powered natural language database interactions
 - **Advanced Features**: Formatting, scripting, database management
 
@@ -401,31 +401,31 @@ The key to successful interaction with the `sqlcl` MCP server is to use clear, s
 
 **Good Prompts:**
 
-*   "Show me a summary of the database schemas and the number of tables in each."
-*   "List the first 10 products and the total number of products."
-*   "Describe the schema of the 'products' table."
-*   "What are the constraints on the 'orders' table?"
-*   "Generate a sales report for the last 7 days, grouped by product category."
+- "Show me a summary of the database schemas and the number of tables in each."
+- "List the first 10 products and the total number of products."
+- "Describe the schema of the 'products' table."
+- "What are the constraints on the 'orders' table?"
+- "Generate a sales report for the last 7 days, grouped by product category."
 
 **Bad Prompts (to avoid):**
 
-*   "Show me the database." (Too broad, could return a huge amount of data)
-*   "Analyze the data." (Too vague, the agent might get into a loop of running different queries)
-*   "Fix the database." (Too open-ended, could lead to unintended DDL/DML operations)
+- "Show me the database." (Too broad, could return a huge amount of data)
+- "Analyze the data." (Too vague, the agent might get into a loop of running different queries)
+- "Fix the database." (Too open-ended, could lead to unintended DDL/DML operations)
 
 #### Tool Selection Guide
 
 The `sqlcl` MCP server provides a variety of tools. Agents should be guided to use the most appropriate tool for the task at hand.
 
-*   **For schema exploration:** Use the `DESCRIBE` command or ask for the schema of a specific table. This is much more efficient than running `SELECT *` and trying to infer the schema from the data.
-*   **For data retrieval:** Be specific in your `SELECT` statements. Use `WHERE` clauses to filter the data and `LIMIT` (or `FETCH FIRST N ROWS ONLY` in Oracle) to limit the number of rows returned.
-*   **For data modification (DML):** Always include a `WHERE` clause in your `UPDATE` and `DELETE` statements to avoid modifying more data than intended.
-*   **For schema modification (DDL):** Be very careful with `CREATE`, `ALTER`, and `DROP` statements. These should ideally be reviewed by a human before execution.
+- **For schema exploration:** Use the `DESCRIBE` command or ask for the schema of a specific table. This is much more efficient than running `SELECT *` and trying to infer the schema from the data.
+- **For data retrieval:** Be specific in your `SELECT` statements. Use `WHERE` clauses to filter the data and `LIMIT` (or `FETCH FIRST N ROWS ONLY` in Oracle) to limit the number of rows returned.
+- **For data modification (DML):** Always include a `WHERE` clause in your `UPDATE` and `DELETE` statements to avoid modifying more data than intended.
+- **For schema modification (DDL):** Be very careful with `CREATE`, `ALTER`, and `DROP` statements. These should ideally be reviewed by a human before execution.
 
 #### Avoiding Common Pitfalls
 
-*   **Loops:** Loops often occur when the agent is given a vague goal and tries to achieve it by repeatedly running the same or similar queries. To avoid this, provide the agent with clear, specific instructions and encourage it to ask clarifying questions if it's unsure how to proceed.
-*   **Data Overload:** To avoid being overwhelmed with data, always ask for summarized or paginated results. For example, ask for the `COUNT(*)` of a table before asking for the data itself.
+- **Loops:** Loops often occur when the agent is given a vague goal and tries to achieve it by repeatedly running the same or similar queries. To avoid this, provide the agent with clear, specific instructions and encourage it to ask clarifying questions if it's unsure how to proceed.
+- **Data Overload:** To avoid being overwhelmed with data, always ask for summarized or paginated results. For example, ask for the `COUNT(*)` of a table before asking for the data itself.
 
 #### Caching Strategies
 
@@ -485,9 +485,9 @@ The database will automatically cache the result of this query. The next time th
 
 **When to use Oracle Result Cache:**
 
-*   For queries that are executed frequently.
-*   For queries that access data that doesn't change often.
-*   For queries that are complex and time-consuming to execute.
+- For queries that are executed frequently.
+- For queries that access data that doesn't change often.
+- For queries that are complex and time-consuming to execute.
 
 By combining smart prompting, appropriate tool selection, and caching, you can build powerful and efficient AI agents that can safely and effectively interact with your Oracle database through the `sqlcl` MCP server.
 
@@ -834,17 +834,17 @@ cat ~/.gemini/settings.json
 
 ### Essential Commands
 
-| Command | Purpose |
-|---------|---------|
-| `CONNECT` | Connect to database |
-| `DESC` | Describe table structure |
-| `TABLES` | List all tables |
-| `DDL` | Generate DDL for objects |
-| `INFO` | Show database info |
-| `HISTORY` | Show command history |
-| `SPOOL` | Save output to file |
-| `SET SQLFORMAT` | Change output format |
-| `ALIAS` | Create command shortcuts |
+| Command         | Purpose                  |
+| --------------- | ------------------------ |
+| `CONNECT`       | Connect to database      |
+| `DESC`          | Describe table structure |
+| `TABLES`        | List all tables          |
+| `DDL`           | Generate DDL for objects |
+| `INFO`          | Show database info       |
+| `HISTORY`       | Show command history     |
+| `SPOOL`         | Save output to file      |
+| `SET SQLFORMAT` | Change output format     |
+| `ALIAS`         | Create command shortcuts |
 
 ### Connection String Formats
 

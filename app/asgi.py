@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.services.adk.monkey_patches import apply_genai_client_patch
+from app.services._adk.monkey_patches import apply_genai_client_patch
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -36,7 +36,7 @@ def create_app() -> Litestar:
 
     from app.lib.di import setup_dishka
     from app.lib.settings import get_settings
-    from app.server import plugins
+    from app.server.core import ApplicationCore
     from app.server.providers import ADKProvider, CoreServiceProvider, SQLSpecProvider
 
     settings = get_settings()
@@ -49,7 +49,7 @@ def create_app() -> Litestar:
     )
 
     # Make container available to ADK tools
-    from app.services.adk.tools import set_app_container
+    from app.services._adk.tools import set_app_container
 
     set_app_container(container)
 
@@ -60,9 +60,10 @@ def create_app() -> Litestar:
         await container.close()
 
     # Create app with Dishka integration
+    # Create fresh ApplicationCore instance (don't use plugins.app_config which was created at import time)
     app = Litestar(
         debug=settings.app.DEBUG,
-        plugins=[plugins.app_config],
+        plugins=[ApplicationCore()],
         lifespan=[dishka_lifespan],
     )
 

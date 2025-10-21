@@ -10,7 +10,7 @@ import structlog
 from google import genai
 
 from app.lib.settings import get_settings
-from app.services.cache import CacheService
+from app.services._cache import CacheService
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator

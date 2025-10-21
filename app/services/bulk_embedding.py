@@ -10,8 +10,8 @@ from google.cloud import aiplatform, storage  # type: ignore[attr-defined]
 from google.cloud.aiplatform import BatchPredictionJob
 
 from app.lib.settings import get_settings
-from app.services.product import ProductService
-from app.services.vertex_ai import VertexAIService
+from app.services._product import ProductService
+from app.services._vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 

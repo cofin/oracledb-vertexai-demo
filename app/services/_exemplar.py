@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import structlog
@@ -12,7 +12,7 @@ from app.services.base import SQLSpecService
 if TYPE_CHECKING:
     from sqlspec import AsyncDriverAdapterBase
 
-    from app.services.vertex_ai import VertexAIService
+    from app.services._vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -39,8 +39,8 @@ class ExemplarService(SQLSpecService):
         result: dict[str, list[tuple[str, list[float]]]] = {}
         for row in results:
             # Oracle returns column names in uppercase by default
-            intent = row.get("intent") or row.get("INTENT")
-            phrase = row.get("phrase") or row.get("PHRASE")
+            intent: str = cast("str", row.get("intent"))
+            phrase = cast("str", row.get("phrase"))
             embedding_vector = row.get("embedding")
             if embedding_vector is None:
                 embedding_vector = row.get("EMBEDDING")
@@ -66,13 +66,9 @@ class ExemplarService(SQLSpecService):
 
         result: dict[str, list[list[float]]] = {}
         for row in results:
-            # Oracle returns column names in uppercase by default
-            intent = row.get("intent") or row.get("INTENT")
-            embedding_vector = row.get("embedding")
-            if embedding_vector is None:
-                embedding_vector = row.get("EMBEDDING")
+            intent = cast("str", row.get("intent"))
+            embedding_vector = cast("list[float] | None", row.get("embedding"))
             if embedding_vector is not None:
-                # SQLSpec handles Oracle VECTOR to Python list conversion automatically
                 embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
                 if intent not in result:
                     result[intent] = []
@@ -106,14 +102,11 @@ class ExemplarService(SQLSpecService):
                     embedding = :embedding
             WHEN NOT MATCHED THEN
                 INSERT (intent, phrase, embedding)
-                VALUES (:intent2, :phrase2, :embedding2)
+                VALUES (:intent, :phrase, :embedding)
             """,
             intent=intent,
             phrase=phrase,
             embedding=embedding,
-            intent2=intent,
-            phrase2=phrase,
-            embedding2=embedding,
         )
 
     async def populate_cache(

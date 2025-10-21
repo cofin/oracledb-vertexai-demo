@@ -23,6 +23,7 @@ Comprehensive guide to building async web applications with Litestar framework, 
 **Litestar** is a powerful, flexible ASGI framework for building high-performance Python web applications.
 
 **Key Features**:
+
 - **Async-first**: Built on modern async/await patterns
 - **Type-safe**: Full type annotation support with runtime validation
 - **Dependency Injection**: Powerful DI system with async generators
@@ -31,6 +32,7 @@ Comprehensive guide to building async web applications with Litestar framework, 
 - **Developer Experience**: Excellent IDE support and error messages
 
 **This Application Stack**:
+
 ```
 Browser (HTMX)
     ↓
@@ -43,17 +45,17 @@ Oracle Database 23ai
 
 ## Quick Reference
 
-| Feature | Pattern | Example |
-|---------|---------|---------|
-| Controller | Class with `@get/@post` | `class ProductController(Controller)` |
-| Dependency | Async generator with `yield` | `async def provide_service() -> AsyncGenerator` |
-| Register dependency | `Provide()` in controller | `dependencies = {"service": Provide(provide_service)}` |
-| Route parameter | Function parameter | `async def get_product(product_id: int)` |
-| Request body | `Annotated[Schema, Body(...)]` | Validated request data |
-| HTMX request | `HTMXRequest` parameter | Access HTMX headers |
-| HTMX response | `HTMXTemplate` return | Render partial or full page |
-| Error handling | Raise `HTTPException` | Custom error responses |
-| Startup hook | `on_startup=[func]` | Initialize resources |
+| Feature             | Pattern                        | Example                                                |
+| ------------------- | ------------------------------ | ------------------------------------------------------ |
+| Controller          | Class with `@get/@post`        | `class ProductController(Controller)`                  |
+| Dependency          | Async generator with `yield`   | `async def provide_service() -> AsyncGenerator`        |
+| Register dependency | `Provide()` in controller      | `dependencies = {"service": Provide(provide_service)}` |
+| Route parameter     | Function parameter             | `async def get_product(product_id: int)`               |
+| Request body        | `Annotated[Schema, Body(...)]` | Validated request data                                 |
+| HTMX request        | `HTMXRequest` parameter        | Access HTMX headers                                    |
+| HTMX response       | `HTMXTemplate` return          | Render partial or full page                            |
+| Error handling      | Raise `HTTPException`          | Custom error responses                                 |
+| Startup hook        | `on_startup=[func]`            | Initialize resources                                   |
 
 ## Installation and Setup
 
@@ -169,6 +171,7 @@ provide_metrics_service = create_service_provider(MetricsService)
 ```
 
 **How it works**:
+
 1. Request arrives
 2. Litestar calls `provider()` function
 3. Session is created via `sqlspec.provide_session(db)`
@@ -808,6 +811,7 @@ async def create_product() -> Product: ...
 **Symptom**: `TypeError: missing required argument: 'product_service'`
 
 **Solution**:
+
 ```python
 # Register dependency in controller
 class MyController(Controller):
@@ -825,6 +829,7 @@ class MyController(Controller):
 **Symptom**: Database connections not released
 
 **Solution**: Always use async context manager:
+
 ```python
 async def provide_service() -> AsyncGenerator[Service, None]:
     async with sqlspec.provide_session(db) as session:
@@ -836,6 +841,7 @@ async def provide_service() -> AsyncGenerator[Service, None]:
 **Symptom**: HTMX doesn't update page
 
 **Solution**: Ensure template path is correct:
+
 ```python
 return HTMXTemplate(
     template_name="partials/response.html",  # Check file exists

@@ -19,11 +19,13 @@ Invoke the Expert agent to implement features following Oracle 23ai, Vertex AI, 
 ## Usage Examples
 
 ### Gemini
+
 ```
 /prompt implement vector-search-caching
 ```
 
 ### Claude Code
+
 ```python
 Task(
     subagent_type="expert",
@@ -33,6 +35,7 @@ Task(
 ```
 
 ### Codex
+
 ```
 /invoke expert vector-search-caching
 ```
@@ -88,6 +91,7 @@ The Expert follows this research priority:
 ## After Implementation
 
 Next steps:
+
 - **Test**: `/prompt test {slug}` (Gemini) or invoke Testing agent
 - Expert will hand off to Testing agent
 - Tests must pass before documentation

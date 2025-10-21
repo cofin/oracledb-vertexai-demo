@@ -36,6 +36,7 @@ specs/
 ## What Gets Committed vs Gitignored
 
 ### ✅ Committed to Git
+
 - `specs/guides/` - Technical documentation
 - `specs/agents/` - Agent configurations
 - `specs/workflows/` - Workflow definitions
@@ -44,6 +45,7 @@ specs/
 - `specs/README.md` - This documentation
 
 ### 🚫 Gitignored
+
 - `specs/active/` - Active work (in progress)
 - `specs/archive/` - Completed work
 - `.gemini/` - Gemini-specific invocation layer
@@ -107,12 +109,14 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
 **Purpose**: Strategic planning, PRD creation, task breakdown
 
 **Tools**:
+
 - `mcp__zen__planner` - Multi-step planning
 - `mcp__zen__consensus` - Multi-model decisions
 - `mcp__zen__chat` - Brainstorming
 - WebSearch - Research best practices
 
 **Output**:
+
 - Comprehensive PRD
 - Phase-by-phase tasks
 - Recovery guide
@@ -125,6 +129,7 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
 **Purpose**: Implementation with deep Oracle, Vertex AI, ADK expertise
 
 **Tools**:
+
 - `mcp__zen__thinkdeep` - Deep analysis
 - `mcp__zen__debug` - Systematic debugging
 - `mcp__zen__analyze` - Code analysis
@@ -133,6 +138,7 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
 - WebSearch - Latest updates
 
 **Enforces**:
+
 - ✅ Proper type hints
 - ✅ SQLSpec patterns
 - ✅ Oracle `:name` binding
@@ -147,11 +153,13 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
 **Purpose**: Comprehensive test creation for pytest
 
 **Tools**:
+
 - `mcp__zen__debug` - Debug test failures
 - `mcp__zen__chat` - Brainstorm scenarios
 - WebSearch - Testing best practices
 
 **Creates**:
+
 - Unit tests (tests/unit/)
 - Integration tests (tests/integration/)
 - API tests (tests/api/)
@@ -165,6 +173,7 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
 **Purpose**: Quality gate, documentation, MANDATORY cleanup
 
 **Phases**:
+
 1. **Quality Gate** ⛔ BLOCKING
    - Validate all acceptance criteria
    - Run tests and linting
@@ -262,7 +271,9 @@ All agents follow this priority:
 ## Key Patterns
 
 ### SQLSpec Service Pattern
+
 Services wrap SQLSpec driver for database operations:
+
 ```python
 class ProductService(SQLSpecService):
     async def search(self, query: str):
@@ -273,7 +284,9 @@ class ProductService(SQLSpecService):
 ```
 
 ### Oracle Vector Search
+
 VECTOR(768, FLOAT32), HNSW indexes, VECTOR_DISTANCE(COSINE):
+
 ```sql
 SELECT id, name,
        VECTOR_DISTANCE(embedding, :query_vec, COSINE) as similarity
@@ -283,7 +296,9 @@ FETCH FIRST 10 ROWS ONLY
 ```
 
 ### Vertex AI Integration
+
 text-embedding-005 (768 dimensions), gemini-2.5-flash-002:
+
 ```python
 embedding = await vertex_ai.embed_text(
     text="coffee products",
@@ -292,7 +307,9 @@ embedding = await vertex_ai.embed_text(
 ```
 
 ### ADK Tool Patterns
+
 Tool wrappers call service classes:
+
 ```python
 @tool
 async def search_products(query: str, service: ProductService):
@@ -302,6 +319,7 @@ async def search_products(query: str, service: ProductService):
 ## Code Quality Standards
 
 ### ✅ ALWAYS DO
+
 - Proper type hints on all functions
 - SQLSpec patterns: Service wraps driver
 - Oracle binding: Use `:name` parameter binding
@@ -311,6 +329,7 @@ async def search_products(query: str, service: ProductService):
 - Async patterns: Use async/await consistently
 
 ### ❌ NEVER DO
+
 - Defensive coding: `hasattr`, `getattr` checks
 - Workaround naming: `_optimized`, `_with_cache`, `_fallback`
 - Nested imports (except TYPE_CHECKING)
@@ -321,10 +340,12 @@ See [CLAUDE.md](../CLAUDE.md) for complete standards.
 ## MCP Tools Available
 
 ### Context7 (Library Documentation)
+
 - `mcp__context7__resolve-library-id` - Find library IDs
 - `mcp__context7__get-library-docs` - Get up-to-date documentation
 
 ### Zen (Analysis & Planning)
+
 - `mcp__zen__planner` - Multi-step planning
 - `mcp__zen__consensus` - Multi-model decisions
 - `mcp__zen__thinkdeep` - Deep analysis
@@ -333,6 +354,7 @@ See [CLAUDE.md](../CLAUDE.md) for complete standards.
 - `mcp__zen__chat` - Brainstorming
 
 ### SQLcl (Oracle Operations)
+
 - Execute SQL queries
 - Validate Oracle syntax
 - Check schema structures
@@ -363,6 +385,7 @@ All AI-specific directories are gitignored. The single source of truth is specs/
 ## Gemini-First Project
 
 This project is **Gemini-first**:
+
 - Primary AI: Google Gemini (via `gemini` CLI or API)
 - MCP tools optimized for Gemini integration
 - Vertex AI native integration

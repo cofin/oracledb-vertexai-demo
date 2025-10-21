@@ -40,16 +40,16 @@ Oracle Database 23ai provides native JSON support with:
 
 ## Quick Reference
 
-| Operation | SQL Syntax | Python Example |
-|-----------|------------|----------------|
-| Store JSON | `INSERT INTO products (metadata) VALUES ('{"color": "blue"}')` | `cursor.execute("INSERT INTO products (metadata) VALUES (:1)", [json.dumps(data)])` |
-| Extract scalar | `SELECT JSON_VALUE(metadata, '$.color') FROM products` | `cursor.execute("SELECT JSON_VALUE(metadata, '$.color') FROM products")` |
-| Extract object/array | `SELECT JSON_QUERY(metadata, '$.tags') FROM products` | `cursor.execute("SELECT JSON_QUERY(metadata, '$.tags') FROM products")` |
-| Check existence | `WHERE JSON_EXISTS(metadata, '$.tags[*]?(@.type == "featured")')` | Filter with JSON path expression |
-| Convert to rows | `SELECT jt.* FROM products, JSON_TABLE(metadata, '$' COLUMNS ...)` | Parse JSON in Python or use JSON_TABLE |
-| Duality view | `CREATE JSON RELATIONAL DUALITY VIEW product_dv AS SELECT ...` | Access via REST or SQL |
-| Validate | `metadata JSON` or `CHECK (metadata IS JSON)` | Python validates before insert |
-| Index property | `CREATE INDEX idx_color ON products (JSON_VALUE(metadata, '$.color'))` | Transparent acceleration |
+| Operation            | SQL Syntax                                                             | Python Example                                                                      |
+| -------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Store JSON           | `INSERT INTO products (metadata) VALUES ('{"color": "blue"}')`         | `cursor.execute("INSERT INTO products (metadata) VALUES (:1)", [json.dumps(data)])` |
+| Extract scalar       | `SELECT JSON_VALUE(metadata, '$.color') FROM products`                 | `cursor.execute("SELECT JSON_VALUE(metadata, '$.color') FROM products")`            |
+| Extract object/array | `SELECT JSON_QUERY(metadata, '$.tags') FROM products`                  | `cursor.execute("SELECT JSON_QUERY(metadata, '$.tags') FROM products")`             |
+| Check existence      | `WHERE JSON_EXISTS(metadata, '$.tags[*]?(@.type == "featured")')`      | Filter with JSON path expression                                                    |
+| Convert to rows      | `SELECT jt.* FROM products, JSON_TABLE(metadata, '$' COLUMNS ...)`     | Parse JSON in Python or use JSON_TABLE                                              |
+| Duality view         | `CREATE JSON RELATIONAL DUALITY VIEW product_dv AS SELECT ...`         | Access via REST or SQL                                                              |
+| Validate             | `metadata JSON` or `CHECK (metadata IS JSON)`                          | Python validates before insert                                                      |
+| Index property       | `CREATE INDEX idx_color ON products (JSON_VALUE(metadata, '$.color'))` | Transparent acceleration                                                            |
 
 ## JSON Data Type
 
@@ -107,19 +107,19 @@ VALUES (
 
 ```json
 {
-    "origin": "Ethiopia",
-    "region": "Yirgacheffe",
-    "process": "washed",
-    "altitude": "1900-2200m",
-    "notes": ["floral", "citrus", "tea-like"],
-    "roast_level": "light",
-    "certifications": ["organic", "fair-trade"],
-    "cupping_score": 92,
-    "harvest_date": "2024-11",
-    "available_sizes": [
-        {"size": "12oz", "price": 24.99},
-        {"size": "5lb", "price": 89.99}
-    ]
+  "origin": "Ethiopia",
+  "region": "Yirgacheffe",
+  "process": "washed",
+  "altitude": "1900-2200m",
+  "notes": ["floral", "citrus", "tea-like"],
+  "roast_level": "light",
+  "certifications": ["organic", "fair-trade"],
+  "cupping_score": 92,
+  "harvest_date": "2024-11",
+  "available_sizes": [
+    { "size": "12oz", "price": 24.99 },
+    { "size": "5lb", "price": 89.99 }
+  ]
 }
 ```
 

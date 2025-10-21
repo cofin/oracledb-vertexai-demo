@@ -25,6 +25,7 @@ Comprehensive system architecture for the Cymbal Coffee AI-powered search applic
 - **HTMX**: Server-driven UI with partial page updates
 
 **Core Capabilities**:
+
 1. **Semantic Search**: Natural language product search with vector similarity
 2. **AI Chat**: Conversational product recommendations with Gemini
 3. **RAG (Retrieval-Augmented Generation)**: Context-aware responses with product data
@@ -125,42 +126,43 @@ Comprehensive system architecture for the Cymbal Coffee AI-powered search applic
 
 ### Backend
 
-| Component | Technology | Version | Purpose |
-|-----------|------------|---------|---------|
-| **Language** | Python | 3.12+ | Async/await, type hints |
-| **Web Framework** | Litestar | 2.0+ | ASGI, routing, DI |
-| **Database** | Oracle Database | 23ai | Vector search, JSON, ACID |
-| **DB Driver** | python-oracledb | 2.x | Async driver, connection pooling |
-| **DB Abstraction** | SQLSpec | Latest | Type-safe queries, parameter binding |
-| **AI Platform** | Google Vertex AI | Latest | Embeddings, generation |
-| **AI SDK** | Vertex AI Python SDK | 1.101+ | text-embedding-005, Gemini 2.5 |
-| **Agent Framework** | Google ADK | 1.0+ | LlmAgent orchestration |
-| **Schema Validation** | msgspec | Latest | Fast serialization, validation |
-| **Logging** | structlog | Latest | Structured logging |
+| Component             | Technology           | Version | Purpose                              |
+| --------------------- | -------------------- | ------- | ------------------------------------ |
+| **Language**          | Python               | 3.12+   | Async/await, type hints              |
+| **Web Framework**     | Litestar             | 2.0+    | ASGI, routing, DI                    |
+| **Database**          | Oracle Database      | 23ai    | Vector search, JSON, ACID            |
+| **DB Driver**         | python-oracledb      | 2.x     | Async driver, connection pooling     |
+| **DB Abstraction**    | SQLSpec              | Latest  | Type-safe queries, parameter binding |
+| **AI Platform**       | Google Vertex AI     | Latest  | Embeddings, generation               |
+| **AI SDK**            | Vertex AI Python SDK | 1.101+  | text-embedding-005, Gemini 2.5       |
+| **Agent Framework**   | Google ADK           | 1.0+    | LlmAgent orchestration               |
+| **Schema Validation** | msgspec              | Latest  | Fast serialization, validation       |
+| **Logging**           | structlog            | Latest  | Structured logging                   |
 
 ### Frontend
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Templating** | Jinja2 | HTML template rendering |
-| **Interactivity** | HTMX | Server-driven partial updates |
-| **Styling** | Tailwind CSS | Utility-first CSS |
-| **Icons** | Heroicons | SVG icons |
+| Component         | Technology   | Purpose                       |
+| ----------------- | ------------ | ----------------------------- |
+| **Templating**    | Jinja2       | HTML template rendering       |
+| **Interactivity** | HTMX         | Server-driven partial updates |
+| **Styling**       | Tailwind CSS | Utility-first CSS             |
+| **Icons**         | Heroicons    | SVG icons                     |
 
 ### Infrastructure
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Container Runtime** | Docker | Application containerization |
-| **Orchestration** | Docker Compose | Local development |
-| **Process Manager** | uv | Python package management |
-| **ASGI Server** | Uvicorn | Production ASGI server |
+| Component             | Technology     | Purpose                      |
+| --------------------- | -------------- | ---------------------------- |
+| **Container Runtime** | Docker         | Application containerization |
+| **Orchestration**     | Docker Compose | Local development            |
+| **Process Manager**   | uv             | Python package management    |
+| **ASGI Server**       | Uvicorn        | Production ASGI server       |
 
 ## Component Architecture
 
 ### Web Layer (Litestar)
 
 **Controllers**: Handle HTTP requests, route to services
+
 ```python
 CoffeeChatController
 ├─ show_homepage() → HTMXTemplate
@@ -169,6 +171,7 @@ CoffeeChatController
 ```
 
 **Dependency Injection**: Provide services per-request
+
 ```python
 provide_product_service() → ProductService
 provide_vertex_ai_service() → VertexAIService
@@ -177,35 +180,41 @@ provide_metrics_service() → MetricsService
 ```
 
 **Plugins**:
+
 - `SQLSpecPlugin`: Database session management
 - `HTMXPlugin`: HTMX request/response handling
 
 ### Service Layer
 
 **ProductService** (SQLSpecService):
+
 - CRUD operations for products
 - Vector similarity search
 - Hybrid search (vector + filters)
 - Bulk operations
 
 **VertexAIService**:
+
 - Create embeddings (query vs document)
 - Generate content (Gemini)
 - Stream responses
 - RAG pattern (search + generate)
 
 **OracleVectorSearchService**:
+
 - Coordinate embedding + search
 - Track timing metrics
 - Cache integration
 
 **CacheService** (Embedding + Response):
+
 - Embedding cache: Reduce API calls
 - Response cache: Improve latency
 - TTL management
 - Cache hit/miss tracking
 
 **MetricsService**:
+
 - Record search metrics
 - Dashboard aggregations
 - Performance tracking
@@ -215,6 +224,7 @@ provide_metrics_service() → MetricsService
 **Oracle Database 23ai**:
 
 **product table**:
+
 ```sql
 CREATE TABLE product (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -236,6 +246,7 @@ PARAMETERS ('DISTANCE COSINE, M 16, EF_CONSTRUCTION 64');
 ```
 
 **embedding_cache table**:
+
 ```sql
 CREATE TABLE embedding_cache (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -248,6 +259,7 @@ CREATE TABLE embedding_cache (
 ```
 
 **response_cache table**:
+
 ```sql
 CREATE TABLE response_cache (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -260,6 +272,7 @@ CREATE TABLE response_cache (
 ```
 
 **search_metrics table**:
+
 ```sql
 CREATE TABLE search_metrics (
     id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -366,6 +379,7 @@ Docker Compose
 ```
 
 **docker-compose.yml**:
+
 ```yaml
 services:
   oracle-db:
@@ -397,6 +411,7 @@ volumes:
 ### Production Deployment
 
 **Google Cloud Platform**:
+
 ```
 Cloud Run (Litestar app)
     ↓ private VPC
@@ -412,6 +427,7 @@ Cloud Monitoring (metrics + alerts)
 ```
 
 **Infrastructure as Code** (Terraform):
+
 ```hcl
 resource "google_cloud_run_service" "app" {
   name     = "cymbal-coffee"
@@ -442,11 +458,13 @@ resource "google_cloud_run_service" "app" {
 ### Authentication and Authorization
 
 **Application Authentication**:
+
 - Service account for Vertex AI
 - IAM roles for Google Cloud resources
 - Environment variables for sensitive config
 
 **Database Security**:
+
 - Connection pooling with credentials
 - Encrypted connections (TLS)
 - Parameter binding (SQL injection prevention)
@@ -455,11 +473,13 @@ resource "google_cloud_run_service" "app" {
 ### Data Protection
 
 **Encryption**:
+
 - At rest: Oracle Transparent Data Encryption (TDE)
 - In transit: TLS 1.3 for all connections
 - Secrets: Google Secret Manager
 
 **SQL Injection Prevention**:
+
 ```python
 # ✅ SAFE - Parameter binding
 await driver.select(
@@ -474,11 +494,13 @@ sql = f"SELECT * FROM product WHERE category = '{user_input}'"
 ### Network Security
 
 **Firewall Rules**:
+
 - Allow: Cloud Run → Oracle Database (private IP)
 - Allow: Application → Vertex AI (Google APIs)
 - Deny: Direct public access to database
 
 **VPC Configuration**:
+
 - Private subnet for Oracle Database
 - Serverless VPC connector for Cloud Run
 - Cloud NAT for outbound connections
@@ -488,11 +510,13 @@ sql = f"SELECT * FROM product WHERE category = '{user_input}'"
 ### Horizontal Scaling
 
 **Litestar App** (Cloud Run):
+
 - Auto-scale: 0-100 instances
 - CPU utilization target: 70%
 - Request concurrency: 80 per instance
 
 **Oracle Database**:
+
 - RAC (Real Application Clusters) for horizontal scale
 - Read replicas for read-heavy workloads
 - Sharding for multi-tenant scenarios
@@ -500,6 +524,7 @@ sql = f"SELECT * FROM product WHERE category = '{user_input}'"
 ### Vertical Scaling
 
 **Oracle Database**:
+
 - Scale up: Increase CPU/memory
 - In-Memory column store for hot data
 - SPATIAL_VECTOR_ACCELERATION for SIMD
@@ -507,6 +532,7 @@ sql = f"SELECT * FROM product WHERE category = '{user_input}'"
 ### Caching Strategy
 
 **Two-Level Cache**:
+
 1. **Embedding Cache** (Oracle-backed)
    - TTL: 7 days
    - Hit rate target: >80%
@@ -520,6 +546,7 @@ sql = f"SELECT * FROM product WHERE category = '{user_input}'"
 ### Connection Pooling
 
 **python-oracledb**:
+
 ```python
 pool = oracledb.create_pool(
     min=2,              # Warm connections
@@ -531,6 +558,7 @@ pool = oracledb.create_pool(
 ```
 
 **Guidelines**:
+
 - `max = CPUs * 2-4` per instance
 - Monitor utilization (60-80% ideal)
 - Adjust based on query complexity
@@ -540,6 +568,7 @@ pool = oracledb.create_pool(
 ### Structured Logging
 
 **structlog Configuration**:
+
 ```python
 import structlog
 
@@ -558,12 +587,14 @@ logger.info(
 ### Metrics
 
 **Application Metrics**:
+
 - Request latency (p50, p95, p99)
 - Error rate (5xx responses)
 - Cache hit rate (embedding + response)
 - Vector search time distribution
 
 **Database Metrics**:
+
 - Connection pool utilization
 - Query execution time
 - Index effectiveness
@@ -572,6 +603,7 @@ logger.info(
 ### Tracing
 
 **OpenTelemetry Integration**:
+
 ```python
 from opentelemetry import trace
 
@@ -591,12 +623,14 @@ async def vector_search(query: str):
 ### Dashboards
 
 **Performance Dashboard** (Litestar endpoint):
+
 - Search latency trends
 - Cache performance
 - Error rates
 - Top queries
 
 **Oracle Enterprise Manager**:
+
 - Database performance
 - SQL tuning advisor
 - Vector index statistics

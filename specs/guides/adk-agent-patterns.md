@@ -22,6 +22,7 @@ Comprehensive guide to building AI agents with Google's Agent Development Kit (A
 **Google ADK** (Agent Development Kit) is an open-source, production-ready framework for building sophisticated AI agents with:
 
 **Key Features**:
+
 - **LlmAgent**: LLM-powered agents with tool usage
 - **Workflow Agents**: Deterministic execution patterns (Sequential, Parallel, Loop)
 - **Tool Integration**: Function tools, MCP tools, memory tools
@@ -30,11 +31,13 @@ Comprehensive guide to building AI agents with Google's Agent Development Kit (A
 - **Production Ready**: v1.0.0 stable release (January 2025)
 
 **ADK Powers**:
+
 - Google Agentspace
 - Google Customer Engagement Suite (CES)
 - Internal Google agent applications
 
 **Architecture**:
+
 ```
 User Query
     ↓
@@ -50,18 +53,18 @@ Response
 
 ## Quick Reference
 
-| Component | Purpose | Example |
-|-----------|---------|---------|
-| `LlmAgent` | LLM-powered agent with reasoning | Dynamic tool selection |
-| `SequentialAgent` | Linear workflow | Data pipeline (extract → process → generate) |
-| `ParallelAgent` | Concurrent execution | Multi-source search |
-| `LoopAgent` | Iterative execution | Refinement loop |
-| `FunctionTool` | Wrap Python function | `FunctionTool(func=search_products)` |
-| `MCPToolset` | Model Context Protocol tools | External MCP servers |
-| `PreloadMemoryTool` | Long-term memory recall | Conversation history |
-| `Runner` | Execute agent | `runner.run_async(user_id, session_id, message)` |
-| `InMemorySessionService` | Dev session storage | Local testing |
-| `VertexAiSessionService` | Production session storage | Vertex AI backed |
+| Component                | Purpose                          | Example                                          |
+| ------------------------ | -------------------------------- | ------------------------------------------------ |
+| `LlmAgent`               | LLM-powered agent with reasoning | Dynamic tool selection                           |
+| `SequentialAgent`        | Linear workflow                  | Data pipeline (extract → process → generate)     |
+| `ParallelAgent`          | Concurrent execution             | Multi-source search                              |
+| `LoopAgent`              | Iterative execution              | Refinement loop                                  |
+| `FunctionTool`           | Wrap Python function             | `FunctionTool(func=search_products)`             |
+| `MCPToolset`             | Model Context Protocol tools     | External MCP servers                             |
+| `PreloadMemoryTool`      | Long-term memory recall          | Conversation history                             |
+| `Runner`                 | Execute agent                    | `runner.run_async(user_id, session_id, message)` |
+| `InMemorySessionService` | Dev session storage              | Local testing                                    |
+| `VertexAiSessionService` | Production session storage       | Vertex AI backed                                 |
 
 ## Installation and Setup
 
@@ -99,6 +102,7 @@ nest_asyncio.apply()
 **LlmAgent** is the primary agent type for building flexible, intelligent agents.
 
 **Key Characteristics**:
+
 - Uses LLM for reasoning and decision-making
 - Non-deterministic behavior (LLM-driven)
 - Dynamic tool selection
@@ -117,6 +121,7 @@ agent = LlmAgent(
 ```
 
 **Parameters**:
+
 - `model`: Gemini model name (`gemini-2.5-pro`, `gemini-2.5-flash`)
 - `name`: Agent identifier (used in logs)
 - `instruction`: System instructions (agent behavior)
@@ -175,6 +180,7 @@ agent = LlmAgent(
 ```
 
 **Tool Usage Flow**:
+
 1. User sends query
 2. LlmAgent reasons about query
 3. Agent decides to call tool (if needed)
@@ -257,6 +263,7 @@ agent = LlmAgent(
 ```
 
 **Function Tool Requirements**:
+
 - ✅ Type hints on all parameters
 - ✅ Docstring with Args and Returns sections
 - ✅ Clear, descriptive function name
@@ -323,6 +330,7 @@ agent = LlmAgent(
 ```
 
 **MCP Use Cases**:
+
 - External APIs (weather, news, databases)
 - Third-party services
 - Custom data sources
@@ -335,10 +343,11 @@ A powerful use case for MCP tools is interacting with databases. This project in
 While you can create a generic `MCPToolset` for `sqlcl`, it is **highly recommended** that you follow the best practices outlined in the **[Oracle SQLcl Usage Guide](sqlcl-usage-guide.md#best-practices-for-ai-agent-interaction-with-the-sqlcl-mcp-server)** to ensure safe and efficient database interactions.
 
 This guide provides detailed information on:
-*   **Agent Prompting:** How to write effective prompts for database queries.
-*   **Tool Selection:** How to choose the right MCP tool for your task.
-*   **Avoiding Pitfalls:** How to avoid common issues like loops and data overload.
-*   **Caching Strategies:** How to improve performance with application-level and database-level caching.
+
+- **Agent Prompting:** How to write effective prompts for database queries.
+- **Tool Selection:** How to choose the right MCP tool for your task.
+- **Avoiding Pitfalls:** How to avoid common issues like loops and data overload.
+- **Caching Strategies:** How to improve performance with application-level and database-level caching.
 
 **Example `MCPToolset` for `sqlcl`:**
 
@@ -371,6 +380,7 @@ agent = LlmAgent(
 ### Tool Best Practices
 
 1. **Clear Docstrings**:
+
 ```python
 def good_tool(query: str, limit: int) -> list[dict]:
     """Search products with semantic similarity.
@@ -390,6 +400,7 @@ def good_tool(query: str, limit: int) -> list[dict]:
 ```
 
 2. **Type Safety**:
+
 ```python
 from typing import List, Dict, Optional
 
@@ -402,6 +413,7 @@ def typed_tool(
 ```
 
 3. **Error Handling**:
+
 ```python
 def robust_tool(product_id: int) -> dict:
     """Get product details with error handling.
@@ -473,6 +485,7 @@ session = await session_service.create_session(
 ```
 
 **VertexAiSessionService Benefits**:
+
 - Persistent storage (survives restarts)
 - Multi-instance support
 - Automatic cleanup
@@ -804,6 +817,7 @@ runner = Runner(
 ```
 
 **Memory automatically stores**:
+
 - Conversation history
 - User interactions
 - Agent responses
@@ -1039,6 +1053,7 @@ def create_app() -> Litestar:
 **Symptom**: Agent generates text response instead of calling tools.
 
 **Solutions**:
+
 1. **Improve tool docstrings**: Add clear descriptions
 2. **Update instructions**: Explicitly tell agent to use tools
 3. **Check function signatures**: Ensure type hints present
@@ -1049,6 +1064,7 @@ def create_app() -> Litestar:
 **Symptom**: Conversation history lost between requests.
 
 **Solutions**:
+
 1. **Use same session_id**: Reuse session ID for same conversation
 2. **Check session service**: Verify `VertexAiSessionService` configured
 3. **Verify Agent Engine**: Ensure Agent Engine created
@@ -1058,6 +1074,7 @@ def create_app() -> Litestar:
 **Symptom**: Agent takes >5 seconds to respond.
 
 **Solutions**:
+
 1. **Use gemini-2.5-flash**: Faster than gemini-2.5-pro
 2. **Reduce tool complexity**: Simplify tool implementations
 3. **Cache tool results**: Add caching layer

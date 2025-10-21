@@ -19,16 +19,19 @@ Invoke the Docs & Vision agent for quality gate, documentation, and MANDATORY cl
 ## Usage Examples
 
 ### Gemini
+
 ```
 /prompt review vector-search-caching
 ```
 
 Or for most recent active requirement:
+
 ```
 /prompt review
 ```
 
 ### Claude Code
+
 ```python
 Task(
     subagent_type="docs-vision",
@@ -38,6 +41,7 @@ Task(
 ```
 
 ### Codex
+
 ```
 /invoke docs-vision vector-search-caching
 ```
@@ -105,6 +109,7 @@ Only after Phase 1 passes:
 **This is MANDATORY** - never skip cleanup:
 
 1. **Clean tmp/ directories**:
+
    ```bash
    find specs/active/*/tmp -type f -delete
    ```
@@ -115,11 +120,13 @@ Only after Phase 1 passes:
    - Delete after verification
 
 3. **Archive completed requirement**:
+
    ```bash
    mv specs/active/{slug} specs/archive/{slug}-$(date +%Y%m%d)
    ```
 
 4. **Keep only last 3 active requirements**:
+
    ```bash
    cd specs
    ls -t active | tail -n +4 | xargs -I {} mv active/{} archive/
@@ -140,6 +147,7 @@ Generate `specs/archive/{slug}/completion-report.md`:
 **Status**: ✅ Complete
 
 ## Acceptance Criteria Status
+
 - ✅ Feature works with Oracle 23ai
 - ✅ Vertex AI integration functional
 - ✅ ADK agents behave correctly
@@ -148,26 +156,31 @@ Generate `specs/archive/{slug}/completion-report.md`:
 - ✅ Documentation complete
 
 ## Documentation
+
 - Updated: specs/guides/{feature}.md
 - Updated: CLAUDE.md (if applicable)
 - Updated: specs/AGENTS.md (if applicable)
 
 ## Test Coverage
+
 - Unit: {X}%
 - Integration: {X}%
 - Overall: {X}%
 
 ## Modified Files
+
 - app/services/{service}.py
 - app/db/repositories/{repo}.py
-- tests/unit/test_{service}.py
-- tests/integration/test_{integration}.py
+- tests/unit/test\_{service}.py
+- tests/integration/test\_{integration}.py
 - specs/guides/{feature}.md
 
 ## Next Steps
+
 {What should be done next, if anything}
 
 ## Archive Location
+
 specs/archive/{slug}-{date}/
 ```
 

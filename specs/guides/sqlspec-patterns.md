@@ -77,17 +77,17 @@ See [MIGRATION.md](../../MIGRATION.md) for complete migration guide.
 
 ## Quick Reference
 
-| Operation | Pattern | Example |
-|-----------|---------|---------|
-| Select one | `driver.select_one_or_none()` | Get single record or None |
-| Select many | `driver.select()` | Get list of records |
-| Insert | `driver.execute()` with INSERT | Create record |
-| Update | `driver.execute()` with UPDATE | Modify record |
-| Delete | `driver.execute()` with DELETE | Remove record |
-| Transaction | `async with driver.transaction()` | Atomic operations |
-| Parameter binding | `:param_name` in SQL | Prevent SQL injection |
-| Vector query | `VECTOR_DISTANCE(col, :vec, COSINE)` | Vector similarity |
-| JSON query | `JSON_VALUE(col, '$.field')` | Extract JSON data |
+| Operation         | Pattern                              | Example                   |
+| ----------------- | ------------------------------------ | ------------------------- |
+| Select one        | `driver.select_one_or_none()`        | Get single record or None |
+| Select many       | `driver.select()`                    | Get list of records       |
+| Insert            | `driver.execute()` with INSERT       | Create record             |
+| Update            | `driver.execute()` with UPDATE       | Modify record             |
+| Delete            | `driver.execute()` with DELETE       | Remove record             |
+| Transaction       | `async with driver.transaction()`    | Atomic operations         |
+| Parameter binding | `:param_name` in SQL                 | Prevent SQL injection     |
+| Vector query      | `VECTOR_DISTANCE(col, :vec, COSINE)` | Vector similarity         |
+| JSON query        | `JSON_VALUE(col, '$.field')`         | Extract JSON data         |
 
 ## SQLSpecService Pattern
 

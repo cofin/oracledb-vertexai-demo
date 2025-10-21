@@ -4,9 +4,9 @@
     <span class="help-triggers" style="display: inline-flex; gap: 4px; margin-left: 8px;">
         <button type="button" class="help-trigger" onclick="showTooltip('intent-detection', this)"
             title="Intent: {{ intent_detected }}">
-            {% if intent_detected == "PRODUCT_RAG" %}🎯{% else %}💬{% endif %}
+            {% if intent_detected == "PRODUCT_SEARCH" %}🎯{% else %}💬{% endif %}
         </button>
-        {% if intent_detected == "PRODUCT_RAG" %}
+        {% if intent_detected == "PRODUCT_SEARCH" %}
         <button type="button" class="help-trigger" onclick="showTooltip('vector-search', this)"
             title="Product vector search">
             🔍

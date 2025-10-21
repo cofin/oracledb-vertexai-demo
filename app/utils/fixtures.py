@@ -266,7 +266,7 @@ class FixtureLoader:
         """  # noqa: S608
 
         # Convert records to JSON payload using project's serialization
-        payload = to_json(processed_records, as_bytes=False)
+        payload = to_json(processed_records).decode("utf-8")
 
         # Execute MERGE with JSON payload bound as CLOB to handle large payloads (>1MB)
         import oracledb
@@ -384,7 +384,7 @@ class FixtureExporter:
 
         output_file = output_dir / filename
 
-        json_bytes = to_json(json_data, as_bytes=True)
+        json_bytes = to_json(json_data)
 
         if compress:
             with gzip.open(output_file, "wb") as f:

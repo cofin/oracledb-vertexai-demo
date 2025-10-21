@@ -69,11 +69,13 @@ uv run python tools/oracle_deploy.py connect test
 For local development with Oracle 23 Free in containers.
 
 **Requirements:**
+
 - Docker or Podman installed
 - At least 8GB of available RAM
 - 50GB of available disk space
 
 **Environment Variables:**
+
 ```bash
 ORACLE23AI_PORT=1521                  # Port mapping
 ORACLE_SYSTEM_PASSWORD=super-secret    # SYSTEM password
@@ -82,6 +84,7 @@ ORACLE_USER=app                       # App username
 ```
 
 **Commands:**
+
 ```bash
 # Start database
 uv run python tools/oracle_deploy.py database start
@@ -104,11 +107,13 @@ uv run python tools/oracle_deploy.py database remove --volumes
 For connecting to existing Oracle instances.
 
 **Requirements:**
+
 - Network access to Oracle host
 - Valid database credentials
 - Oracle client installed (optional, for SQLcl)
 
 **Environment Variables:**
+
 ```bash
 DATABASE_HOST=oracle.example.com       # Oracle host
 DATABASE_PORT=1521                     # Oracle port
@@ -118,6 +123,7 @@ DATABASE_PASSWORD=mypassword           # Password
 ```
 
 **Commands:**
+
 ```bash
 # Test connection
 uv run python tools/oracle_deploy.py connect test
@@ -134,11 +140,13 @@ uv run python tools/oracle_deploy.py status
 For Oracle Autonomous Database with wallet authentication.
 
 **Requirements:**
-- Wallet file (Wallet_*.zip) from Oracle Cloud
+
+- Wallet file (Wallet\_\*.zip) from Oracle Cloud
 - Wallet password
 - Valid database credentials
 
 **Environment Variables:**
+
 ```bash
 DATABASE_URL=oracle+oracledb://user:pass@service_high
 WALLET_PASSWORD=wallet-password
@@ -147,6 +155,7 @@ TNS_ADMIN=/path/to/wallet            # Alternative
 ```
 
 **Commands:**
+
 ```bash
 # Extract wallet
 uv run python tools/oracle_deploy.py wallet extract path/to/Wallet_DB.zip
@@ -179,10 +188,12 @@ uv run python tools/oracle_deploy.py database start [OPTIONS]
 ```
 
 **Options:**
+
 - `--pull` - Pull latest image before starting
 - `--recreate` - Remove and recreate container if exists
 
 **Example:**
+
 ```bash
 # Start with latest image
 uv run python tools/oracle_deploy.py database start --pull
@@ -216,9 +227,11 @@ uv run python tools/oracle_deploy.py database remove [OPTIONS]
 ```
 
 **Options:**
+
 - `--volumes` - Also remove data volumes
 
 **Example:**
+
 ```bash
 # Remove container only
 uv run python tools/oracle_deploy.py database remove
@@ -236,10 +249,12 @@ uv run python tools/oracle_deploy.py database logs [OPTIONS]
 ```
 
 **Options:**
+
 - `-f, --follow` - Follow log output
 - `--tail N` - Show last N lines (default: 100)
 
 **Example:**
+
 ```bash
 # Follow logs in real-time
 uv run python tools/oracle_deploy.py database logs -f
@@ -301,12 +316,15 @@ uv run python tools/oracle_deploy.py wallet extract WALLET_ZIP [OPTIONS]
 ```
 
 **Arguments:**
-- `WALLET_ZIP` - Path to Wallet_*.zip file
+
+- `WALLET_ZIP` - Path to Wallet\_\*.zip file
 
 **Options:**
+
 - `--dest DIR` - Destination directory (default: same as zip)
 
 **Example:**
+
 ```bash
 uv run python tools/oracle_deploy.py wallet extract .envs/tns/Wallet_DB.zip
 ```
@@ -320,9 +338,11 @@ uv run python tools/oracle_deploy.py wallet configure [OPTIONS]
 ```
 
 **Options:**
+
 - `--wallet PATH` - Wallet directory or zip file
 
 **Process:**
+
 1. Locates wallet (auto-detect or specified path)
 2. Extracts if zip file
 3. Validates wallet contents
@@ -331,6 +351,7 @@ uv run python tools/oracle_deploy.py wallet configure [OPTIONS]
 6. Optionally sets TNS_ADMIN
 
 **Example:**
+
 ```bash
 # Auto-detect wallet
 uv run python tools/oracle_deploy.py wallet configure
@@ -348,11 +369,13 @@ uv run python tools/oracle_deploy.py wallet list-services [OPTIONS]
 ```
 
 **Options:**
+
 - `--wallet PATH` - Wallet directory (auto-detect if not specified)
 
 Shows all services with priority levels (high, medium, low, tp, tpurgent).
 
 **Example:**
+
 ```bash
 uv run python tools/oracle_deploy.py wallet list-services
 ```
@@ -366,6 +389,7 @@ uv run python tools/oracle_deploy.py wallet validate [OPTIONS]
 ```
 
 **Options:**
+
 - `--wallet PATH` - Wallet directory (auto-detect if not specified)
 
 Checks for required files and valid tnsnames.ora.
@@ -383,11 +407,13 @@ uv run python tools/oracle_deploy.py connect test [OPTIONS]
 ```
 
 **Options:**
+
 - `--timeout N` - Connection timeout in seconds (default: 10)
 
 Auto-detects deployment mode and tests appropriate connection type.
 
 **Example:**
+
 ```bash
 # Quick connection test
 uv run python tools/oracle_deploy.py connect test
@@ -419,9 +445,11 @@ uv run python tools/oracle_deploy.py status [OPTIONS]
 ```
 
 **Options:**
+
 - `--verbose` - Show detailed diagnostics
 
 Checks:
+
 - Container runtime (for MANAGED mode)
 - Database container (for MANAGED mode)
 - SQLcl installation
@@ -429,6 +457,7 @@ Checks:
 - Database connectivity
 
 **Example:**
+
 ```bash
 # Quick health check
 uv run python tools/oracle_deploy.py status
@@ -495,6 +524,7 @@ The tool automatically detects deployment mode based on environment variables:
 **Cause:** Docker/Podman not installed or not running.
 
 **Solution:**
+
 ```bash
 # Check Docker status
 docker --version
@@ -514,6 +544,7 @@ sudo dnf install podman
 **Cause:** Database container hasn't been started.
 
 **Solution:**
+
 ```bash
 uv run python tools/oracle_deploy.py database start
 ```
@@ -523,6 +554,7 @@ uv run python tools/oracle_deploy.py database start
 **Cause:** Wallet not in expected locations.
 
 **Solution:**
+
 ```bash
 # Place wallet in .envs/tns/ or set environment variable
 export WALLET_LOCATION=/path/to/wallet
@@ -534,6 +566,7 @@ uv run python tools/oracle_deploy.py wallet validate
 **Cause:** Database not accessible or incorrect credentials.
 
 **Solution:**
+
 ```bash
 # Check system health for specific diagnostics
 uv run python tools/oracle_deploy.py status --verbose
@@ -547,6 +580,7 @@ cat .env | grep DATABASE
 **Cause:** SQLcl installed but shell can't find it.
 
 **Solution:**
+
 ```bash
 # Add to PATH (bash)
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc

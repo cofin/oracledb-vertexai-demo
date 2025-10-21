@@ -66,7 +66,8 @@ class MetricsService(SQLSpecService):
             result_count=metrics_data.result_count,
         )
 
-        # Get the inserted record
+        await self.driver.commit()
+
         result = await self.driver.select_one_or_none(
             """
             SELECT

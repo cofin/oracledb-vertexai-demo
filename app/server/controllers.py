@@ -35,10 +35,8 @@ from sqlspec.adapters.oracledb import OracleAsyncDriver
 from app import schemas
 from app.lib.di import Inject, inject
 from app.server.exception_handlers import HTMXValidationException
-from app.services.adk import ADKRunner
-from app.services.cache import CacheService
-from app.services.metrics import MetricsService
-from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
+from app.services import CacheService, MetricsService, OracleVectorSearchService, VertexAIService
+from app.services._adk import ADKRunner
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -103,12 +101,15 @@ class CoffeeChatController(Controller):
             schemas.CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)
         ],
         adk_runner: Inject[ADKRunner],
+        cache_service: Inject[CacheService],
+        metrics_service: Inject[MetricsService],
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests using the modern ADKRunner."""
 
         csp_nonce = self.generate_csp_nonce()
         clean_message = self.validate_message(data.message)
+        validated_persona = self.validate_persona(data.persona)
         query_id = str(uuid.uuid4())
 
         session_id = request.session.get("session_id")
@@ -117,12 +118,19 @@ class CoffeeChatController(Controller):
             request.session["session_id"] = session_id
 
         try:
-            # Process through the modern ADKRunner
-            agent_response = await adk_runner.process_request(
-                query=clean_message,
-                user_id="web_user",
-                session_id=session_id,
-            )
+            from app.lib.context import query_id_var
+
+            token = query_id_var.set(query_id)
+            try:
+                agent_response = await adk_runner.process_request(
+                    query=clean_message,
+                    user_id="web_user",
+                    session_id=session_id,
+                    persona=validated_persona,
+                    cache_service=cache_service,
+                )
+            finally:
+                query_id_var.reset(token)
 
         except Exception as e:
             logger.exception(
@@ -139,9 +147,8 @@ class CoffeeChatController(Controller):
             }
 
         if request.htmx:
-            # Extract metrics and metadata from enhanced ADKRunner response
-            intent_details = agent_response.get("intent_details", {})
-            search_details = agent_response.get("search_details", {})
+            # Get current metrics for display (like main branch does)
+            search_metrics = await metrics_service.get_performance_stats(hours=1)
 
             return HTMXTemplate(
                 template_name="partials/chat_response.html",
@@ -149,25 +156,18 @@ class CoffeeChatController(Controller):
                     "ai_response": agent_response.get("answer", ""),
                     "user_message": clean_message,
                     "query_id": query_id,
-                    "products": agent_response.get("products_found", []),
-                    "debug_info": {
-                        "response_time_ms": agent_response.get("response_time_ms", 0),
-                        "agent_processing_ms": agent_response.get("agent_processing_ms", 0),
-                        "embedding_ms": search_details.get("embedding_ms", 0),
-                        "search_ms": search_details.get("search_ms", 0),
-                    },
-                    "intent_detected": agent_response.get("intent_detected", "N/A"),
-                    "intent_confidence": intent_details.get("confidence", 0.0),
-                    "intent_sql": intent_details.get("sql_query", ""),
-                    "search_sql": search_details.get("sql_query", ""),
-                    "search_results_count": search_details.get("results_count", 0),
-                    "search_params": search_details.get("params", {}),
+                    "metrics": search_metrics,
                     "from_cache": agent_response.get("from_cache", False),
                     "embedding_cache_hit": agent_response.get("embedding_cache_hit", False),
+                    "intent_detected": agent_response.get("intent_detected", "GENERAL_CONVERSATION"),
                     "csp_nonce": csp_nonce,
                 },
-                trigger_event="chat:response-complete",
-                params={"query_id": query_id, "agent": "ADKRunner"},
+                trigger_event="help:process-complete",
+                params={
+                    "vector_search": "complete",
+                    "llm_generation": "complete",
+                    "query_id": query_id,
+                },
                 after="settle",
             )
 

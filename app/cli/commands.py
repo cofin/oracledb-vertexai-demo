@@ -103,7 +103,7 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
     async def _bulk_embed_products() -> None:
         from app.server.deps import create_service_provider, provide_vertex_ai_service
-        from app.services.product import ProductService
+        from app.services import ProductService
 
         # Create service providers
         product_provider = create_service_provider(ProductService)
@@ -236,7 +236,7 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
 def model_info() -> None:
     """Show information about currently configured AI models."""
     from app.lib.settings import get_settings
-    from app.services.vertex_ai import VertexAIService
+    from app.services import VertexAIService
 
     console = get_console()
     console.rule("[bold blue]AI Model Configuration", style="blue", align="left")

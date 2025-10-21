@@ -8,10 +8,7 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app import config
-from app.services.exemplar import ExemplarService
-from app.services.intent import INTENT_EXEMPLARS
-from app.services.product import ProductService
-from app.services.vertex_ai import VertexAIService
+from app.services import INTENT_EXEMPLARS, ExemplarService, ProductService, VertexAIService
 
 if TYPE_CHECKING:
     from litestar import Litestar

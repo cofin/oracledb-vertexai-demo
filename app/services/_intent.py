@@ -12,8 +12,8 @@ from app.services.base import SQLSpecService
 if TYPE_CHECKING:
     from sqlspec import AsyncDriverAdapterBase
 
-    from app.services.exemplar import ExemplarService
-    from app.services.vertex_ai import VertexAIService
+    from app.services._exemplar import ExemplarService
+    from app.services._vertex_ai import VertexAIService
 
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": [

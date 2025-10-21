@@ -11,13 +11,15 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from google.adk import Runner
+from google.adk.agents import LlmAgent
 from google.genai import types
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db
-from app.services.adk.agent import CoffeeAssistantAgent
-from app.services.adk.monkey_patches import apply_genai_client_patch
+from app.config import db, settings
+from app.services._adk.monkey_patches import apply_genai_client_patch
+from app.services._adk.prompts import get_persona_instruction
+from app.services._adk.tools import ALL_TOOLS
 
 # Apply monkey patches for ADK library issues
 apply_genai_client_patch()
@@ -33,35 +35,85 @@ logger = structlog.get_logger()
 
 
 class ADKRunner:
-    """Main runner for the ADK-based coffee assistant system with response caching."""
+    """Main runner for the ADK-based coffee assistant system with persona support and response caching."""
 
     def __init__(self) -> None:
         """Initialize the ADK runner with SQLSpec session service."""
         store = OracleAsyncADKStore(config=db)
         self.session_service = SQLSpecSessionService(store)
-        self.runner = Runner(
-            agent=CoffeeAssistantAgent,
-            app_name="coffee-assistant",
-            session_service=self.session_service,
-        )
+        # Cache runners per persona to avoid recreating them
+        self._persona_runners: dict[str, Runner] = {}
         logger.debug("ADKRunner initialized with SQLSpec session service")
+
+    def _get_runner_for_persona(self, persona: str) -> Runner:
+        """Get or create a Runner for the specified persona.
+
+        Args:
+            persona: The persona identifier ('novice', 'enthusiast', 'expert', 'barista')
+
+        Returns:
+            Runner configured for the specified persona
+        """
+        if persona not in self._persona_runners:
+            # Create persona-specific agent
+            persona_agent = LlmAgent(
+                name="CoffeeAssistant",
+                description=f"Coffee assistant with {persona} persona for Cymbal Coffee.",
+                instruction=get_persona_instruction(persona),
+                model=settings.vertex_ai.CHAT_MODEL,
+                tools=ALL_TOOLS,
+            )
+            # Create runner for this persona
+            # IMPORTANT: Use the same app_name for all personas to share sessions
+            self._persona_runners[persona] = Runner(
+                agent=persona_agent,
+                app_name="coffee-assistant",  # Same for all personas
+                session_service=self.session_service,  # Shared session service
+            )
+            logger.debug(f"Created Runner for persona: {persona}")
+
+        return self._persona_runners[persona]
 
     async def process_request(
         self,
         query: str,
         user_id: str = "default",
         session_id: str | None = None,
+        persona: str = "enthusiast",
         cache_service: CacheService | None = None,
     ) -> dict[str, Any]:
-        """Process user request through the ADK agent system with detailed metrics tracking."""
+        """Process user request through the ADK agent system with response caching."""
         start_time = time.time()
-        logger.debug("Processing request via ADKRunner...", query=query)
+        logger.debug("Processing request via ADKRunner...", query=query, persona=persona)
+
+        # Check response cache first (using query + persona as cache key)
+        # This matches main branch behavior where persona affects responses
+        cache_key = f"{query}|{persona}"
+        from_cache = False
+        if cache_service:
+            cached = await cache_service.get_cached_response(cache_key=cache_key)
+            logger.debug(
+                "Cache lookup result",
+                query_preview=query[:50],
+                persona=persona,
+                cached_found=cached is not None,
+                cached_type=type(cached).__name__ if cached else None,
+            )
+            if cached:
+                logger.info("Response cache hit", query_preview=query[:50], persona=persona, cache_id=cached.id)
+                cached_response = cached.response_data
+                cached_response["from_cache"] = True  # Mark as from cache
+                return cached_response  # type: ignore[no-any-return]
+            logger.debug("Response cache miss", query_preview=query[:50], persona=persona)
 
         session = await self._ensure_session(user_id, session_id)
         content = types.Content(role="user", parts=[types.Part(text=query)])
 
+        # Get persona-specific runner
+        runner = self._get_runner_for_persona(persona)
+
         agent_start = time.time()
-        events = self.runner.run_async(
+        events = runner.run_async(
             user_id=user_id,
             session_id=session.id,
             new_message=content,
@@ -72,8 +124,8 @@ class ADKRunner:
 
         total_time_ms = round((time.time() - start_time) * 1000, 2)
 
-        # Build response with all metadata like main branch RecommendationService
-        return {
+        # Build response with all metadata
+        response = {
             "answer": event_data["final_response_text"],
             "session_id": session.id,
             "response_time_ms": total_time_ms,
@@ -83,8 +135,42 @@ class ADKRunner:
             "products_found": event_data.get("products_found", []),
             "embedding_cache_hit": event_data.get("embedding_cache_hit", False),
             "intent_detected": event_data.get("intent_details", {}).get("intent", "GENERAL_CONVERSATION"),
-            "from_cache": False,  # TODO: Integrate response cache
+            "from_cache": from_cache,
         }
+
+        # Log detailed timing and cache information
+        search_details = event_data.get("search_details", {})
+        logger.info(
+            "ADK request complete",
+            query_preview=query[:50],
+            total_ms=total_time_ms,
+            agent_ms=agent_processing_ms,
+            embedding_cache_hit=event_data.get("embedding_cache_hit", False),
+            response_cache_hit=from_cache,
+            intent=event_data.get("intent_details", {}).get("intent"),
+            embedding_ms=search_details.get("embedding_ms", 0),
+            search_ms=search_details.get("search_ms", 0),
+            products_count=len(event_data.get("products_found", [])),
+        )
+
+        # Cache the response (5 minute TTL like main branch)
+        if cache_service and event_data["final_response_text"]:
+            try:
+                result = await cache_service.set_cached_response(
+                    cache_key=cache_key,
+                    response_data=response,
+                    ttl_minutes=5,
+                )
+                logger.info(
+                    "Response cached successfully",
+                    query_preview=query[:50],
+                    cache_id=result.id if result else None,
+                    cache_key=result.cache_key if result else None,
+                )
+            except Exception as e:
+                logger.warning("Failed to cache response", error=str(e), query_preview=query[:50])
+
+        return response
 
     async def _ensure_session(self, user_id: str, session_id: str | None) -> Session:
         """Ensure session exists using get-or-create pattern."""
@@ -140,9 +226,19 @@ class ADKRunner:
             # Extract metrics from function responses
             function_responses = event.get_function_responses() if hasattr(event, "get_function_responses") else []
             if function_responses:
+                logger.info("Function responses detected", count=len(function_responses), functions=[f.name for f in function_responses])
                 for func_response in function_responses:
                     if func_response.name == "classify_intent":
                         intent_result = func_response.response or {}
+
+                        # Debug: Log the classify_intent response
+                        logger.debug(
+                            "classify_intent response",
+                            response_keys=list(intent_result.keys()),
+                            has_embedding_cache_hit=("embedding_cache_hit" in intent_result),
+                            embedding_cache_hit_value=intent_result.get("embedding_cache_hit"),
+                        )
+
                         intent_details = {
                             "intent": intent_result.get("intent"),
                             "confidence": intent_result.get("confidence"),
@@ -151,11 +247,22 @@ class ADKRunner:
                             "sql_query": intent_result.get("sql_query"),
                         }
                         # Track first embedding cache hit (for intent classification)
-                        if intent_result.get("embedding_cache_hit"):
+                        embedding_cache_hit_from_intent = intent_result.get("embedding_cache_hit", False)
+                        if embedding_cache_hit_from_intent:
                             embedding_cache_hit = True
+                            logger.info("Embedding cache HIT during intent classification")
 
                     elif func_response.name == "search_products_by_vector":
                         search_result = func_response.response or {}
+
+                        # Debug: Log the full response structure
+                        logger.debug(
+                            "search_products_by_vector response",
+                            response_keys=list(search_result.keys()),
+                            has_timing=("timing" in search_result),
+                            has_embedding_cache_hit=("embedding_cache_hit" in search_result),
+                        )
+
                         products_found = search_result.get("products", [])
                         timing = search_result.get("timing", {})
                         search_details = {
@@ -166,6 +273,19 @@ class ADKRunner:
                             "search_ms": timing.get("search_ms", 0),
                             "total_ms": timing.get("total_ms", 0),
                         }
+                        # Track embedding cache hit from vector search
+                        embedding_cache_hit_now = search_result.get("embedding_cache_hit", False)
+                        if embedding_cache_hit_now:
+                            embedding_cache_hit = True
+
+                        # Log vector search details
+                        logger.info(
+                            "Vector search completed",
+                            embedding_cache_hit=embedding_cache_hit_now,
+                            embedding_ms=timing.get("embedding_ms", 0),
+                            search_ms=timing.get("search_ms", 0),
+                            products_found=len(products_found),
+                        )
 
         # Use final response if available, otherwise use collected responses
         if not final_response_text and all_text_responses:

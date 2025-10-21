@@ -19,6 +19,7 @@ python3 manage.py install gemini-cli
 ```
 
 **What happens:**
+
 1. Checks for Node.js (installs via npm if available)
 2. Installs `@google/gemini-cli` globally
 3. **Detects SQLcl** - If installed, prompts to configure
@@ -77,6 +78,7 @@ Authentication:
 **Automatically detected** when `sql` command is in PATH.
 
 **Capabilities:**
+
 - Execute SQL queries against Oracle databases
 - Get database schema information
 - Manage database connections
@@ -90,6 +92,7 @@ The `manage.py` CLI automatically handles SQLcl MCP configuration, including:
 2. **Saved Connection with Password** - Creates a saved SQLcl connection using credentials from `.env`
 
 This happens automatically when you:
+
 - Run `python manage.py install sqlcl` (if Gemini CLI is installed)
 - Run `python manage.py install gemini-cli` (if SQLcl is installed)
 
@@ -124,6 +127,7 @@ conn -save cymbal_coffee -savepwd app/super-secret@//localhost:1521/freepdb1
 ```
 
 **Usage in Gemini CLI:**
+
 ```bash
 gemini
 
@@ -138,12 +142,14 @@ gemini
 **NPM Package:** `@modelcontextprotocol/server-sequential-thinking`
 
 **Capabilities:**
+
 - Multi-step problem solving
 - Chain-of-thought reasoning
 - Complex analysis and planning
 - Iterative refinement of solutions
 
 **Configuration:**
+
 ```json
 {
   "mcpServers": {
@@ -157,6 +163,7 @@ gemini
 ```
 
 **Usage in Gemini CLI:**
+
 ```bash
 # Gemini will automatically use sequential thinking for complex problems:
 > Design a microservices architecture for an e-commerce platform
@@ -169,12 +176,14 @@ gemini
 **NPM Package:** `@upstash/context7-mcp`
 
 **Capabilities:**
+
 - Fetch up-to-date documentation for popular libraries
 - Code examples from official docs
 - API reference lookups
 - Framework-specific guidance
 
 **Supported libraries:**
+
 - React, Next.js, Vue, Svelte
 - Express, FastAPI, Django
 - PostgreSQL, MongoDB, Redis
@@ -182,6 +191,7 @@ gemini
 - And many more...
 
 **Configuration:**
+
 ```json
 {
   "mcpServers": {
@@ -194,6 +204,7 @@ gemini
 ```
 
 **Usage in Gemini CLI:**
+
 ```bash
 > Show me how to use React hooks
 > What's the latest way to handle authentication in Next.js 14?
@@ -321,6 +332,7 @@ gemini
 **Issue:** SQLcl commands not recognized in Gemini CLI
 
 **Solution:**
+
 ```bash
 # Verify SQLcl is in PATH
 which sql
@@ -338,11 +350,13 @@ python3 manage.py install sqlcl --force
 **Issue:** SQLcl MCP connection fails due to missing password
 
 **Symptoms:**
+
 - "Invalid username/password" errors
 - "No saved connection found" errors
 - MCP server can't connect to database
 
 **Solution:**
+
 ```bash
 # Ensure .env has required variables
 cat .env | grep -E 'DATABASE_(USER|PASSWORD|HOST|PORT|SERVICE_NAME)'
@@ -366,6 +380,7 @@ sql cymbal_coffee
 **Issue:** sequential-thinking or context7 not available
 
 **Solution:**
+
 ```bash
 # Ensure Node.js is installed
 node --version  # Should be 18+
@@ -382,6 +397,7 @@ python3 manage.py install gemini-cli
 **Issue:** MCP servers configured but not appearing in Gemini
 
 **Solution:**
+
 1. Restart Gemini CLI completely
 2. Check settings file syntax: `cat ~/.gemini/settings.json | python3 -m json.tool`
 3. Verify `mcpServers` is at root level
@@ -411,7 +427,7 @@ To disable an extension, remove it from `settings.json` or set it to `null`:
 ```json
 {
   "mcpServers": {
-    "sqlcl": null  // Disabled
+    "sqlcl": null // Disabled
   }
 }
 ```

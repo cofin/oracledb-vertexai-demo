@@ -20,6 +20,7 @@ Comprehensive guide to optimizing Oracle Database 23ai performance for vector se
 Oracle Database 23ai provides specialized features for optimizing vector search and JSON operations:
 
 **Key Performance Features**:
+
 - **SPATIAL_VECTOR_ACCELERATION**: GPU/SIMD acceleration for vector operations
 - **INMEMORY_DEEP_VECTORIZATION**: In-Memory column store with SIMD
 - **INMEMORY_OPTIMIZED_ARITHMETIC**: Hardware acceleration for vector calculations
@@ -28,6 +29,7 @@ Oracle Database 23ai provides specialized features for optimizing vector search 
 - **Connection Pooling**: Efficient connection reuse with python-oracledb
 
 **Performance Goals for This Application**:
+
 - Vector similarity search: <50ms (1000 products)
 - JSON query with filtering: <20ms
 - Embedding cache hit rate: >80%
@@ -36,19 +38,19 @@ Oracle Database 23ai provides specialized features for optimizing vector search 
 
 ## Quick Reference
 
-| Parameter/Feature | Setting | Purpose |
-|-------------------|---------|---------|
-| SPATIAL_VECTOR_ACCELERATION | TRUE | Enable vector acceleration |
-| INMEMORY_DEEP_VECTORIZATION | TRUE | SIMD for vector operations |
-| INMEMORY_OPTIMIZED_ARITHMETIC | ENABLE | Hardware acceleration |
-| OPTIMIZER_INMEMORY_AWARE | TRUE | In-Memory query optimization |
-| Connection pool min | 2 | Minimum idle connections |
-| Connection pool max | 10 | Maximum total connections |
-| HNSW index (m) | 16 | Connections per layer |
-| HNSW index (ef_construction) | 64 | Build-time candidate list |
-| IVFFlat index (lists) | sqrt(rows) | Number of partitions |
-| PGA_AGGREGATE_TARGET | 1-2GB | Per-session memory |
-| SGA_TARGET | 4-8GB | Shared memory |
+| Parameter/Feature             | Setting    | Purpose                      |
+| ----------------------------- | ---------- | ---------------------------- |
+| SPATIAL_VECTOR_ACCELERATION   | TRUE       | Enable vector acceleration   |
+| INMEMORY_DEEP_VECTORIZATION   | TRUE       | SIMD for vector operations   |
+| INMEMORY_OPTIMIZED_ARITHMETIC | ENABLE     | Hardware acceleration        |
+| OPTIMIZER_INMEMORY_AWARE      | TRUE       | In-Memory query optimization |
+| Connection pool min           | 2          | Minimum idle connections     |
+| Connection pool max           | 10         | Maximum total connections    |
+| HNSW index (m)                | 16         | Connections per layer        |
+| HNSW index (ef_construction)  | 64         | Build-time candidate list    |
+| IVFFlat index (lists)         | sqrt(rows) | Number of partitions         |
+| PGA_AGGREGATE_TARGET          | 1-2GB      | Per-session memory           |
+| SGA_TARGET                    | 4-8GB      | Shared memory                |
 
 ## Vector Search Performance
 
@@ -70,12 +72,14 @@ WHERE name = 'spatial_vector_acceleration';
 ```
 
 **Performance Impact**:
+
 - **2-4x faster** vector distance calculations
 - GPU acceleration on compatible hardware
 - SIMD (AVX2/AVX-512) on CPU fallback
 - Automatic for VECTOR_DISTANCE function
 
 **Requirements**:
+
 - Oracle 23ai (23.4+)
 - Compatible GPU (optional, for GPU acceleration)
 - Modern CPU with AVX2+ (for SIMD acceleration)
@@ -110,12 +114,14 @@ WHERE segment_name = 'PRODUCTS';
 ```
 
 **Performance Impact**:
+
 - **3-5x faster** queries on In-Memory data
 - SIMD vectorization for batch operations
 - Reduced I/O for frequently accessed data
 - Automatic compression
 
 **Best Practices**:
+
 - Use for hot data (frequently queried)
 - Monitor memory usage (`v$inmemory_area`)
 - Consider priority (CRITICAL, HIGH, MEDIUM, LOW)
@@ -134,6 +140,7 @@ SHOW PARAMETER inmemory_optimized_arithmetic;
 ```
 
 **Performance Impact**:
+
 - Hardware acceleration for vector math
 - Faster aggregations and calculations
 - Works with INMEMORY_DEEP_VECTORIZATION
@@ -144,6 +151,7 @@ SHOW PARAMETER inmemory_optimized_arithmetic;
 Choose the right index type for your workload:
 
 **HNSW Index** (Hierarchical Navigable Small World):
+
 ```sql
 CREATE INDEX idx_product_embedding_hnsw
 ON products (embedding)
@@ -156,13 +164,15 @@ PARAMETERS ('
 ```
 
 **Characteristics**:
+
 - Best for: Read-heavy workloads, high recall requirements
 - Build time: Slower (minutes for 100K vectors)
 - Query time: Very fast (<10ms for 1M vectors)
-- Memory: Higher (M * dimensions * 4 bytes per vector)
+- Memory: Higher (M _ dimensions _ 4 bytes per vector)
 - Updates: Slower (rebuilds graph structure)
 
 **Configuration Guidelines**:
+
 - **M**: 8-64, higher = better recall, more memory
   - Small datasets (<10K): M=8-16
   - Medium datasets (10K-100K): M=16-32
@@ -173,6 +183,7 @@ PARAMETERS ('
   - High quality: 128-200
 
 **IVFFlat Index** (Inverted File with Flat compression):
+
 ```sql
 CREATE INDEX idx_product_embedding_ivfflat
 ON products (embedding)
@@ -184,6 +195,7 @@ PARAMETERS ('
 ```
 
 **Characteristics**:
+
 - Best for: Balanced read/write, frequent updates
 - Build time: Faster (seconds for 100K vectors)
 - Query time: Fast (<20ms for 1M vectors)
@@ -191,6 +203,7 @@ PARAMETERS ('
 - Updates: Faster (partition-based)
 
 **Configuration Guidelines**:
+
 - **LISTS**: sqrt(num_rows) for balanced performance
   - 1K rows: LISTS=32
   - 10K rows: LISTS=100
@@ -198,6 +211,7 @@ PARAMETERS ('
   - 1M rows: LISTS=1000
 
 **Query-time Parameters**:
+
 ```sql
 -- IVFFlat: Number of partitions to search
 ALTER SESSION SET IVFFLAT_PROBES = 10;  -- Default: 1, Higher = better recall
@@ -289,17 +303,20 @@ finally:
 **Pool Sizing Guidelines**:
 
 For **web applications** (this application):
+
 - `min = 2`: Keep 2 connections warm for instant availability
 - `max = CPUs * 2-4`: For 2 CPUs, max=10 is reasonable
 - `increment = 1`: Add connections gradually
 - `wait_timeout = 30000`: Fail requests if pool exhausted for 30s
 
 For **batch processing**:
+
 - `min = 1`: Minimize idle connections
 - `max = CPUs * 1-2`: Fewer concurrent connections
 - `increment = 2`: Add multiple connections when needed
 
 For **high-concurrency APIs**:
+
 - `min = 5-10`: More warm connections
 - `max = CPUs * 4-8`: Higher concurrency
 - `wait_timeout = 10000`: Fail fast (10s)
@@ -391,6 +408,7 @@ cursor.execute(
 ```
 
 **Performance Impact**:
+
 - **Shared cursors**: Reuse execution plans
 - **Soft parse**: 10-100x faster than hard parse
 - **Reduced CPU**: No SQL parsing overhead
@@ -421,6 +439,7 @@ for row in cursor:
 ```
 
 **Array Size Guidelines**:
+
 - Default: 100 rows
 - Small rows (<50 columns): 500-1000
 - Large rows (CLOB, VECTOR): 50-100
@@ -521,6 +540,7 @@ ORDER BY p.pga_used_mem DESC;
 ```
 
 **Guidelines**:
+
 - **Small databases** (<10GB): 1-2GB PGA
 - **Medium databases** (10-100GB): 2-4GB PGA
 - **Large databases** (>100GB): 4-8GB+ PGA
@@ -566,6 +586,7 @@ WHERE pool = 'shared pool'
 ```
 
 **Guidelines**:
+
 - **Small databases**: 2-4GB SGA
 - **Medium databases**: 4-8GB SGA
 - **Large databases**: 8-16GB+ SGA
@@ -703,6 +724,7 @@ FETCH FIRST 10 ROWS ONLY;
 python-oracledb supports two modes:
 
 **Thin Mode** (Default, Pure Python):
+
 ```python
 import oracledb
 
@@ -718,6 +740,7 @@ connection = oracledb.connect(
 ```
 
 **Thick Mode** (Oracle Client Libraries):
+
 ```python
 import oracledb
 
@@ -736,6 +759,7 @@ connection = oracledb.connect(
 ```
 
 **When to use Thick Mode**:
+
 - Advanced features (connection pooling, DRCP)
 - High performance requirements
 - Continuous Query Notification (CQN)
@@ -778,6 +802,7 @@ for i, error in enumerate(cursor.getbatcherrors()):
 **Symptoms**: Vector similarity search takes >100ms for small datasets.
 
 **Diagnosis**:
+
 ```sql
 EXPLAIN PLAN FOR
 SELECT * FROM products
@@ -789,6 +814,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 ```
 
 **Solutions**:
+
 1. **Check SPATIAL_VECTOR_ACCELERATION**: `ALTER SESSION SET SPATIAL_VECTOR_ACCELERATION = TRUE;`
 2. **Verify index exists**: `SELECT index_name FROM user_indexes WHERE table_name = 'PRODUCTS';`
 3. **Rebuild index**: `ALTER INDEX idx_product_embedding_hnsw REBUILD ONLINE;`
@@ -800,6 +826,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 **Symptoms**: `ORA-24457: OCISessionGet() timed out waiting for pool to create new connection`
 
 **Diagnosis**:
+
 ```python
 print(f"Pool busy: {pool.busy}")
 print(f"Pool max: {pool.max}")
@@ -807,6 +834,7 @@ print(f"Utilization: {(pool.busy / pool.max) * 100:.1f}%")
 ```
 
 **Solutions**:
+
 1. **Increase max connections**: `pool.reconfigure(max=20)`
 2. **Reduce wait_timeout**: `pool.reconfigure(wait_timeout=10000)` (fail fast)
 3. **Check for connection leaks**: Ensure all connections are released
@@ -817,6 +845,7 @@ print(f"Utilization: {(pool.busy / pool.max) * 100:.1f}%")
 **Symptoms**: Database CPU at 90%+, queries slow.
 
 **Diagnosis**:
+
 ```sql
 -- Top CPU consumers
 SELECT
@@ -832,6 +861,7 @@ FETCH FIRST 5 ROWS ONLY;
 ```
 
 **Solutions**:
+
 1. **Check for missing indexes**: Look for full table scans
 2. **Analyze query plans**: Use EXPLAIN PLAN
 3. **Enable INMEMORY**: `ALTER TABLE products INMEMORY;`
@@ -843,6 +873,7 @@ FETCH FIRST 5 ROWS ONLY;
 **Symptoms**: `ORA-04030: out of process memory`
 
 **Diagnosis**:
+
 ```sql
 SELECT
     name,
@@ -852,6 +883,7 @@ WHERE name LIKE '%PGA%target%' OR name LIKE '%PGA%allocated%';
 ```
 
 **Solutions**:
+
 1. **Increase PGA**: `ALTER SYSTEM SET PGA_AGGREGATE_TARGET = 4G;`
 2. **Reduce batch size**: Use smaller `cursor.arraysize`
 3. **Optimize queries**: Reduce memory-intensive operations

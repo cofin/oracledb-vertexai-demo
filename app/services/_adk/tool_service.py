@@ -15,11 +15,11 @@ import structlog
 from app.services.base import SQLSpecService
 
 if TYPE_CHECKING:
-    from app.services.intent import IntentService
-    from app.services.metrics import MetricsService
-    from app.services.product import ProductService
-    from app.services.store import StoreService
-    from app.services.vertex_ai import VertexAIService
+    from app.services._intent import IntentService
+    from app.services._metrics import MetricsService
+    from app.services._product import ProductService
+    from app.services._store import StoreService
+    from app.services._vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -173,6 +173,7 @@ FETCH FIRST :limit ROWS ONLY"""
         total_response_time_ms: int,
         vector_search_time_ms: int = 0,
         embedding_time_ms: int = 0,
+        query_id: str | None = None,
     ) -> dict[str, Any]:
         """Record metrics for a search operation."""
         try:
@@ -189,7 +190,7 @@ FETCH FIRST :limit ROWS ONLY"""
                     avg_similarity = sum(similarity_scores) / len(similarity_scores)
 
             metrics_data = SearchMetricsCreate(
-                query_id=str(uuid.uuid4()),
+                query_id=query_id or str(uuid.uuid4()),
                 user_id=session_id,
                 search_time_ms=float(total_response_time_ms),
                 embedding_time_ms=float(embedding_time_ms),

@@ -28,6 +28,8 @@ class CacheService(SQLSpecService):
             FROM response_cache
             WHERE cache_key = :cache_key
               AND (expires_at IS NULL OR expires_at > SYSTIMESTAMP)
+            ORDER BY created_at DESC
+            FETCH FIRST 1 ROW ONLY
             """,
             cache_key=cache_key,
             schema_type=ResponseCache,
@@ -49,14 +51,13 @@ class CacheService(SQLSpecService):
         Returns:
             Created cache entry
         """
-        # Oracle MERGE statement (upsert)
         await self.driver.execute(
             """
             MERGE INTO response_cache rc
             USING (
                 SELECT :cache_key AS cache_key,
                        :response_data AS response_data,
-                       SYSTIMESTAMP + INTERVAL ':ttl_minutes' MINUTE AS expires_at
+                       SYSTIMESTAMP + NUMTODSINTERVAL(:ttl_minutes, 'MINUTE') AS expires_at
                 FROM dual
             ) src
             ON (rc.cache_key = src.cache_key)
@@ -74,8 +75,9 @@ class CacheService(SQLSpecService):
             ttl_minutes=ttl_minutes,
         )
 
-        # Fetch the result
-        return await self.driver.select_one(  # type: ignore[no-any-return]
+        await self.driver.commit()
+
+        return await self.driver.select_one(
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -98,7 +100,7 @@ class CacheService(SQLSpecService):
         Raises:
             ValueError: If cache entry not found
         """
-        return await self.get_or_404(  # type: ignore[no-any-return]
+        return await self.get_or_404(
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -137,7 +139,6 @@ class CacheService(SQLSpecService):
         )
 
         if result:
-            # Update hit count and last accessed
             await self.driver.execute(
                 """
                 UPDATE embedding_cache
@@ -147,8 +148,9 @@ class CacheService(SQLSpecService):
                 """,
                 result_id=result.id,
             )
+            await self.driver.commit()
 
-        return result  # type: ignore[no-any-return]
+        return result
 
     async def set_cached_embedding(
         self,
@@ -168,7 +170,6 @@ class CacheService(SQLSpecService):
         """
         text_hash = hashlib.sha256(text.encode()).hexdigest()
 
-        # Oracle MERGE statement
         await self.driver.execute(
             """
             MERGE INTO embedding_cache ec
@@ -189,16 +190,16 @@ class CacheService(SQLSpecService):
                 INSERT (text_hash, embedding, model, hit_count, last_accessed, created_at)
                 VALUES (src.text_hash, src.embedding, src.model, src.hit_count, src.last_accessed, SYSTIMESTAMP)
             """,
-            text_hash=text_hash,
+            text_hash=hashlib.sha256(text.encode()).hexdigest(),
             embedding=embedding,
             model_name=model_name,
         )
 
-        # Fetch result WITHOUT embedding to avoid vector serialization issues
-        # Use AS with quoted aliases to get lowercase column names
-        result = await self.driver.select_one(
+        await self.driver.commit()
+
+        return await self.driver.select_one(
             """
-            SELECT id AS "id", text_hash AS "text_hash", model AS "model",
+            SELECT id AS "id", text_hash AS "text_hash", embedding AS "embedding", model AS "model",
                    hit_count AS "hit_count", last_accessed AS "last_accessed",
                    created_at AS "created_at"
             FROM embedding_cache
@@ -206,17 +207,7 @@ class CacheService(SQLSpecService):
             """,
             text_hash=text_hash,
             model_name=model_name,
-        )
-
-        # Manually construct the complete object with the embedding we already have
-        return EmbeddingCache(
-            id=result["id"],
-            text_hash=result["text_hash"],
-            embedding=embedding,
-            model=result["model"],
-            hit_count=result["hit_count"],
-            last_accessed=result["last_accessed"],
-            created_at=result["created_at"],
+            schema_type=EmbeddingCache,
         )
 
     async def invalidate_cache(self, cache_type: str | None = None, include_exemplars: bool = False) -> int:

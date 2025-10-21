@@ -5,8 +5,8 @@ from __future__ import annotations
 from google.adk.agents import LlmAgent
 
 from app.config import settings
-from app.services.adk.prompts import SYSTEM_INSTRUCTION
-from app.services.adk.tools import ALL_TOOLS
+from app.services._adk.prompts import SYSTEM_INSTRUCTION
+from app.services._adk.tools import ALL_TOOLS
 
 CoffeeAssistantAgent = LlmAgent(
     name="CoffeeAssistant",

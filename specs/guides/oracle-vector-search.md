@@ -6,21 +6,21 @@
 
 ## Quick Reference
 
-| Feature | Oracle 23ai Specification | Reference Section |
-|---------|---------------------------|-------------------|
-| **Vector Type** | `VECTOR(dimensions, format)` | [VECTOR Data Type](#vector-data-type) |
-| **Dimensions** | Flexible (e.g., 768 for text-embedding-004) | [Dimensions](#dimensions) |
-| **Formats** | FLOAT32, FLOAT64, INT8, BINARY | [Formats](#vector-formats) |
-| **Dense Vectors** | Standard array of values | [Dense Vectors](#dense-vectors) |
-| **Sparse Vectors** | Indices + values representation | [Sparse Vectors](#sparse-vectors) |
-| **HNSW Index** | `CREATE INDEX ... USING hnsw` | [HNSW Indexes](#hnsw-indexes) |
-| **IVFFlat Index** | `CREATE INDEX ... USING ivfflat` | [IVFFlat Indexes](#ivfflat-indexes) |
-| **Similarity (Cosine)** | `VECTOR_DISTANCE(v1, v2, COSINE)` | [Similarity Functions](#similarity-functions) |
-| **Similarity (L2)** | `VECTOR_DISTANCE(v1, v2, EUCLIDEAN)` | [Similarity Functions](#similarity-functions) |
-| **Similarity (Dot)** | `VECTOR_DISTANCE(v1, v2, DOT)` | [Similarity Functions](#similarity-functions) |
-| **Python Driver** | python-oracledb 2.x | [Python Integration](#python-integration) |
-| **NumPy Support** | Type handlers for ndarray | [NumPy Integration](#numpy-integration) |
-| **Performance** | `SPATIAL_VECTOR_ACCELERATION` | [Performance Tuning](#performance-tuning) |
+| Feature                 | Oracle 23ai Specification                   | Reference Section                             |
+| ----------------------- | ------------------------------------------- | --------------------------------------------- |
+| **Vector Type**         | `VECTOR(dimensions, format)`                | [VECTOR Data Type](#vector-data-type)         |
+| **Dimensions**          | Flexible (e.g., 768 for text-embedding-004) | [Dimensions](#dimensions)                     |
+| **Formats**             | FLOAT32, FLOAT64, INT8, BINARY              | [Formats](#vector-formats)                    |
+| **Dense Vectors**       | Standard array of values                    | [Dense Vectors](#dense-vectors)               |
+| **Sparse Vectors**      | Indices + values representation             | [Sparse Vectors](#sparse-vectors)             |
+| **HNSW Index**          | `CREATE INDEX ... USING hnsw`               | [HNSW Indexes](#hnsw-indexes)                 |
+| **IVFFlat Index**       | `CREATE INDEX ... USING ivfflat`            | [IVFFlat Indexes](#ivfflat-indexes)           |
+| **Similarity (Cosine)** | `VECTOR_DISTANCE(v1, v2, COSINE)`           | [Similarity Functions](#similarity-functions) |
+| **Similarity (L2)**     | `VECTOR_DISTANCE(v1, v2, EUCLIDEAN)`        | [Similarity Functions](#similarity-functions) |
+| **Similarity (Dot)**    | `VECTOR_DISTANCE(v1, v2, DOT)`              | [Similarity Functions](#similarity-functions) |
+| **Python Driver**       | python-oracledb 2.x                         | [Python Integration](#python-integration)     |
+| **NumPy Support**       | Type handlers for ndarray                   | [NumPy Integration](#numpy-integration)       |
+| **Performance**         | `SPATIAL_VECTOR_ACCELERATION`               | [Performance Tuning](#performance-tuning)     |
 
 ## Table of Contents
 
@@ -53,6 +53,7 @@ VECTOR(dimension, element_type)
 ```
 
 **Parameters**:
+
 - `dimension`: Integer specifying vector dimensionality (e.g., 768 for Vertex AI text-embedding-004)
 - `element_type`: Optional format specification (FLOAT32, FLOAT64, INT8, BINARY)
 
@@ -61,6 +62,7 @@ VECTOR(dimension, element_type)
 Oracle supports both **fixed** and **flexible** dimensions:
 
 **Fixed Dimensions** (Recommended):
+
 ```sql
 CREATE TABLE products (
     id NUMBER PRIMARY KEY,
@@ -70,6 +72,7 @@ CREATE TABLE products (
 ```
 
 **Flexible Dimensions**:
+
 ```sql
 CREATE TABLE mixed_vectors (
     id NUMBER PRIMARY KEY,
@@ -83,16 +86,17 @@ CREATE TABLE mixed_vectors (
 
 Oracle 23ai supports four vector element types:
 
-| Format | Storage | Range | Use Case |
-|--------|---------|-------|----------|
-| **FLOAT32** | 32-bit float | ±3.4e38 | Default, best for most embeddings |
-| **FLOAT64** | 64-bit float | ±1.7e308 | Higher precision (rarely needed) |
-| **INT8** | 8-bit signed integer | -128 to 127 | Quantized embeddings, memory optimization |
-| **BINARY** | 8-bit unsigned | 0-255 | Binary embeddings, maximum compression |
+| Format      | Storage              | Range       | Use Case                                  |
+| ----------- | -------------------- | ----------- | ----------------------------------------- |
+| **FLOAT32** | 32-bit float         | ±3.4e38     | Default, best for most embeddings         |
+| **FLOAT64** | 64-bit float         | ±1.7e308    | Higher precision (rarely needed)          |
+| **INT8**    | 8-bit signed integer | -128 to 127 | Quantized embeddings, memory optimization |
+| **BINARY**  | 8-bit unsigned       | 0-255       | Binary embeddings, maximum compression    |
 
 **Default**: If no format is specified, Oracle uses FLOAT64.
 
 **Example Specifications**:
+
 ```sql
 embedding VECTOR(768, FLOAT32)  -- 768 dimensions, 32-bit floats
 embedding VECTOR(768, FLOAT64)  -- 768 dimensions, 64-bit floats
@@ -101,6 +105,7 @@ embedding VECTOR(768, BINARY)   -- 768 dimensions, binary (96 bytes)
 ```
 
 **Storage Calculation**:
+
 - FLOAT32: dimensions × 4 bytes (e.g., 768 × 4 = 3,072 bytes)
 - FLOAT64: dimensions × 8 bytes (e.g., 768 × 8 = 6,144 bytes)
 - INT8: dimensions × 1 byte (e.g., 768 × 1 = 768 bytes)
@@ -117,17 +122,20 @@ Oracle 23ai supports both dense and sparse vector representations.
 **Definition**: Standard vectors where all elements are stored explicitly.
 
 **Characteristics**:
+
 - All dimensions have values
 - Standard array representation
 - Most common for embeddings
 
 **Python Example**:
+
 ```python
 import array
 dense_vector = array.array('f', [1.5, 2.0, 3.5, 4.0])  # All values present
 ```
 
 **Oracle Storage**:
+
 ```sql
 CREATE TABLE products (
     embedding VECTOR(768, FLOAT32)  -- Dense vector
@@ -139,11 +147,13 @@ CREATE TABLE products (
 **Definition**: Vectors where most elements are zero, stored as (indices, values) pairs.
 
 **Characteristics**:
+
 - Only non-zero elements stored
 - Represented as struct with `num_dimensions`, `indices`, `values`
 - Significant memory savings for sparse data
 
 **Python Example**:
+
 ```python
 import oracledb
 import array
@@ -157,6 +167,7 @@ sparse_vector = oracledb.SparseVector(
 ```
 
 **Oracle Storage**:
+
 ```sql
 CREATE TABLE sparse_data (
     embedding VECTOR(25, FLOAT32, SPARSE)  -- Sparse vector
@@ -164,6 +175,7 @@ CREATE TABLE sparse_data (
 ```
 
 **When to Use**:
+
 - **Dense**: Standard embeddings from models (text-embedding-004, etc.)
 - **Sparse**: TF-IDF vectors, BM25 scores, topic models, feature vectors
 
@@ -265,11 +277,11 @@ PARAMETERS ('
 
 #### HNSW Parameters
 
-| Parameter | Description | Default | Tuning Guidelines |
-|-----------|-------------|---------|-------------------|
-| **M** | Max connections per layer | 16 | Higher = better recall, more memory. Range: 2-100. Sweet spot: 12-48. |
-| **EF_CONSTRUCTION** | Size of dynamic candidate list during build | 64 | Higher = better index quality, slower build. Range: 4-1000. Sweet spot: 64-200. |
-| **DISTANCE** | Distance metric | COSINE | Options: COSINE, EUCLIDEAN, DOT |
+| Parameter           | Description                                 | Default | Tuning Guidelines                                                               |
+| ------------------- | ------------------------------------------- | ------- | ------------------------------------------------------------------------------- |
+| **M**               | Max connections per layer                   | 16      | Higher = better recall, more memory. Range: 2-100. Sweet spot: 12-48.           |
+| **EF_CONSTRUCTION** | Size of dynamic candidate list during build | 64      | Higher = better index quality, slower build. Range: 4-1000. Sweet spot: 64-200. |
+| **DISTANCE**        | Distance metric                             | COSINE  | Options: COSINE, EUCLIDEAN, DOT                                                 |
 
 #### HNSW Query Parameters
 
@@ -281,16 +293,19 @@ ALTER SESSION SET hnsw_ef_search = 100;  -- Higher = better recall, slower query
 #### HNSW Characteristics
 
 **Pros**:
+
 - Fast queries (constant-time complexity)
 - High recall accuracy
 - Good for real-time applications
 
 **Cons**:
+
 - High memory usage (~2-3x data size)
 - Slower index build
 - Complex parameter tuning
 
 **Best For**:
+
 - Large datasets (>100K vectors)
 - Real-time search requirements
 - High recall accuracy needed
@@ -315,10 +330,10 @@ PARAMETERS ('
 
 #### IVFFlat Parameters
 
-| Parameter | Description | Tuning Guidelines |
-|-----------|-------------|-------------------|
-| **LISTS** | Number of clusters/partitions | Formula: `SQRT(num_rows)`. Min: 10, Max: 10000. For 1K rows: 100, For 10K rows: 100, For 100K rows: 316, For 1M rows: 1000. |
-| **DISTANCE** | Distance metric | Options: COSINE, EUCLIDEAN, DOT |
+| Parameter    | Description                   | Tuning Guidelines                                                                                                           |
+| ------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **LISTS**    | Number of clusters/partitions | Formula: `SQRT(num_rows)`. Min: 10, Max: 10000. For 1K rows: 100, For 10K rows: 100, For 100K rows: 316, For 1M rows: 1000. |
+| **DISTANCE** | Distance metric               | Options: COSINE, EUCLIDEAN, DOT                                                                                             |
 
 #### IVFFlat Query Parameters
 
@@ -331,16 +346,19 @@ ALTER SESSION SET ivfflat_probes = 10;  -- Higher = better recall, slower query
 #### IVFFlat Characteristics
 
 **Pros**:
+
 - Lower memory usage (~1.5x data size)
 - Faster index build
 - Simple parameter tuning
 
 **Cons**:
+
 - Lower recall than HNSW
 - Query time increases with dataset size
 - Requires periodic rebuilding
 
 **Best For**:
+
 - Medium datasets (1K-1M vectors)
 - Memory-constrained environments
 - Development/testing
@@ -348,30 +366,33 @@ ALTER SESSION SET ivfflat_probes = 10;  -- Higher = better recall, slower query
 
 ### Index Type Comparison
 
-| Metric | HNSW | IVFFlat |
-|--------|------|---------|
-| **Build Time** | Slow | Fast |
-| **Query Speed** | Fast (constant) | Medium (varies) |
-| **Memory Usage** | High (2-3x) | Low (1.5x) |
-| **Recall** | Excellent | Good |
-| **Best Dataset Size** | >100K | 1K-1M |
-| **Update Performance** | Slow | Medium |
+| Metric                 | HNSW            | IVFFlat         |
+| ---------------------- | --------------- | --------------- |
+| **Build Time**         | Slow            | Fast            |
+| **Query Speed**        | Fast (constant) | Medium (varies) |
+| **Memory Usage**       | High (2-3x)     | Low (1.5x)      |
+| **Recall**             | Excellent       | Good            |
+| **Best Dataset Size**  | >100K           | 1K-1M           |
+| **Update Performance** | Slow            | Medium          |
 
 ### Choosing an Index Type
 
 **Use HNSW when**:
+
 - Dataset > 100K vectors
 - Real-time queries required
 - Memory is available
 - Recall accuracy is critical
 
 **Use IVFFlat when**:
+
 - Dataset < 1M vectors
 - Memory is limited
 - Frequent updates occur
 - Development/testing phase
 
 **No Index (Exact Search)**:
+
 - Dataset < 1K vectors
 - Perfect recall required
 - Query time not critical
@@ -399,11 +420,13 @@ VECTOR_DISTANCE(vector1, vector2, distance_metric)
 **Returns**: 0 (identical) to 2 (opposite)
 
 **Use When**:
+
 - Embeddings are normalized (most ML models)
 - Direction matters more than magnitude
 - Semantic similarity (text embeddings)
 
 **Oracle Query**:
+
 ```sql
 SELECT
     id,
@@ -416,6 +439,7 @@ LIMIT 5;
 ```
 
 **Interpretation**:
+
 - Distance 0 = Vectors are identical
 - Distance 1 = Vectors are orthogonal (90°)
 - Distance 2 = Vectors are opposite (180°)
@@ -428,11 +452,13 @@ LIMIT 5;
 **Returns**: 0 (identical) to ∞ (unbounded)
 
 **Use When**:
+
 - Absolute magnitude matters
 - Non-normalized embeddings
 - Spatial data
 
 **Oracle Query**:
+
 ```sql
 SELECT
     id,
@@ -445,6 +471,7 @@ LIMIT 5;
 ```
 
 **Interpretation**:
+
 - Lower distance = more similar
 - Scale depends on vector magnitude
 - Sensitive to embedding normalization
@@ -456,11 +483,13 @@ LIMIT 5;
 **Returns**: -∞ to +∞ (unbounded)
 
 **Use When**:
+
 - Maximum Inner Product Search (MIPS)
 - Specific ML models require it
 - Asymmetric similarity
 
 **Oracle Query**:
+
 ```sql
 SELECT
     id,
@@ -472,19 +501,20 @@ LIMIT 5;
 ```
 
 **Interpretation**:
+
 - Higher dot product = more similar
 - Not symmetric (order matters)
 - Negative dot products indicate dissimilarity
 
 ### Choosing a Distance Metric
 
-| Use Case | Recommended Metric | Why |
-|----------|-------------------|-----|
-| **Text Embeddings (Vertex AI)** | COSINE | Pre-normalized, semantic similarity |
-| **Image Embeddings** | COSINE or L2 | Depends on model normalization |
-| **TF-IDF Vectors** | COSINE | Normalized term frequencies |
-| **Spatial Coordinates** | EUCLIDEAN | Absolute distances matter |
-| **Recommendation Systems** | DOT | Asymmetric preferences |
+| Use Case                        | Recommended Metric | Why                                 |
+| ------------------------------- | ------------------ | ----------------------------------- |
+| **Text Embeddings (Vertex AI)** | COSINE             | Pre-normalized, semantic similarity |
+| **Image Embeddings**            | COSINE or L2       | Depends on model normalization      |
+| **TF-IDF Vectors**              | COSINE             | Normalized term frequencies         |
+| **Spatial Coordinates**         | EUCLIDEAN          | Absolute distances matter           |
+| **Recommendation Systems**      | DOT                | Asymmetric preferences              |
 
 ---
 
@@ -548,6 +578,7 @@ connection.commit()
 ```
 
 **array.array Type Codes**:
+
 - `'f'`: FLOAT32 (4 bytes per element)
 - `'d'`: FLOAT64 (8 bytes per element)
 - `'b'`: INT8 (1 byte per element, signed)
@@ -672,6 +703,7 @@ pool.close()
 ```
 
 **Pooling Best Practices**:
+
 - **min**: 2-5 (keeps connections warm)
 - **max**: CPU cores × 2-4 for I/O-bound apps
 - **increment**: 1-2 (grow gradually)
@@ -1027,14 +1059,15 @@ finally:
 
 ### Pool Sizing Guidelines
 
-| Environment | Min Size | Max Size | Formula |
-|-------------|----------|----------|---------|
-| **Development** | 1-2 | 5-10 | Small, quick iteration |
-| **Testing** | 2 | 5 | Consistent, predictable |
-| **Production** | 2-5 | CPUs × 2-4 | Scale with load |
-| **High Concurrency** | 5-10 | CPUs × 4-8 | Many simultaneous users |
+| Environment          | Min Size | Max Size   | Formula                 |
+| -------------------- | -------- | ---------- | ----------------------- |
+| **Development**      | 1-2      | 5-10       | Small, quick iteration  |
+| **Testing**          | 2        | 5          | Consistent, predictable |
+| **Production**       | 2-5      | CPUs × 2-4 | Scale with load         |
+| **High Concurrency** | 5-10     | CPUs × 4-8 | Many simultaneous users |
 
 **Oracle Connection Limits**:
+
 - Default max connections: Depends on PROCESSES parameter
 - Check: `SELECT value FROM v$parameter WHERE name = 'processes';`
 - Reserve 20-30% for admin/maintenance
@@ -1100,6 +1133,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 ```
 
 **Look for**:
+
 - "INDEX RANGE SCAN" on vector index (good)
 - "TABLE ACCESS FULL" (bad - not using index)
 
@@ -1255,6 +1289,7 @@ PARAMETERS ('DISTANCE COSINE, M 32, EF_CONSTRUCTION 128');
 **Symptoms**: Queries taking >1 second
 
 **Diagnosis**:
+
 ```sql
 -- Check if index exists
 SELECT index_name, index_type, status
@@ -1267,6 +1302,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 ```
 
 **Solutions**:
+
 1. **No index**: Create HNSW or IVFFlat index
 2. **Index not used**: Check WHERE clause includes distance function
 3. **Index needs tuning**: Adjust M, EF_CONSTRUCTION, or LISTS parameters
@@ -1277,6 +1313,7 @@ SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 **Symptoms**: EXPLAIN PLAN shows "TABLE ACCESS FULL"
 
 **Solutions**:
+
 ```sql
 -- 1. Ensure WHERE clause uses distance function
 -- ❌ BAD
@@ -1301,12 +1338,15 @@ ALTER INDEX idx_product_embedding_hnsw REBUILD;
 **Symptoms**: `ORA-04030: out of process memory`
 
 **Solutions**:
+
 1. **Increase PGA**:
+
 ```sql
 ALTER SYSTEM SET pga_aggregate_target = 2G;
 ```
 
 2. **Use IVFFlat instead of HNSW** (less memory):
+
 ```sql
 CREATE INDEX idx_product_embedding_ivfflat
 ON products (embedding)
@@ -1315,6 +1355,7 @@ PARAMETERS ('DISTANCE COSINE, LISTS 100');
 ```
 
 3. **Reduce HNSW parameters**:
+
 ```sql
 -- Lower M and EF_CONSTRUCTION
 PARAMETERS ('M 8, EF_CONSTRUCTION 32')

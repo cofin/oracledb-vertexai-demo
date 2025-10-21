@@ -64,7 +64,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             ProductService,
             VertexAIService,
         )
-        from app.services.adk.runner import ADKRunner
+        from app.services._adk.runner import ADKRunner
         from app.utils.serialization import general_dec_hook, numpy_array_enc_hook, numpy_array_predicate
 
         settings = get_settings()

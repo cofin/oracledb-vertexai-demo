@@ -21,20 +21,20 @@ from dishka import AsyncContainer, Provider, Scope, provide
 from sqlspec.base import SQLSpec
 from sqlspec.driver import AsyncDriverAdapterBase
 
+from app.lib.context import QueryContext, query_id_var
+
 # Import service types for proper type registration (aliased to avoid conflicts)
 from app.services import (
-    CacheService as _CacheService,
-    ExemplarService as _ExemplarService,
-    MetricsService as _MetricsService,
-    OracleVectorSearchService as _OracleVectorSearchService,
-    ProductService as _ProductService,
-    VertexAIService as _VertexAIService,
+    CacheService,
+    ExemplarService,
+    MetricsService,
+    OracleVectorSearchService,
+    ProductService,
+    VertexAIService,
 )
-from app.services.adk import ADKRunner as _ADKRunner
-from app.services.adk import AgentToolsService as _AgentToolsService
-from app.services.intent import IntentService as _IntentService
-from app.services.store import StoreService as _StoreService
-
+from app.services._adk import ADKRunner, AgentToolsService
+from app.services._intent import IntentService
+from app.services._store import StoreService
 
 # Context variable for request container access in ADK tools
 _request_container: ContextVar[AsyncContainer | None] = ContextVar("_request_container", default=None)
@@ -156,51 +156,49 @@ class CoreServiceProvider(Provider):
 
     # Simple services - auto-wired by constructor
     @provide
-    def get_product_service(self, driver: AsyncDriverAdapterBase) -> _ProductService:
+    def get_product_service(self, driver: AsyncDriverAdapterBase) -> ProductService:
         """Provide ProductService."""
-        return _ProductService(driver)
+        return ProductService(driver)
 
     @provide
-    def get_cache_service(self, driver: AsyncDriverAdapterBase) -> _CacheService:
+    def get_cache_service(self, driver: AsyncDriverAdapterBase) -> CacheService:
         """Provide CacheService."""
-        return _CacheService(driver)
+        return CacheService(driver)
 
     @provide
-    def get_metrics_service(self, driver: AsyncDriverAdapterBase) -> _MetricsService:
+    def get_metrics_service(self, driver: AsyncDriverAdapterBase) -> MetricsService:
         """Provide MetricsService."""
-        return _MetricsService(driver)
+        return MetricsService(driver)
 
     @provide
-    def get_exemplar_service(self, driver: AsyncDriverAdapterBase) -> _ExemplarService:
+    def get_exemplar_service(self, driver: AsyncDriverAdapterBase) -> ExemplarService:
         """Provide ExemplarService."""
-        return _ExemplarService(driver)
+        return ExemplarService(driver)
 
     @provide
-    def get_store_service(self, driver: AsyncDriverAdapterBase) -> _StoreService:
+    def get_store_service(self, driver: AsyncDriverAdapterBase) -> StoreService:
         """Provide StoreService."""
-        return _StoreService(driver)
+        return StoreService(driver)
 
-    # VertexAI service - APP scope singleton (no DB needed, thread-safe)
-    @provide(scope=Scope.APP)
-    def get_vertex_ai_service(self) -> _VertexAIService:
-        """Provide VertexAI service as singleton.
+    # VertexAI service - REQUEST scope to enable embedding cache
+    @provide
+    def get_vertex_ai_service(self, cache_service: CacheService) -> VertexAIService:
+        """Provide VertexAI service with cache support.
 
-        VertexAI service is thread-safe and doesn't require a database session,
-        so it's created once at app startup and reused across all requests.
-
-        Note: cache_service is not injected because VertexAI is APP scope
-        and cannot depend on REQUEST-scoped services.
+        Changed from APP to REQUEST scope to enable Oracle-based embedding cache.
+        Each request gets a VertexAI instance with access to CacheService for
+        embedding caching in the Oracle database.
         """
-        return _VertexAIService()
+        return VertexAIService(cache_service=cache_service)
 
     # Complex services - auto-wired with multiple dependencies
     @provide
     def get_intent_service(
         self,
         driver: AsyncDriverAdapterBase,
-        exemplar_service: _ExemplarService,
-        vertex_ai_service: _VertexAIService,
-    ) -> _IntentService:
+        exemplar_service: ExemplarService,
+        vertex_ai_service: VertexAIService,
+    ) -> IntentService:
         """Provide IntentService with auto-wired dependencies.
 
         Dishka automatically resolves all three dependencies:
@@ -208,7 +206,7 @@ class CoreServiceProvider(Provider):
         - exemplar_service: from this provider
         - vertex_ai_service: from this provider (APP scope)
         """
-        return _IntentService(
+        return IntentService(
             driver=driver,
             exemplar_service=exemplar_service,
             vertex_ai_service=vertex_ai_service,
@@ -218,18 +216,18 @@ class CoreServiceProvider(Provider):
     def get_agent_tools_service(
         self,
         driver: AsyncDriverAdapterBase,
-        product_service: _ProductService,
-        metrics_service: _MetricsService,
-        intent_service: _IntentService,
-        vertex_ai_service: _VertexAIService,
-        store_service: _StoreService,
-    ) -> _AgentToolsService:
+        product_service: ProductService,
+        metrics_service: MetricsService,
+        intent_service: IntentService,
+        vertex_ai_service: VertexAIService,
+        store_service: StoreService,
+    ) -> AgentToolsService:
         """Provide AgentToolsService with auto-wired dependencies.
 
         Dishka automatically resolves all six dependencies from
         the appropriate providers and scopes.
         """
-        return _AgentToolsService(
+        return AgentToolsService(
             driver=driver,
             product_service=product_service,
             metrics_service=metrics_service,
@@ -241,10 +239,10 @@ class CoreServiceProvider(Provider):
     @provide
     def get_vector_search_service(
         self,
-        product_service: _ProductService,
-        vertex_ai_service: _VertexAIService,
-        cache_service: _CacheService,
-    ) -> _OracleVectorSearchService:
+        product_service: ProductService,
+        vertex_ai_service: VertexAIService,
+        cache_service: CacheService,
+    ) -> OracleVectorSearchService:
         """Provide OracleVectorSearchService with mixed-scope dependencies.
 
         This service depends on:
@@ -254,7 +252,7 @@ class CoreServiceProvider(Provider):
 
         Dishka handles the mixed scopes correctly.
         """
-        return _OracleVectorSearchService(
+        return OracleVectorSearchService(
             products_service=product_service,
             vertex_ai_service=vertex_ai_service,
             embedding_cache=cache_service,
@@ -270,7 +268,7 @@ class ADKProvider(Provider):
     """
 
     @provide(scope=Scope.APP)
-    def get_adk_runner(self) -> _ADKRunner:
+    def get_adk_runner(self) -> ADKRunner:
         """Provide ADK agent runner as a singleton.
 
         The ADKRunner is stateless and reusable across requests.
@@ -279,7 +277,19 @@ class ADKProvider(Provider):
         Using APP scope (singleton) is more efficient and matches the
         pattern used in the postgres demo's ADKOrchestrator.
         """
-        return _ADKRunner()
+        return ADKRunner()
+
+    @provide(scope=Scope.REQUEST)
+    def get_query_context(self) -> QueryContext | None:
+        """Provide query context from the current request ContextVar.
+
+        Returns None if query_id is not set (e.g., background tasks).
+        """
+
+        qid = query_id_var.get()
+        if not qid:
+            return None
+        return QueryContext(query_id=qid)
 
 
 __all__ = [

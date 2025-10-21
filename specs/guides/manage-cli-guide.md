@@ -33,6 +33,7 @@ Options:
 ```
 
 **What it does:**
+
 1. Detects or prompts for deployment mode (managed or external)
 2. Creates `.env` file with interactive prompts for all settings
 3. Configures database connection based on mode:
@@ -44,10 +45,12 @@ Options:
 7. Optionally verifies setup
 
 **Deployment Modes:**
+
 - **managed**: Deploy and manage Oracle container locally (Docker/Podman)
 - **external**: Connect to existing database (on-prem, cloud, or Autonomous with wallet)
 
 **Example:**
+
 ```bash
 # Fully automated setup with managed mode
 python3 manage.py init --run-install --run-doctor
@@ -79,6 +82,7 @@ Options:
 ```
 
 **What it installs:**
+
 - **All modes**: UV package manager
 - **Managed mode**: Docker/Podman (verification only)
 - **Optional**: Java, SQLcl, Gemini CLI, MCP Toolbox
@@ -104,6 +108,7 @@ Options:
 ```
 
 **Platforms supported:**
+
 - Linux (x86_64, ARM)
 - macOS (Intel, Apple Silicon)
 - Windows (manual installation required)
@@ -121,9 +126,11 @@ Options:
 ```
 
 **Prerequisites:**
+
 - Java 11 or higher (auto-checked)
 
 **Features:**
+
 - Automatic Java validation
 - Copy-paste installation commands for missing Java
 - Auto-configures Gemini MCP integration if Gemini CLI is installed
@@ -158,15 +165,18 @@ Options:
 ```
 
 **Prerequisites:**
+
 - Node.js 18 or higher (auto-checked)
 
 **Features:**
+
 - Free tier: 60 requests/min, 1000 requests/day
 - Access to Gemini 2.5 Pro
 - 1M token context window
 - Built-in tools: Google Search, file operations, shell commands
 
 **Authentication:**
+
 ```bash
 gemini  # Launch and login with Google account
 ```
@@ -184,6 +194,7 @@ Options:
 ```
 
 **Supported databases:**
+
 - AlloyDB for PostgreSQL (including AlloyDB Omni)
 - Cloud SQL (PostgreSQL, MySQL, SQL Server)
 - Spanner
@@ -191,6 +202,7 @@ Options:
 - Self-managed MySQL and PostgreSQL
 
 **Platform support:**
+
 - Linux (amd64)
 - macOS (Intel and Apple Silicon)
 - Windows (amd64)
@@ -213,6 +225,7 @@ Options:
 ```
 
 **What it checks:**
+
 - `.env` file exists
 - UV package manager installed
 - Mode-specific requirements:
@@ -221,10 +234,12 @@ Options:
 - Database connectivity (optional)
 
 **Exit codes:**
+
 - `0`: All checks passed
 - `1`: One or more checks failed
 
 **Example output:**
+
 ```
 Health Check for 'local' Mode
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -295,6 +310,7 @@ Options:
 ```
 
 **Example:**
+
 ```bash
 python3 manage.py database oracle wallet extract ~/Downloads/Wallet_MyDB.zip
 python3 manage.py database oracle wallet extract ~/Wallet_*.zip --dest ./my-wallet
@@ -331,6 +347,7 @@ Options:
 ```
 
 **Example:**
+
 ```bash
 # Auto-detect mode from .env
 python3 manage.py database oracle connect test
@@ -363,10 +380,12 @@ Options:
 Uses Docker/Podman to run Oracle 23 Free container locally.
 
 **Prerequisites:**
+
 - UV package manager ✓
 - Docker or Podman ✓
 
 **Setup:**
+
 ```bash
 python3 manage.py init --mode managed
 python3 manage.py install all
@@ -375,6 +394,7 @@ uv run app load-fixtures
 ```
 
 **Configuration:** The init command will prompt for:
+
 - DATABASE_USER (default: app)
 - DATABASE_PASSWORD (default: super-secret)
 - DATABASE_HOST (default: localhost)
@@ -386,10 +406,12 @@ uv run app load-fixtures
 Connects to existing on-prem or cloud Oracle instance using standard connection parameters.
 
 **Prerequisites:**
+
 - UV package manager ✓
 - Network access to Oracle server ✓
 
 **Setup:**
+
 ```bash
 python3 manage.py init --mode external
 # When prompted, select "no" for wallet-based connection
@@ -400,6 +422,7 @@ uv run app load-fixtures
 ```
 
 **Configuration:** The init command will prompt for:
+
 - DATABASE_USER
 - DATABASE_PASSWORD
 - DATABASE_HOST
@@ -411,10 +434,12 @@ uv run app load-fixtures
 Uses Oracle Autonomous Database or any mTLS-secured connection with wallet.
 
 **Prerequisites:**
+
 - UV package manager ✓
-- Oracle wallet files (Wallet_*.zip) ✓
+- Oracle wallet files (Wallet\_\*.zip) ✓
 
 **Setup:**
+
 ```bash
 # 1. Initialize with wallet support
 python3 manage.py init --mode external
@@ -430,6 +455,7 @@ uv run app load-fixtures
 ```
 
 **Configuration:** The init command will prompt for:
+
 - DATABASE_URL (format: `oracle+oracledb://USER:PASS@service_high`)
 - WALLET_PASSWORD
 - TNS_ADMIN (default: ./.envs/tns)
@@ -443,6 +469,7 @@ uv run app load-fixtures
 Required for SQLcl.
 
 **Ubuntu/Debian:**
+
 ```bash
 sudo apt update && sudo apt install -y default-jre
 # Or specific version
@@ -450,16 +477,19 @@ sudo apt install openjdk-17-jre-headless
 ```
 
 **RHEL/CentOS 7-8:**
+
 ```bash
 sudo yum install java-17-openjdk
 ```
 
 **RHEL/CentOS 9+, Fedora:**
+
 ```bash
 sudo dnf install java-17-openjdk
 ```
 
 **macOS:**
+
 ```bash
 brew install openjdk@17
 ```
@@ -469,18 +499,21 @@ brew install openjdk@17
 Required for Gemini CLI.
 
 **Ubuntu/Debian:**
+
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
 **RHEL/CentOS/Fedora:**
+
 ```bash
 curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
 sudo yum install -y nodejs  # or dnf
 ```
 
 **macOS:**
+
 ```bash
 brew install node@20
 ```
@@ -494,12 +527,14 @@ brew install node@20
 After installing UV, you may need to add it to your PATH:
 
 **Bash:**
+
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
 **Zsh:**
+
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
@@ -516,11 +551,13 @@ If you see "SQLcl requires Java 11 and above to run":
 ### Docker not found (Local Mode)
 
 Install Docker:
+
 - Linux: https://docs.docker.com/engine/install/
 - macOS: https://docs.docker.com/desktop/mac/install/
 - Windows: https://docs.docker.com/desktop/windows/install/
 
 Or use Podman as an alternative:
+
 ```bash
 # Fedora/RHEL
 sudo dnf install podman
@@ -585,6 +622,7 @@ uv run app run
 When both SQLcl and Gemini CLI are installed, SQLcl is automatically available as an MCP server in Gemini CLI.
 
 **Usage in Gemini CLI:**
+
 ```bash
 gemini  # Start Gemini CLI
 

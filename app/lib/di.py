@@ -18,8 +18,10 @@ Example:
 
 from dishka.integrations.litestar import (
     FromDishka as Inject,
+)
+from dishka.integrations.litestar import (
     inject,
     setup_dishka,
 )
 
-__all__ = ["Inject", "inject", "setup_dishka"]
+__all__ = ("Inject", "inject", "setup_dishka")

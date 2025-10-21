@@ -19,11 +19,13 @@ Invoke the Planner agent to create a comprehensive requirement workspace.
 ## Usage Examples
 
 ### Gemini
+
 ```
 /prompt plan Add vector search caching with TTL management
 ```
 
 ### Claude Code
+
 ```python
 Task(
     subagent_type="planner",
@@ -33,6 +35,7 @@ Task(
 ```
 
 ### Codex
+
 ```
 /invoke planner Add vector search caching with TTL management
 ```
@@ -67,6 +70,7 @@ specs/active/{slug}/
 ## After Planning
 
 Next steps:
+
 - **Implement**: `/prompt implement {slug}` (Gemini) or invoke Expert agent
 - Review the PRD and tasks before starting implementation
 - Expert agent will read all workspace files

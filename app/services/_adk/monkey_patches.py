@@ -61,8 +61,7 @@ def _patch_genai_client_cleanup() -> None:
                 # Log other exceptions but don't crash
                 logger.debug("Error during Client cleanup", exc_info=True)
 
-        # Use type: ignore for dynamic attribute assignment
-        Client.__del__ = safe_del  # type: ignore[method-assign]
+        Client.__del__ = safe_del
 
     except Exception as e:  # noqa: BLE001
         logger.warning("Failed to apply GenAI Client cleanup patch", error=str(e))
@@ -82,13 +81,10 @@ def _patch_genai_base_api_client_cleanup() -> None:
                 if hasattr(self, "_async_httpx_client"):
                     await original_aclose(self)
             except AttributeError:
-                # Silently ignore AttributeError during cleanup
                 pass
             except Exception:  # noqa: BLE001
-                # Log other exceptions but don't crash
                 logger.debug("Error during BaseApiClient cleanup", exc_info=True)
 
-        # Use type: ignore for dynamic attribute assignment
         BaseApiClient.aclose = safe_aclose  # type: ignore[method-assign]
 
     except Exception as e:  # noqa: BLE001
@@ -119,7 +115,7 @@ def _patch_adk_client_caching() -> None:
         # Create cached version
         def cached_api_client(self: Any) -> Client:
             """Cached GenAI client instance."""
-            return original_getter(self)  # type: ignore[no-any-return]
+            return original_getter(self)
 
         # Replace property with cached_property
         setattr(Gemini, "api_client", cached_property(cached_api_client))

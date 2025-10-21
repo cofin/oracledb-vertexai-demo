@@ -19,11 +19,13 @@ Invoke the Testing agent to create comprehensive test suites for Oracle, Vertex 
 ## Usage Examples
 
 ### Gemini
+
 ```
 /prompt test vector-search-caching
 ```
 
 ### Claude Code
+
 ```python
 Task(
     subagent_type="testing",
@@ -33,6 +35,7 @@ Task(
 ```
 
 ### Codex
+
 ```
 /invoke testing vector-search-caching
 ```
@@ -65,12 +68,14 @@ Task(
 ## Test Categories
 
 ### Unit Tests (`tests/unit/`)
+
 - Service layer logic
 - Data validation
 - Utility functions
 - Fast execution
 
 ### Integration Tests (`tests/integration/`)
+
 - Oracle vector operations
 - Vertex AI embeddings
 - Cache behavior
@@ -78,6 +83,7 @@ Task(
 - Database transactions
 
 ### API Tests (`tests/api/`)
+
 - Litestar routes
 - HTMX partials
 - Request/response validation
@@ -86,6 +92,7 @@ Task(
 ## Test Patterns Used
 
 ### Service Layer Tests
+
 ```python
 @pytest.mark.asyncio
 async def test_vector_similarity_search(product_service):
@@ -100,6 +107,7 @@ async def test_vector_similarity_search(product_service):
 ```
 
 ### Cache Tests
+
 ```python
 @pytest.mark.asyncio
 async def test_embedding_cache_hit(cache_service):
@@ -110,6 +118,7 @@ async def test_embedding_cache_hit(cache_service):
 ```
 
 ### ADK Agent Tests
+
 ```python
 @pytest.mark.asyncio
 async def test_adk_product_search():
@@ -139,6 +148,7 @@ pytest tests/api/
 ## After Testing
 
 Next steps:
+
 - **Review**: `/prompt review {slug}` (Gemini) or invoke Docs & Vision agent
 - All tests must pass before review
 - Testing agent hands off to Docs & Vision for quality gate
