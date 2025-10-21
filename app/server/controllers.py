@@ -22,7 +22,8 @@ from typing import TYPE_CHECKING, Annotated
 
 import structlog
 from litestar import Controller, get, post
-from litestar.di import Provide
+from litestar.enums import RequestEncodingType
+from litestar.params import Body
 from litestar.plugins.htmx import (
     HTMXRequest,
     HTMXTemplate,
@@ -32,19 +33,15 @@ from litestar.response import File, Stream
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app import schemas
-from app.server import deps
+from app.lib.di import Inject, inject
 from app.server.exception_handlers import HTMXValidationException
+from app.services.adk import ADKRunner
+from app.services.cache import CacheService
+from app.services.metrics import MetricsService
+from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-
-    from litestar.enums import RequestEncodingType
-    from litestar.params import Body
-
-    from app.services.adk import ADKRunner
-    from app.services.cache import CacheService
-    from app.services.metrics import MetricsService
-    from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
 
 logger = structlog.get_logger()
 
@@ -52,15 +49,6 @@ logger = structlog.get_logger()
 class CoffeeChatController(Controller):
     """Coffee Chat Controller with ADK-based agent system."""
 
-    dependencies = {
-        "adk_runner": Provide(deps.provide_adk_runner),
-        "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
-        "vector_search_service": Provide(deps.provide_oracle_vector_search_service),
-        "products_service": Provide(deps.provide_product_service),
-        "cache_service": Provide(deps.provide_cache_service),
-        "metrics_service": Provide(deps.provide_metrics_service),
-        "exemplar_service": Provide(deps.provide_exemplar_service),
-    }
     signature_namespace = {"OracleAsyncDriver": OracleAsyncDriver}
 
     @staticmethod
@@ -108,12 +96,13 @@ class CoffeeChatController(Controller):
         )
 
     @post(path="/", name="coffee_chat.get")
+    @inject
     async def handle_coffee_chat(
         self,
         data: Annotated[
             schemas.CoffeeChatMessage, Body(title="Discover Coffee", media_type=RequestEncodingType.URL_ENCODED)
         ],
-        adk_runner: ADKRunner,
+        adk_runner: Inject[ADKRunner],
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Handle both full page and HTMX partial requests using the modern ADKRunner."""
@@ -150,24 +139,31 @@ class CoffeeChatController(Controller):
             }
 
         if request.htmx:
-            # Simplified response, as the new runner is much leaner.
-            # We can add back more details later if needed by enhancing the runner's response.
+            # Extract metrics and metadata from enhanced ADKRunner response
+            intent_details = agent_response.get("intent_details", {})
+            search_details = agent_response.get("search_details", {})
+
             return HTMXTemplate(
                 template_name="partials/chat_response.html",
                 context={
                     "ai_response": agent_response.get("answer", ""),
                     "user_message": clean_message,
                     "query_id": query_id,
-                    "products": [],
-                    "debug_info": {},
-                    "intent_detected": "N/A",
-                    "intent_confidence": 0.0,
-                    "intent_sql": "",
-                    "search_sql": "",
-                    "search_results_count": 0,
-                    "search_params": {},
-                    "from_cache": False,
-                    "embedding_cache_hit": False,
+                    "products": agent_response.get("products_found", []),
+                    "debug_info": {
+                        "response_time_ms": agent_response.get("response_time_ms", 0),
+                        "agent_processing_ms": agent_response.get("agent_processing_ms", 0),
+                        "embedding_ms": search_details.get("embedding_ms", 0),
+                        "search_ms": search_details.get("search_ms", 0),
+                    },
+                    "intent_detected": agent_response.get("intent_detected", "N/A"),
+                    "intent_confidence": intent_details.get("confidence", 0.0),
+                    "intent_sql": intent_details.get("sql_query", ""),
+                    "search_sql": search_details.get("sql_query", ""),
+                    "search_results_count": search_details.get("results_count", 0),
+                    "search_params": search_details.get("params", {}),
+                    "from_cache": agent_response.get("from_cache", False),
+                    "embedding_cache_hit": agent_response.get("embedding_cache_hit", False),
                     "csp_nonce": csp_nonce,
                 },
                 trigger_event="chat:response-complete",
@@ -179,17 +175,18 @@ class CoffeeChatController(Controller):
             template_name="coffee_chat.html",
             context={
                 "answer": agent_response.get("answer", ""),
-                "products": [],
+                "products": agent_response.get("products_found", []),
                 "agent_used": "ADKRunner",
                 "csp_nonce": csp_nonce,
             },
         )
 
     @get(path="/chat/stream/{query_id:str}", name="chat.stream")
+    @inject
     async def stream_response(
         self,
         query_id: str,
-        vertex_ai_service: VertexAIService,
+        vertex_ai_service: Inject[VertexAIService],
     ) -> Stream:
         """Stream AI response using Server-Sent Events with validation."""
         # Validate query_id format (assuming it should be alphanumeric)
@@ -231,7 +228,8 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/dashboard", name="performance_dashboard")
-    async def performance_dashboard(self, metrics_service: MetricsService) -> HTMXTemplate:
+    @inject
+    async def performance_dashboard(self, metrics_service: Inject[MetricsService]) -> HTMXTemplate:
         """Display performance dashboard."""
         # Get metrics for dashboard
         metrics = await metrics_service.get_performance_stats(hours=24)
@@ -254,7 +252,8 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: MetricsService, request: HTMXRequest) -> dict | HXStopPolling:
+    @inject
+    async def get_metrics(self, metrics_service: Inject[MetricsService], request: HTMXRequest) -> dict | HXStopPolling:
         """Get performance metrics with validation."""
         if request.headers.get("X-Requested-With") != "XMLHttpRequest" and not request.htmx:
             return {"error": "Invalid request"}
@@ -273,10 +272,11 @@ class CoffeeChatController(Controller):
             return {"total_searches": 0, "avg_search_time_ms": 0, "avg_oracle_time_ms": 0, "avg_similarity_score": 0}
 
     @get(path="/api/metrics/summary", name="metrics.summary")
+    @inject
     async def get_metrics_summary(
         self,
-        metrics_service: MetricsService,
-        cache_service: CacheService,
+        metrics_service: Inject[MetricsService],
+        cache_service: Inject[CacheService],
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Get summary metrics for dashboard cards."""
@@ -346,9 +346,10 @@ class CoffeeChatController(Controller):
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
+    @inject
     async def get_chart_data(
         self,
-        metrics_service: MetricsService,
+        metrics_service: Inject[MetricsService],
     ) -> schemas.ChartDataResponse:
         """Get chart data for dashboard visualizations."""
         time_series = await metrics_service.get_time_series_data(minutes=60)
@@ -367,12 +368,13 @@ class CoffeeChatController(Controller):
         )
 
     @post(path="/api/vector-demo", name="vector.demo")
+    @inject
     async def vector_search_demo(
         self,
         data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
-        vertex_ai_service: VertexAIService,
-        vector_search_service: OracleVectorSearchService,
-        metrics_service: MetricsService,
+        vertex_ai_service: Inject[VertexAIService],
+        vector_search_service: Inject[OracleVectorSearchService],
+        metrics_service: Inject[MetricsService],
         request: HTMXRequest,
     ) -> HTMXTemplate:
         """Interactive vector search demonstration."""
@@ -476,11 +478,12 @@ class CoffeeChatController(Controller):
         return response
 
     @get(path="/api/help/query-log/{message_id:str}", name="help.query_log")
+    @inject
     async def get_query_log(
         self,
         message_id: str,
-        metrics_service: MetricsService,
-        vertex_ai_service: VertexAIService,
+        metrics_service: Inject[MetricsService],
+        vertex_ai_service: Inject[VertexAIService],
         request: HTMXRequest,
     ) -> dict:
         """Get query execution details for help tooltips."""

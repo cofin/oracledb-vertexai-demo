@@ -49,7 +49,7 @@ __all__ = (
 )
 
 
-class SimilarIntent(msgspec.Struct, array_like=True, omit_defaults=True):
+class SimilarIntent(msgspec.Struct, omit_defaults=True):
     """Represents a similar intent found by vector search."""
 
     intent: str
@@ -58,7 +58,7 @@ class SimilarIntent(msgspec.Struct, array_like=True, omit_defaults=True):
     confidence_threshold: float
 
 
-class IntentResult(msgspec.Struct, array_like=True, omit_defaults=True):
+class IntentResult(msgspec.Struct, omit_defaults=True):
     """Result of intent classification."""
 
     intent: str
@@ -110,14 +110,14 @@ class CoffeeChatMessage(msgspec.Struct):
 # Oracle-specific DTOs
 
 
-class UserSessionCreate(msgspec.Struct, array_like=True, omit_defaults=True):
+class UserSessionCreate(msgspec.Struct, omit_defaults=True):
     """Session creation payload."""
 
     user_id: str
     data: dict = {}
 
 
-class UserSessionRead(msgspec.Struct, array_like=True, omit_defaults=True):
+class UserSessionRead(msgspec.Struct, omit_defaults=True):
     """Session response payload."""
 
     id: UUID
@@ -128,7 +128,7 @@ class UserSessionRead(msgspec.Struct, array_like=True, omit_defaults=True):
     created_at: datetime
 
 
-class ChatConversationCreate(msgspec.Struct, array_like=True, omit_defaults=True):
+class ChatConversationCreate(msgspec.Struct, omit_defaults=True):
     """Conversation creation payload."""
 
     session_id: UUID
@@ -138,7 +138,7 @@ class ChatConversationCreate(msgspec.Struct, array_like=True, omit_defaults=True
     message_metadata: dict = {}
 
 
-class ChatConversationRead(msgspec.Struct, array_like=True, omit_defaults=True):
+class ChatConversationRead(msgspec.Struct, omit_defaults=True):
     """Conversation response payload."""
 
     id: UUID
@@ -149,7 +149,7 @@ class ChatConversationRead(msgspec.Struct, array_like=True, omit_defaults=True):
     created_at: datetime
 
 
-class SearchMetricsCreate(msgspec.Struct, array_like=True, omit_defaults=True, kw_only=True):
+class SearchMetricsCreate(msgspec.Struct, omit_defaults=True, kw_only=True):
     """Metrics creation payload."""
 
     query_id: str
@@ -163,14 +163,14 @@ class SearchMetricsCreate(msgspec.Struct, array_like=True, omit_defaults=True, k
     result_count: int
 
 
-class ChatMessage(msgspec.Struct, array_like=True, omit_defaults=True):
+class ChatMessage(msgspec.Struct, omit_defaults=True):
     """Individual chat message."""
 
     message: str
     source: str  # 'human' | 'ai' | 'system'
 
 
-class CoffeeChatReply(msgspec.Struct, array_like=True, omit_defaults=True):
+class CoffeeChatReply(msgspec.Struct, omit_defaults=True):
     """Complete chat response."""
 
     message: str
@@ -184,7 +184,7 @@ class CoffeeChatReply(msgspec.Struct, array_like=True, omit_defaults=True):
 
 
 # Legacy TypedDict for compatibility (to be removed)
-class HistoryMeta(msgspec.Struct, array_like=True, omit_defaults=True):
+class HistoryMeta(msgspec.Struct, omit_defaults=True):
     """History metadata."""
 
     conversation_id: str
@@ -194,7 +194,7 @@ class HistoryMeta(msgspec.Struct, array_like=True, omit_defaults=True):
 # Dashboard API DTOs
 
 
-class MetricCard(msgspec.Struct, array_like=True, omit_defaults=True):
+class MetricCard(msgspec.Struct, omit_defaults=True):
     """Metric card data for dashboard."""
 
     label: str
@@ -203,7 +203,7 @@ class MetricCard(msgspec.Struct, array_like=True, omit_defaults=True):
     trend_value: float | None = None
 
 
-class MetricsSummaryResponse(msgspec.Struct, array_like=True, omit_defaults=True):
+class MetricsSummaryResponse(msgspec.Struct, omit_defaults=True):
     """Metrics summary response."""
 
     total_searches: MetricCard
@@ -235,7 +235,7 @@ class VectorDemoRequest(msgspec.Struct, omit_defaults=True):
     query: str
 
 
-class VectorDemoResult(msgspec.Struct, array_like=True, omit_defaults=True):
+class VectorDemoResult(msgspec.Struct, omit_defaults=True):
     """Vector search demo result."""
 
     product_name: str

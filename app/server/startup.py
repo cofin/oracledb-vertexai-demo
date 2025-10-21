@@ -8,15 +8,13 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app import config
-from app.server import deps
 from app.services.exemplar import ExemplarService
 from app.services.intent import INTENT_EXEMPLARS
 from app.services.product import ProductService
+from app.services.vertex_ai import VertexAIService
 
 if TYPE_CHECKING:
     from litestar import Litestar
-
-    from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -82,7 +80,7 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
     # Get Oracle connection from the async pool
     async with config.db_manager.provide_session(config.db) as driver:
         # Create service instances
-        vertex_ai_service = await anext(deps.provide_vertex_ai_service())
+        vertex_ai_service = VertexAIService()
         exemplar_service = ExemplarService(driver)
         product_service = ProductService(driver)
 

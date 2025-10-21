@@ -39,7 +39,6 @@ from sqlspec.base import SQLSpec
 
 from app.lib import log as log_conf
 from app.lib.settings import BASE_DIR, get_settings
-from app.services.locator import ServiceLocator
 
 _settings = get_settings()
 settings = _settings  # Alias for compatibility
@@ -62,7 +61,6 @@ db_manager.load_sql_files(BASE_DIR / "db" / "sql")
 
 stores = StoreRegistry(stores={"sessions": OracleAsyncStore(config=db)})  # type: ignore[dict-item]
 session_config = ServerSideSessionConfig(store="sessions")
-service_locator = ServiceLocator()
 
 
 log = StructlogConfig(

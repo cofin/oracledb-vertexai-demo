@@ -65,6 +65,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             VertexAIService,
         )
         from app.services.adk.runner import ADKRunner
+        from app.utils.serialization import general_dec_hook, numpy_array_enc_hook, numpy_array_predicate
 
         settings = get_settings()
         # logging
@@ -89,6 +90,11 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # Set HTMXRequest as the default request class
         app_config.request_class = HTMXRequest
         app_config.template_config = config.templates
+        # type encoders for numpy arrays (vector embeddings)
+        import numpy as np
+
+        app_config.type_encoders = {np.ndarray: numpy_array_enc_hook}
+        app_config.type_decoders = [(numpy_array_predicate, general_dec_hook)]
         # openapi
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,

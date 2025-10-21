@@ -2,15 +2,44 @@
 
 These functions provide the ADK tool interface while delegating
 to the AgentToolsService for business logic.
+
+Since ADK tool functions are called outside the HTTP request context,
+we create request-scoped containers on-demand for each tool invocation.
 """
 
 from __future__ import annotations
 
 from typing import Any, cast
 
-from app.config import db, db_manager
+from dishka import AsyncContainer
+
 from app.services.adk.tool_service import AgentToolsService
 from app.utils.serialization import from_json
+
+# Global container reference set by the application
+_app_container: AsyncContainer | None = None
+
+
+def set_app_container(container: AsyncContainer) -> None:
+    """Set the application container for ADK tools.
+
+    This should be called during application startup to provide
+    the container to tool functions.
+    """
+    global _app_container
+    _app_container = container
+
+
+def get_app_container() -> AsyncContainer:
+    """Get the application container.
+
+    Raises:
+        RuntimeError: If container hasn't been set
+    """
+    if _app_container is None:
+        msg = "Application container not set. Call set_app_container() during app startup."
+        raise RuntimeError(msg)
+    return _app_container
 
 
 async def search_products_by_vector(
@@ -22,26 +51,28 @@ async def search_products_by_vector(
     # Apply defaults within function to avoid ADK schema issues
     limit = limit or 5
     similarity_threshold = similarity_threshold or 0.7
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+
+    # Create request-scoped container for this tool invocation
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
         return cast("list[dict[str, Any]]", result["products"])
 
 
 async def get_product_details(product_id: str) -> dict[str, Any]:
     """Get detailed information about a specific product by ID or name with fresh session."""
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         return await tools_service.get_product_details(product_id)
 
 
 async def classify_intent(query: str) -> dict[str, Any]:
     """Classify user intent using vector-based classification with fresh session."""
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         return await tools_service.classify_intent(query)
 
 
@@ -66,10 +97,9 @@ async def record_search_metric(
     Returns:
         Dictionary containing the recorded metrics
     """
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
 
         # Decode JSON string to list using SQLSpec's from_json utility
         vector_results = from_json(vector_results_json) if vector_results_json else []
@@ -86,9 +116,9 @@ async def record_search_metric(
 
 async def get_store_locations() -> list[dict[str, Any]]:
     """Get all store locations and information with fresh session."""
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         return await tools_service.get_all_store_locations()
 
 
@@ -102,9 +132,9 @@ async def find_stores_by_location(city: str = "", state: str = "") -> list[dict[
     Returns:
         List of stores matching the location criteria
     """
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         # Convert empty strings to None for the service layer
         city_filter = city if city else None
         state_filter = state if state else None
@@ -113,9 +143,9 @@ async def find_stores_by_location(city: str = "", state: str = "") -> list[dict[
 
 async def get_store_hours(store_id: int) -> dict[str, Any]:
     """Get store hours for a specific store with fresh session."""
-    async with db_manager.provide_session(db) as session:
-        from app.config import service_locator
-        tools_service = service_locator.get(AgentToolsService, session)
+    container = get_app_container()
+    async with container() as request_container:
+        tools_service = await request_container.get(AgentToolsService)
         return await tools_service.get_store_hours(store_id)
 
 
