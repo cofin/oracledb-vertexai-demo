@@ -102,17 +102,15 @@ def bulk_embed(batch_size: int, force: bool) -> None:
     console.print()
 
     async def _bulk_embed_products() -> None:
-        from app.server.deps import create_service_provider, provide_vertex_ai_service
-        from app.services import ProductService
+        from app.config import db, db_manager
+        from app.services import ProductService, VertexAIService
+        from app.services._cache import CacheService
 
-        # Create service providers
-        product_provider = create_service_provider(ProductService)
-        product_service_gen = product_provider()
-        vertex_ai_service_gen = provide_vertex_ai_service()
-
-        try:
-            product_service = await anext(product_service_gen)
-            vertex_ai_service = await anext(vertex_ai_service_gen)
+        # Use SQLSpec session directly
+        async with db_manager.provide_session(db) as session:
+            product_service = ProductService(session)
+            cache_service = CacheService(session)
+            vertex_ai_service = VertexAIService(cache_service=cache_service)
 
             # Get products to embed
             products, message = await _fetch_products_to_embed(product_service, force)
@@ -151,10 +149,6 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
             # Show final results
             _print_embedding_results(total_success, total_errors)
-
-        finally:
-            await product_service_gen.aclose()
-            await vertex_ai_service_gen.aclose()
 
     run_(_bulk_embed_products)()
 
@@ -208,15 +202,11 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
 
     async def _clear_cache() -> None:
         """Clear cache tables."""
-        from app.server.deps import create_service_provider
-        from app.services.cache import CacheService
+        from app.config import db, db_manager
+        from app.services._cache import CacheService
 
-        provider = create_service_provider(CacheService)
-        service_gen = provider()
-
-        try:
-            cache_service = await anext(service_gen)
-
+        async with db_manager.provide_session(db) as session:
+            cache_service = CacheService(session)
             console.rule("[bold blue]Clearing Caches", style="blue", align="left")
             console.print()
 
@@ -225,9 +215,6 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
 
             console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
             console.print()
-
-        finally:
-            await service_gen.aclose()
 
     run_(_clear_cache)()
 
@@ -355,24 +342,15 @@ def _load_fixture_data(tables: str | None) -> None:
 
     async def _load_fixtures() -> None:
         from app.db.utils import load_fixtures
-        from app.server.deps import create_service_provider
-        from app.services.base import SQLSpecService
 
-        provider = create_service_provider(SQLSpecService)
-        service_gen = provider()
-
-        try:
-            _service = await anext(service_gen)
-            with console.status("[bold yellow]Loading fixtures...", spinner="dots"):
-                results = await load_fixtures(table_list)
+        with console.status("[bold yellow]Loading fixtures...", spinner="dots"):
+            results = await load_fixtures(table_list)
 
             if not results:
                 console.print("[yellow]No fixture files found to load[/yellow]")
                 return
 
             _display_fixture_results(results)
-        finally:
-            await service_gen.aclose()
 
     run_(_load_fixtures)()
 

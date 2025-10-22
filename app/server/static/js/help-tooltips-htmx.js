@@ -470,7 +470,10 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
         const realMetrics = [];
 
         // Intent Classification (includes embedding lookup for intent)
-        if (times.intent_classification != null && times.intent_classification > 0) {
+        if (
+          times.intent_classification != null &&
+          times.intent_classification > 0
+        ) {
           realMetrics.push({
             label: "Intent Classification",
             value: times.intent_classification,
@@ -481,7 +484,10 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
         // Embedding Generation (0 when cache hit - important to show!)
         // Only show as cached if embedding_time is 0 AND there was a vector search
         // (If no vector search, embedding_time being 0 is expected, not a cache hit)
-        if (times.embedding_generation != null && times.embedding_generation > 0) {
+        if (
+          times.embedding_generation != null &&
+          times.embedding_generation > 0
+        ) {
           // Embedding was actually generated
           realMetrics.push({
             label: "Embedding Generation",
@@ -489,7 +495,11 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
             color: "#8b5cf6", // purple
             isCacheHit: false,
           });
-        } else if (times.embedding_generation === 0 && times.vector_search != null && times.vector_search > 0) {
+        } else if (
+          times.embedding_generation === 0 &&
+          times.vector_search != null &&
+          times.vector_search > 0
+        ) {
           // Embedding time is 0 BUT vector search happened = cache hit!
           realMetrics.push({
             label: "Embedding (🧠 Cached)",
@@ -531,22 +541,22 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
         }
 
         // Calculate percentages for bar widths (exclude cached items from max calculation)
-        const nonCachedMetrics = realMetrics.filter(m => !m.isCacheHit);
-        const maxTime = nonCachedMetrics.length > 0
-          ? Math.max(...nonCachedMetrics.map((m) => m.value))
-          : Math.max(...realMetrics.map((m) => m.value));
+        const nonCachedMetrics = realMetrics.filter((m) => !m.isCacheHit);
+        const maxTime =
+          nonCachedMetrics.length > 0
+            ? Math.max(...nonCachedMetrics.map((m) => m.value))
+            : Math.max(...realMetrics.map((m) => m.value));
 
         const barsHtml = realMetrics
-          .map(
-            (metric) => {
-              const widthPercent = metric.isCacheHit
-                ? 5  // Tiny bar for cache hits
-                : (metric.value / maxTime) * 100;
-              const displayValue = metric.isCacheHit
-                ? "&lt;1ms"
-                : `${metric.value.toFixed(1)}ms`;
+          .map((metric) => {
+            const widthPercent = metric.isCacheHit
+              ? 5 // Tiny bar for cache hits
+              : (metric.value / maxTime) * 100;
+            const displayValue = metric.isCacheHit
+              ? "&lt;1ms"
+              : `${metric.value.toFixed(1)}ms`;
 
-              return `
+            return `
           <div class="perf-bar">
             <div class="perf-bar-label">${metric.label}</div>
             <div class="perf-bar-track">
@@ -555,8 +565,7 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
             <div class="perf-bar-value">${displayValue}</div>
           </div>
         `;
-            }
-          )
+          })
           .join("");
 
         contentEl.innerHTML = `

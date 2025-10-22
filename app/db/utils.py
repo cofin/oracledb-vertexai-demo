@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from app.config import db, db_manager
 from app.lib.settings import get_settings
 from app.utils.fixtures import FixtureExporter, FixtureLoader
 
@@ -32,32 +33,22 @@ async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str
     Returns:
         Dictionary mapping table names to loading results
     """
-    from app.server.deps import create_service_provider
-    from app.services.base import SQLSpecService
-
-    # Create a temporary service provider to get a driver
-    provider = create_service_provider(SQLSpecService)
-    service_gen = provider()
-
-    try:
-        service = await anext(service_gen)
+    async with db_manager.provide_session(db) as driver:
         settings = get_settings()
         fixtures_dir = Path(settings.db.FIXTURE_PATH)
 
         loader = FixtureLoader(
             fixtures_dir=fixtures_dir,
-            driver=service.driver,
+            driver=driver,
             table_order=COFFEE_SHOP_TABLES,
         )
 
         results = await loader.load_all_fixtures(specific_tables=tables)
 
         # Reset sequences for Oracle tables to avoid duplicate key issues
-        await _reset_sequences(service.driver)
+        await _reset_sequences(driver)
 
         return results
-    finally:
-        await service_gen.aclose()
 
 
 async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
@@ -103,15 +94,9 @@ async def export_fixtures(
     Returns:
         Dictionary mapping table names to output paths or error messages
     """
-    from app.server.deps import create_service_provider
-    from app.services.base import SQLSpecService
 
-    # Create a temporary service provider to get a driver
-    provider = create_service_provider(SQLSpecService)
-    service_gen = provider()
-
-    try:
-        service = await anext(service_gen)
+    # Use SQLSpec session directly
+    async with db_manager.provide_session(db) as driver:
         settings = get_settings()
         fixtures_dir = Path(settings.db.FIXTURE_PATH)
 
@@ -120,7 +105,7 @@ async def export_fixtures(
 
         exporter = FixtureExporter(
             fixtures_dir=fixtures_dir,
-            driver=service.driver,
+            driver=driver,
             table_order=COFFEE_SHOP_TABLES,
         )
 
@@ -129,5 +114,3 @@ async def export_fixtures(
             output_dir=output_dir,
             compress=compress,
         )
-    finally:
-        await service_gen.aclose()
