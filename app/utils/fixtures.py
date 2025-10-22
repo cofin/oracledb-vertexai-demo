@@ -281,6 +281,9 @@ class FixtureLoader:
             await cursor.execute(merge_sql.strip(), {"payload": temp_clob})
             upserted = cursor.rowcount if cursor.rowcount > 0 else total
 
+        # Commit the transaction to persist the changes
+        await self.driver.commit()
+
         return {"upserted": upserted, "failed": 0, "total": total}
 
     def _generate_missing_fixtures_results(self) -> dict[str, dict[str, Any] | str]:

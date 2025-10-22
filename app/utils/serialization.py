@@ -89,26 +89,27 @@ _msgspec_json_decoder = msgspec.json.Decoder()
 
 
 @overload
-def to_json(data: Any, *, as_bytes: Literal[False] = ...) -> str: ...
+def to_json(data: Any, *, as_bytes: Literal[True] = ...) -> bytes: ...
 
 
 @overload
-def to_json(data: Any, *, as_bytes: Literal[True]) -> bytes: ...
+def to_json(data: Any, *, as_bytes: Literal[False]) -> str: ...
 
 
-def to_json(data: Any, *, as_bytes: bool = False) -> str | bytes:
+def to_json(data: Any, *, as_bytes: bool = True) -> str | bytes:
     """Encode data to JSON string or bytes.
 
     Args:
         data: Data to encode.
-        as_bytes: Whether to return bytes instead of string for optimal performance.
+        as_bytes: Whether to return bytes (default: True for performance).
 
     Returns:
-        JSON string or bytes representation based on as_bytes parameter.
+        JSON bytes by default, or string if as_bytes=False.
     """
-    if isinstance(data, bytes):
-        return data
-    return _msgspec_json_encoder.encode(data)
+    encoded = _msgspec_json_encoder.encode(data)
+    if not as_bytes:
+        return encoded.decode("utf-8") if isinstance(encoded, bytes) else encoded
+    return encoded
 
 
 @overload
@@ -129,9 +130,9 @@ def from_json(data: str | bytes, *, decode_bytes: bool = True) -> Any:
     Returns:
         Decoded Python object.
     """
-    if isinstance(data, bytes):
+    if isinstance(data, bytes) and not decode_bytes:
         return data
-    return _msgspec_json_encoder.encode(data)
+    return _msgspec_json_decoder.decode(data)
 
 
 def convert_datetime_to_gmt_iso(dt: datetime.datetime) -> str:
