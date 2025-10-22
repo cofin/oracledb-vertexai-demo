@@ -102,6 +102,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             use_handler_docstrings=True,
             render_plugins=[ScalarRenderPlugin(version="latest")],
         )
+
         # routes
         app_config.route_handlers.extend(
             [
@@ -110,6 +111,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                     path="/static",
                     directories=[str(BASE_DIR / "server" / "static")],
                     name="static",
+                    html_mode=False,
+                    send_as_attachment=False,
                 ),
             ],
         )
