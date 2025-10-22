@@ -44,6 +44,8 @@ class MetricsService(SQLSpecService):
                 search_time_ms,
                 embedding_time_ms,
                 oracle_time_ms,
+                ai_time_ms,
+                intent_time_ms,
                 similarity_score,
                 result_count
             )
@@ -53,6 +55,8 @@ class MetricsService(SQLSpecService):
                 :search_time_ms,
                 :embedding_time_ms,
                 :oracle_time_ms,
+                :ai_time_ms,
+                :intent_time_ms,
                 :similarity_score,
                 :result_count
             )
@@ -62,6 +66,8 @@ class MetricsService(SQLSpecService):
             search_time_ms=metrics_data.search_time_ms,
             embedding_time_ms=metrics_data.embedding_time_ms,
             oracle_time_ms=metrics_data.oracle_time_ms,
+            ai_time_ms=metrics_data.ai_time_ms,
+            intent_time_ms=metrics_data.intent_time_ms,
             similarity_score=metrics_data.similarity_score,
             result_count=metrics_data.result_count,
         )
@@ -77,6 +83,8 @@ class MetricsService(SQLSpecService):
                 search_time_ms AS "search_time_ms",
                 embedding_time_ms AS "embedding_time_ms",
                 oracle_time_ms AS "oracle_time_ms",
+                ai_time_ms AS "ai_time_ms",
+                intent_time_ms AS "intent_time_ms",
                 similarity_score AS "similarity_score",
                 result_count AS "result_count",
                 created_at AS "created_at",
@@ -100,6 +108,8 @@ class MetricsService(SQLSpecService):
             "search_time_ms": result["search_time_ms"],
             "embedding_time_ms": result["embedding_time_ms"],
             "oracle_time_ms": result["oracle_time_ms"],
+            "ai_time_ms": result["ai_time_ms"],
+            "intent_time_ms": result["intent_time_ms"],
             "similarity_score": result["similarity_score"],
             "result_count": result["result_count"],
             "created_at": result["created_at"],
@@ -251,6 +261,8 @@ class MetricsService(SQLSpecService):
                 search_time_ms AS "search_time_ms",
                 embedding_time_ms AS "embedding_time_ms",
                 oracle_time_ms AS "oracle_time_ms",
+                ai_time_ms AS "ai_time_ms",
+                intent_time_ms AS "intent_time_ms",
                 similarity_score AS "similarity_score",
                 result_count AS "result_count",
                 created_at AS "created_at"
@@ -272,6 +284,8 @@ class MetricsService(SQLSpecService):
             "search_time_ms": result["search_time_ms"],
             "embedding_time_ms": result["embedding_time_ms"],
             "oracle_time_ms": result["oracle_time_ms"],
+            "ai_time_ms": result["ai_time_ms"],
+            "intent_time_ms": result["intent_time_ms"],
             "similarity_score": result["similarity_score"],
             "result_count": result["result_count"],
             "created_at": result["created_at"],

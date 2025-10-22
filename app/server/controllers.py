@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
 
 import re
 import secrets
 import time
 import uuid
-from typing import TYPE_CHECKING, Annotated
+from collections.abc import AsyncGenerator
+from typing import Annotated
 
 import structlog
 from litestar import Controller, get, post
@@ -37,9 +37,6 @@ from app.lib.di import Inject, inject
 from app.server.exception_handlers import HTMXValidationException
 from app.services import CacheService, MetricsService, OracleVectorSearchService, VertexAIService
 from app.services._adk import ADKRunner
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
 
 logger = structlog.get_logger()
 
@@ -131,6 +128,44 @@ class CoffeeChatController(Controller):
                 )
             finally:
                 query_id_var.reset(token)
+
+            # Record search metrics for all requests (including embedding cache hits)
+            # Skip only if this is a full response cache hit (no processing occurred)
+            if not agent_response.get("from_cache", False):
+                intent_details = agent_response.get("intent_details", {})
+                search_details = agent_response.get("search_details", {})
+                products_found = agent_response.get("products_found", [])
+
+                # Calculate average similarity score
+                # For product searches, use product similarities
+                # For intent-only queries, use intent confidence as similarity
+                avg_similarity = 0.0
+                if products_found:
+                    similarities = [p.get("similarity_score", 0) for p in products_found if isinstance(p, dict)]
+                    if similarities:
+                        avg_similarity = sum(similarities) / len(similarities)
+                elif intent_details.get("confidence"):
+                    # For GENERAL_CONVERSATION, use intent confidence as similarity metric
+                    avg_similarity = intent_details.get("confidence", 0.0)
+
+                # Record detailed performance metrics
+                # - embedding_ms: 0 when cache hit (shows cache benefit!)
+                # - search_ms: 0 when no product search (GENERAL_CONVERSATION)
+                # - ai_time_ms: Time spent in AI agent processing
+                # - intent_time_ms: Time for intent classification
+                await metrics_service.record_search(
+                    schemas.SearchMetricsCreate(
+                        query_id=query_id,
+                        user_id=session_id,
+                        search_time_ms=agent_response.get("response_time_ms", 0),
+                        embedding_time_ms=search_details.get("embedding_ms", 0),
+                        oracle_time_ms=search_details.get("search_ms", 0),
+                        ai_time_ms=agent_response.get("agent_processing_ms", 0),
+                        intent_time_ms=intent_details.get("timing_ms", 0),
+                        similarity_score=avg_similarity,
+                        result_count=len(products_found),
+                    )
+                )
 
         except Exception as e:
             logger.exception(
@@ -507,8 +542,10 @@ class CoffeeChatController(Controller):
                 "vector_search_time": query_metrics.get("oracle_time_ms", 8.7),
                 "cache_queries": query_metrics.get("cache_queries", []),
                 "execution_times": {
+                    "intent_classification": query_metrics.get("intent_time_ms"),
                     "embedding_generation": query_metrics.get("embedding_time_ms"),
                     "vector_search": query_metrics.get("oracle_time_ms"),
+                    "ai_generation": query_metrics.get("ai_time_ms"),
                     "total": query_metrics.get("search_time_ms"),
                 },
             }

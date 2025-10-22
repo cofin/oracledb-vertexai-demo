@@ -38,7 +38,6 @@ def apply_genai_client_patch() -> None:
     _patch_genai_client_cleanup()
     _patch_genai_base_api_client_cleanup()
     _patch_adk_client_caching()
-    logger.info("Applied all Google GenAI/ADK patches")
 
 
 def _patch_genai_client_cleanup() -> None:
@@ -85,7 +84,7 @@ def _patch_genai_base_api_client_cleanup() -> None:
             except Exception:  # noqa: BLE001
                 logger.debug("Error during BaseApiClient cleanup", exc_info=True)
 
-        BaseApiClient.aclose = safe_aclose  # type: ignore[method-assign]
+        BaseApiClient.aclose = safe_aclose
 
     except Exception as e:  # noqa: BLE001
         logger.warning("Failed to apply BaseApiClient aclose patch", error=str(e))

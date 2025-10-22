@@ -11,16 +11,15 @@ The providers handle automatic dependency resolution and proper lifecycle
 management for all services.
 """
 
-from __future__ import annotations
-
 from collections.abc import AsyncIterable
 from contextvars import ContextVar
-from typing import Any
 
 from dishka import AsyncContainer, Provider, Scope, provide
+from sqlspec.adapters.oracledb import OracleAsyncConfig
 from sqlspec.base import SQLSpec
 from sqlspec.driver import AsyncDriverAdapterBase
 
+from app.config import db, db_manager
 from app.lib.context import QueryContext, query_id_var
 
 # Import service types for proper type registration (aliased to avoid conflicts)
@@ -91,18 +90,16 @@ class SQLSpecProvider(Provider):
         The manager handles connection pooling and SQL file loading.
         Created once at application startup.
         """
-        from app.config import db_manager
 
         return db_manager
 
     @provide(scope=Scope.APP)
-    def get_database_config(self) -> Any:
+    def get_database_config(self) -> OracleAsyncConfig:
         """Provide database configuration singleton.
 
         Returns the database configuration from app.config.
         Created once at application startup.
         """
-        from app.config import db
 
         return db
 
@@ -110,7 +107,7 @@ class SQLSpecProvider(Provider):
     async def get_db_session(
         self,
         manager: SQLSpec,
-        config: Any,
+        config: OracleAsyncConfig,
     ) -> AsyncIterable[AsyncDriverAdapterBase]:
         """Provide SQLSpec async database session.
 

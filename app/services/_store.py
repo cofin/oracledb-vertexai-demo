@@ -30,9 +30,7 @@ class StoreService(SQLSpecService):
             List of stores in the specified city
         """
         return await self.driver.select(
-            "SELECT * FROM store WHERE city = :city ORDER BY name",
-            city=city,
-            schema_type=Store,
+            "SELECT * FROM store WHERE city = :city ORDER BY name", city=city, schema_type=Store
         )
 
     async def find_stores_by_state(self, state: str) -> list[Store]:
@@ -45,9 +43,7 @@ class StoreService(SQLSpecService):
             List of stores in the specified state
         """
         return await self.driver.select(
-            "SELECT * FROM store WHERE state = :state ORDER BY city, name",
-            state=state,
-            schema_type=Store,
+            "SELECT * FROM store WHERE state = :state ORDER BY city, name", state=state, schema_type=Store
         )
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
@@ -60,9 +56,7 @@ class StoreService(SQLSpecService):
             Store or None if not found
         """
         return await self.driver.select_one_or_none(
-            "SELECT * FROM store WHERE id = :store_id",
-            store_id=store_id,
-            schema_type=Store,
+            "SELECT * FROM store WHERE id = :store_id", store_id=store_id, schema_type=Store
         )
 
     async def get_store_hours(self, store_id: int) -> dict:
@@ -74,10 +68,7 @@ class StoreService(SQLSpecService):
         Returns:
             Dictionary of store hours or empty dict if not found
         """
-        result = await self.driver.select_one_or_none(
-            "SELECT hours FROM store WHERE id = :store_id",
-            store_id=store_id,
-        )
+        result = await self.driver.select_one_or_none("SELECT hours FROM store WHERE id = :store_id", store_id=store_id)
         return result.get("hours", {}) if result else {}
 
     async def search_stores_by_zip(self, zip_code: str) -> list[Store]:
@@ -90,7 +81,5 @@ class StoreService(SQLSpecService):
             List of stores in the specified ZIP code
         """
         return await self.driver.select(
-            "SELECT * FROM store WHERE zip = :zip_code ORDER BY name",
-            zip_code=zip_code,
-            schema_type=Store,
+            "SELECT * FROM store WHERE zip = :zip_code ORDER BY name", zip_code=zip_code, schema_type=Store
         )

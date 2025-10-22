@@ -375,14 +375,31 @@ document.addEventListener("click", (e) => {
 });
 
 // Handle HTMX events to show help triggers in newly loaded content
-document.body.addEventListener("htmx:afterRequest", () => {
-  // Always check current state and show/hide accordingly
-  setTimeout(() => {
-    document.querySelectorAll(".help-trigger").forEach((el) => {
-      el.style.display = helpEnabled ? "inline-flex" : "none";
+// Safely attach event listener after DOM is ready
+function attachHtmxListener() {
+  if (document.body) {
+    document.body.addEventListener("htmx:afterRequest", () => {
+      // Always check current state and show/hide accordingly
+      setTimeout(() => {
+        document.querySelectorAll(".help-trigger").forEach((el) => {
+          el.style.display = helpEnabled ? "inline-flex" : "none";
+        });
+      }, 100);
     });
-  }, 100);
-});
+  }
+}
+
+// Attach listener when safe
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", attachHtmxListener);
+} else if (document.body) {
+  // DOM and body already loaded
+  attachHtmxListener();
+} else {
+  // Edge case: readyState != loading but body not yet available
+  // Wait a tick
+  setTimeout(attachHtmxListener, 0);
+}
 
 // Update performance tooltip content
 async function updatePerformanceTooltipContent(tooltip, triggerElement) {
@@ -446,44 +463,63 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
         const times = data.execution_times || {};
         const total = times.total;
 
-        // Only show bars for metrics that have real data
+        // Debug: Log what we received
+        console.log("[Performance Tooltip] Received execution_times:", times);
+
+        // Build metrics array with all available timing data
         const realMetrics = [];
-        if (
-          times.embedding_generation != null &&
-          times.embedding_generation > 0
-        ) {
+
+        // Intent Classification (includes embedding lookup for intent)
+        if (times.intent_classification != null && times.intent_classification > 0) {
+          realMetrics.push({
+            label: "Intent Classification",
+            value: times.intent_classification,
+            color: "#06b6d4", // cyan
+          });
+        }
+
+        // Embedding Generation (0 when cache hit - important to show!)
+        // Only show as cached if embedding_time is 0 AND there was a vector search
+        // (If no vector search, embedding_time being 0 is expected, not a cache hit)
+        if (times.embedding_generation != null && times.embedding_generation > 0) {
+          // Embedding was actually generated
           realMetrics.push({
             label: "Embedding Generation",
             value: times.embedding_generation,
-            color: "#8b5cf6",
+            color: "#8b5cf6", // purple
+            isCacheHit: false,
+          });
+        } else if (times.embedding_generation === 0 && times.vector_search != null && times.vector_search > 0) {
+          // Embedding time is 0 BUT vector search happened = cache hit!
+          realMetrics.push({
+            label: "Embedding (🧠 Cached)",
+            value: 0.1, // Tiny bar for visualization
+            color: "#10b981", // green
+            isCacheHit: true,
           });
         }
+        // If embedding_time is 0 and no vector search, don't show embedding row at all
+
+        // Vector Search (product search in Oracle)
         if (times.vector_search != null && times.vector_search > 0) {
           realMetrics.push({
             label: "Oracle Vector Search",
             value: times.vector_search,
-            color: "#10b981",
+            color: "#10b981", // green
           });
         }
 
-        // If we have a total time but no component times, estimate the breakdown
-        if (
-          realMetrics.length === 0 &&
-          times.total != null &&
-          times.total > 0
-        ) {
-          // This likely means we're looking at a general conversation without vector search
+        // AI Generation (LLM response time)
+        if (times.ai_generation != null && times.ai_generation > 0) {
           realMetrics.push({
             label: "AI Response Generation",
-            value: times.total * 0.95, // Estimate 95% is AI generation
-            color: "#f59e0b",
-          });
-          realMetrics.push({
-            label: "Processing Overhead",
-            value: times.total * 0.05, // Estimate 5% is overhead
-            color: "#6366f1",
+            value: times.ai_generation,
+            color: "#f59e0b", // amber
           });
         }
+
+        // Debug: Log what metrics we built
+        console.log("[Performance Tooltip] Built metrics array:", realMetrics);
 
         if (realMetrics.length === 0) {
           contentEl.innerHTML = `
@@ -494,20 +530,32 @@ async function updatePerformanceTooltipContent(tooltip, triggerElement) {
           return;
         }
 
-        // Calculate percentages for bar widths
-        const maxTime = Math.max(...realMetrics.map((m) => m.value));
+        // Calculate percentages for bar widths (exclude cached items from max calculation)
+        const nonCachedMetrics = realMetrics.filter(m => !m.isCacheHit);
+        const maxTime = nonCachedMetrics.length > 0
+          ? Math.max(...nonCachedMetrics.map((m) => m.value))
+          : Math.max(...realMetrics.map((m) => m.value));
 
         const barsHtml = realMetrics
           .map(
-            (metric) => `
+            (metric) => {
+              const widthPercent = metric.isCacheHit
+                ? 5  // Tiny bar for cache hits
+                : (metric.value / maxTime) * 100;
+              const displayValue = metric.isCacheHit
+                ? "&lt;1ms"
+                : `${metric.value.toFixed(1)}ms`;
+
+              return `
           <div class="perf-bar">
             <div class="perf-bar-label">${metric.label}</div>
             <div class="perf-bar-track">
-              <div class="perf-bar-fill" style="width: ${(metric.value / maxTime) * 100}%; background: ${metric.color}"></div>
+              <div class="perf-bar-fill" style="width: ${widthPercent}%; background: ${metric.color}"></div>
             </div>
-            <div class="perf-bar-value">${metric.value.toFixed(1)}ms</div>
+            <div class="perf-bar-value">${displayValue}</div>
           </div>
-        `,
+        `;
+            }
           )
           .join("");
 

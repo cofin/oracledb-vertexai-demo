@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from google.adk.sessions import Session
 
-    from app.services.cache import CacheService
+    from app.services._cache import CacheService
 
 logger = structlog.get_logger()
 
@@ -70,7 +70,7 @@ class ADKRunner:
                 app_name="coffee-assistant",  # Same for all personas
                 session_service=self.session_service,  # Shared session service
             )
-            logger.debug(f"Created Runner for persona: {persona}")
+            logger.debug("Created Runner for persona: %s", persona)
 
         return self._persona_runners[persona]
 
@@ -167,8 +167,8 @@ class ADKRunner:
                     cache_id=result.id if result else None,
                     cache_key=result.cache_key if result else None,
                 )
-            except Exception as e:
-                logger.warning("Failed to cache response", error=str(e), query_preview=query[:50])
+            except Exception:
+                logger.exception("Failed to cache response", query_preview=query[:50])
 
         return response
 
@@ -190,7 +190,7 @@ class ADKRunner:
             state={},
         )
 
-    async def _process_events(self, events: AsyncGenerator) -> dict[str, Any]:
+    async def _process_events(self, events: AsyncGenerator) -> dict[str, Any]:  # noqa: C901
         """Process ADK events to extract response and metrics.
 
         Collects text from all events and extracts metrics from function responses,
@@ -226,7 +226,11 @@ class ADKRunner:
             # Extract metrics from function responses
             function_responses = event.get_function_responses() if hasattr(event, "get_function_responses") else []
             if function_responses:
-                logger.info("Function responses detected", count=len(function_responses), functions=[f.name for f in function_responses])
+                logger.info(
+                    "Function responses detected",
+                    count=len(function_responses),
+                    functions=[f.name for f in function_responses],
+                )
                 for func_response in function_responses:
                     if func_response.name == "classify_intent":
                         intent_result = func_response.response or {}

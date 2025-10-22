@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from dishka import AsyncContainer
+from dishka import AsyncContainer  # noqa: TC002
 
 from app.services._adk.tool_service import AgentToolsService
 from app.utils.serialization import from_json

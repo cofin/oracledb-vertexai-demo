@@ -36,11 +36,6 @@ class VertexAIService:
 
         # Initialize Vertex AI
         if self.settings.vertex_ai.PROJECT_ID:
-            if self.settings.vertex_ai.API_KEY:
-                logger.warning(
-                    "API key provided but Vertex AI requires ADC/service account credentials; ignoring api_key",
-                )
-
             # genai.Client automatically uses GOOGLE_APPLICATION_CREDENTIALS or ADC
             self._genai_client = genai.Client()
             logger.info(
