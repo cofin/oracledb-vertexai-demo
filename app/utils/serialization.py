@@ -45,7 +45,7 @@ For now, this is implemented locally until it can be upstreamed.
 from __future__ import annotations
 
 import datetime
-from typing import Any
+from typing import Any, Literal, overload
 from uuid import UUID
 
 import msgspec
@@ -88,30 +88,50 @@ _msgspec_json_encoder = msgspec.json.Encoder(enc_hook=_default_encoder)
 _msgspec_json_decoder = msgspec.json.Decoder()
 
 
-def to_json(value: Any) -> bytes:
-    """Encode object to JSON bytes using optimized msgspec package.
+@overload
+def to_json(data: Any, *, as_bytes: Literal[False] = ...) -> str: ...
+
+
+@overload
+def to_json(data: Any, *, as_bytes: Literal[True]) -> bytes: ...
+
+
+def to_json(data: Any, *, as_bytes: bool = False) -> str | bytes:
+    """Encode data to JSON string or bytes.
 
     Args:
-        value: Object to encode
+        data: Data to encode.
+        as_bytes: Whether to return bytes instead of string for optimal performance.
 
     Returns:
-        JSON encoded bytes
+        JSON string or bytes representation based on as_bytes parameter.
     """
-    if isinstance(value, bytes):
-        return value
-    return _msgspec_json_encoder.encode(value)
+    if isinstance(data, bytes):
+        return data
+    return _msgspec_json_encoder.encode(data)
 
 
-def from_json(value: bytes | str) -> Any:
-    """Decode JSON bytes/string to object using optimized msgspec package.
+@overload
+def from_json(data: str) -> Any: ...
+
+
+@overload
+def from_json(data: bytes, *, decode_bytes: bool = ...) -> Any: ...
+
+
+def from_json(data: str | bytes, *, decode_bytes: bool = True) -> Any:
+    """Decode JSON string or bytes to Python object.
 
     Args:
-        value: JSON bytes or string to decode
+        data: JSON string or bytes to decode.
+        decode_bytes: Whether to decode bytes input (vs passing through).
 
     Returns:
-        Decoded Python object
+        Decoded Python object.
     """
-    return _msgspec_json_decoder.decode(value)
+    if isinstance(data, bytes):
+        return data
+    return _msgspec_json_encoder.encode(data)
 
 
 def convert_datetime_to_gmt_iso(dt: datetime.datetime) -> str:
