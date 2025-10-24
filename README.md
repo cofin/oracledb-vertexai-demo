@@ -9,17 +9,23 @@ An intelligent coffee recommendation system showcasing Oracle 23AI vector search
 The fastest way to get started is using our unified management CLI:
 
 ```bash
+# Install UV Python manager (if not already installed)
+make install-uv
 # Initialize project and install prerequisites
+make install
 uv run manage.py init --run-install
 
 # Verify setup
 uv run manage.py doctor
 
 # Start Oracle 23ai (managed mode - local container)
-uv run manage.py database oracle start
+uv run manage.py database oracle start-local-container
+
+# Run database migrations
+uv run app db upgrade
 
 # Load sample data
-uv run app load-fixtures
+uv run app db load-fixtures
 
 # Start the application
 uv run app run
@@ -30,13 +36,24 @@ Visit [http://localhost:5006](http://localhost:5006) to try the demo!
 **Management CLI Commands:**
 
 ```bash
-python3 manage.py init                          # Initialize project (creates .env interactively)
-python3 manage.py install all                   # Install all prerequisites
-python3 manage.py doctor                        # Verify setup and prerequisites
-python3 manage.py database oracle start         # Start Oracle container
-python3 manage.py database oracle wallet extract Wallet_*.zip  # Extract wallet
-python3 manage.py database oracle connect test  # Test database connection
-python3 manage.py --help                        # Show all available commands
+# Setup and initialization
+uv run manage.py init                                          # Initialize project (creates .env interactively)
+uv run manage.py install all                                   # Install all prerequisites
+uv run manage.py doctor                                        # Verify setup and prerequisites
+
+# Database management (managed mode - local container)
+uv run manage.py database oracle start-local-container         # Start Oracle container
+uv run manage.py database oracle stop-local-container          # Stop Oracle container
+uv run manage.py database oracle restart-local-container       # Restart Oracle container
+uv run manage.py database oracle local-container-logs          # View container logs
+uv run manage.py database oracle wipe-local-container          # Remove container (clean slate)
+
+# Database management (external mode - Autonomous DB)
+uv run manage.py database oracle wallet extract Wallet_*.zip  # Extract wallet
+uv run manage.py database oracle connect test                 # Test database connection
+
+# Help
+uv run manage.py --help                                        # Show all available commands
 ```
 
 ### Manual Setup
@@ -44,70 +61,93 @@ python3 manage.py --help                        # Show all available commands
 For more control over the setup process:
 
 ```bash
-# Install UV Python manager
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Step 1: Install UV Python manager
+make install-uv
 
-# Install dependencies
+# Step 2: Install project dependencies
 make install
 
-# Setup environment (required - creates .env interactively)
-python3 manage.py init
+# Step 3: Initialize environment (creates .env interactively)
+uv run manage.py init
 
-# Start Oracle 23AI
+# Step 4: Start Oracle 23AI container
 make start-infra
-uv run app load-fixtures
 
-# Start the application
+# Step 5: Run database migrations
+uv run app db upgrade
+
+# Step 6: Load sample data
+uv run app db load-fixtures
+
+# Step 7: Start the application
 uv run app run
 ```
 
-**Note: Embeddings are included in the gzipped fixtures.**
-If you'd like to regenerate embeddings, you can use:
+**Reset Database (Clean Slate):**
 
-```sh
-uv run app db load-vectors
+To completely reset your local Oracle installation with no tables deployed:
+
+```bash
+make wipe-infra
+# Then start fresh:
+make start-infra
+uv run app db upgrade
+uv run app db load-fixtures
 ```
+
+**Note:** Embeddings are included in the gzipped fixtures. To regenerate embeddings, use `uv run app coffee bulk-embed`.
 
 ## 🖼️ Screenshots
 
 ### Coffee Chat Interface
 
 ![Cymbal Coffee Chat Interface](docs/screenshots/cymbal_chat.png)
-_AI-powered coffee recommendations with real-time performance metrics_
+
+*AI-powered coffee recommendations with real-time performance metrics*
 
 ### Performance Dashboard
 
 ![Performance Dashboard](docs/screenshots/performance_dashboard.png)
-_Live monitoring of Oracle vector search performance and system metrics_
+
+*Live monitoring of Oracle vector search performance and system metrics*
 
 ## 📚 Documentation
 
-### Core Documentation
+### Choose Your Path
 
-- **[Technical Overview](docs/system/01-technical-overview.md)** - High-level technical concepts
-- **[Oracle Architecture](docs/system/02-oracle-architecture.md)** - Oracle 23AI unified platform
-- **[Implementation Guide](docs/system/05-implementation-guide.md)** - Step-by-step build guide
-- **[Demo Scenarios](docs/system/07-demo-scenarios.md)** - Live demonstration scripts
+**🚀 I want to run the demo**
+- [Quick Install (5 minutes)](#-quick-start) - Get started with automated setup
+- [Demo Walkthrough](docs/guides/demo-walkthrough.md) - Step-by-step conference demo script *(coming soon)*
 
-### Architecture & Migration
+**🏗️ I want to deploy to production**
+- [Cloud Deployment Guide](docs/guides/autonomous-database-setup.md) - Oracle Autonomous DB on GCP
+- [Architecture Overview](docs/architecture/overview.md) - System design and components *(coming soon)*
 
-- **[SQLSpec Migration](MIGRATION.md)** - ✅ Complete migration from litestar-oracledb to SQLSpec
-- **[SQLSpec Patterns](docs/guides/sqlspec-patterns.md)** - Database patterns and best practices
-- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements:
-  - ✅ **SQLSpec Migration** - Modern database abstraction layer
-  - Native HTMX integration with Litestar
-  - Centralized exception handling system
-  - Unified cache information API
-  - Enhanced cache hit tracking
+**💻 I want to understand the code**
+- [Architecture Overview](docs/architecture/overview.md) - High-level component interaction *(coming soon)*
+- [Vector Search Deep Dive](docs/architecture/vector-search.md) - Oracle 23ai vector capabilities *(coming soon)*
+- [AI Agent Architecture](docs/architecture/ai-agent.md) - Google ADK + Gemini integration *(coming soon)*
 
-### Technical Guides
+**🤝 I want to contribute**
+- [Development Setup](CONTRIBUTING.md) - Contributing guidelines
+- [SQLSpec Patterns](docs/guides/sqlspec-patterns.md) - Database patterns and best practices
 
-- **[Oracle Deployment Tools](docs/guides/oracle-deployment-tools.md)** - Unified database management CLI
-- **[Oracle Vector Search](docs/guides/oracle-vector-search.md)** - Vector operations guide
-- **[Autonomous Database Setup](docs/guides/autonomous-database-setup.md)** - GCP deployment
+### Current Documentation
+
+#### Getting Started
+- **Quick Start** - See [above](#-quick-start) for installation
+- **[Autonomous Database Setup](docs/guides/autonomous-database-setup.md)** - Deploy to Oracle Autonomous DB on GCP
+- **[Oracle Deployment Tools](docs/guides/oracle-deployment-tools.md)** - Unified `manage.py` CLI reference
+
+#### Architecture & Technical Guides
+- **[SQLSpec Migration](MIGRATION.md)** - Complete migration from litestar-oracledb to SQLSpec
+- **[Oracle Vector Search](docs/guides/oracle-vector-search.md)** - Vector operations and HNSW indexes
 - **[Litestar Framework](docs/guides/litestar-framework.md)** - Web framework patterns
+- **[HTMX Integration](docs/htmx-migration-summary.md)** - HTMX integration details
 - **[HTMX Events Reference](docs/htmx-events.md)** - Custom HTMX events
-- **[HTMX Migration Summary](docs/htmx-migration-summary.md)** - HTMX integration details
+
+#### Additional Resources
+- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements and migration history
 
 ## 🏗️ Architecture
 
@@ -129,8 +169,6 @@ The application uses **SQLSpec** for type-safe, efficient database operations:
 - ✅ **Oracle Features** - Full support for MERGE, RETURNING, JSON operations
 - ✅ **Flexible Deployment** - Managed container or external database (auto-detects wallet)
 
-See [MIGRATION.md](MIGRATION.md) for details on the SQLSpec architecture.
-
 ## 🎯 Key Features
 
 This implementation is designed for conference demonstration with:
@@ -146,39 +184,32 @@ This implementation is designed for conference demonstration with:
 
 ```bash
 # Database operations (works with both managed and external modes)
-uv run app load-fixtures        # Load sample data
-uv run app load-vectors         # Generate embeddings
-uv run app truncate-tables      # Reset all data
-uv run app clear-cache          # Clear response cache
-
-# Autonomous Database specific
-uv run app autonomous configure # Interactive setup wizard
-# Export/Import (for faster demo startup)
-uv run app dump-data           # Export all data with embeddings
-uv run app dump-data --table intent_exemplar  # Export specific table
-uv run app dump-data --path /tmp/backup --no-compress  # Custom options
+uv run app db upgrade                # Run database migrations
+uv run app db load-fixtures          # Load sample data
+uv run app db export-fixtures        # Export database tables to JSON
+uv run app coffee bulk-embed         # Generate embeddings for all products
+uv run app coffee clear-cache        # Clear response cache
+uv run app coffee model-info         # Show AI model configuration
 
 # Development
-uv run app run                 # Start the application
-uv run pytest                  # Run tests
-make lint                      # Code quality checks
+uv run app run                       # Start the application
+uv run pytest                        # Run tests
+make lint                            # Code quality checks
 
-# Makefile shortcuts
-make config-autonomous         # Configure autonomous database
-make install-autonomous        # Complete autonomous setup
-make clean-autonomous-db       # Clean autonomous database
+# Infrastructure management (local containers)
+make start-infra                     # Start Oracle 23ai container
+make stop-infra                      # Stop Oracle 23ai container
+make wipe-infra                      # Remove container (clean slate)
+make infra-logs                      # Tail container logs
+
+# For Autonomous Database deployments (external mode)
+# See docs/guides/autonomous-database-setup.md for complete setup guide
 ```
 
-## 📖 Additional Resources
+## 📖 External Resources
 
-### Deployment Guides
-
-- [Autonomous Database Setup](docs/guides/autonomous-database-setup.md) - Complete guide for Oracle Autonomous on GCP
-- [Management CLI Guide](docs/guides/manage-cli-guide.md) - Complete guide for setup and deployment
-
-### External Documentation
-
-- [Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/) - Origin story
-- [Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/) - Vector search documentation
-- [Litestar Documentation](https://docs.litestar.dev) - Framework documentation
-- [System Documentation](docs/system/) - Complete technical guides
+- **[Original Blog Post](https://cloud.google.com/blog/topics/partners/ai-powered-coffee-nirvana-runs-on-oracle-database-on-google-cloud/)** - Origin story and motivation
+- **[Oracle 23AI Vector Guide](https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/)** - Official Oracle vector search documentation
+- **[Litestar Documentation](https://docs.litestar.dev)** - Framework documentation
+- **[Google Vertex AI](https://cloud.google.com/vertex-ai/docs)** - Vertex AI platform documentation
+- **[SQLSpec](https://github.com/litestar-org/litestar-sqlspec)** - Database abstraction layer

@@ -95,13 +95,15 @@ def init_command(mode: str | None, run_install: bool, run_doctor: bool, non_inte
     if mode == "managed":
         console.print("  1. Run: [cyan]python manage.py install all[/cyan]")
         console.print("  2. Run: [cyan]python manage.py database oracle start[/cyan]")
-        console.print("  3. Run: [cyan]uv run app load-fixtures[/cyan]")
+        console.print("  3. Run: [cyan]uv run app db upgrade[/cyan]")
+        console.print("  4. Run: [cyan]uv run app db load-fixtures[/cyan]")
     else:  # external
         console.print(
             "  1. (If using wallet) Run: [cyan]python manage.py database oracle wallet extract Wallet_*.zip[/cyan]"
         )
         console.print("  2. Run: [cyan]python manage.py database oracle connect test[/cyan]")
-        console.print("  3. Run: [cyan]uv run app load-fixtures[/cyan]")
+        console.print("  3. Run: [cyan]uv run app db upgrade[/cyan]")
+        console.print("  4. Run: [cyan]uv run app db load-fixtures[/cyan]")
 
     console.print()
 
