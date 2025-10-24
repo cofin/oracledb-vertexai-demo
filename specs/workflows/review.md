@@ -12,7 +12,7 @@ Invoke the Docs & Vision agent for quality gate, documentation, and MANDATORY cl
 
 - Validates all acceptance criteria met
 - Updates documentation in specs/guides/
-- Updates CLAUDE.md and specs/AGENTS.md if needed
+- Updates specs/AGENTS.md if needed
 - Runs quality gate (lint, tests)
 - Cleans workspace and archives requirement (MANDATORY)
 
@@ -101,8 +101,7 @@ Only after Phase 1 passes:
    - Changelog
 
 3. **Update Standards** (if needed):
-   - `CLAUDE.md` - If new coding standards introduced
-   - `specs/AGENTS.md` - If workflow changed
+   - `specs/AGENTS.md` - If new coding standards or workflow changed
 
 ### Phase 3: Cleanup (MANDATORY)
 
@@ -158,7 +157,6 @@ Generate `specs/archive/{slug}/completion-report.md`:
 ## Documentation
 
 - Updated: specs/guides/{feature}.md
-- Updated: CLAUDE.md (if applicable)
 - Updated: specs/AGENTS.md (if applicable)
 
 ## Test Coverage

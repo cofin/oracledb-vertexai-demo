@@ -180,7 +180,7 @@ if hasattr(obj, 'embedding') and obj.embedding:
 
 1. **Read workspace** - prd.md, tasks.md, research/plan.md
 2. **Research implementation details** - Use guides, Context7, SQLcl
-3. **Implement following CLAUDE.md standards**
+3. **Implement following specs/AGENTS.md standards**
 4. **Run targeted tests**
 5. **Update workspace** - tasks.md, recovery.md
 

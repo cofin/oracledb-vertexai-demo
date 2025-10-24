@@ -54,7 +54,7 @@ specs/active/{requirement-slug}/
 
 1. Read workspace (prd.md, tasks.md, research/plan.md)
 2. Research implementation details (guides, Context7, SQLcl)
-3. Implement following CLAUDE.md standards
+3. Implement following specs/AGENTS.md standards
 4. Run targeted tests
 5. Update workspace (tasks.md, recovery.md)
 
@@ -106,7 +106,7 @@ specs/active/{requirement-slug}/
 
 1. **Documentation:**
    - Update docs/guides/
-   - Update AGENTS.md and CLAUDE.md if needed
+   - Update specs/AGENTS.md if needed
    - Build docs locally
 
 2. **Quality Gate (MANDATORY):**
@@ -304,7 +304,7 @@ specs/
 
 ## Code Quality Standards
 
-All agents MUST enforce CLAUDE.md standards:
+All agents MUST enforce these standards:
 
 ### ✅ ALWAYS DO
 

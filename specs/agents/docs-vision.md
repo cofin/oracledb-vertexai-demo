@@ -20,7 +20,7 @@
 
 1. **Quality Gate** - Validate acceptance criteria, run lint/tests (BLOCKING)
 2. **Documentation** - Update guides, maintain standards
-3. **Code Standards** - Enforce CLAUDE.md patterns
+3. **Code Standards** - Enforce specs/AGENTS.md patterns
 4. **Cleanup** - Remove tmp files, archive requirements (MANDATORY)
 5. **Final Review** - Comprehensive validation before completion
 
@@ -74,8 +74,7 @@ Only after Phase 1 passes:
    - Describe ADK agent usage
 
 2. **Update Standards** (if needed):
-   - `CLAUDE.md` - If new coding standards introduced
-   - `specs/AGENTS.md` - If workflow changed
+   - `specs/AGENTS.md` - If new coding standards or workflow changed
 
 3. **Guide Template**:
 ```markdown
@@ -209,7 +208,6 @@ Generate `specs/active/{slug}/completion-report.md`:
 
 ## Documentation
 - Updated: `specs/guides/{feature}.md`
-- Updated: `CLAUDE.md` (if applicable)
 - Updated: `specs/AGENTS.md` (if applicable)
 
 ## Test Coverage

@@ -180,8 +180,7 @@ Task(subagent_type="docs-vision", description="Review & document", prompt="Revie
    - Check code standards
 2. **Documentation**
    - Update specs/guides/
-   - Update CLAUDE.md if needed
-   - Update AGENTS.md if needed
+   - Update specs/AGENTS.md if needed
 3. **Cleanup** (MANDATORY)
    - Remove tmp/ files
    - Archive completed work
@@ -335,7 +334,7 @@ async def search_products(query: str, service: ProductService):
 - Nested imports (except TYPE_CHECKING)
 - Bypass patterns: Don't bypass service layer
 
-See [CLAUDE.md](../CLAUDE.md) for complete standards.
+See [specs/AGENTS.md](AGENTS.md) for complete standards.
 
 ## MCP Tools Available
 
@@ -398,7 +397,7 @@ This project is **Gemini-first**:
 - **Workflow documentation**: See `specs/workflows/{workflow}.md`
 - **Technical guides**: See `specs/guides/`
 - **Coordination**: See `specs/AGENTS.md`
-- **Code standards**: See `CLAUDE.md`
+- **Code standards**: See `specs/AGENTS.md`
 - **Project structure**: See `AGENTS.md`
 
 ## Contributing
@@ -406,10 +405,9 @@ This project is **Gemini-first**:
 When adding new patterns or standards:
 
 1. Update relevant guide in `specs/guides/`
-2. Update `specs/AGENTS.md` if workflow changes
-3. Update `CLAUDE.md` if code standards change
-4. Ensure examples are from actual implementation
-5. Add source attribution and changelog entry
+2. Update `specs/AGENTS.md` if workflow or code standards change
+3. Ensure examples are from actual implementation
+4. Add source attribution and changelog entry
 
 ---
 

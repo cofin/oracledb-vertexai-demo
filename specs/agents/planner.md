@@ -49,7 +49,7 @@ specs/active/{requirement-slug}/
 
 ### Step 1: Understand the Requirement
 
-- Read existing project patterns (specs/AGENTS.md, CLAUDE.md)
+- Read existing project patterns (specs/AGENTS.md)
 - Search for similar features in codebase
 - Review architecture patterns and integrations
 
