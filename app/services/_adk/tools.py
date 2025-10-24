@@ -9,7 +9,7 @@ we create request-scoped containers on-demand for each tool invocation.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from dishka import AsyncContainer  # noqa: TC002
 
@@ -59,10 +59,7 @@ async def search_products_by_vector(
     container = get_app_container()
     async with container() as request_container:
         tools_service = await request_container.get(AgentToolsService)
-        result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
-        # Return full result including timing metadata, not just products
-        return result
-
+        return await tools_service.search_products_by_vector(query, limit, similarity_threshold)
 
 async def get_product_details(product_id: str) -> dict[str, Any]:
     """Get detailed information about a specific product by ID or name with fresh session."""
