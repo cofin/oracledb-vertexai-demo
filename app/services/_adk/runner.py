@@ -172,6 +172,89 @@ class ADKRunner:
 
         return response
 
+    async def stream_request(
+        self,
+        query: str,
+        user_id: str = "default",
+        session_id: str | None = None,
+        persona: str = "enthusiast",
+        cache_service: CacheService | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Stream ADK events progressively for real-time UI updates.
+
+        Args:
+            query: User query text
+            user_id: User identifier
+            session_id: Session identifier (optional)
+            persona: Persona identifier
+            cache_service: Cache service for query state (unused here but kept for signature)
+
+        Yields:
+            Dictionary with 'type' and relevant data:
+            - type: 'text' - Text chunk with 'text' key
+            - type: 'intent' - Intent classification with 'data' key
+            - type: 'products' - Product search results with 'data' key
+            - type: 'cache_hit' - Cache hit indicator with 'cache_type' key
+        """
+        logger.debug("Streaming request via ADKRunner", query=query, persona=persona)
+
+        session = await self._ensure_session(user_id, session_id)
+        content = types.Content(role="user", parts=[types.Part(text=query)])
+
+        # Get persona-specific runner
+        runner = self._get_runner_for_persona(persona)
+
+        # Start ADK async generator
+        events = runner.run_async(
+            user_id=user_id,
+            session_id=session.id,
+            new_message=content,
+        )
+
+        # Process and stream events progressively
+        async for event in events:
+            # Extract and stream text progressively
+            text_parts = self._extract_text_from_event(event)
+            if text_parts and not self._should_filter_text("".join(text_parts)):
+                for text in text_parts:
+                    yield {
+                        "type": "text",
+                        "text": text,
+                        "timestamp": time.time(),
+                    }
+
+            # Extract function responses for metadata
+            function_responses = event.get_function_responses() if hasattr(event, "get_function_responses") else []
+            for func_response in function_responses:
+                if func_response.name == "classify_intent":
+                    intent_result = func_response.response or {}
+                    yield {
+                        "type": "intent",
+                        "data": {
+                            "intent": intent_result.get("intent"),
+                            "confidence": intent_result.get("confidence"),
+                            "timing_ms": intent_result.get("timing_ms"),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    if intent_result.get("embedding_cache_hit"):
+                        yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
+
+                elif func_response.name == "search_products_by_vector":
+                    search_result = func_response.response or {}
+                    timing = search_result.get("timing", {})
+                    yield {
+                        "type": "products",
+                        "data": {
+                            "products": search_result.get("products", []),
+                            "embedding_ms": timing.get("embedding_ms", 0),
+                            "search_ms": timing.get("search_ms", 0),
+                        },
+                        "timestamp": time.time(),
+                    }
+                    if search_result.get("embedding_cache_hit"):
+                        yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
+
     async def _ensure_session(self, user_id: str, session_id: str | None) -> Session:
         """Ensure session exists using get-or-create pattern."""
         if session_id:

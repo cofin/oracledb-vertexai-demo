@@ -127,12 +127,139 @@ body {
 
 /* Loading States */
 .loading {
-  opacity: 0.6;
+  opacity: 0.9;
 }
 
+/* Typing Indicator with Bounce Animation */
 .typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
   color: var(--coffee-medium);
   font-style: italic;
+  opacity: 0.85;
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background-color: var(--coffee-medium);
+  border-radius: 50%;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-8px);
+    opacity: 0.95;
+  }
+}
+
+/* Shimmer Loading Animation */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.loading.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--cream) 0%,
+    var(--coffee-light) 50%,
+    var(--cream) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Smooth transitions for state changes */
+.message {
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+}
+
+.message.loading {
+  opacity: 0.9;
+}
+
+/* Enhanced help button transitions */
+.help-triggers {
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  display: inline-flex !important;
+  opacity: 0;
+  transform: scale(0.5) translateY(10px);
+  pointer-events: none;
+}
+
+.help-triggers[style*="inline-flex"]:not([style*="display: none"]) {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+/* Stagger animation for multiple buttons */
+.help-trigger {
+  transition: all 0.2s ease;
+  opacity: 0;
+  transform: translateY(5px);
+  animation: fadeInUp 0.3s ease forwards;
+}
+
+.help-trigger:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.help-trigger:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.help-trigger:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Smooth scroll behavior */
+.chat-container {
+  scroll-behavior: smooth;
+}
+
+/* Optimize rendering performance */
+.ai-response-content {
+  will-change: contents;
+  contain: layout style;
 }
 
 /* Responsive Design */

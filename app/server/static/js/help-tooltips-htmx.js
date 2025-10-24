@@ -51,6 +51,11 @@ function showTooltip(triggerId, triggerElement) {
     updateIntentTooltipContent(tooltip, triggerElement);
   }
 
+  // Update dynamic content for vector search
+  if (triggerId === "vector-search") {
+    updateVectorSearchTooltipContent(tooltip, triggerElement);
+  }
+
   // Update dynamic content for performance summary
   if (triggerId === "performance-summary") {
     updatePerformanceTooltipContent(tooltip, triggerElement);
@@ -198,7 +203,7 @@ FETCH FIRST 1 ROW ONLY</code></pre>
                     </div>
                     <div class="help-tooltip-metric">
                         <span class="help-tooltip-metric-label">Processing Time</span>
-                        <span class="help-tooltip-metric-value">2.3ms</span>
+                        <span class="help-tooltip-metric-value" id="intent-timing-value">2.3ms</span>
                     </div>
                 </div>
                 <div class="help-tooltip-section">
@@ -229,8 +234,16 @@ FETCH FIRST 4 ROWS ONLY</code></pre>
                 <div class="help-tooltip-section">
                     <div class="help-tooltip-section-title">Results</div>
                     <div class="help-tooltip-metric">
-                        <span class="help-tooltip-metric-label">Oracle Time</span>
-                        <span class="help-tooltip-metric-value">8.7ms</span>
+                        <span class="help-tooltip-metric-label">Embedding Time</span>
+                        <span class="help-tooltip-metric-value" id="vector-embedding-time">N/A</span>
+                    </div>
+                    <div class="help-tooltip-metric">
+                        <span class="help-tooltip-metric-label">Oracle Search Time</span>
+                        <span class="help-tooltip-metric-value" id="vector-search-time">N/A</span>
+                    </div>
+                    <div class="help-tooltip-metric">
+                        <span class="help-tooltip-metric-label">Products Found</span>
+                        <span class="help-tooltip-metric-value" id="vector-product-count">N/A</span>
                     </div>
                 </div>
             `,
@@ -605,12 +618,19 @@ function updateIntentTooltipContent(tooltip, triggerElement) {
     intentValueEl.textContent = intent;
   }
 
+  // Update timing if available
+  const timingMs = triggerElement.dataset.timingMs;
+  const timingValueEl = tooltip.querySelector("#intent-timing-value");
+  if (timingValueEl && timingMs != null) {
+    timingValueEl.textContent = parseFloat(timingMs).toFixed(1) + "ms";
+  }
+
   // Update type description and explanation based on intent
   const typeDescEl = tooltip.querySelector("#intent-type-desc");
   const explanationEl = tooltip.querySelector("#intent-explanation");
 
   if (typeDescEl && explanationEl) {
-    if (intent === "PRODUCT_RAG") {
+    if (intent === "PRODUCT_RAG" || intent === "PRODUCT_SEARCH") {
       typeDescEl.textContent = "Product Search";
       explanationEl.textContent =
         "Your query was classified as a product search, which triggers vector similarity search against our coffee product database using Oracle 23AI.";
@@ -619,5 +639,29 @@ function updateIntentTooltipContent(tooltip, triggerElement) {
       explanationEl.textContent =
         "Your query was classified as general conversation, which uses a conversational AI approach without product database search.";
     }
+  }
+}
+
+// Update vector search tooltip content with dynamic timing data
+function updateVectorSearchTooltipContent(tooltip, triggerElement) {
+  // Update embedding time
+  const embeddingMs = triggerElement.dataset.embeddingMs;
+  const embeddingTimeEl = tooltip.querySelector("#vector-embedding-time");
+  if (embeddingTimeEl && embeddingMs != null) {
+    embeddingTimeEl.textContent = parseFloat(embeddingMs).toFixed(1) + "ms";
+  }
+
+  // Update search time
+  const searchMs = triggerElement.dataset.searchMs;
+  const searchTimeEl = tooltip.querySelector("#vector-search-time");
+  if (searchTimeEl && searchMs != null) {
+    searchTimeEl.textContent = parseFloat(searchMs).toFixed(1) + "ms";
+  }
+
+  // Update product count
+  const productCount = triggerElement.dataset.productCount;
+  const productCountEl = tooltip.querySelector("#vector-product-count");
+  if (productCountEl && productCount != null) {
+    productCountEl.textContent = productCount;
   }
 }
