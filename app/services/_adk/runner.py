@@ -174,7 +174,7 @@ class ADKRunner:
 
         return response
 
-    async def stream_request(
+    async def stream_request(  # noqa: C901
         self,
         query: str,
         user_id: str = "default",
@@ -258,14 +258,15 @@ class ADKRunner:
                         yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
 
                 elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
-                    store_result = func_response.response or {}
+                    store_result = func_response.response
                     # Handle different response structures
                     stores = []
-                    if isinstance(store_result, list):
-                        stores = store_result
-                    elif isinstance(store_result, dict):
-                        # get_store_hours returns a dict with store info
-                        stores = [store_result] if store_result and not store_result.get("error") else []
+                    if store_result:
+                        if isinstance(store_result, list):  # type: ignore[unreachable]
+                            stores = store_result  # type: ignore[unreachable]
+                        elif isinstance(store_result, dict) and not store_result.get("error"):
+                            # get_store_hours returns a dict with store info
+                            stores = [store_result]
 
                     yield {
                         "type": "stores",
@@ -295,7 +296,7 @@ class ADKRunner:
             state={},
         )
 
-    async def _process_events(self, events: AsyncGenerator) -> dict[str, Any]:  # noqa: C901
+    async def _process_events(self, events: AsyncGenerator) -> dict[str, Any]:  # noqa: C901, PLR0915
         """Process ADK events to extract response and metrics.
 
         Collects text from all events and extracts metrics from function responses,
@@ -399,23 +400,24 @@ class ADKRunner:
                         )
 
                     elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
-                        store_result = func_response.response or {}
+                        store_result = func_response.response
                         # Handle different response structures
-                        if isinstance(store_result, list):
-                            stores_found = store_result
-                        elif isinstance(store_result, dict) and not store_result.get("error"):
-                            # get_store_hours returns a dict with store info
-                            stores_found = [store_result]
+                        if store_result:
+                            if isinstance(store_result, list):
+                                stores_found = store_result
+                            elif isinstance(store_result, dict) and not store_result.get("error"):
+                                # get_store_hours returns a dict with store info
+                                stores_found = [store_result]
 
-                        store_details = {
-                            "function": func_response.name,
-                            "count": len(stores_found),
-                        }
-                        logger.info(
-                            "Store lookup completed",
-                            function=func_response.name,
-                            stores_found=len(stores_found),
-                        )
+                            store_details = {
+                                "function": func_response.name,
+                                "count": len(stores_found),
+                            }
+                            logger.info(
+                                "Store lookup completed",
+                                function=func_response.name,
+                                stores_found=len(stores_found),
+                            )
 
         # Use final response if available, otherwise use collected responses
         if not final_response_text and all_text_responses:

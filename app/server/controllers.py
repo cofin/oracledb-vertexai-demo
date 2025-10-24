@@ -158,8 +158,8 @@ class CoffeeChatController(Controller):
         logger.info("Streaming cached response", query_id=query_id)
         answer_text = cached.response_data.get("answer", "")
         # Send as message event with JSON containing HTML
-        yield f'event: message\ndata: {to_json({"html": answer_text}, as_bytes=False)}\n\n'
-        yield f'event: complete\ndata: {to_json({"done": True, "from_cache": True}, as_bytes=False)}\n\n'
+        yield f"event: message\ndata: {to_json({'html': answer_text}, as_bytes=False)}\n\n"
+        yield f"event: complete\ndata: {to_json({'done': True, 'from_cache': True}, as_bytes=False)}\n\n"
         await cache_service.delete_query_state(query_id)
 
     async def _stream_adk_events(
@@ -204,44 +204,59 @@ class CoffeeChatController(Controller):
             if chunk_type == "text":
                 text = chunk.get("text", "")
                 accumulated_text.append(text)
-                yield f'event: chunk\ndata: {to_json({"text": text}, as_bytes=False)}\n\n', {
-                    "text": accumulated_text,
-                }
+                yield (
+                    f"event: chunk\ndata: {to_json({'text': text}, as_bytes=False)}\n\n",
+                    {
+                        "text": accumulated_text,
+                    },
+                )
 
             elif chunk_type == "intent":
                 intent_details = chunk.get("data", {})
-                yield f'event: metadata\ndata: {to_json({"type": "intent", "data": intent_details}, as_bytes=False)}\n\n', {
-                    "intent": intent_details,
-                }
+                yield (
+                    f"event: metadata\ndata: {to_json({'type': 'intent', 'data': intent_details}, as_bytes=False)}\n\n",
+                    {
+                        "intent": intent_details,
+                    },
+                )
 
             elif chunk_type == "products":
                 search_details = chunk.get("data", {})
-                yield f'event: metadata\ndata: {to_json({"type": "products", "data": search_details}, as_bytes=False)}\n\n', {
-                    "products": search_details,
-                }
+                yield (
+                    f"event: metadata\ndata: {to_json({'type': 'products', 'data': search_details}, as_bytes=False)}\n\n",
+                    {
+                        "products": search_details,
+                    },
+                )
 
             elif chunk_type == "stores":
                 store_details = chunk.get("data", {})
-                yield f'event: metadata\ndata: {to_json({"type": "stores", "data": store_details}, as_bytes=False)}\n\n', {
-                    "stores": store_details,
-                }
+                yield (
+                    f"event: metadata\ndata: {to_json({'type': 'stores', 'data': store_details}, as_bytes=False)}\n\n",
+                    {
+                        "stores": store_details,
+                    },
+                )
 
             elif chunk_type == "cache_hit":
                 embedding_cache_hit = True
                 yield "", {"embedding_cache_hit": True}
 
         # Final metadata
-        yield "", {
-            "accumulated_text": accumulated_text,
-            "intent_details": intent_details,
-            "search_details": search_details,
-            "store_details": store_details,
-            "embedding_cache_hit": embedding_cache_hit,
-        }
+        yield (
+            "",
+            {
+                "accumulated_text": accumulated_text,
+                "intent_details": intent_details,
+                "search_details": search_details,
+                "store_details": store_details,
+                "embedding_cache_hit": embedding_cache_hit,
+            },
+        )
 
     @get(path="/chat/stream/{query_id:str}", name="chat.stream")
     @inject
-    async def stream_response(  # noqa: C901  - Inherent complexity of SSE streaming pattern (dual-path + error handling)
+    async def stream_response(  # noqa: C901, PLR0915
         self,
         query_id: str,
         adk_runner: Inject[ADKRunner],
@@ -314,7 +329,7 @@ class CoffeeChatController(Controller):
 
                     # 4. Send completion
                     total_time_ms = round((time.time() - start_time) * 1000, 2)
-                    yield f'event: complete\ndata: {to_json({"done": True, "query_id": query_id, "response_time_ms": total_time_ms, "embedding_cache_hit": embedding_cache_hit}, as_bytes=False)}\n\n'
+                    yield f"event: complete\ndata: {to_json({'done': True, 'query_id': query_id, 'response_time_ms': total_time_ms, 'embedding_cache_hit': embedding_cache_hit}, as_bytes=False)}\n\n"
 
                     # 5. Record metrics
                     products_found = search_details.get("products", []) if search_details else []
@@ -354,7 +369,7 @@ class CoffeeChatController(Controller):
 
             except Exception as e:
                 logger.exception("Stream error", query_id=query_id, error=str(e))
-                yield f'event: error\ndata: {to_json({"error": "Service error"}, as_bytes=False)}\n\n'
+                yield f"event: error\ndata: {to_json({'error': 'Service error'}, as_bytes=False)}\n\n"
 
         return Stream(
             generate(),
