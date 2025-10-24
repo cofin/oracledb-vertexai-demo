@@ -103,82 +103,41 @@ uv run app db load-fixtures
 
 ![Cymbal Coffee Chat Interface](docs/screenshots/cymbal_chat.png)
 
-*AI-powered coffee recommendations with real-time performance metrics*
+_AI-powered coffee recommendations with real-time performance metrics_
 
 ### Performance Dashboard
 
 ![Performance Dashboard](docs/screenshots/performance_dashboard.png)
 
-*Live monitoring of Oracle vector search performance and system metrics*
+_Live monitoring of Oracle vector search performance and system metrics_
 
 ## 📚 Documentation
 
-### Choose Your Path
+Comprehensive documentation is coming soon! For now:
 
-**🚀 I want to run the demo**
-- [Quick Install (5 minutes)](#-quick-start) - Get started with automated setup
-- [Demo Walkthrough](docs/guides/demo-walkthrough.md) - Step-by-step conference demo script *(coming soon)*
-
-**🏗️ I want to deploy to production**
-- [Cloud Deployment Guide](docs/guides/autonomous-database-setup.md) - Oracle Autonomous DB on GCP
-- [Architecture Overview](docs/architecture/overview.md) - System design and components *(coming soon)*
-
-**💻 I want to understand the code**
-- [Architecture Overview](docs/architecture/overview.md) - High-level component interaction *(coming soon)*
-- [Vector Search Deep Dive](docs/architecture/vector-search.md) - Oracle 23ai vector capabilities *(coming soon)*
-- [AI Agent Architecture](docs/architecture/ai-agent.md) - Google ADK + Gemini integration *(coming soon)*
-
-**🤝 I want to contribute**
-- [Development Setup](CONTRIBUTING.md) - Contributing guidelines
-- [SQLSpec Patterns](docs/guides/sqlspec-patterns.md) - Database patterns and best practices
-
-### Current Documentation
-
-#### Getting Started
-- **Quick Start** - See [above](#-quick-start) for installation
-- **[Autonomous Database Setup](docs/guides/autonomous-database-setup.md)** - Deploy to Oracle Autonomous DB on GCP
-- **[Oracle Deployment Tools](docs/guides/oracle-deployment-tools.md)** - Unified `manage.py` CLI reference
-
-#### Architecture & Technical Guides
-- **[SQLSpec Migration](MIGRATION.md)** - Complete migration from litestar-oracledb to SQLSpec
-- **[Oracle Vector Search](docs/guides/oracle-vector-search.md)** - Vector operations and HNSW indexes
-- **[Litestar Framework](docs/guides/litestar-framework.md)** - Web framework patterns
-- **[HTMX Integration](docs/htmx-migration-summary.md)** - HTMX integration details
-- **[HTMX Events Reference](docs/htmx-events.md)** - Custom HTMX events
-
-#### Additional Resources
-- **[Architecture Updates](docs/architecture-updates.md)** - Recent improvements and migration history
+- See [Quick Start](#-quick-start) above for installation
+- See [Development Commands](#-development-commands) below for CLI reference
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines
+- Check `uv run manage.py --help` for all available commands
 
 ## 🏗️ Architecture
 
-This demo uses:
+This demo combines:
 
-- **Oracle 23AI** - Complete data platform with native vector search
-- **Vertex AI** - Google's generative AI platform for embeddings and chat
-- **SQLSpec** - Modern database abstraction with Oracle-specific optimizations
-- **Litestar** - High-performance async Python framework
-- **HTMX** - Real-time UI updates without JavaScript complexity
-
-### Database Layer
-
-The application uses **SQLSpec** for type-safe, efficient database operations:
-
-- ✅ **Automatic Vector Handling** - Native Oracle VECTOR type support
-- ✅ **Connection Pooling** - Optimized async connection management
-- ✅ **Type Safety** - Dict-based results with automatic mapping
-- ✅ **Oracle Features** - Full support for MERGE, RETURNING, JSON operations
-- ✅ **Flexible Deployment** - Managed container or external database (auto-detects wallet)
+- **Oracle 23ai** - Native vector search with HNSW indexes
+- **Google Vertex AI** - Embeddings (text-embedding-004) and chat (Gemini 2.5)
+- **SQLSpec** - Type-safe database operations with async connection pooling
+- **Litestar** - High-performance async Python web framework
+- **HTMX** - Real-time UI updates with minimal JavaScript
 
 ## 🎯 Key Features
 
-This implementation is designed for conference demonstration with:
-
-- **Real-time Chat Interface** - Personalized coffee recommendations with AI personas
-- **Live Performance Metrics** - Oracle vector search timing and cache hit rates
-- **In-Memory Caching** - High-performance response caching using Oracle
-- **Native Vector Search** - Semantic similarity search without external dependencies
-- **Intent Routing** - Natural language understanding via exemplar matching
-- **Performance Dashboard** - Real-time monitoring of all system components
+- **AI-Powered Chat** - Personalized coffee recommendations with configurable AI personas
+- **Vector Similarity Search** - Find products by semantic meaning, not just keywords
+- **Oracle-Based Caching** - Response and embedding cache stored in-database
+- **Performance Metrics** - Live monitoring of vector search timing and cache hit rates
+- **Intent Classification** - Route queries using vector similarity on exemplars
+- **Flexible Deployment** - Local container or Oracle Autonomous Database on GCP
 
 ## 🔧 Development Commands
 

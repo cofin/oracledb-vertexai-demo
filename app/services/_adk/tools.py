@@ -9,13 +9,15 @@ we create request-scoped containers on-demand for each tool invocation.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from dishka import AsyncContainer  # noqa: TC002
 
 from app.services._adk.tool_service import AgentToolsService
 from app.utils.serialization import from_json
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 # Global container reference set by the application
 _app_container: AsyncContainer | None = None
