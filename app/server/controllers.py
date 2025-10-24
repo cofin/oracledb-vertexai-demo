@@ -115,7 +115,7 @@ class CoffeeChatController(Controller):
             request.session["session_id"] = session_id
 
         try:
-            from app.lib.context import query_id_var
+            from app.lib.di import query_id_var
 
             token = query_id_var.set(query_id)
             try:

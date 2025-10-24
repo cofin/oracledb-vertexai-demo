@@ -151,10 +151,11 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from sqlspec.extensions.litestar.cli import database_group
 
         from app.cli import coffee_demo_group
-        from app.cli.commands import load_fixtures_cmd
+        from app.cli.commands import export_fixtures_cmd, load_fixtures_cmd
 
         # Register custom database commands to the database group
         database_group.add_command(load_fixtures_cmd)
+        database_group.add_command(export_fixtures_cmd)
 
         # Register groups
         cli.add_command(database_group)

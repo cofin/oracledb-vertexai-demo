@@ -8,11 +8,13 @@ This package provides comprehensive Oracle database deployment and management:
 - SQLcl installation
 - Health checking and monitoring
 - Connection testing
+- Click CLI command groups
 """
 
 from __future__ import annotations
 
 __all__ = [
+    # Business logic classes
     "ConnectionConfig",
     "ConnectionTester",
     "ContainerRuntime",
@@ -28,8 +30,22 @@ __all__ = [
     "WalletConfig",
     "WalletConfigurator",
     "WalletInfo",
+    # CLI command groups
+    "connect_group",
+    "database_group",
+    "sqlcl_group",
+    "status_command",
+    "wallet_group",
 ]
 
+# Import CLI command groups
+from tools.oracle.cli import (
+    connect_group,
+    database_group,
+    sqlcl_group,
+    status_command,
+    wallet_group,
+)
 from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
 from tools.oracle.container import ContainerRuntime, RuntimeType
 from tools.oracle.database import DatabaseConfig, OracleDatabase

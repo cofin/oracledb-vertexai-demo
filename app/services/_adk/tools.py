@@ -101,7 +101,7 @@ async def record_search_metric(
     async with container() as request_container:
         tools_service = await request_container.get(AgentToolsService)
 
-        from app.lib.context import QueryContext
+        from app.lib.di import QueryContext
 
         query_context = await request_container.get(QueryContext | None)
         query_id = query_context.query_id if query_context else None

@@ -20,7 +20,7 @@ from sqlspec.base import SQLSpec
 from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.config import db, db_manager
-from app.lib.context import QueryContext, query_id_var
+from app.lib.di import QueryContext, query_id_var
 
 # Import service types for proper type registration (aliased to avoid conflicts)
 from app.services import (

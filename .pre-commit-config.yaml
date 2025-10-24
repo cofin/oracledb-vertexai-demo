@@ -35,28 +35,3 @@ repos:
     hooks:
       - id: prettier
         exclude: templates|migrations|scripts|docs|dist|.venv|public
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
-    hooks:
-      - id: mypy
-        exclude: scripts/
-        additional_dependencies:
-          - "litestar[jinja,jwt,redis,structlog,pydantic,sqlalchemy,opentelemetry]>=2.8.3"
-          - "python-dotenv>=1.0.0"
-          - "advanced-alchemy[uuid]"
-          - "litestar-saq>=0.1.3"
-          - "litestar-oracledb"
-          - "litestar-granian"
-          - "httptools"
-          - "pwdlib[argon2]>=0.2.0"
-          - httpx-oauth
-          - types-click
-          - types-redis
-          - types-passlib
-          - types-click
-          - types-PyYAML
-          - vertexai
-          - langchain
-          - oracledb
-          - langchain-community
-          - langchain-google-vertexai

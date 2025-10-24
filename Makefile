@@ -130,16 +130,36 @@ coverage: ## Run tests with coverage report
 	@echo "${OK} Coverage report generated ✨"
 
 .PHONY: lint
-lint: ## Run all linting checks
+lint: ## Run all linting and type checking
 	@echo "${INFO} Running pre-commit checks... 🔎"
 	@uv run pre-commit run --color=always --all-files
 	@echo "${OK} Pre-commit checks passed ✨"
+	@echo "${INFO} Running type checkers... 🔍"
+	@uv run mypy app tools manage.py
+	@uv run pyright app tools manage.py
+	@echo "${OK} All linting and type checks complete ✨"
 
 .PHONY: format
 format: ## Run code formatters
 	@echo "${INFO} Running code formatters... 🔧"
 	@uv run ruff check --fix --unsafe-fixes
 	@echo "${OK} Code formatting complete ✨"
+
+.PHONY: mypy
+mypy: ## Run mypy type checker using local packages
+	@echo "${INFO} Running mypy type checker... 🔍"
+	@uv run mypy app tools manage.py
+	@echo "${OK} Mypy type checking complete ✨"
+
+.PHONY: pyright
+pyright: ## Run pyright type checker using local packages
+	@echo "${INFO} Running pyright type checker... 🔍"
+	@uv run pyright app tools manage.py
+	@echo "${OK} Pyright type checking complete ✨"
+
+.PHONY: typecheck
+typecheck: mypy pyright ## Run all type checkers
+	@echo "${OK} All type checks complete ✨"
 
 # =============================================================================
 # Local Infrastructure (Oracle 23AI Docker)

@@ -263,11 +263,13 @@ def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
 
 def _display_fixture_list() -> None:
     """Display available fixture files."""
+    import gzip
     from pathlib import Path
 
     from rich.table import Table
 
     from app.lib.settings import get_settings
+    from app.utils.serialization import from_json
 
     console = get_console()
     console.rule("[bold blue]Available Fixture Files", style="blue", align="left")
@@ -296,23 +298,20 @@ def _display_fixture_list() -> None:
         # Extract table name from filename (remove .json or .json.gz)
         table_name = fixture_file.name.replace(".json.gz", "").replace(".json", "")
         try:
-            import gzip
-            import json
 
             # Load data to count records
             if fixture_file.suffix == ".gz":
-                with gzip.open(fixture_file, "rt", encoding="utf-8") as f:
-                    data = json.load(f)
+                with gzip.open(fixture_file, "rb") as f:
+                    data = from_json(f.read())
             else:
-                with fixture_file.open(encoding="utf-8") as f:
-                    data = json.load(f)
+                data = from_json(fixture_file.read_text(encoding="utf-8"))
 
             records = str(len(data)) if isinstance(data, list) else "1"
             size_bytes = fixture_file.stat().st_size
             size_mb = size_bytes / 1024 / 1024
             size = f"{size_mb:.1f} MB" if size_mb > 1 else f"{size_bytes / 1024:.1f} KB"
             status = "[green]Ready[/green]"
-        except (OSError, PermissionError, json.JSONDecodeError) as e:
+        except (OSError, PermissionError, ValueError) as e:
             records = "[dim]N/A[/dim]"
             size = "[dim]N/A[/dim]"
             status = f"[red]Error: {e}[/red]"
@@ -451,4 +450,140 @@ def _print_fixture_summary(total_upserted: int, total_failed: int, total_records
     if total_failed > 0:
         console.print(f"  • [red]Failed: {total_failed}[/red]")
     console.print(f"  • [dim]Total records in fixtures: {total_records}[/dim]")
+    console.print()
+
+
+# Export fixtures command
+@click.command(name="export-fixtures", help="Export database tables to fixture JSON files.")
+@click.option("--tables", "-t", help="Comma-separated list of specific tables to export (exports all if not specified)")
+@click.option("--output-dir", "-o", help="Custom output directory (defaults to configured fixtures directory)")
+@click.option("--no-compress", is_flag=True, help="Export uncompressed JSON (default is gzipped)")
+@click.option("--list", "list_tables", is_flag=True, help="List available tables for export")
+def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_compress: bool, list_tables: bool) -> None:
+    """Export database tables to fixture JSON files."""
+
+    if list_tables:
+        _display_available_tables()
+        return
+
+    _export_fixture_data(tables, output_dir, no_compress)
+
+
+def _display_available_tables() -> None:
+    """Display available tables for export."""
+    from rich.table import Table
+
+    from app.db.utils import COFFEE_SHOP_TABLES
+    from app.lib.settings import get_settings
+
+    console = get_console()
+    console.rule("[bold blue]Available Tables for Export", style="blue", align="left")
+    console.print()
+
+    settings = get_settings()
+    fixtures_dir = settings.db.FIXTURE_PATH
+
+    table = Table(show_header=True, header_style="bold blue", expand=True)
+    table.add_column("Table Name", style="cyan", ratio=2)
+    table.add_column("Export Order", justify="center", ratio=1)
+
+    for idx, table_name in enumerate(COFFEE_SHOP_TABLES, 1):
+        table.add_row(table_name, str(idx))
+
+    console.print(table)
+    console.print()
+    console.print(f"[dim]Default output directory: {fixtures_dir}[/dim]")
+    console.print(f"[dim]Total tables: {len(COFFEE_SHOP_TABLES)}[/dim]")
+    console.print()
+
+
+def _export_fixture_data(tables: str | None, output_dir: str | None, no_compress: bool) -> None:
+    """Export fixture data from database."""
+    from pathlib import Path
+
+    from sqlspec.utils.sync_tools import run_
+
+    console = get_console()
+    console.rule("[bold blue]Exporting Database Fixtures", style="blue", align="left")
+    console.print()
+
+    # Parse tables if provided
+    table_list = None
+    if tables:
+        table_list = [t.strip() for t in tables.split(",")]
+        console.print(f"[dim]Exporting specific tables: {', '.join(table_list)}[/dim]")
+    else:
+        console.print("[dim]Exporting all available tables[/dim]")
+
+    # Parse output directory
+    output_path = Path(output_dir) if output_dir else None
+    if output_path:
+        console.print(f"[dim]Output directory: {output_path}[/dim]")
+
+    # Compression setting
+    compress = not no_compress
+    console.print(f"[dim]Compression: {'enabled' if compress else 'disabled'}[/dim]")
+    console.print()
+
+    async def _export_fixtures() -> None:
+        from app.db.utils import export_fixtures
+
+        with console.status("[bold yellow]Exporting fixtures...", spinner="dots"):
+            results = await export_fixtures(table_list, output_path, compress)
+
+            if not results:
+                console.print("[yellow]No tables found to export[/yellow]")
+                return
+
+            _display_export_results(results)
+
+    run_(_export_fixtures)()
+
+
+def _display_export_results(results: dict) -> None:
+    """Display fixture export results."""
+    from rich.table import Table
+
+    console = get_console()
+    table = Table(show_header=True, header_style="bold blue")
+    table.add_column("Table", style="cyan", width=30)
+    table.add_column("Output File", style="dim", width=50)
+    table.add_column("Status", width=50)
+
+    total_success = 0
+    total_failed = 0
+
+    for table_name, result in results.items():
+        if isinstance(result, str):
+            # Check if it's an error message or a file path
+            if result.startswith("/") or result.endswith((".json", ".json.gz")):
+                # It's a file path - success
+                status = "[green]✓ Exported[/green]"
+                file_display = result
+                total_success += 1
+            else:
+                # It's an error message
+                status = f"[red]✗ Failed: {result}[/red]"
+                file_display = "[dim]N/A[/dim]"
+                total_failed += 1
+        else:
+            # Unknown format
+            status = f"[yellow]⚠ Unknown result: {result}[/yellow]"
+            file_display = "[dim]N/A[/dim]"
+            total_failed += 1
+
+        table.add_row(table_name, file_display, status)
+
+    console.print(table)
+    console.print()
+    _print_export_summary(total_success, total_failed)
+
+
+def _print_export_summary(total_success: int, total_failed: int) -> None:
+    """Print fixture export summary."""
+    console = get_console()
+    console.print("[bold]Summary:[/bold]")
+    console.print(f"  • [green]Successfully exported: {total_success} tables[/green]")
+    if total_failed > 0:
+        console.print(f"  • [red]Failed: {total_failed} tables[/red]")
     console.print()

@@ -17,10 +17,7 @@ if TYPE_CHECKING:
 COFFEE_SHOP_TABLES = [
     "store",
     "product",
-    "embedding_cache",
-    "response_cache",
     "intent_exemplar",
-    "search_metric",
 ]
 
 

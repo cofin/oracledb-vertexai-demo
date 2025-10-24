@@ -47,7 +47,7 @@ allow-direct-references = true
 
 [tool.hatch.build]
 dev-mode-dirs = ["./"]
-include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini"]
+include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini", "manage.py", "tools/"]
 packages = ["app"]
 
 [dependency-groups]
