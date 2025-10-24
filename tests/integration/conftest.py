@@ -56,3 +56,42 @@ def app() -> Litestar:
     from app.asgi import create_app
 
     return create_app()
+
+
+@pytest.fixture
+async def driver() -> AsyncGenerator[Any, None]:
+    """Provide SQLSpec driver for tests."""
+    from app.config import db, db_manager
+
+    async with db_manager.provide_session(db) as session:
+        yield session
+
+
+@pytest.fixture
+async def product_service(driver: Any) -> Any:
+    """Provide ProductService for testing."""
+    from app.services.product import ProductService
+
+    return ProductService(driver)
+
+
+@pytest.fixture
+async def cache_service(driver: Any) -> Any:
+    """Provide CacheService for testing."""
+    from app.services.cache import CacheService
+
+    return CacheService(driver)
+
+
+@pytest.fixture
+async def intent_router(driver: Any) -> Any:
+    """Provide IntentRouter for testing."""
+    from unittest.mock import MagicMock
+
+    from app.services.intent_router import IntentRouter
+
+    # Create mock VertexAI service
+    mock_vertex = MagicMock()
+
+    # Router with optional cache
+    return IntentRouter(driver=driver, vertex_ai_service=mock_vertex)

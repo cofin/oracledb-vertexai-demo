@@ -8,16 +8,10 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app import config
-from app.server import deps
-from app.services.intent_exemplar import IntentExemplarService
-from app.services.intent_router import INTENT_EXEMPLARS
-from app.services.product import ProductService
+from app.services import INTENT_EXEMPLARS, ExemplarService, ProductService, VertexAIService
 
 if TYPE_CHECKING:
-    import oracledb
     from litestar import Litestar
-
-    from app.services.vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
 
@@ -25,19 +19,20 @@ logger = structlog.get_logger()
 
 
 async def populate_product_exemplars(
-    conn: oracledb.AsyncConnection, exemplar_service: IntentExemplarService, vertex_ai_service: VertexAIService
+    product_service: ProductService, exemplar_service: ExemplarService, vertex_ai_service: VertexAIService
 ) -> None:
     """Add all product names as PRODUCT_RAG exemplars."""
     logger.info("Adding product names as exemplars...")
 
     # Get all products
-    product_service = ProductService(conn)
     products = await product_service.get_all()
 
     # Create exemplars from product names
     product_exemplars = []
     for product in products:
-        name = product["name"]
+        name = product.name
+        if not name:
+            continue
         # Add various query patterns for each product
         product_exemplars.extend([
             f"tell me about {name}",
@@ -49,29 +44,29 @@ async def populate_product_exemplars(
             name,  # Just the product name itself
         ])
 
+    # Fetch all existing PRODUCT_RAG phrases in a single query
+    existing_phrases = await exemplar_service.driver.select(
+        """
+        SELECT phrase FROM intent_exemplar
+        WHERE intent = :intent
+        """,
+        {"intent": "PRODUCT_RAG"},
+    )
+    existing_phrases_set = {row["phrase"] for row in existing_phrases}
+
     # Add product exemplars
     count = 0
     for exemplar in product_exemplars:
-        # Check if already exists
-        async with conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT 1 FROM intent_exemplar
-                WHERE intent = :intent AND phrase = :phrase
-                """,
-                {"intent": "PRODUCT_RAG", "phrase": exemplar},
-            )
-            exists = await cursor.fetchone()
+        # Check if already exists in the set
+        if exemplar not in existing_phrases_set:
+            # Generate embedding
+            embedding = await vertex_ai_service.get_text_embedding(exemplar)
+            await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
+            count += 1
 
-            if not exists:
-                # Generate embedding
-                embedding = await vertex_ai_service.create_embedding(exemplar)
-                await exemplar_service.cache_exemplar("PRODUCT_RAG", exemplar, embedding)
-                count += 1
-
-                if count % 10 == 0:
-                    logger.info("Added %d product exemplars...", count)
-
+            if count % 10 == 0:
+                logger.info("Added %d product exemplars...", count)
+    await exemplar_service.commit()
     logger.info("Added %d new product exemplars", count)
 
 
@@ -80,10 +75,12 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
     logger.info("Starting intent exemplar cache initialization...")
 
     # Get Oracle connection from the async pool
-    async with config.oracle_async.get_connection() as conn:
+    async with config.db_manager.provide_session(config.db) as driver:
         # Create service instances
-        vertex_ai_service = await anext(deps.provide_vertex_ai_service())
-        exemplar_service = IntentExemplarService(conn)
+        vertex_ai_service = VertexAIService()
+        exemplar_service = ExemplarService(driver)
+        product_service = ProductService(driver)
+
         cached_data = await exemplar_service.get_exemplars_with_phrases()
         if not cached_data:
             logger.info("Populating intent exemplar cache...")
@@ -95,8 +92,14 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
                 exemplar_count=sum(len(v) for v in cached_data.values()),
             )
 
-        # Add product names as exemplars
-        await populate_product_exemplars(conn, exemplar_service, vertex_ai_service)
+        # Add product names as exemplars (only if Vertex AI is available)
+        try:
+            await populate_product_exemplars(product_service, exemplar_service, vertex_ai_service)
+        except RuntimeError as e:
+            if "not initialized" in str(e):
+                logger.warning("Skipping product exemplar population - Vertex AI not initialized")
+            else:
+                raise
 
 
 async def warm_up_connection_pool(app: Litestar) -> None:
@@ -104,9 +107,8 @@ async def warm_up_connection_pool(app: Litestar) -> None:
     logger.info("Warming up Oracle connection pool...")
 
     # Run a simple query to establish pool connections
-    async with config.oracle_async.get_connection() as conn, conn.cursor() as cursor:
-        await cursor.execute("SELECT 1 FROM DUAL")
-        await cursor.fetchone()
+    async with config.db_manager.provide_session(config.db) as driver:
+        await driver.execute("SELECT 1 FROM DUAL")
 
     logger.info("Connection pool warmed up")
 

@@ -1,30 +1,21 @@
-"""Coffee domain services."""
+"""Public API for app services - single entry point."""
 
-from app.services.chat_conversation import ChatConversationService
-from app.services.company import CompanyService
-from app.services.intent_exemplar import IntentExemplarService
-from app.services.intent_router import IntentRouter
-from app.services.inventory import InventoryService
-from app.services.product import ProductService
-from app.services.recommendation import RecommendationService
-from app.services.response_cache import ResponseCacheService
-from app.services.search_metrics import SearchMetricsService
-from app.services.shop import ShopService
-from app.services.user_session import UserSessionService
-from app.services.vertex_ai import OracleVectorSearchService, VertexAIService
+from app.services._cache import CacheService
+from app.services._exemplar import ExemplarService
+from app.services._intent import INTENT_EXEMPLARS, IntentService
+from app.services._metrics import MetricsService
+from app.services._product import ProductService
+from app.services._store import StoreService
+from app.services._vertex_ai import OracleVectorSearchService, VertexAIService
 
 __all__ = [
-    "ChatConversationService",
-    "CompanyService",
-    "IntentExemplarService",
-    "IntentRouter",
-    "InventoryService",
+    "INTENT_EXEMPLARS",
+    "CacheService",
+    "ExemplarService",
+    "IntentService",
+    "MetricsService",
     "OracleVectorSearchService",
     "ProductService",
-    "RecommendationService",
-    "ResponseCacheService",
-    "SearchMetricsService",
-    "ShopService",
-    "UserSessionService",
+    "StoreService",
     "VertexAIService",
 ]

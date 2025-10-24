@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from litestar.plugins.htmx import HTMXPlugin
+from litestar.plugins.problem_details import ProblemDetailsPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
-from litestar_oracledb import OracleDatabasePlugin
+from sqlspec.extensions.litestar import SQLSpecPlugin
 
 from app import config
 from app.lib.settings import get_settings
@@ -23,7 +24,8 @@ from app.server.core import ApplicationCore
 
 settings = get_settings()
 app_config = ApplicationCore()
-oracle = OracleDatabasePlugin(config=config.oracle_async)
+sqlspec = SQLSpecPlugin(config.db_manager)
 granian = GranianPlugin()
 structlog = StructlogPlugin(config=config.log)
 htmx = HTMXPlugin()
+problem_details = ProblemDetailsPlugin(config=config.problem_details)

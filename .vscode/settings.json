@@ -90,26 +90,11 @@
   ],
   "explorer.fileNesting.patterns": {
     "pyproject.toml": "pyproject.toml,poetry.lock,poetry.toml,mkdocs.yaml,.gcloudignore,.gitignore,.editorconfig,.bumpversion.cfg,.pylintrc,.pre-commit-config.yaml,LICENSE,mkdocs.yml,service_account.json,.pdm-python,pdm.lock,uv.lock,requirements.txt",
-    ".env": ".env*,.*.env",
+    ".env": ".env*,.*.env,.envs",
+    "AGENTS.md": "AGENTS.md,CLAUDE.md,GEMINI.md,.claude/, .gemini/",
     "docker-compose.yml": "docker-compose.yml, .dockerignore, docker-compose.*.yml, docker-compose.*.yaml",
     "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, tsconfig.*.json, tsconfig.json, .stylelintrc.json,angular.json,proxy.conf.json,cypress.*.ts,extra-webpack*.cjs,.eslintrc.json, tailwind.config.*, vite.config.ts, postcss.config.*, components.json, .prettierignore, .prettierrc.json, .eslintrc.cjs"
   },
-  "sqltools.connections": [
-    {
-      "previewLimit": 50,
-      "driver": "DuckDB",
-      "name": "Local",
-      "database": "/Users/codyfincher/Downloads/test.db"
-    },
-    {
-      "previewLimit": 50,
-      "driver": "SQLite",
-      "name": "cymba-coffee-ocw-messages",
-      "group": "OCW",
-      "database": "${workspaceFolder:oracledb-vertexai-demo}/.memory.db"
-    }
-  ],
   "sqltools.useNodeRuntime": true,
-  "python.analysis.extraPaths": ["${workspaceFolder}"],
   "geminicodeassist.enable": true
 }

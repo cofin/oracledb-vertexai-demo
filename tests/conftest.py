@@ -41,10 +41,38 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture(autouse=True)
-def _patch_settings(monkeypatch: MonkeyPatch) -> None:
-    """Path the settings."""
+def _patch_settings(monkeypatch: MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Patch the settings with test configuration.
 
-    settings = app_settings.Settings.from_env(".env.testing")
+    Creates a temporary test .env file with safe test values.
+    """
+    # Create temporary .env for testing
+    test_dir = tmp_path_factory.mktemp("test_env")
+    test_env = test_dir / ".env.testing"
+    test_env.write_text("""# Test Configuration
+DATABASE_USER=test_app
+DATABASE_PASSWORD=test-secret
+DATABASE_HOST=localhost
+DATABASE_PORT=1521
+DATABASE_SERVICE_NAME=freepdb1
+
+GOOGLE_CLOUD_PROJECT=test-project
+GOOGLE_API_KEY=test-api-key
+
+LITESTAR_DEBUG=true
+LITESTAR_HOST=127.0.0.1
+LITESTAR_PORT=5007
+LITESTAR_GRANIAN_IN_SUBPROCESS=false
+LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true
+SECRET_KEY=test-secret-key-32-characters-12
+
+VITE_HOST=localhost
+VITE_PORT=51746
+VITE_HOT_RELOAD=False
+VITE_DEV_MODE=False
+""")
+
+    settings = app_settings.Settings.from_env(str(test_env))
 
     def get_settings(dotenv_filename: str = ".env.testing") -> app_settings.Settings:
         return settings

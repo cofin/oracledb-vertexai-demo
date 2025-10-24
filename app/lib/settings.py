@@ -20,9 +20,10 @@ import os
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from litestar.utils.module_loader import module_to_os_path
+from sqlspec.adapters.oracledb import OracleAsyncConfig
 
 if TYPE_CHECKING:
     from litestar.data_extractors import RequestExtractorField, ResponseExtractorField
@@ -38,6 +39,15 @@ TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
 class DatabaseSettings:
     """Oracle Database connection settings."""
 
+    # Autonomous Database fields (new)
+    URL: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL"))
+    """Oracle Database URL (for Autonomous DB). Format: oracle+oracledb://user:password@service_name"""
+    WALLET_PASSWORD: str | None = field(default_factory=lambda: os.getenv("WALLET_PASSWORD"))
+    """Oracle Database Wallet Password (for Autonomous DB)."""
+    WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
+    """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
+
+    # Standard/Local Database fields (existing)
     USER: str = field(
         default_factory=lambda: os.getenv("DATABASE_USER", "app"),
     )
@@ -65,8 +75,93 @@ class DatabaseSettings:
         ),
     )
     """Oracle Database DSN."""
+    POOL_MIN_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MIN_SIZE", "5")))
+    """Minimum pool size."""
+    POOL_MAX_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MAX_SIZE", "20")))
+    """Maximum pool size."""
+    POOL_TIMEOUT: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_TIMEOUT", "30")))
+    """Pool timeout in seconds."""
+    POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
+    """Pool recycle time in seconds."""
+    MIGRATION_PATH: str = field(
+        default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", str(BASE_DIR / "db" / "migrations"))
+    )
+    """Database migration path."""
     FIXTURE_PATH: str = f"{BASE_DIR}/db/fixtures"
     """The path to JSON fixture files to load into tables."""
+
+    @property
+    def is_autonomous(self) -> bool:
+        """Detect if we're using Autonomous Database based on presence of URL and wallet password."""
+        return self.URL is not None and self.WALLET_PASSWORD is not None
+
+    def get_connection_params(self) -> dict[str, Any]:
+        """Extract connection parameters based on connection mode (autonomous vs local)."""
+        if self.is_autonomous:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(self.URL)
+            return {
+                "user": parsed.username or self.USER,
+                "password": parsed.password or self.PASSWORD,
+                "dsn": parsed.hostname or "",
+                "wallet_password": self.WALLET_PASSWORD or "",
+            }
+        return {
+            "user": self.USER,
+            "password": self.PASSWORD,
+            "dsn": self.DSN,
+        }
+
+    def create_config(self) -> OracleAsyncConfig:
+        """Create Oracle database configuration based on connection mode (autonomous vs local)."""
+        conn_params = self.get_connection_params()
+
+        if self.is_autonomous:
+            # Autonomous Database with wallet
+            if not self.WALLET_LOCATION:
+                msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
+                raise ValueError(msg)
+
+            # Set TNS_ADMIN for wallet location
+            os.environ["TNS_ADMIN"] = self.WALLET_LOCATION
+
+            pool_config = {
+                "user": conn_params["user"],
+                "password": conn_params["password"],
+                "dsn": conn_params["dsn"],
+                "wallet_password": conn_params["wallet_password"],
+                "min": self.POOL_MIN_SIZE,
+                "max": self.POOL_MAX_SIZE,
+            }
+        else:
+            # Local/Standard Database
+            pool_config = {
+                "user": conn_params["user"],
+                "password": conn_params["password"],
+                "dsn": conn_params["dsn"],
+                "min": self.POOL_MIN_SIZE,
+                "max": self.POOL_MAX_SIZE,
+            }
+
+        return OracleAsyncConfig(
+            pool_config=pool_config,
+            migration_config={
+                "version_table_name": "migrations",
+                "script_location": self.MIGRATION_PATH,
+                "project_root": BASE_DIR,
+                "include_extensions": ["adk", "litestar"],
+            },
+            extension_config={
+                "adk": {
+                    "session_table": "adk_sessions",
+                    "events_table": "adk_events",
+                },
+                "litestar": {
+                    "session_table": "app_session",
+                },
+            },
+        )
 
 
 @dataclass
@@ -160,7 +255,6 @@ class AppSettings:
     """CSRF Secure Cookie"""
     GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
     """Google Project ID"""
-    # AI Model Configuration
     GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
     """Gemini model identifier - defaults to latest 2.5 Flash"""
     EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
@@ -184,11 +278,93 @@ class AppSettings:
 
 
 @dataclass
+class VertexAISettings:
+    """Vertex AI configuration settings."""
+
+    PROJECT_ID: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_PROJECT_ID") or ""
+    )
+    """Google Cloud Project ID for Vertex AI."""
+    LOCATION: str = field(default_factory=lambda: os.getenv("VERTEX_AI_LOCATION") or "us-central1")
+    """Vertex AI location/region."""
+    API_KEY: str | None = field(
+        default_factory=lambda: (
+            os.getenv("VERTEX_AI_API_KEY")
+            or os.getenv("GOOGLE_AI_API_KEY")
+            or os.getenv("GOOGLE_API_KEY")
+            or os.getenv("GENAI_API_KEY")
+        )
+    )
+    """Optional API key for Google AI clients."""
+    EMBEDDING_MODEL: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL")
+        or os.getenv("EMBEDDING_MODEL")
+        or "text-embedding-004"
+    )
+    """Vertex AI embedding model."""
+    EMBEDDING_DIMENSIONS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_EMBEDDING_DIMENSIONS", "768")))
+    """Embedding vector dimensions."""
+    CHAT_MODEL: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL") or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash-lite"
+    )
+    """Vertex AI chat model."""
+
+    # Context Caching Settings
+    CACHE_TTL_SECONDS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_CACHE_TTL_SECONDS", "3600")))
+    """Context cache TTL in seconds (default: 1 hour)."""
+    CACHE_PREFIX: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CACHE_PREFIX", "cymbal-coffee"))
+    """Prefix for cache names."""
+
+    # Streaming Settings
+    STREAM_BUFFER_SIZE: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_BUFFER_SIZE", "1024")))
+    """Buffer size for streaming responses."""
+    STREAM_TIMEOUT_SECONDS: int = field(
+        default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_TIMEOUT_SECONDS", "30"))
+    )
+    """Timeout for streaming responses."""
+
+
+@dataclass
+class AgentSettings:
+    """Agent system configuration."""
+
+    INTENT_THRESHOLD: float = field(default_factory=lambda: float(os.getenv("AGENT_INTENT_THRESHOLD", "0.8")))
+    """Intent detection confidence threshold."""
+    VECTOR_SEARCH_THRESHOLD: float = field(
+        default_factory=lambda: float(os.getenv("AGENT_VECTOR_SEARCH_THRESHOLD", "0.7"))
+    )
+    """Vector search similarity threshold."""
+    VECTOR_SEARCH_LIMIT: int = field(default_factory=lambda: int(os.getenv("AGENT_VECTOR_SEARCH_LIMIT", "5")))
+    """Maximum number of vector search results."""
+    CONVERSATION_HISTORY_LIMIT: int = field(
+        default_factory=lambda: int(os.getenv("AGENT_CONVERSATION_HISTORY_LIMIT", "10"))
+    )
+    """Maximum conversation history to maintain."""
+    SESSION_EXPIRE_HOURS: int = field(default_factory=lambda: int(os.getenv("AGENT_SESSION_EXPIRE_HOURS", "24")))
+    """Session expiration in hours."""
+
+
+@dataclass
+class CacheSettings:
+    """Caching configuration."""
+
+    RESPONSE_TTL_MINUTES: int = field(default_factory=lambda: int(os.getenv("CACHE_RESPONSE_TTL_MINUTES", "5")))
+    """Response cache TTL in minutes."""
+    EMBEDDING_CACHE_ENABLED: bool = field(
+        default_factory=lambda: os.getenv("CACHE_EMBEDDING_ENABLED", "True") in TRUE_VALUES
+    )
+    """Enable embedding caching."""
+
+
+@dataclass
 class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
     server: ServerSettings = field(default_factory=ServerSettings)
     log: LogSettings = field(default_factory=LogSettings)
+    vertex_ai: VertexAISettings = field(default_factory=VertexAISettings)
+    agent: AgentSettings = field(default_factory=AgentSettings)
+    cache: CacheSettings = field(default_factory=CacheSettings)
 
     @classmethod
     @lru_cache(maxsize=1, typed=True)

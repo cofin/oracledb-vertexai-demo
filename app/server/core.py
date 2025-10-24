@@ -15,6 +15,7 @@
 # pylint: disable=[invalid-name,import-outside-toplevel]
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
@@ -46,7 +47,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.params import Body
         from litestar.plugins.htmx import HTMXRequest
         from litestar.static_files import create_static_files_router
-        from oracledb import AsyncConnection, AsyncConnectionPool, Connection, ConnectionPool
+        from sqlspec import AsyncDriverAdapterBase
+        from sqlspec.adapters.oracledb import OracleAsyncDriver
 
         from app import config, schemas, services
         from app.lib import log
@@ -55,18 +57,15 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.server.controllers import CoffeeChatController
         from app.server.exception_handlers import exception_handlers
         from app.services import (
-            ChatConversationService,
-            CompanyService,
-            InventoryService,
+            CacheService,
+            ExemplarService,
+            MetricsService,
             OracleVectorSearchService,
             ProductService,
-            RecommendationService,
-            ResponseCacheService,
-            SearchMetricsService,
-            ShopService,
-            UserSessionService,
             VertexAIService,
         )
+        from app.services._adk.runner import ADKRunner
+        from app.utils.serialization import general_dec_hook, numpy_array_enc_hook, numpy_array_predicate
 
         settings = get_settings()
         # logging
@@ -76,11 +75,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # security
         app_config.cors_config = config.cors
         app_config.csrf_config = config.csrf
+        # session
+        app_config.stores = config.stores
+        app_config.middleware.append(config.session_config.middleware)
         # plugins
         app_config.plugins.extend(
             [
                 plugins.granian,
-                plugins.oracle,
+                plugins.sqlspec,
                 plugins.structlog,
                 plugins.htmx,
             ],
@@ -88,6 +90,11 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # Set HTMXRequest as the default request class
         app_config.request_class = HTMXRequest
         app_config.template_config = config.templates
+        # type encoders for numpy arrays (vector embeddings)
+        import numpy as np
+
+        app_config.type_encoders = {np.ndarray: numpy_array_enc_hook}
+        app_config.type_decoders = [(numpy_array_predicate, general_dec_hook)]
         # openapi
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
@@ -95,6 +102,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             use_handler_docstrings=True,
             render_plugins=[ScalarRenderPlugin(version="latest")],
         )
+
         # routes
         app_config.route_handlers.extend(
             [
@@ -103,6 +111,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                     path="/static",
                     directories=[str(BASE_DIR / "server" / "static")],
                     name="static",
+                    html_mode=False,
+                    send_as_attachment=False,
                 ),
             ],
         )
@@ -113,52 +123,40 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # signatures
         app_config.signature_namespace.update(
             {
-                # Oracle types
-                "AsyncConnection": AsyncConnection,
-                "Connection": Connection,
-                "AsyncConnectionPool": AsyncConnectionPool,
-                "ConnectionPool": ConnectionPool,
+                # SQLSpec Oracle driver
+                "OracleAsyncDriver": OracleAsyncDriver,
                 "RequestEncodingType": RequestEncodingType,
                 "Body": Body,
                 "State": State,
                 "ChannelsPlugin": ChannelsPlugin,
                 "WebSocket": WebSocket,
+                "AsyncGenerator": AsyncGenerator,
                 "schemas": schemas,
                 "services": services,
                 "ProductService": ProductService,
-                "ShopService": ShopService,
-                "RecommendationService": RecommendationService,
-                "CompanyService": CompanyService,
-                "InventoryService": InventoryService,
+                "CacheService": CacheService,
+                "MetricsService": MetricsService,
+                "ExemplarService": ExemplarService,
                 "VertexAIService": VertexAIService,
                 "OracleVectorSearchService": OracleVectorSearchService,
-                "UserSessionService": UserSessionService,
-                "ChatConversationService": ChatConversationService,
-                "ResponseCacheService": ResponseCacheService,
-                "SearchMetricsService": SearchMetricsService,
+                "ADKRunner": ADKRunner,
                 "Request": Request,
                 "HTMXRequest": HTMXRequest,
+                "AsyncDriverAdapterBase": AsyncDriverAdapterBase,
             },
         )
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
-        from app.cli import (
-            bulk_embed,
-            clear_cache,
-            dump_data,
-            embed_new,
-            load_fixtures,
-            load_vectors,
-            model_info,
-            truncate_tables,
-        )
+        from sqlspec.extensions.litestar.cli import database_group
 
-        cli.add_command(model_info, name="model-info")
-        cli.add_command(load_fixtures, name="load-fixtures")
-        cli.add_command(load_vectors, name="load-vectors")
-        cli.add_command(bulk_embed, name="bulk-embed")
-        cli.add_command(embed_new, name="embed-new")
-        cli.add_command(clear_cache, name="clear-cache")
-        cli.add_command(truncate_tables, name="truncate-tables")
-        cli.add_command(dump_data, name="dump-data")
+        from app.cli import coffee_demo_group
+        from app.cli.commands import export_fixtures_cmd, load_fixtures_cmd
+
+        # Register custom database commands to the database group
+        database_group.add_command(load_fixtures_cmd)
+        database_group.add_command(export_fixtures_cmd)
+
+        # Register groups
+        cli.add_command(database_group)
+        cli.add_command(coffee_demo_group)

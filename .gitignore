@@ -28,7 +28,7 @@ wheels/
 *.egg
 MANIFEST
 .pdm-python
-
+.envs/
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -102,7 +102,6 @@ celerybeat.pid
 # dotenv
 .env
 .env.*
-!.env.example
 env.bak/
 service_account.json
 
@@ -155,6 +154,30 @@ install-pdm.py
 
 demo.py
 CLAUDE.md
-CLAUDE.*.md
 .tmp
 todo
+
+# Wallet files and environment-specific configs
+.envs/
+
+# Multi-AI agent system
+# AI-specific invocation layers (gitignored, created locally)
+.claude/
+.gemini/
+.codex/
+
+# Workspace content (gitignored)
+specs/active/*
+!specs/active/.gitkeep
+specs/archive/*
+!specs/archive/.gitkeep
+!specs/guides/
+!specs/agents/
+!specs/workflows/
+# What gets committed in specs/
+# - specs/guides/ (technical documentation)
+# - specs/agents/ (agent configurations)
+# - specs/workflows/ (workflow definitions)
+# - specs/AGENTS.md (coordination guide)
+# - specs/README.md (system documentation)
+# - specs/example-requirement/ (template)

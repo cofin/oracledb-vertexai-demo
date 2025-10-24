@@ -148,6 +148,8 @@ def handle_generic_exception(request: Request, exc: Exception) -> Response:
 
 def handle_value_error(request: Request, exc: ValueError) -> Response:
     """Handle ValueError exceptions (often from Vertex AI)."""
+    # Log the actual error for debugging
+    request.logger.error("ValueError occurred", exc_info=exc, error_message=str(exc))
 
     csp_nonce = getattr(request.app.state, "csp_nonce_generator", lambda: "")()
 
