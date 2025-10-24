@@ -144,3 +144,69 @@ class ExemplarService(SQLSpecService):
 
         logger.info("Populated cache with %d new exemplar embeddings", count)
         return count
+
+    async def add_intent_phrases(
+        self,
+        intent: str,
+        phrases: list[str],
+        vertex_ai_service: VertexAIService,
+    ) -> int:
+        """Add multiple phrases for a specific intent.
+
+        Args:
+            intent: Intent name (e.g., "STORE_LOCATION", "PRODUCT_RAG")
+            phrases: List of example phrases for this intent
+            vertex_ai_service: Service for generating embeddings
+
+        Returns:
+            Count of new phrases added
+        """
+        count = 0
+
+        for phrase in phrases:
+            # Check if already cached
+            result = await self.driver.select_one_or_none(
+                """
+                SELECT embedding AS "embedding" FROM intent_exemplar
+                WHERE intent = :intent AND phrase = :phrase
+                """,
+                intent=intent,
+                phrase=phrase,
+            )
+
+            embedding_value = result.get("embedding") if result else None
+            if embedding_value is None and result:
+                embedding_value = result.get("EMBEDDING")
+
+            if embedding_value is None:
+                # Generate embedding
+                embedding = await vertex_ai_service.get_text_embedding(phrase)
+                await self.cache_exemplar(intent, phrase, embedding)
+                count += 1
+
+                if count % 10 == 0:
+                    logger.info("Added %d phrases for intent '%s'...", count, intent)
+
+        logger.info("Added %d new phrases for intent '%s'", count, intent)
+        return count
+
+    async def add_new_intent(
+        self,
+        intent: str,
+        phrases: list[str],
+        vertex_ai_service: VertexAIService,
+    ) -> int:
+        """Add a completely new intent with its phrases.
+
+        This is a convenience method that wraps add_intent_phrases.
+
+        Args:
+            intent: New intent name (e.g., "ORDER_STATUS", "FEEDBACK")
+            phrases: List of example phrases for this intent
+            vertex_ai_service: Service for generating embeddings
+
+        Returns:
+            Count of phrases added
+        """
+        logger.info("Adding new intent '%s' with %d phrases", intent, len(phrases))
+        return await self.add_intent_phrases(intent, phrases, vertex_ai_service)

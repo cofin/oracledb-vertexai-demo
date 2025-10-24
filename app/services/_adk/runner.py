@@ -132,7 +132,9 @@ class ADKRunner:
             "agent_processing_ms": agent_processing_ms,
             "intent_details": event_data.get("intent_details", {}),
             "search_details": event_data.get("search_details", {}),
+            "store_details": event_data.get("store_details", {}),
             "products_found": event_data.get("products_found", []),
+            "stores_found": event_data.get("stores_found", []),
             "embedding_cache_hit": event_data.get("embedding_cache_hit", False),
             "intent_detected": event_data.get("intent_details", {}).get("intent", "GENERAL_CONVERSATION"),
             "from_cache": from_cache,
@@ -255,6 +257,26 @@ class ADKRunner:
                     if search_result.get("embedding_cache_hit"):
                         yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
 
+                elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
+                    store_result = func_response.response or {}
+                    # Handle different response structures
+                    stores = []
+                    if isinstance(store_result, list):
+                        stores = store_result
+                    elif isinstance(store_result, dict):
+                        # get_store_hours returns a dict with store info
+                        stores = [store_result] if store_result and not store_result.get("error") else []
+
+                    yield {
+                        "type": "stores",
+                        "data": {
+                            "stores": stores,
+                            "function": func_response.name,
+                            "count": len(stores),
+                        },
+                        "timestamp": time.time(),
+                    }
+
     async def _ensure_session(self, user_id: str, session_id: str | None) -> Session:
         """Ensure session exists using get-or-create pattern."""
         if session_id:
@@ -289,6 +311,8 @@ class ADKRunner:
         intent_details: dict[str, Any] = {}
         search_details: dict[str, Any] = {}
         products_found: list[Any] = []
+        store_details: dict[str, Any] = {}
+        stores_found: list[Any] = []
         embedding_cache_hit = False
 
         async for event in events:
@@ -374,6 +398,25 @@ class ADKRunner:
                             products_found=len(products_found),
                         )
 
+                    elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
+                        store_result = func_response.response or {}
+                        # Handle different response structures
+                        if isinstance(store_result, list):
+                            stores_found = store_result
+                        elif isinstance(store_result, dict) and not store_result.get("error"):
+                            # get_store_hours returns a dict with store info
+                            stores_found = [store_result]
+
+                        store_details = {
+                            "function": func_response.name,
+                            "count": len(stores_found),
+                        }
+                        logger.info(
+                            "Store lookup completed",
+                            function=func_response.name,
+                            stores_found=len(stores_found),
+                        )
+
         # Use final response if available, otherwise use collected responses
         if not final_response_text and all_text_responses:
             final_response_text = " ".join(all_text_responses)
@@ -393,6 +436,8 @@ class ADKRunner:
             "intent_details": intent_details,
             "search_details": search_details,
             "products_found": products_found,
+            "store_details": store_details,
+            "stores_found": stores_found,
             "embedding_cache_hit": embedding_cache_hit,
         }
 

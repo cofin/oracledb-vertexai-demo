@@ -187,6 +187,7 @@ class CoffeeChatController(Controller):
         accumulated_text = []
         intent_details = {}
         search_details = {}
+        store_details = {}
         embedding_cache_hit = False
 
         events = adk_runner.stream_request(
@@ -219,6 +220,12 @@ class CoffeeChatController(Controller):
                     "products": search_details,
                 }
 
+            elif chunk_type == "stores":
+                store_details = chunk.get("data", {})
+                yield f'event: metadata\ndata: {to_json({"type": "stores", "data": store_details}, as_bytes=False)}\n\n', {
+                    "stores": store_details,
+                }
+
             elif chunk_type == "cache_hit":
                 embedding_cache_hit = True
                 yield "", {"embedding_cache_hit": True}
@@ -228,6 +235,7 @@ class CoffeeChatController(Controller):
             "accumulated_text": accumulated_text,
             "intent_details": intent_details,
             "search_details": search_details,
+            "store_details": store_details,
             "embedding_cache_hit": embedding_cache_hit,
         }
 
@@ -281,6 +289,7 @@ class CoffeeChatController(Controller):
                     accumulated_text: list[str] = []
                     intent_details: dict[str, Any] = {}
                     search_details: dict[str, Any] = {}
+                    store_details: dict[str, Any] = {}
                     embedding_cache_hit: bool = False
 
                     async for sse_event, metadata in self._stream_adk_events(
@@ -293,12 +302,15 @@ class CoffeeChatController(Controller):
                         intent_details = metadata.get("intent") or intent_details
                         if "products" in metadata:
                             search_details = metadata["products"]
+                        if "stores" in metadata:
+                            store_details = metadata["stores"]
                         embedding_cache_hit = metadata.get("embedding_cache_hit", embedding_cache_hit)
                         # Final accumulated metadata
                         if "accumulated_text" in metadata:
                             accumulated_text = metadata["accumulated_text"]
                             intent_details = metadata["intent_details"]
                             search_details = metadata["search_details"]
+                            store_details = metadata.get("store_details", {})
 
                     # 4. Send completion
                     total_time_ms = round((time.time() - start_time) * 1000, 2)
@@ -330,6 +342,7 @@ class CoffeeChatController(Controller):
                                 "response_time_ms": total_time_ms,
                                 "intent_details": intent_details,
                                 "search_details": search_details,
+                                "store_details": store_details,
                                 "products_found": products_found,
                                 "embedding_cache_hit": embedding_cache_hit,
                             },

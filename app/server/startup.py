@@ -82,15 +82,43 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
         product_service = ProductService(driver)
 
         cached_data = await exemplar_service.get_exemplars_with_phrases()
+
         if not cached_data:
+            # Fresh database - populate everything
             logger.info("Populating intent exemplar cache...")
             await exemplar_service.populate_cache(INTENT_EXEMPLARS, vertex_ai_service)
             logger.info("Intent exemplar cache populated successfully")
         else:
-            logger.info(
-                "Intent exemplar cache already populated",
-                exemplar_count=sum(len(v) for v in cached_data.values()),
-            )
+            # Check for new intents or phrases
+            existing_count = sum(len(v) for v in cached_data.values())
+            logger.info("Intent exemplar cache already populated", exemplar_count=existing_count)
+
+            # Find new intents not in database
+            cached_intents = set(cached_data.keys())
+            defined_intents = set(INTENT_EXEMPLARS.keys())
+            new_intents = defined_intents - cached_intents
+
+            if new_intents:
+                logger.info("Found new intents to add", new_intents=list(new_intents))
+                for intent in new_intents:
+                    phrases = INTENT_EXEMPLARS[intent]
+                    count = await exemplar_service.add_intent_phrases(intent, phrases, vertex_ai_service)
+                    logger.info("Added new intent", intent=intent, phrase_count=count)
+
+            # Check for new phrases in existing intents
+            updates_count = 0
+            for intent, phrases in INTENT_EXEMPLARS.items():
+                if intent in cached_data:
+                    # Get existing phrases for this intent
+                    existing_phrases = {phrase for phrase, _ in cached_data[intent]}
+                    new_phrases = [p for p in phrases if p not in existing_phrases]
+
+                    if new_phrases:
+                        count = await exemplar_service.add_intent_phrases(intent, new_phrases, vertex_ai_service)
+                        updates_count += count
+
+            if updates_count > 0:
+                logger.info("Added new phrases to existing intents", phrase_count=updates_count)
 
         # Add product names as exemplars (only if Vertex AI is available)
         try:

@@ -68,13 +68,23 @@
             intentBtn.className = 'help-trigger';
             intentBtn.title = 'Intent: ' + intent;
             intentBtn.onclick = function() { showTooltip('intent-detection', this); };
-            intentBtn.innerHTML = intent === 'PRODUCT_SEARCH' ? '🎯' : '💬';
+            // Icon based on intent type
+            if (intent === 'PRODUCT_RAG' || intent === 'PRODUCT_SEARCH') {
+                intentBtn.innerHTML = '🎯';
+            } else if (intent === 'STORE_LOCATION') {
+                intentBtn.innerHTML = '🗺️';
+            } else {
+                intentBtn.innerHTML = '💬';
+            }
             // Store timing data for tooltip
             if (data.data.timing_ms != null) {
                 intentBtn.dataset.timingMs = data.data.timing_ms;
             }
             if (data.data.confidence != null) {
                 intentBtn.dataset.confidence = data.data.confidence;
+            }
+            if (data.data.intent) {
+                intentBtn.dataset.intent = data.data.intent;
             }
             indicatorsEl.appendChild(intentBtn);
         }
@@ -97,6 +107,26 @@
                 searchBtn.dataset.productCount = data.data.products.length;
             }
             indicatorsEl.appendChild(searchBtn);
+        }
+
+        if (data.type === 'stores' && data.data) {
+            const storeBtn = document.createElement('button');
+            storeBtn.type = 'button';
+            storeBtn.className = 'help-trigger';
+            storeBtn.title = 'Store locations lookup';
+            storeBtn.onclick = function() { showTooltip('store-lookup', this); };
+            storeBtn.innerHTML = '📍';
+            // Store data for tooltip
+            if (data.data.count != null) {
+                storeBtn.dataset.storeCount = data.data.count;
+            }
+            if (data.data.function) {
+                storeBtn.dataset.function = data.data.function;
+            }
+            if (data.data.stores) {
+                storeBtn.dataset.stores = JSON.stringify(data.data.stores);
+            }
+            indicatorsEl.appendChild(storeBtn);
         }
     });
 
