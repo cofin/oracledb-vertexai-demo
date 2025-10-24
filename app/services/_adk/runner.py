@@ -61,7 +61,7 @@ class ADKRunner:
                 description=f"Coffee assistant with {persona} persona for Cymbal Coffee.",
                 instruction=PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION),
                 model=settings.vertex_ai.CHAT_MODEL,
-                tools=ALL_TOOLS,
+                tools=ALL_TOOLS,  # type: ignore[arg-type]
             )
             # Create runner for this persona
             # IMPORTANT: Use the same app_name for all personas to share sessions
@@ -103,7 +103,7 @@ class ADKRunner:
                 logger.info("Response cache hit", query_preview=query[:50], persona=persona, cache_id=cached.id)
                 cached_response = cached.response_data
                 cached_response["from_cache"] = True  # Mark as from cache
-                return cached_response  # type: ignore[no-any-return]
+                return cached_response
             logger.debug("Response cache miss", query_preview=query[:50], persona=persona)
 
         session = await self._ensure_session(user_id, session_id)

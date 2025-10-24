@@ -9,6 +9,7 @@ we create request-scoped containers on-demand for each tool invocation.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from typing import Any, cast
 
 from dishka import AsyncContainer  # noqa: TC002
@@ -155,7 +156,7 @@ async def get_store_hours(store_id: int) -> dict[str, Any]:
 
 
 # List of all available tool functions
-ALL_TOOLS = [
+ALL_TOOLS: Sequence[Callable[..., Any]] = [
     search_products_by_vector,
     get_product_details,
     classify_intent,

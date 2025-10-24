@@ -13,5 +13,5 @@ CoffeeAssistantAgent = LlmAgent(
     description="The main coffee assistant for Cymbal Coffee. Handles all customer requests directly with product search, recommendations, and coffee knowledge.",
     instruction=PersonaManager.get_default_instruction(),
     model=settings.vertex_ai.CHAT_MODEL,
-    tools=ALL_TOOLS,
+    tools=ALL_TOOLS,  # type: ignore[arg-type]
 )
