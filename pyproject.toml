@@ -59,7 +59,18 @@ dev = [
     { include-group = "build" },
 ]
 extras = []
-lint = ["mypy", "pre-commit", "pyright", "ruff", "slotscheck", "types-click"]
+lint = [
+    "mypy",
+    "pre-commit",
+    "pyright",
+    "ruff",
+    "slotscheck",
+    "types-click",
+    "types-cachetools",
+    "types-python-dateutil",
+    "types-requests",
+    "types-psutil",
+]
 test = [
     "aiofiles",
     "anyio",

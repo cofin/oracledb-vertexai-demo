@@ -18,8 +18,8 @@ from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db, settings
 from app.services._adk.monkey_patches import apply_genai_client_patch
-from app.services._adk.prompts import get_persona_instruction
 from app.services._adk.tools import ALL_TOOLS
+from app.services._persona_manager import BASE_SYSTEM_INSTRUCTION, PersonaManager
 
 # Apply monkey patches for ADK library issues
 apply_genai_client_patch()
@@ -59,7 +59,7 @@ class ADKRunner:
             persona_agent = LlmAgent(
                 name="CoffeeAssistant",
                 description=f"Coffee assistant with {persona} persona for Cymbal Coffee.",
-                instruction=get_persona_instruction(persona),
+                instruction=PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION),
                 model=settings.vertex_ai.CHAT_MODEL,
                 tools=ALL_TOOLS,
             )

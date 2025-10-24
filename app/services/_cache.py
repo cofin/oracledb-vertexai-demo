@@ -21,7 +21,7 @@ class CacheService(SQLSpecService):
         Returns:
             Cached response or None if not found or expired
         """
-        return await self.driver.select_one_or_none(  # type: ignore[no-any-return]
+        return await self.driver.select_one_or_none(  
             """
             SELECT id AS "id", cache_key AS "cache_key", response_data AS "response_data",
                    expires_at AS "expires_at", created_at AS "created_at"
@@ -207,7 +207,7 @@ class CacheService(SQLSpecService):
             """,
             text_hash=text_hash,
             model_name=model_name,
-            schema_type=EmbeddingCache,
+            schema_type=EmbeddingCache
         )
 
     async def invalidate_cache(self, cache_type: str | None = None, include_exemplars: bool = False) -> int:
@@ -246,7 +246,7 @@ class CacheService(SQLSpecService):
         result = await self.driver.execute(
             "DELETE FROM response_cache WHERE expires_at IS NOT NULL AND expires_at < SYSTIMESTAMP",
         )
-        return result.rows_affected  # type: ignore[no-any-return]
+        return result.rows_affected  
 
     async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.

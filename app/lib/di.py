@@ -19,9 +19,7 @@ Example:
 from dishka.integrations.litestar import (
     FromDishka as Inject,
 )
-from dishka.integrations.litestar import (
-    inject,
-    setup_dishka,
-)
+from dishka.integrations.litestar import LitestarProvider, inject, setup_dishka
+from dishka import AsyncContainer, Provider, Scope, provide
 
-__all__ = ("Inject", "inject", "setup_dishka")
+__all__ = ("Inject", "LitestarProvider", "inject", "setup_dishka", "AsyncContainer", "Provider", "Scope", "provide")
