@@ -292,3 +292,45 @@ class CacheService(SQLSpecService):
             ttl: Time to live in minutes
         """
         await self.set_cached_response(cache_key, data, ttl)
+
+    async def set_query_state(
+        self,
+        query_id: str,
+        state: dict[str, Any],
+        ttl_minutes: int = 5,
+    ) -> None:
+        """Store query state for streaming endpoint.
+
+        Args:
+            query_id: Unique query identifier
+            state: Query state data to cache
+            ttl_minutes: Time to live in minutes
+        """
+        cache_key = f"query:{query_id}"
+        await self.set_cached_response(cache_key, state, ttl_minutes)
+
+    async def get_query_state(self, query_id: str) -> dict[str, Any] | None:
+        """Retrieve query state for streaming.
+
+        Args:
+            query_id: Unique query identifier
+
+        Returns:
+            Query state data or None if not found or expired
+        """
+        cache_key = f"query:{query_id}"
+        cached = await self.get_cached_response(cache_key)
+        return cached.response_data if cached else None
+
+    async def delete_query_state(self, query_id: str) -> None:
+        """Clean up query state after streaming completes.
+
+        Args:
+            query_id: Unique query identifier
+        """
+        cache_key = f"query:{query_id}"
+        await self.driver.execute(
+            "DELETE FROM response_cache WHERE cache_key = :cache_key",
+            cache_key=cache_key,
+        )
+        await self.driver.commit()

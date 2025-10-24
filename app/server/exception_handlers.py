@@ -60,7 +60,7 @@ def handle_validation_exception(request: Request, exc: ValidationException) -> R
 
     # Return HTMX template with validation error event
     return HTMXTemplate(
-        template_name="partials/chat_response.html",
+        template_name="partials/chat_error.html",
         context={
             "user_message": "Invalid input",
             "ai_response": str(exc.detail) if hasattr(exc, "detail") else str(exc),
@@ -83,7 +83,7 @@ def handle_google_api_exception(request: Request, exc: google_exceptions.GoogleA
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html",
+        template_name="partials/chat_error.html",
         context={
             "user_message": user_message,
             "ai_response": "Sorry, I encountered an error processing your request. Please try again.",
@@ -107,7 +107,7 @@ def handle_htmx_api_exception(request: Request, exc: HTMXAPIException) -> Respon
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html",
+        template_name="partials/chat_error.html",
         context={
             "user_message": user_message,
             "ai_response": exc.detail,
@@ -131,7 +131,7 @@ def handle_generic_exception(request: Request, exc: Exception) -> Response:
     csp_nonce = getattr(request.app.state, "csp_nonce_generator", lambda: "")()
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html",
+        template_name="partials/chat_error.html",
         context={
             "user_message": "Your request",
             "ai_response": "An unexpected error occurred. Please try again later.",
@@ -156,7 +156,7 @@ def handle_value_error(request: Request, exc: ValueError) -> Response:
     user_message = "Your request"
 
     return HTMXTemplate(
-        template_name="partials/chat_response.html",
+        template_name="partials/chat_error.html",
         context={
             "user_message": user_message,
             "ai_response": "Sorry, I encountered an error processing your request. Please try again.",

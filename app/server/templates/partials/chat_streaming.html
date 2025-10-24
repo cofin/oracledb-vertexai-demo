@@ -1,0 +1,198 @@
+<!-- User message - displays immediately -->
+<div class="message user" data-message-id="{{ query_id }}" id="user-msg-{{ query_id }}">
+    <strong>You:</strong> {{ user_message }}
+</div>
+
+<!-- AI response placeholder with SSE connection -->
+<div class="message assistant loading"
+     id="ai-response-{{ query_id }}"
+     data-message-id="{{ query_id }}"
+     data-query-id="{{ query_id }}">
+    <strong>AI Coffee Expert:</strong>
+    <span class="ai-response-content" id="response-content-{{ query_id }}">
+        <div class="typing-indicator">
+            <span></span><span></span><span></span>
+        </div>
+    </span>
+    <span class="ai-response-indicators" id="indicators-{{ query_id }}" style="display: inline-flex; gap: 4px; margin-left: 4px;">
+        <!-- Intent and product indicators will be added via SSE metadata events -->
+    </span>
+    <span class="help-triggers" style="display: none; gap: 4px; margin-left: 4px;">
+        <!-- Help buttons appear after streaming completes -->
+        <button type="button" class="help-trigger"
+            onclick="showTooltip('performance-summary', this)"
+            data-message-id="{{ query_id }}"
+            title="Performance Breakdown">
+            📊
+        </button>
+    </span>
+</div>
+
+<!-- Initialize SSE connection with custom JavaScript -->
+<script nonce="{{ csp_nonce }}">
+(function() {
+    const queryId = '{{ query_id }}';
+    const responseEl = document.getElementById('ai-response-' + queryId);
+    const contentEl = document.getElementById('response-content-' + queryId);
+
+    // Connect to SSE stream
+    const eventSource = new EventSource('/chat/stream/' + queryId);
+
+    // Handle incoming chunks
+    eventSource.addEventListener('chunk', function(e) {
+        const data = JSON.parse(e.data);
+        // Remove typing indicator on first chunk
+        const typingIndicator = contentEl.querySelector('.typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+        // Append text progressively
+        contentEl.textContent += data.text;
+
+        // Auto-scroll
+        const container = document.getElementById('chat-container');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    });
+
+    // Handle metadata events (intent, products)
+    eventSource.addEventListener('metadata', function(e) {
+        const data = JSON.parse(e.data);
+        const indicatorsEl = document.getElementById('indicators-' + queryId);
+
+        if (data.type === 'intent' && data.data) {
+            const intent = data.data.intent || 'GENERAL_CONVERSATION';
+            const intentBtn = document.createElement('button');
+            intentBtn.type = 'button';
+            intentBtn.className = 'help-trigger';
+            intentBtn.title = 'Intent: ' + intent;
+            intentBtn.onclick = function() { showTooltip('intent-detection', this); };
+            intentBtn.innerHTML = intent === 'PRODUCT_SEARCH' ? '🎯' : '💬';
+            // Store timing data for tooltip
+            if (data.data.timing_ms != null) {
+                intentBtn.dataset.timingMs = data.data.timing_ms;
+            }
+            if (data.data.confidence != null) {
+                intentBtn.dataset.confidence = data.data.confidence;
+            }
+            indicatorsEl.appendChild(intentBtn);
+        }
+
+        if (data.type === 'products' && data.data) {
+            const searchBtn = document.createElement('button');
+            searchBtn.type = 'button';
+            searchBtn.className = 'help-trigger';
+            searchBtn.title = 'Product vector search';
+            searchBtn.onclick = function() { showTooltip('vector-search', this); };
+            searchBtn.innerHTML = '🔍';
+            // Store timing data for tooltip
+            if (data.data.embedding_ms != null) {
+                searchBtn.dataset.embeddingMs = data.data.embedding_ms;
+            }
+            if (data.data.search_ms != null) {
+                searchBtn.dataset.searchMs = data.data.search_ms;
+            }
+            if (data.data.products) {
+                searchBtn.dataset.productCount = data.data.products.length;
+            }
+            indicatorsEl.appendChild(searchBtn);
+        }
+    });
+
+    // Handle cached response (full HTML)
+    eventSource.addEventListener('message', function(e) {
+        const data = JSON.parse(e.data);
+        if (data.html) {
+            contentEl.innerHTML = data.html.replace(/^<strong>AI Coffee Expert:<\/strong>\s*/, '');
+        }
+        // For cached responses, we don't have metadata events, so just show generic indicator
+        const indicatorsEl = document.getElementById('indicators-' + queryId);
+        const cacheBtn = document.createElement('button');
+        cacheBtn.type = 'button';
+        cacheBtn.className = 'help-trigger cache-hit';
+        cacheBtn.title = 'Response cache hit';
+        cacheBtn.onclick = function() { showTooltip('response-cache-hit', this); };
+        cacheBtn.innerHTML = '⚡';
+        indicatorsEl.appendChild(cacheBtn);
+    });
+
+    // Handle completion
+    eventSource.addEventListener('complete', function(e) {
+        const data = JSON.parse(e.data);
+        responseEl.classList.remove('loading');
+
+        // Set data attributes for performance tooltip
+        if (data.from_cache) {
+            responseEl.dataset.fromCache = 'true';
+        }
+        if (data.query_id) {
+            responseEl.dataset.messageId = data.query_id;
+        }
+        if (data.response_time_ms != null) {
+            responseEl.dataset.responseTime = data.response_time_ms;
+        }
+
+        // Add embedding cache indicator if applicable
+        if (data.embedding_cache_hit) {
+            const indicatorsEl = document.getElementById('indicators-' + queryId);
+            if (indicatorsEl) {
+                const embeddingBtn = document.createElement('button');
+                embeddingBtn.type = 'button';
+                embeddingBtn.className = 'help-trigger';
+                embeddingBtn.title = 'Embedding cached in Oracle';
+                embeddingBtn.onclick = function() { showTooltip('embedding-cache-hit', this); };
+                embeddingBtn.innerHTML = '🧠';
+                indicatorsEl.appendChild(embeddingBtn);
+            }
+        }
+
+        // Show help buttons
+        setTimeout(() => {
+            const helpTriggers = responseEl.querySelector('.help-triggers');
+            if (helpTriggers) {
+                helpTriggers.style.display = 'inline-flex';
+            }
+        }, 200);
+
+        // Reload metrics
+        if (typeof loadMetrics === 'function') {
+            setTimeout(() => loadMetrics(), 500);
+        }
+
+        // Close connection
+        eventSource.close();
+    });
+
+    // Handle terminal errors from server (event: error)
+    eventSource.addEventListener('error', function(e) {
+        try {
+            const data = JSON.parse(e.data);
+            contentEl.innerHTML = '<span style="color: #d32f2f;">' + (data.error || 'Service error') + '</span>';
+        } catch {
+            // Not a JSON error event, ignore
+        }
+        responseEl.classList.remove('loading');
+        eventSource.close();
+    });
+
+    // Handle connection errors (onerror)
+    eventSource.onerror = function(e) {
+        console.error('SSE connection error:', e);
+        // Only show error if we haven't received content yet
+        if (contentEl.querySelector('.typing-indicator')) {
+            contentEl.innerHTML = '<span style="color: #d32f2f;">Unable to connect to streaming service. Please try again.</span>';
+        }
+        responseEl.classList.remove('loading');
+        eventSource.close();
+    };
+
+    // Safety timeout - close after 60 seconds if still open
+    setTimeout(() => {
+        if (eventSource.readyState !== EventSource.CLOSED) {
+            console.warn('SSE connection timeout, closing');
+            eventSource.close();
+        }
+    }, 60000);
+})();
+</script>
