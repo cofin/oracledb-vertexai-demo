@@ -55,8 +55,9 @@ Task(
    - ✅ Clean naming (no `_optimized` suffixes)
    - ✅ Top-level imports
    - ✅ Async patterns
-4. **Run targeted tests**
-5. **Update workspace** - tasks.md, recovery.md, progress.md
+4. **Update Documentation Guides (MANDATORY)**: As you implement, update the relevant guides in `specs/guides/` with new patterns, code examples, and findings. Do not add a changelog or history section.
+5. **Run targeted tests**
+6. **Update workspace** - tasks.md, recovery.md, progress.md
 
 ## Tool Priority
 

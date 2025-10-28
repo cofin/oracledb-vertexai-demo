@@ -163,7 +163,6 @@ todo
 # Multi-AI agent system
 # AI-specific invocation layers (gitignored, created locally)
 .claude/
-.gemini/
 .codex/
 
 # Workspace content (gitignored)
@@ -181,3 +180,4 @@ specs/archive/*
 # - specs/AGENTS.md (coordination guide)
 # - specs/README.md (system documentation)
 # - specs/example-requirement/ (template)
+!tools/lib

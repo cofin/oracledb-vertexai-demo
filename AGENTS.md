@@ -41,27 +41,11 @@ Generate local configuration with `uv run manage.py init`; the resulting `.env` 
 
 This project uses a comprehensive multi-AI agent system for planning, implementation, testing, and documentation.
 
-**For complete agent coordination guide, see**: [specs/AGENTS.md](specs/AGENTS.md)
+**For the complete agent coordination guide, see**: [.gemini/GEMINI.md](.gemini/GEMINI.md)
 
 ### Quick Reference
 
-- **Planning**: `/prompt plan {requirement}` (Gemini) or invoke Planner agent
-- **Implementation**: `/prompt implement {slug}` (Gemini) or invoke Expert agent
-- **Testing**: `/prompt test {slug}` (Gemini) or invoke Testing agent
-- **Review**: `/prompt review {slug}` (Gemini) or invoke Docs & Vision agent
-
-### Directory Structure
-
-- `specs/guides/` - Technical documentation (Oracle, Vertex AI, ADK, SQLSpec, Litestar patterns)
-- `specs/agents/` - Agent configurations (planner, expert, testing, docs-vision)
-- `specs/workflows/` - Workflow definitions (plan, implement, test, review)
-- `specs/active/` - Active requirements (gitignored)
-- `specs/archive/` - Completed requirements (gitignored)
-
-### Tech Stack Context
-
-**Backend**: Python 3.11+, Litestar, Oracle 23ai, python-oracledb, SQLSpec, Vertex AI, Google ADK
-**Frontend**: Jinja2, HTMX, Tailwind CSS
-**Testing**: pytest, pytest-asyncio, pytest-databases[oracle]
-
-**See [specs/README.md](specs/README.md) for complete system documentation.**
+- **Planning**: `/prompt prd "create a PRD for..."`
+- **Implementation**: `/prompt implement {slug}`
+- **Testing**: `/prompt test {slug}`
+- **Review**: `/prompt review {slug}`
