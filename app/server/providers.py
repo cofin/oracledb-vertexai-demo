@@ -21,19 +21,18 @@ from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.config import db, db_manager
 from app.lib.di import QueryContext, query_id_var
-
-# Import service types for proper type registration (aliased to avoid conflicts)
 from app.services import (
+    ADKRunner,
+    AgentToolsService,
     CacheService,
     ExemplarService,
+    IntentService,
     MetricsService,
     OracleVectorSearchService,
     ProductService,
+    StoreService,
     VertexAIService,
 )
-from app.services._adk import ADKRunner, AgentToolsService
-from app.services._intent import IntentService
-from app.services._store import StoreService
 
 # Context variable for request container access in ADK tools
 _request_container: ContextVar[AsyncContainer | None] = ContextVar("_request_container", default=None)
