@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import oracledb
 from sqlspec import sql
