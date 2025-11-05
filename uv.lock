@@ -150,7 +150,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.3.3" },
     { name = "python-dotenv" },
     { name = "rich-click" },
-    { name = "sqlspec", extras = ["adk", "oracledb", "performance", "mypyc"], git = "https://github.com/litestar-org/sqlspec.git?rev=main" },
+    { name = "sqlspec", extras = ["adk", "oracledb", "performance", "mypyc"], git = "https://github.com/litestar-org/sqlspec.git?rev=fix%2Foracle-decimal" },
 ]
 
 [package.metadata.requires-dev]
@@ -2597,8 +2597,8 @@ wheels = [
 
 [[package]]
 name = "sqlspec"
-version = "0.28.1"
-source = { git = "https://github.com/litestar-org/sqlspec.git?rev=main#d420971b181b5dc767cd40359e0f9be456460261" }
+version = "0.29.0"
+source = { git = "https://github.com/litestar-org/sqlspec.git?rev=fix%2Foracle-decimal#0a5a4bb3c92b203eda4cdea8513e48abdd4c3454" }
 dependencies = [
     { name = "mypy-extensions" },
     { name = "rich-click" },

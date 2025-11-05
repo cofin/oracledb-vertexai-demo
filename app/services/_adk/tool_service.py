@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
 from app.services.base import SQLSpecService
+from app.utils.serialization import coerce_decimal_values
 
 if TYPE_CHECKING:
     from app.services._intent import IntentService
@@ -43,6 +44,20 @@ class AgentToolsService(SQLSpecService):
         self.intent_service = intent_service
         self.vertex_ai_service = vertex_ai_service
         self.store_service = store_service
+
+    def _sanitize_output(self, data: Any) -> Any:
+        """Remove Decimals from output before returning to ADK.
+
+        ADK internally uses Pydantic which serializes with stdlib json,
+        which cannot handle Decimal objects from Oracle queries.
+
+        Args:
+            data: Data to sanitize (dict, list, or any structure).
+
+        Returns:
+            Same data structure with all Decimals converted to float.
+        """
+        return coerce_decimal_values(data)
 
     async def search_products_by_vector(
         self,
@@ -88,15 +103,18 @@ WHERE 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
 ORDER BY similarity DESC
 FETCH FIRST :limit ROWS ONLY"""
 
-        return {
-            "products": product_list,
-            "timing": {"total_ms": total_ms, "embedding_ms": embedding_ms, "search_ms": search_ms},
-            "embedding_cache_hit": embedding_cache_hit,
-            "vector_search_cache_hit": False,  # This is no longer tracked in ProductService
-            "sql_query": sql_query,
-            "params": {"similarity_threshold": similarity_threshold, "limit": limit},
-            "results_count": len(product_list),
-        }
+        return cast(
+            "dict[str, Any]",
+            self._sanitize_output({
+                "products": product_list,
+                "timing": {"total_ms": total_ms, "embedding_ms": embedding_ms, "search_ms": search_ms},
+                "embedding_cache_hit": embedding_cache_hit,
+                "vector_search_cache_hit": False,  # This is no longer tracked in ProductService
+                "sql_query": sql_query,
+                "params": {"similarity_threshold": similarity_threshold, "limit": limit},
+                "results_count": len(product_list),
+            }),
+        )
 
     async def get_product_details(self, product_id: str) -> dict[str, Any]:
         """Get detailed information about a specific product by ID or name."""
@@ -112,15 +130,18 @@ FETCH FIRST :limit ROWS ONLY"""
         if not product:
             return {"error": "Product not found"}
 
-        return {
-            "id": str(product.id),
-            "name": product.name,
-            "description": product.description,
-            "price": float(product.price),
-            "category": product.category,
-            "in_stock": product.in_stock,
-            "metadata": product.metadata or {},
-        }
+        return cast(
+            "dict[str, Any]",
+            self._sanitize_output({
+                "id": str(product.id),
+                "name": product.name,
+                "description": product.description,
+                "price": float(product.price),
+                "category": product.category,
+                "in_stock": product.in_stock,
+                "metadata": product.metadata or {},
+            }),
+        )
 
     async def classify_intent(self, query: str) -> dict[str, Any]:
         """Classify user intent using vector-based classification."""
@@ -142,27 +163,33 @@ WHERE similarity > :min_threshold
 ORDER BY similarity DESC
 FETCH FIRST :limit ROWS ONLY"""
 
-            return {
-                "intent": result.intent,
-                "confidence": float(result.confidence),
-                "exemplar_phrase": result.exemplar_phrase,
-                "embedding_cache_hit": result.embedding_cache_hit,
-                "fallback_used": result.fallback_used,
-                "timing_ms": total_ms,
-                "sql_query": sql_query,
-            }
+            return cast(
+                "dict[str, Any]",
+                self._sanitize_output({
+                    "intent": result.intent,
+                    "confidence": float(result.confidence),
+                    "exemplar_phrase": result.exemplar_phrase,
+                    "embedding_cache_hit": result.embedding_cache_hit,
+                    "fallback_used": result.fallback_used,
+                    "timing_ms": total_ms,
+                    "sql_query": sql_query,
+                }),
+            )
         except (ValueError, TypeError, AttributeError) as e:
             total_ms = (time.time() - start_time) * 1000
-            return {
-                "intent": "GENERAL_CONVERSATION",
-                "confidence": 0.5,
-                "exemplar_phrase": "",
-                "embedding_cache_hit": False,
-                "fallback_used": True,
-                "error": str(e),
-                "timing_ms": total_ms,
-                "sql_query": "-- Error occurred during intent classification",
-            }
+            return cast(
+                "dict[str, Any]",
+                self._sanitize_output({
+                    "intent": "GENERAL_CONVERSATION",
+                    "confidence": 0.5,
+                    "exemplar_phrase": "",
+                    "embedding_cache_hit": False,
+                    "fallback_used": True,
+                    "error": str(e),
+                    "timing_ms": total_ms,
+                    "sql_query": "-- Error occurred during intent classification",
+                }),
+            )
 
     async def record_search_metric(
         self,
@@ -178,6 +205,7 @@ FETCH FIRST :limit ROWS ONLY"""
         """Record metrics for a search operation."""
         try:
             from app.schemas import SearchMetricsCreate
+
             avg_similarity = 0.0
             if vector_results:
                 similarity_scores = [
@@ -200,28 +228,31 @@ FETCH FIRST :limit ROWS ONLY"""
             )
             await self.metrics_service.record_search(metrics_data)
         except (ValueError, TypeError, AttributeError) as e:
-            return {"status": "failed", "error": str(e)}
+            return cast("dict[str, Any]", self._sanitize_output({"status": "failed", "error": str(e)}))
         else:
-            return {"status": "recorded", "session_id": session_id}
+            return cast("dict[str, Any]", self._sanitize_output({"status": "recorded", "session_id": session_id}))
 
     async def get_all_store_locations(self) -> list[dict[str, Any]]:
         """Get all store locations and information."""
         try:
             stores = await self.store_service.get_all_stores()
-            return [
-                {
-                    "id": store.id,
-                    "name": store.name,
-                    "address": store.address,
-                    "city": store.city,
-                    "state": store.state,
-                    "zip": store.zip,
-                    "phone": store.phone,
-                    "hours": store.hours or {},
-                    "metadata": store.metadata or {},
-                }
-                for store in stores
-            ]
+            return cast(
+                "list[dict[str, Any]]",
+                self._sanitize_output([
+                    {
+                        "id": store.id,
+                        "name": store.name,
+                        "address": store.address,
+                        "city": store.city,
+                        "state": store.state,
+                        "zip": store.zip,
+                        "phone": store.phone,
+                        "hours": store.hours or {},
+                        "metadata": store.metadata or {},
+                    }
+                    for store in stores
+                ]),
+            )
         except Exception:
             logger.exception("Failed to retrieve store locations")
             return []
@@ -236,18 +267,21 @@ FETCH FIRST :limit ROWS ONLY"""
             else:
                 stores = await self.store_service.get_all_stores()
 
-            return [
-                {
-                    "id": store.id,
-                    "name": store.name,
-                    "address": store.address,
-                    "city": store.city,
-                    "state": store.state,
-                    "phone": store.phone,
-                    "hours": store.hours or {},
-                }
-                for store in stores
-            ]
+            return cast(
+                "list[dict[str, Any]]",
+                self._sanitize_output([
+                    {
+                        "id": store.id,
+                        "name": store.name,
+                        "address": store.address,
+                        "city": store.city,
+                        "state": store.state,
+                        "phone": store.phone,
+                        "hours": store.hours or {},
+                    }
+                    for store in stores
+                ]),
+            )
         except Exception:
             logger.exception("Failed to find stores by location", city=city, state=state)
             return []
@@ -262,9 +296,12 @@ FETCH FIRST :limit ROWS ONLY"""
             logger.exception("Failed to get store hours", store_id=store_id)
             return {"error": "Failed to retrieve store hours"}
         else:
-            return {
-                "store_name": store.name,
-                "hours": store.hours or {},
-                "phone": store.phone,
-                "address": store.address,
-            }
+            return cast(
+                "dict[str, Any]",
+                self._sanitize_output({
+                    "store_name": store.name,
+                    "hours": store.hours or {},
+                    "phone": store.phone,
+                    "address": store.address,
+                }),
+            )
