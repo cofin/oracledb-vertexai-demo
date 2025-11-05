@@ -6,14 +6,16 @@ from typing import Any
 import pytest
 
 from app.config import db
-from app.services.product import ProductService
+from app.services._product import ProductService
 
 
 @pytest.fixture
 async def driver() -> AsyncGenerator[Any, None]:
     """Provide SQLSpec driver for tests."""
-    driver_instance = await db.async_driver()
-    yield driver_instance
+    from app.config import db_manager
+
+    async with db_manager.provide_session(db) as session:
+        yield session
 
 
 @pytest.fixture

@@ -70,7 +70,7 @@ async def driver() -> AsyncGenerator[Any, None]:
 @pytest.fixture
 async def product_service(driver: Any) -> Any:
     """Provide ProductService for testing."""
-    from app.services.product import ProductService
+    from app.services._product import ProductService
 
     return ProductService(driver)
 
@@ -78,20 +78,22 @@ async def product_service(driver: Any) -> Any:
 @pytest.fixture
 async def cache_service(driver: Any) -> Any:
     """Provide CacheService for testing."""
-    from app.services.cache import CacheService
+    from app.services._cache import CacheService
 
     return CacheService(driver)
 
 
 @pytest.fixture
-async def intent_router(driver: Any) -> Any:
-    """Provide IntentRouter for testing."""
+async def intent_service(driver: Any) -> Any:
+    """Provide IntentService for testing."""
     from unittest.mock import MagicMock
 
-    from app.services.intent_router import IntentRouter
+    from app.services._exemplar import ExemplarService
+    from app.services._intent import IntentService
 
-    # Create mock VertexAI service
+    # Create mock services
     mock_vertex = MagicMock()
+    mock_exemplar = ExemplarService(driver=driver)
 
     # Router with optional cache
-    return IntentRouter(driver=driver, vertex_ai_service=mock_vertex)
+    return IntentService(driver=driver, exemplar_service=mock_exemplar, vertex_ai_service=mock_vertex)

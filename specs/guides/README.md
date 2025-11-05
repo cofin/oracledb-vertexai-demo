@@ -118,7 +118,7 @@ Use absolute paths from repo root when referencing guides:
 | ------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | **backend-expert**  | Oracle, Vertex AI, ADK, SQLSpec, caching     | oracle-vector-search.md, oracle-json.md, oracle-performance.md, vertex-ai-integration.md, adk-agent-patterns.md, sqlspec-patterns.md |
 | **frontend-expert** | Litestar, HTMX, routing, sessions, templates | litestar-framework.md                                                                                                                |
-| **planner**         | Task planning, parallel work coordination    | architecture.md, oracle-vector-search.md, litestar-framework.md                                                                      |
+| **prd**             | Task planning, parallel work coordination    | architecture.md, oracle-vector-search.md, litestar-framework.md                                                                      |
 
 ---
 

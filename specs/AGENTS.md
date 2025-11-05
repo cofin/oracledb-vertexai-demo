@@ -4,13 +4,13 @@ Comprehensive guide for the Oracle 23ai + Vertex AI + ADK multi-AI agent system.
 
 ## Agent Responsibilities Matrix
 
-| Responsibility            | Planner      | Expert                    | Testing          | Docs & Vision       |
+| Responsibility            | PRD          | Expert                    | Testing          | Docs & Vision       |
 | ------------------------- | ------------ | ------------------------- | ---------------- | ------------------- |
 | **Research**              | ✅ Primary   | ✅ Implementation details | ✅ Test patterns | ✅ Doc standards    |
 | **Planning**              | ✅ Primary   | ❌                        | ❌               | ❌                  |
 | **Implementation**        | ❌           | ✅ Primary                | ✅ Tests only    | ❌                  |
 | **Testing**               | ❌           | ✅ Verify own code        | ✅ Primary       | ✅ Run quality gate |
-| **Documentation**         | ✅ PRD/tasks | ✅ Code comments          | ✅ Test docs     | ✅ Primary          |
+| **Documentation**         | ✅ PRD/tasks | ✅ Primary (Guides)       | ✅ Test docs     | ✅ Verify & Review  |
 | **Quality Gate**          | ❌           | ❌                        | ❌               | ✅ Primary          |
 | **Cleanup**               | ❌           | ❌                        | ❌               | ✅ MANDATORY        |
 | **Multi-Model Consensus** | ✅ Primary   | ✅ Complex decisions      | ❌               | ❌                  |
@@ -18,9 +18,9 @@ Comprehensive guide for the Oracle 23ai + Vertex AI + ADK multi-AI agent system.
 
 ## Workflow Phases
 
-### Phase 1: Planning (`/prompt plan`)
+### Phase 1: Planning (`/prompt prd`)
 
-**Agent:** Planner
+**Agent:** PRD
 **Purpose:** Research-grounded planning and workspace creation
 
 **Steps:**
@@ -48,15 +48,16 @@ specs/active/{requirement-slug}/
 ### Phase 2: Implementation (`/prompt implement`)
 
 **Agent:** Expert
-**Purpose:** Write clean, production-quality code
+**Purpose:** Write clean, production-quality code and update documentation.
 
 **Steps:**
 
 1. Read workspace (prd.md, tasks.md, research/plan.md)
 2. Research implementation details (guides, Context7, SQLcl)
 3. Implement following specs/AGENTS.md standards
-4. Run targeted tests
-5. Update workspace (tasks.md, recovery.md)
+4. **Update Documentation Guides (MANDATORY)**: As you implement, update the relevant guides in `specs/guides/` with new patterns, code examples, and findings.
+5. Run targeted tests
+6. Update workspace (tasks.md, recovery.md)
 
 **Tools Used:**
 
@@ -68,6 +69,7 @@ specs/active/{requirement-slug}/
 **Output:**
 
 - Production code in app/
+- Updated documentation in `specs/guides/`
 - Updated workspace files
 
 **Hand off to:** Testing agent for comprehensive tests
@@ -100,14 +102,13 @@ specs/active/{requirement-slug}/
 ### Phase 4: Review (`/prompt review`)
 
 **Agent:** Docs & Vision
-**Purpose:** Documentation, quality gate, and MANDATORY cleanup
+**Purpose:** Documentation verification, quality gate, and MANDATORY cleanup
 
 **3 Sequential Phases:**
 
-1. **Documentation:**
-   - Update docs/guides/
-   - Update specs/AGENTS.md if needed
-   - Build docs locally
+1. **Verify Documentation:**
+   - Verify that the Expert agent has updated the guides in `docs/guides/` correctly and accurately.
+   - Check for clarity, correctness, and adherence to standards.
 
 2. **Quality Gate (MANDATORY):**
    - Run `make lint` (must pass)
@@ -124,16 +125,16 @@ specs/active/{requirement-slug}/
 
 **Output:**
 
-- Complete documentation
+- Verified documentation
 - Clean workspace
 - Archived requirement
 - Work ready for PR/commit
 
 ## Tool Usage
 
-### `planner`
+### `planner` (Zen MCP Tool)
 
-**Who uses:** Planner agent
+**Who uses:** PRD agent
 **Purpose:** Structured, multi-step planning
 **When:** Creating detailed implementation plans
 
@@ -150,7 +151,7 @@ print(default_api.planner(
 
 ### `consensus`
 
-**Who uses:** Planner, Expert
+**Who uses:** PRD, Expert
 **Purpose:** Multi-model decision verification
 **When:** Complex architectural decisions, significant API changes
 

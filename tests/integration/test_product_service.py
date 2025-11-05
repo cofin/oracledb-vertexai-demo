@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.product import ProductService
+from app.services._product import ProductService
 
 pytestmark = pytest.mark.anyio
 
