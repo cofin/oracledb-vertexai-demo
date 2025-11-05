@@ -20,6 +20,7 @@ from app.config import db, settings
 from app.services._adk.monkey_patches import apply_genai_client_patch
 from app.services._adk.tools import ALL_TOOLS
 from app.services._persona_manager import BASE_SYSTEM_INSTRUCTION, PersonaManager
+from app.utils.serialization import coerce_decimal_values
 
 # Apply monkey patches for ADK library issues
 apply_genai_client_patch()
@@ -228,10 +229,12 @@ class ADKRunner:
                     }
 
             # Extract function responses for metadata
+            # IMPORTANT: Sanitize all data from func_response.response because Oracle JSON_NATIVE
+            # deserialization returns Decimals, which cannot be serialized by stdlib json/Pydantic
             function_responses = event.get_function_responses() if hasattr(event, "get_function_responses") else []
             for func_response in function_responses:
                 if func_response.name == "classify_intent":
-                    intent_result = func_response.response or {}
+                    intent_result = coerce_decimal_values(func_response.response or {})
                     yield {
                         "type": "intent",
                         "data": {
@@ -245,7 +248,7 @@ class ADKRunner:
                         yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
 
                 elif func_response.name == "search_products_by_vector":
-                    search_result = func_response.response or {}
+                    search_result = coerce_decimal_values(func_response.response or {})
                     timing = search_result.get("timing", {})
                     yield {
                         "type": "products",
@@ -260,7 +263,7 @@ class ADKRunner:
                         yield {"type": "cache_hit", "cache_type": "embedding", "timestamp": time.time()}
 
                 elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
-                    store_result = func_response.response
+                    store_result = coerce_decimal_values(func_response.response)
                     # Handle different response structures
                     stores = []
                     if store_result:
@@ -331,6 +334,8 @@ class ADKRunner:
                 final_response_text = "".join(text_parts)
 
             # Extract metrics from function responses
+            # IMPORTANT: Sanitize all data from func_response.response because Oracle JSON_NATIVE
+            # deserialization returns Decimals
             function_responses = event.get_function_responses() if hasattr(event, "get_function_responses") else []
             if function_responses:
                 logger.info(
@@ -340,7 +345,7 @@ class ADKRunner:
                 )
                 for func_response in function_responses:
                     if func_response.name == "classify_intent":
-                        intent_result = func_response.response or {}
+                        intent_result = coerce_decimal_values(func_response.response or {})
 
                         # Debug: Log the classify_intent response
                         logger.debug(
@@ -364,7 +369,7 @@ class ADKRunner:
                             logger.info("Embedding cache HIT during intent classification")
 
                     elif func_response.name == "search_products_by_vector":
-                        search_result = func_response.response or {}
+                        search_result = coerce_decimal_values(func_response.response or {})
 
                         # Debug: Log the full response structure
                         logger.debug(
@@ -399,7 +404,7 @@ class ADKRunner:
                         )
 
                     elif func_response.name in ("get_store_locations", "find_stores_by_location", "get_store_hours"):
-                        store_result = func_response.response
+                        store_result = coerce_decimal_values(func_response.response)
                         # Handle different response structures
                         if store_result:
                             if isinstance(store_result, list):
