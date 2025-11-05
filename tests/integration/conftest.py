@@ -53,7 +53,7 @@ async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient, None]:
 @pytest.fixture
 def app() -> Litestar:
     """Create test app instance."""
-    from app.asgi import create_app
+    from app.server.asgi import create_app
 
     return create_app()
 
@@ -70,7 +70,7 @@ async def driver() -> AsyncGenerator[Any, None]:
 @pytest.fixture
 async def product_service(driver: Any) -> Any:
     """Provide ProductService for testing."""
-    from app.services._product import ProductService
+    from app.services import ProductService
 
     return ProductService(driver)
 
@@ -78,7 +78,7 @@ async def product_service(driver: Any) -> Any:
 @pytest.fixture
 async def cache_service(driver: Any) -> Any:
     """Provide CacheService for testing."""
-    from app.services._cache import CacheService
+    from app.services import CacheService
 
     return CacheService(driver)
 
@@ -88,12 +88,11 @@ async def intent_service(driver: Any) -> Any:
     """Provide IntentService for testing."""
     from unittest.mock import MagicMock
 
-    from app.services._exemplar import ExemplarService
-    from app.services._intent import IntentService
+    from app.services import IntentService
 
     # Create mock services
     mock_vertex = MagicMock()
-    mock_exemplar = ExemplarService(driver=driver)
+    mock_exemplar = MagicMock()
 
-    # Router with optional cache
-    return IntentService(driver=driver, exemplar_service=mock_exemplar, vertex_ai_service=mock_vertex)
+    # Service with optional cache
+    return IntentService(driver=driver, vertex_ai_service=mock_vertex, exemplar_service=mock_exemplar)

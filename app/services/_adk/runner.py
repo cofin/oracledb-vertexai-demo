@@ -33,46 +33,38 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+# Define single static agent at module level (ADK best practice)
+# Persona-specific instructions are injected at runtime via system messages
+_coffee_agent = LlmAgent(
+    name="CoffeeAssistant",
+    description=(
+        "AI-powered coffee assistant for Cymbal Coffee - "
+        "helps with product discovery, store locations, and coffee expertise."
+    ),
+    instruction=BASE_SYSTEM_INSTRUCTION,  # Base instruction only
+    model=settings.vertex_ai.CHAT_MODEL,
+    tools=ALL_TOOLS,  # type: ignore[arg-type]
+)
+
 
 class ADKRunner:
-    """Main runner for the ADK-based coffee assistant system with persona support and response caching."""
+    """Main runner for the ADK-based coffee assistant system with persona support and response caching.
+
+    Uses a single static agent with runtime persona injection via system messages,
+    following ADK best practices for agent reuse and memory efficiency.
+    """
 
     def __init__(self) -> None:
-        """Initialize the ADK runner with SQLSpec session service."""
+        """Initialize the ADK runner with SQLSpec session service and single Runner instance."""
         store = OracleAsyncADKStore(config=db)
         self.session_service = SQLSpecSessionService(store)
-        # Cache runners per persona to avoid recreating them
-        self._persona_runners: dict[str, Runner] = {}
-        logger.debug("ADKRunner initialized with SQLSpec session service")
-
-    def _get_runner_for_persona(self, persona: str) -> Runner:
-        """Get or create a Runner for the specified persona.
-
-        Args:
-            persona: The persona identifier ('novice', 'enthusiast', 'expert', 'barista')
-
-        Returns:
-            Runner configured for the specified persona
-        """
-        if persona not in self._persona_runners:
-            # Create persona-specific agent
-            persona_agent = LlmAgent(
-                name="CoffeeAssistant",
-                description=f"Coffee assistant with {persona} persona for Cymbal Coffee.",
-                instruction=PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION),
-                model=settings.vertex_ai.CHAT_MODEL,
-                tools=ALL_TOOLS,  # type: ignore[arg-type]
-            )
-            # Create runner for this persona
-            # IMPORTANT: Use the same app_name for all personas to share sessions
-            self._persona_runners[persona] = Runner(
-                agent=persona_agent,
-                app_name="coffee-assistant",  # Same for all personas
-                session_service=self.session_service,  # Shared session service
-            )
-            logger.debug("Created Runner for persona: %s", persona)
-
-        return self._persona_runners[persona]
+        # Single runner for all personas (ADK best practice)
+        self._runner = Runner(
+            agent=_coffee_agent,
+            app_name="coffee-assistant",
+            session_service=self.session_service,
+        )
+        logger.debug("ADKRunner initialized with single Runner instance")
 
     async def process_request(
         self,
@@ -107,13 +99,18 @@ class ADKRunner:
             logger.debug("Response cache miss", query_preview=query[:50], persona=persona)
 
         session = await self._ensure_session(user_id, session_id)
-        content = types.Content(role="user", parts=[types.Part(text=query)])
 
-        # Get persona-specific runner
-        runner = self._get_runner_for_persona(persona)
+        # Inject persona-specific instruction via system message (ADK best practice)
+        persona_instruction = PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
+        content = types.Content(
+            role="user",
+            parts=[
+                types.Part(text=f"[System Context: {persona_instruction}]\n\nUser Query: {query}")
+            ]
+        )
 
         agent_start = time.time()
-        events = runner.run_async(
+        events = self._runner.run_async(
             user_id=user_id,
             session_id=session.id,
             new_message=content,
@@ -201,13 +198,18 @@ class ADKRunner:
         logger.debug("Streaming request via ADKRunner", query=query, persona=persona)
 
         session = await self._ensure_session(user_id, session_id)
-        content = types.Content(role="user", parts=[types.Part(text=query)])
 
-        # Get persona-specific runner
-        runner = self._get_runner_for_persona(persona)
+        # Inject persona-specific instruction via system message (ADK best practice)
+        persona_instruction = PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
+        content = types.Content(
+            role="user",
+            parts=[
+                types.Part(text=f"[System Context: {persona_instruction}]\n\nUser Query: {query}")
+            ]
+        )
 
-        # Start ADK async generator
-        events = runner.run_async(
+        # Start ADK async generator with single runner
+        events = self._runner.run_async(
             user_id=user_id,
             session_id=session.id,
             new_message=content,
@@ -308,7 +310,6 @@ class ADKRunner:
         """
         all_text_responses = []
         final_response_text = ""
-        event_count = 0
         intent_details: dict[str, Any] = {}
         search_details: dict[str, Any] = {}
         products_found: list[Any] = []
@@ -317,8 +318,6 @@ class ADKRunner:
         embedding_cache_hit = False
 
         async for event in events:
-            event_count += 1
-
             # Extract text from this event
             text_parts = self._extract_text_from_event(event)
             if text_parts:
@@ -470,11 +469,20 @@ class ADKRunner:
                     if isinstance(p, dict)
                 ]
                 if product_names:
-                    return f"I found some great options for you: {', '.join(product_names)}. Would you like to know more about any of these?"
-            return "Let me help you find something great! We have amazing coffees, teas, and pastries. What are you in the mood for?"
+                    return (
+                        f"I found some great options for you: {', '.join(product_names)}. "
+                        "Would you like to know more about any of these?"
+                    )
+            return (
+                "Let me help you find something great! "
+                "We have amazing coffees, teas, and pastries. What are you in the mood for?"
+            )
 
         if intent == "GENERAL_CONVERSATION":
-            return "Hey there! How can I help you today? I can help you find coffee, learn about our products, or even locate a store."
+            return (
+                "Hey there! How can I help you today? "
+                "I can help you find coffee, learn about our products, or even locate a store."
+            )
 
         # Default fallback
         return "I'm here to help! What can I get for you today?"

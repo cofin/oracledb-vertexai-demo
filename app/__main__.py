@@ -17,7 +17,7 @@ def setup_environment() -> None:
 
     _ = config.log.structlog_logging_config.configure()()
     settings = get_settings()
-    os.environ.setdefault("LITESTAR_APP", "app.asgi:create_app")
+    os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
     os.environ.setdefault("LITESTAR_APP_NAME", settings.app.NAME)
     os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
     os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")

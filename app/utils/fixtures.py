@@ -7,18 +7,66 @@ without table-specific logic. Uses SQLSpec for database operations.
 from __future__ import annotations
 
 import gzip
+import re
 from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import oracledb
 from sqlspec import sql
 
 from app.utils.serialization import from_json, to_json
 
 # Oracle VARCHAR2 maximum length (use CLOB for larger values)
 VARCHAR2_MAX_LENGTH = 4000
+DATETIME_FIELDS = {
+    "created_at",
+    "updated_at",
+    "last_activity",
+    "expires_at",
+    "last_accessed",
+}
+
+
+def _read_fixture_bytes(filepath: Path) -> bytes:
+    """Read fixture bytes, supporting optional gzip compression."""
+
+    if filepath.suffix == ".gz":
+        with gzip.open(filepath, "rb") as file_obj:
+            return file_obj.read()
+    with filepath.open("rb") as file_obj:
+        return file_obj.read()
+
+
+def _infer_oracle_type(value: Any) -> str:
+    """Infer Oracle column type for JSON_TABLE projection."""
+
+    if isinstance(value, bool):
+        return "NUMBER(1)"
+    if isinstance(value, (int, float, Decimal)):
+        return "NUMBER"
+    if isinstance(value, (dict, list)):
+        return "JSON"
+    if isinstance(value, datetime):
+        return "TIMESTAMP"
+    if value is not None and len(str(value)) > VARCHAR2_MAX_LENGTH:
+        return "CLOB"
+    return f"VARCHAR2({VARCHAR2_MAX_LENGTH})"
+
+
+def _prepare_value_for_export(value: Any) -> Any:
+    """Normalize values for JSON serialization when exporting fixtures."""
+
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError:
+            return value.hex()
+    return value
 
 
 class FixtureProcessor:
@@ -41,18 +89,12 @@ class FixtureProcessor:
         Returns:
             List of fixture records
         """
-        if filepath.suffix == ".gz":
-            with gzip.open(filepath, "rb") as f:
-                data = f.read()
-        else:
-            with filepath.open("rb") as f:
-                data = f.read()
+        data_list = from_json(_read_fixture_bytes(filepath))
 
-        data_list = from_json(data)
-        # Convert to list of dicts if needed
-        if isinstance(data_list, list):
-            return [dict(item) if isinstance(item, Mapping) else item for item in data_list]
-        return []  # Return empty list if data is not a list
+        if not isinstance(data_list, list):
+            return []
+
+        return [dict(item) if isinstance(item, Mapping) else item for item in data_list]
 
     def prepare_record(self, record: dict[str, Any]) -> Mapping[str, Any]:
         """Prepare a record for insertion by handling None values and data types properly.
@@ -66,47 +108,42 @@ class FixtureProcessor:
         prepared: dict[str, Any] = {}
         for key, value in record.items():
             if value is None:
-                continue  # Exclude None values to let database handle defaults
+                continue
 
-            # Handle data type conversions for common cases
             if key == "price" and isinstance(value, str):
-                # Convert price string to Decimal for database
                 prepared[key] = Decimal(value)
-            elif key == "embedding" and isinstance(value, str):
-                # Handle embedding vector conversions from numpy array string format
-                import numpy as np
+                continue
 
-                # Remove newlines and normalize whitespace from numpy string format
-                cleaned = value.replace("\n", " ")
-                # Normalize multiple spaces to single space
-                import re
+            if key == "embedding" and isinstance(value, str):
+                parsed_embedding = self._parse_embedding(value)
+                if parsed_embedding is not None:
+                    prepared[key] = parsed_embedding
+                continue
 
-                cleaned = re.sub(r"\s+", " ", cleaned).strip()
-
-                try:
-                    # Parse numpy array string format: "[ 1.0 2.0 3.0 ... ]"
-                    if cleaned.startswith("[") and cleaned.endswith("]"):
-                        # Remove brackets and split by whitespace
-                        numbers_str = cleaned[1:-1].strip()
-                        # Split by whitespace and convert to floats
-                        float_values = [float(x) for x in numbers_str.split() if x.strip()]
-                        prepared[key] = float_values
-                    else:
-                        # Fallback: try numpy fromstring
-                        array_data = np.fromstring(cleaned, sep=" ")
-                        prepared[key] = array_data.tolist()
-                except (ValueError, TypeError):
-                    # If parsing fails, skip this field and continue
-                    continue
-            elif key in ("created_at", "updated_at", "last_activity", "expires_at", "last_accessed") and isinstance(
-                value, str
-            ):
-                # Convert ISO timestamp strings to datetime objects
+            if key in DATETIME_FIELDS and isinstance(value, str):
                 prepared[key] = datetime.fromisoformat(value)
-            else:
-                prepared[key] = value
+                continue
+
+            prepared[key] = value
 
         return prepared
+
+    @staticmethod
+    def _parse_embedding(value: str) -> list[float] | None:
+        """Normalize embedding strings to float lists."""
+
+        import numpy as np
+
+        cleaned = re.sub(r"\s+", " ", value.replace("\n", " ")).strip()
+        try:
+            if cleaned.startswith("[") and cleaned.endswith("]"):
+                numbers_str = cleaned[1:-1].strip()
+                return [float(num) for num in numbers_str.split() if num.strip()]
+
+            array_data = np.fromstring(cleaned, sep=" ")
+            return cast("list[float]", array_data.tolist())
+        except (ValueError, TypeError):
+            return None
 
     def get_fixture_files(self, table_order: list[str] | None = None) -> list[Path]:
         """Get all available fixture files sorted by dependency order.
@@ -219,38 +256,33 @@ class FixtureLoader:
         if not processed_records:
             return {"upserted": 0, "failed": 0, "total": 0}
 
-        # Get column information from first record
-        # Note: We include 'id' in all operations to preserve fixture IDs for idempotent loading
-        first_record = processed_records[0]
-        all_columns = [col for col in first_record if first_record[col] is not None]
-        update_columns = [col for col in all_columns if col != "id"]  # UPDATE doesn't change id
-        insert_columns = all_columns  # INSERT includes id to preserve fixture IDs
+        column_order: list[str] = []
+        sample_values: dict[str, Any] = {}
+        for record in processed_records:
+            for column, value in record.items():
+                if value is None:
+                    continue
+                if column not in column_order:
+                    column_order.append(column)
+                if column not in sample_values:
+                    sample_values[column] = value
 
-        # Build JSON_TABLE column definitions with type inference
-        json_columns = []
-        for col in all_columns:
-            val = first_record[col]
-            if isinstance(val, bool):
-                oracle_type = "NUMBER(1)"  # JSON_TABLE doesn't support BOOLEAN
-            elif isinstance(val, (int, float)):
-                oracle_type = "NUMBER"
-            elif isinstance(val, (dict, list)):
-                oracle_type = "JSON"
-            elif isinstance(val, datetime):
-                oracle_type = "TIMESTAMP"
-            elif hasattr(val, "__len__") and len(str(val)) > VARCHAR2_MAX_LENGTH:
-                oracle_type = "CLOB"
-            else:
-                oracle_type = f"VARCHAR2({VARCHAR2_MAX_LENGTH})"
+        if not column_order:
+            return {"upserted": 0, "failed": 0, "total": total}
 
-            json_columns.append(f"{col} {oracle_type} PATH '$.{col}'")
+        update_columns = [column for column in column_order if column != "id"]
+        insert_columns = column_order
+
+        json_columns = [
+            f"{column} {_infer_oracle_type(sample_values.get(column))} PATH '$.{column}'" for column in column_order
+        ]
 
         # Build MERGE statement with JSON_TABLE
         # table_name is from internal COFFEE_SHOP_TABLES list, not user input
         merge_sql = f"""
             MERGE INTO {table_name} t
             USING (
-                SELECT {", ".join([f"jt.{col}" for col in all_columns])}
+                SELECT {", ".join(f"jt.{col}" for col in column_order)}
                 FROM JSON_TABLE(
                     :payload, '$[*]'
                     COLUMNS (
@@ -260,26 +292,21 @@ class FixtureLoader:
             ) src
             ON (t.id = src.id)
             WHEN MATCHED THEN UPDATE SET
-                {", ".join([f"t.{col} = src.{col}" for col in update_columns])}
+                {", ".join(f"t.{col} = src.{col}" for col in update_columns)}
             WHEN NOT MATCHED THEN INSERT ({", ".join(insert_columns)})
-                VALUES ({", ".join([f"src.{col}" for col in insert_columns])})
+                VALUES ({", ".join(f"src.{col}" for col in insert_columns)})
         """  # noqa: S608
 
         # Convert records to JSON payload using project's serialization
-        payload = to_json(processed_records).decode("utf-8")
-
+        payload = to_json(processed_records, as_bytes=True)
         # Execute MERGE with JSON payload bound as CLOB to handle large payloads (>1MB)
-        import oracledb
 
         async with self.driver.with_cursor(self.driver.connection) as cursor:
-            # Create a temporary CLOB and write the JSON payload to it
-            # This is necessary because the payload can exceed VARCHAR2 limits (>32KB)
             temp_clob = await self.driver.connection.createlob(oracledb.DB_TYPE_CLOB)
             await temp_clob.write(payload)
-
-            # Execute MERGE with the CLOB object
             await cursor.execute(merge_sql.strip(), {"payload": temp_clob})
-            upserted = cursor.rowcount if cursor.rowcount > 0 else total
+            rowcount = cursor.rowcount or 0
+            upserted = rowcount if rowcount > 0 else total
 
         # Commit the transaction to persist the changes
         await self.driver.commit()
@@ -366,28 +393,12 @@ class FixtureExporter:
         # Convert to JSON-serializable format
         json_data = []
         for record in records:
-            record_dict = dict(record)
+            normalized = {key: _prepare_value_for_export(value) for key, value in dict(record).items()}
+            json_data.append(normalized)
 
-            # Handle special types
-            for key, value in record_dict.items():
-                if hasattr(value, "isoformat"):
-                    record_dict[key] = value.isoformat()
-                elif isinstance(value, bytes):
-                    try:
-                        record_dict[key] = value.decode("utf-8")
-                    except UnicodeDecodeError:
-                        record_dict[key] = value.hex()
-
-            json_data.append(record_dict)
-
-        # Write to file
-        filename = f"{table_name}.json"
-        if compress:
-            filename = f"{filename}.gz"
-
+        filename = f"{table_name}.json" if not compress else f"{table_name}.json.gz"
         output_file = output_dir / filename
-
-        json_bytes = to_json(json_data)
+        json_bytes = to_json(json_data, as_bytes=True)
 
         if compress:
             with gzip.open(output_file, "wb") as f:

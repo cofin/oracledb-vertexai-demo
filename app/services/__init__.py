@@ -1,5 +1,6 @@
 """Public API for app services - single entry point."""
 
+from app.services._adk import ADKRunner, AgentToolsService
 from app.services._cache import CacheService
 from app.services._exemplar import ExemplarService
 from app.services._intent import INTENT_EXEMPLARS, IntentService
@@ -10,6 +11,8 @@ from app.services._vertex_ai import OracleVectorSearchService, VertexAIService
 
 __all__ = [
     "INTENT_EXEMPLARS",
+    "ADKRunner",
+    "AgentToolsService",
     "CacheService",
     "ExemplarService",
     "IntentService",

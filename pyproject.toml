@@ -21,6 +21,7 @@ dependencies = [
     "python-dotenv",
     "google-cloud-aiplatform",
     "google-genai",
+    "google-adk",
     "msgspec",
     "rich-click",
     "numpy>=2.3.3",
