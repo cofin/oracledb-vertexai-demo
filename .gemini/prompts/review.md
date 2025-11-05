@@ -1,12 +1,11 @@
-Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
+Invoke the Docs & Vision agent for quality gate, documentation verification, and cleanup.
 
 **What this does:**
 
-- Validates all acceptance criteria met
-- Updates documentation in specs/guides/
-- Updates CLAUDE.md and AGENTS.md if needed
-- Runs quality gate (lint, tests)
-- Cleans workspace and archives requirement
+- Validates all acceptance criteria are met
+- Verifies documentation updates made by the Expert agent in `specs/guides/`
+- Runs the quality gate (lint, tests)
+- Cleans the workspace and archives the requirement
 
 **Usage:**
 
@@ -14,82 +13,33 @@ Invoke the Docs & Vision agent for quality gate, documentation, and cleanup.
 /prompt review vector-search-caching
 ```
 
-**Or for current active requirement:**
-
-```
-/prompt review
-```
-
 **The Docs & Vision agent will:**
 
 ### Phase 1: Quality Gate
 
-1. Read PRD acceptance criteria
-2. Verify all tasks complete
-3. Check test results
-4. Validate:
-   - ✅ Feature works with Oracle 23ai
-   - ✅ Vertex AI integration functional
-   - ✅ ADK agents behave correctly
-   - ✅ Litestar routes work
-   - ✅ Tests pass (`make test`)
-   - ✅ Linting passes (`make lint`)
-   - ✅ Type hints proper
-   - ✅ SQLSpec patterns followed
-   - ✅ No defensive coding
-5. Request fixes if criteria not met
+1.  Read PRD acceptance criteria.
+2.  Verify all tasks in `tasks.md` are complete.
+3.  Run `make test` and `make lint` to ensure all checks pass.
+4.  Validate that the implementation meets all code quality and architectural standards.
+5.  Request fixes from the Expert agent if any criteria are not met.
 
-### Phase 2: Documentation
+### Phase 2: Verify Documentation
 
-1. Update guides in `specs/guides/`:
-   - Overview and when to use
-   - Basic usage with code examples
-   - Oracle-specific notes
-   - Vertex AI integration
-   - ADK agent patterns
-   - Performance considerations
-   - Testing examples
-   - Troubleshooting
-2. Update CLAUDE.md if standards changed
-3. Update AGENTS.md if workflows changed
-4. Add source attribution
-5. Update changelog at bottom of guide
+1.  **Verify Guides**: Check the relevant guides in `specs/guides/` to ensure they have been updated by the Expert agent.
+2.  **Check for Accuracy**: Confirm that the documented patterns and code examples accurately reflect the final implementation.
+3.  **Check for Clarity**: Ensure the documentation is clear, concise, and easy to understand.
+4.  **Update Standards**: Update `specs/AGENTS.md` only if the overall workflow or standards have changed.
 
 ### Phase 3: Cleanup (MANDATORY)
 
-1. Clean tmp/ directories:
-   ```bash
-   find specs/{slug}/tmp -type f -delete
-   ```
-2. Remove loose files:
-   - Find scratch files: `*scratch*`, `*tmp_*`, `*debug_*`
-   - Find orphaned test files not in `tests/`
-   - Find loose `.md` and `.sql` files
-3. Archive completed requirement:
-   ```bash
-   mv specs/{slug} specs/archive/
-   ```
-4. Keep only last 3 active requirements
-5. Update specs/README.md with completion note
+1.  Clean all `tmp/` directories within the requirement workspace.
+2.  Remove any loose scratch files.
+3.  Archive the completed requirement from `specs/active/` to `specs/archive/`.
+4.  Ensure only the last 3 active requirements remain.
 
 ### Phase 4: Summary
 
-Generate completion report with:
-
-- ✅ Acceptance criteria status
-- 📚 Documentation links
-- 🧪 Test coverage statistics
-- 📦 Modified files
-- 🎯 Next steps
-
-**Documentation Style:**
-
-- Unified voice: Technical but approachable
-- Active voice, present tense
-- Code examples from actual implementation
-- Source attribution at end
-- Changelog entries at bottom
-- NO "before/after" snippets (describe current way only)
+Generate a final completion report summarizing the outcome, test coverage, and linking to the updated documentation.
 
 **After review:**
-Feature is complete and ready for PR/release!
+The feature is complete and ready for PR/release!

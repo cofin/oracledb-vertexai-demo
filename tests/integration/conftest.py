@@ -90,7 +90,7 @@ async def intent_service(driver: Any) -> Any:
 
     from app.services import IntentService
 
-    # Create mock VertexAI service
+    # Create mock services
     mock_vertex = MagicMock()
     mock_exemplar = MagicMock()
 

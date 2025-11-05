@@ -73,67 +73,50 @@ Task(
 
 **If ANY criteria fail** → Request fixes from Expert/Testing → BLOCK until resolved
 
-### Phase 2: Documentation
+### Phase 2: Verify Documentation
 
 Only after Phase 1 passes:
 
-1. **Update Guides** in `specs/guides/`:
-   - Create or update relevant guide
-   - Include code examples from actual implementation
-   - Add troubleshooting section
-   - Document Oracle-specific patterns
-   - Explain Vertex AI integration
-   - Describe ADK agent usage
-   - Add performance considerations
-   - Include testing examples
+1.  **Verify Documentation Guides**:
+    - Verify that the Expert agent has updated the relevant guides in `specs/guides/`.
+    - Check that the new content is accurate, clear, and follows the project's documentation standards.
+    - Ensure code examples are correct and reflect the final implementation.
+    - If documentation is missing or inaccurate, flag it as a blocking issue.
 
-2. **Guide Template Structure**:
-   - Overview (what and when)
-   - Basic usage with code
-   - Oracle-specific notes
-   - Vertex AI integration
-   - ADK agent patterns
-   - Advanced patterns
-   - Performance considerations
-   - Testing
-   - Troubleshooting
-   - Source attribution
-   - Changelog
-
-3. **Update Standards** (if needed):
-   - `specs/AGENTS.md` - If new coding standards or workflow changed
+2.  **Update Standards** (if needed):
+    - `specs/AGENTS.md` - If new coding standards or workflow changed
 
 ### Phase 3: Cleanup (MANDATORY)
 
 **This is MANDATORY** - never skip cleanup:
 
-1. **Clean tmp/ directories**:
+1.  **Clean tmp/ directories**:
 
-   ```bash
-   find specs/active/*/tmp -type f -delete
-   ```
+    ```bash
+    find specs/active/*/tmp -type f -delete
+    ```
 
-2. **Remove loose files**:
-   - Find: `*scratch*`, `*tmp_*`, `*debug_*`, `*test_*` (not in tests/)
-   - Find: Orphaned `.md`, `.sql`, `.py` files in root
-   - Delete after verification
+2.  **Remove loose files**:
+    - Find: `*scratch*`, `*tmp_*`, `*debug_*`, `*test_*` (not in tests/)
+    - Find: Orphaned `.md`, `.sql`, `.py` files in root
+    - Delete after verification
 
-3. **Archive completed requirement**:
+3.  **Archive completed requirement**:
 
-   ```bash
-   mv specs/active/{slug} specs/archive/{slug}-$(date +%Y%m%d)
-   ```
+    ```bash
+    mv specs/active/{slug} specs/archive/{slug}-$(date +%Y%m%d)
+    ```
 
-4. **Keep only last 3 active requirements**:
+4.  **Keep only last 3 active requirements**:
 
-   ```bash
-   cd specs
-   ls -t active | tail -n +4 | xargs -I {} mv active/{} archive/
-   ```
+    ```bash
+    cd specs
+    ls -t active | tail -n +4 | xargs -I {} mv active/{} archive/
+    ```
 
-5. **Update archive index**:
-   - Update `specs/archive/README.md` with completion note
-   - Include date, summary, outcome
+5.  **Update archive index**:
+    - Update `specs/archive/README.md` with completion note
+    - Include date, summary, outcome
 
 ### Phase 4: Completion Report
 
@@ -188,7 +171,6 @@ specs/archive/{slug}-{date}/
 - **Tense**: Active voice, present tense
 - **Code Examples**: From actual implementation, not hypothetical
 - **Attribution**: Source and date at end
-- **Changelog**: Track updates at bottom
 - ❌ NO "before/after" snippets (describe current way only)
 - ❌ NO prescriptive guidance ("should use", "recommended")
 - ❌ NO marketing language or subjective comparisons
