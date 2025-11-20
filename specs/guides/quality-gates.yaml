@@ -1,0 +1,65 @@
+# specs/guides/quality-gates.yaml
+metadata:
+  version: "2.0"
+  adaptive: true
+  description: "Quality gates that adapt to project conventions"
+
+implementation_gates:
+  - name: local_tests_pass
+    command: "pytest tests/" # Auto-detect from project
+    required: true
+    adaptive: true # Adjust based on project test strategy
+    description: "All tests must pass before proceeding"
+
+  - name: linting_clean
+    command: "make lint" # Prefer make targets
+    fallback: "ruff check ." # Fallback to direct tool
+    required: true
+    description: "Zero linting errors allowed"
+
+  - name: type_checking_pass
+    command: "mypy src/"
+    required: true
+    adaptive: true # Skip if project doesn't use type hints
+    description: "Type checking must pass"
+
+testing_gates:
+  - name: coverage_threshold
+    threshold: 90 # Can be project-specific
+    scope: "modified_modules"
+    adaptive: true # Adjust based on project norms
+    description: "Modified modules must achieve configured coverage"
+
+  - name: test_isolation
+    command: "pytest -n auto tests/"
+    required: true
+    description: "Tests must work in parallel execution"
+
+  - name: n_plus_one_detection
+    type: "custom"
+    applicable_when: "database_operations"
+    description: "Database operations must include N+1 query detection tests"
+    examples:
+      - "tests/integration/test_queries.py::test_list_no_n_plus_one"
+
+documentation_gates:
+  - name: anti_pattern_scan
+    adaptive: true # Patterns loaded from project guides
+    rules:
+      - pattern: "from __future__ import annotations"
+        severity: "error"
+        message: "Use explicit stringification instead"
+        context: "Breaks mypyc compilation"
+
+      - pattern: "Optional["
+        severity: "error"
+        message: "Use T | None (PEP 604) instead"
+        context: "Modern Python 3.10+ style"
+
+  - name: pattern_documentation
+    description: "New patterns must be captured in specs/guides/patterns/"
+    required: true
+
+  - name: example_code
+    description: "Complex patterns need working examples in specs/guides/examples/"
+    required_when: "architectural_change"

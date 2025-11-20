@@ -90,7 +90,7 @@ When Claude Code or other AI assistants work on this project, follow this resear
 
 1. **READ THESE GUIDES FIRST** 📚
    - They are comprehensive, maintained, and reflect current project patterns
-   - Located at: `/home/cody/code/g/oracledb-vertexai-demo/docs/guides/`
+   - Located at: `/home/cody/code/g/oracledb-vertexai-demo/specs/guides/`
    - Always check here before searching external sources
 
 2. **Context7 SECOND** 📖
@@ -109,7 +109,7 @@ Use absolute paths from repo root when referencing guides:
 
 ```python
 # In agent definitions
-/home/cody/code/oracledb-vertexai-demo/docs/guides/oracle-vector-search.md
+/home/cody/code/g/oracledb-vertexai-demo/specs/guides/oracle-vector-search.md
 ```
 
 ### Agent Assignments
@@ -296,25 +296,30 @@ oracledb-vertexai-demo/
 ├── app/
 │   ├── services/              # Business logic (SQLSpecService pattern)
 │   │   ├── base.py            # SQLSpecService base class
-│   │   ├── product.py         # Vector search, product queries
-│   │   ├── vertex_ai.py       # Embedding generation, chat
-│   │   ├── cache.py           # Two-level caching
-│   │   └── adk/               # ADK agent system
-│   │       ├── orchestrator.py  # Main coordinator
-│   │       ├── agent.py         # LlmAgent definitions
-│   │       ├── tools.py         # Tool wrappers (thin)
+│   │   ├── _product.py        # Vector search, product queries
+│   │   ├── _vertex_ai.py      # Embedding generation, chat
+│   │   ├── _cache.py          # Two-level caching
+│   │   ├── _intent.py         # Intent classification
+│   │   ├── _exemplar.py       # Exemplar management
+│   │   ├── _store.py          # Store locations
+│   │   └── _adk/              # ADK agent system
+│   │       ├── runner.py      # ADK Runner orchestration
+│   │       ├── tools.py       # ADK tool functions
 │   │       └── tool_service.py  # Tool business logic
 │   ├── server/
-│   │   ├── deps.py            # Dependency injection providers
+│   │   ├── providers.py       # Dishka DI providers
 │   │   └── controllers.py     # HTTP endpoints (Litestar)
+│   ├── lib/
+│   │   ├── di.py              # DI utilities (Inject, inject)
+│   │   └── settings.py        # Application settings
 │   ├── schemas/               # msgspec schemas for type safety
 │   └── db/
 │       └── migrations/        # SQL migrations with VECTOR types
-├── docs/
+├── specs/
 │   └── guides/                # THIS DIRECTORY - comprehensive guides
 └── .claude/
     ├── agents/                # AI agent definitions
-    └── commands/              # Slash commands
+    └── skills/                # Quick reference patterns
 ```
 
 ---

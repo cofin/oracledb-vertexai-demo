@@ -48,8 +48,8 @@ Oracle Database 23ai
 | Feature             | Pattern                        | Example                                                |
 | ------------------- | ------------------------------ | ------------------------------------------------------ |
 | Controller          | Class with `@get/@post`        | `class ProductController(Controller)`                  |
-| Dependency          | Async generator with `yield`   | `async def provide_service() -> AsyncGenerator`        |
-| Register dependency | `Provide()` in controller      | `dependencies = {"service": Provide(provide_service)}` |
+| Dependency          | Dishka `@provide` decorator    | `@provide def get_service(driver: Driver) -> Service` |
+| Inject dependency   | `Inject[Type]` + `@inject`     | `product_service: Inject[ProductService]`              |
 | Route parameter     | Function parameter             | `async def get_product(product_id: int)`               |
 | Request body        | `Annotated[Schema, Body(...)]` | Validated request data                                 |
 | HTMX request        | `HTMXRequest` parameter        | Access HTMX headers                                    |
@@ -142,86 +142,122 @@ async def on_shutdown() -> None:
 
 ## Dependency Injection
 
-Litestar's DI system uses **async generators** for automatic resource management.
+This application uses **Dishka** for dependency injection with Litestar integration.
 
-### Service Provider Pattern
+### Dishka Pattern (Current)
 
-**Location**: `app/server/deps.py`
+**Location**: `app/server/providers.py`
+
+The application uses three Dishka providers:
+
+1. **SQLSpecProvider**: Database infrastructure (APP + REQUEST scopes)
+2. **CoreServiceProvider**: Business services (REQUEST scope)
+3. **ADKProvider**: ADK-specific setup (APP scope)
 
 ```python
-from typing import AsyncGenerator, TypeVar, Callable
-from app.config import db, sqlspec
-from app.services.products import ProductService
+from dishka import Provider, Scope, provide
+from sqlspec.driver import AsyncDriverAdapterBase
+from collections.abc import AsyncIterable
 
-T = TypeVar("T")
+class SQLSpecProvider(Provider):
+    """Provides SQLSpec database sessions with proper lifecycle."""
 
-def create_service_provider(service_cls: type[T]) -> Callable[..., AsyncGenerator[T, None]]:
-    """Create generic service provider with database session."""
+    @provide(scope=Scope.APP)
+    def get_sqlspec_manager(self) -> SQLSpec:
+        """Provide SQLSpec manager singleton."""
+        return db_manager
 
-    async def provider() -> AsyncGenerator[T, None]:
-        async with sqlspec.provide_session(db) as session:
-            yield service_cls(session)
+    @provide(scope=Scope.REQUEST)
+    async def get_db_session(
+        self,
+        manager: SQLSpec,
+        config: OracleAsyncConfig,
+    ) -> AsyncIterable[AsyncDriverAdapterBase]:
+        """Provide SQLSpec async database session."""
+        async with manager.provide_session(config) as session:
+            yield session
 
-    return provider
+class CoreServiceProvider(Provider):
+    """Provides core application services."""
 
-# Create providers
-provide_product_service = create_service_provider(ProductService)
-provide_chat_service = create_service_provider(ChatService)
-provide_metrics_service = create_service_provider(MetricsService)
+    scope = Scope.REQUEST  # Default scope
+
+    @provide
+    def get_product_service(self, driver: AsyncDriverAdapterBase) -> ProductService:
+        """Provide ProductService - auto-wired by constructor."""
+        return ProductService(driver)
+
+    @provide
+    def get_cache_service(self, driver: AsyncDriverAdapterBase) -> CacheService:
+        """Provide CacheService."""
+        return CacheService(driver)
+
+    @provide
+    def get_vertex_ai_service(self, cache_service: CacheService) -> VertexAIService:
+        """Provide VertexAI service with cache support."""
+        return VertexAIService(cache_service=cache_service)
 ```
 
-**How it works**:
+**How Dishka works**:
 
 1. Request arrives
-2. Litestar calls `provider()` function
-3. Session is created via `sqlspec.provide_session(db)`
-4. Service instance is yielded
-5. Request handler executes
-6. Control returns to provider
-7. Session is automatically closed
-
-### Custom Provider with Multiple Dependencies
-
-```python
-from app.services.vertex_ai import VertexAIService
-from app.services.cache import CacheService
-
-async def provide_vertex_ai_service() -> AsyncGenerator[VertexAIService, None]:
-    """Provide Vertex AI service with cache support."""
-    async with sqlspec.provide_session(db) as session:
-        cache_service = CacheService(session)
-        vertex_service = VertexAIService()
-        vertex_service.set_cache(cache_service)
-        yield vertex_service
-```
-
-### Stateless Provider (No Database)
-
-```python
-async def provide_adk_orchestrator() -> AsyncGenerator[ADKOrchestrator, None]:
-    """Provide ADK orchestrator (manages own sessions)."""
-    from app.services.adk.orchestrator import ADKOrchestrator
-
-    orchestrator = ADKOrchestrator()
-    try:
-        yield orchestrator
-    finally:
-        await orchestrator.cleanup()  # Optional cleanup
-```
+2. Dishka creates REQUEST-scoped container
+3. Services are auto-resolved based on type hints
+4. Dependencies injected into route handlers
+5. Request completes, container disposed
+6. Database session automatically closed
 
 ### Using Dependencies in Routes
 
-```python
-from litestar import post
-from app.services.products import ProductService
+**With `@inject` decorator**:
 
-@post("/api/search")
-async def search_products(
-    data: SearchRequest,
-    product_service: ProductService,  # Automatically injected
-) -> list[Product]:
-    """Search products with injected service."""
-    return await product_service.search(data.query)
+```python
+from litestar import get
+from app.lib.di import Inject, inject
+from app.services import ProductService
+
+class ProductController(Controller):
+    @get("/products")
+    @inject(signature_types=(ProductService,))
+    async def list_products(
+        self,
+        product_service: Inject[ProductService],
+    ) -> list[Product]:
+        """Products are injected via Dishka."""
+        return await product_service.get_all()
+```
+
+**Key differences from legacy pattern**:
+
+- **OLD**: `product_service: ProductService` + manual `Provide()` registration
+- **NEW**: `product_service: Inject[ProductService]` + `@inject` decorator
+- **Benefit**: Dishka auto-resolves dependencies via providers.py
+- **Benefit**: Type-safe injection with proper scoping (APP vs REQUEST)
+
+### Complex Service Dependencies
+
+Dishka automatically resolves multi-level dependencies:
+
+```python
+@provide
+def get_agent_tools_service(
+    self,
+    driver: AsyncDriverAdapterBase,
+    product_service: ProductService,
+    metrics_service: MetricsService,
+    intent_service: IntentService,
+    vertex_ai_service: VertexAIService,
+    store_service: StoreService,
+) -> AgentToolsService:
+    """Dishka auto-resolves all six dependencies."""
+    return AgentToolsService(
+        driver=driver,
+        product_service=product_service,
+        metrics_service=metrics_service,
+        intent_service=intent_service,
+        vertex_ai_service=vertex_ai_service,
+        store_service=store_service,
+    )
 ```
 
 ## Controllers and Routing
@@ -232,27 +268,19 @@ async def search_products(
 
 ```python
 from litestar import Controller, get, post
-from litestar.di import Provide
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from typing import Annotated
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
 
-from app.server import deps
-from app.services.products import ProductService
+from app.lib.di import Inject, inject
+from app.services import ProductService, MetricsService
 from app import schemas as s
 
 class CoffeeChatController(Controller):
     """Main application controller."""
 
     path = "/"  # Base path for all routes
-
-    # Register dependencies at controller level
-    dependencies = {
-        "product_service": Provide(deps.provide_product_service),
-        "vertex_ai_service": Provide(deps.provide_vertex_ai_service),
-        "chat_service": Provide(deps.provide_chat_service),
-    }
 
     @get("/")
     async def show_homepage(self) -> HTMXTemplate:
@@ -263,16 +291,17 @@ class CoffeeChatController(Controller):
         )
 
     @post("/api/chat")
+    @inject(signature_types=(ProductService,))
     async def handle_chat(
         self,
         data: Annotated[
             s.ChatMessageRequest,
             Body(media_type=RequestEncodingType.URL_ENCODED)
         ],
-        product_service: ProductService,
+        product_service: Inject[ProductService],
         request: HTMXRequest,
     ) -> HTMXTemplate:
-        """Handle chat message with HTMX."""
+        """Handle chat message with HTMX and Dishka injection."""
         # Process chat...
         response = await process_chat(data.message, product_service)
 
@@ -283,11 +312,12 @@ class CoffeeChatController(Controller):
         )
 
     @get("/dashboard")
+    @inject(signature_types=(MetricsService,))
     async def performance_dashboard(
         self,
-        metrics_service: MetricsService,
+        metrics_service: Inject[MetricsService],
     ) -> HTMXTemplate:
-        """Display performance metrics."""
+        """Display performance metrics with Dishka injection."""
         metrics = await metrics_service.get_dashboard_data()
         return HTMXTemplate(
             template_name="dashboard.html",
@@ -298,37 +328,51 @@ class CoffeeChatController(Controller):
 ### Route Decorators
 
 ```python
+from app.lib.di import Inject, inject
+
 # GET with path parameter
 @get("/products/{product_id:int}")
-async def get_product(self, product_id: int, product_service: ProductService) -> Product:
-    """Get product by ID."""
+@inject(signature_types=(ProductService,))
+async def get_product(
+    self,
+    product_id: int,
+    product_service: Inject[ProductService],
+) -> Product:
+    """Get product by ID with Dishka injection."""
     return await product_service.get_by_id(product_id)
 
 # POST with validated body
 @post("/products")
+@inject(signature_types=(ProductService,))
 async def create_product(
     self,
     data: Annotated[ProductCreate, Body()],
-    product_service: ProductService,
+    product_service: Inject[ProductService],
 ) -> Product:
-    """Create new product."""
+    """Create new product with Dishka injection."""
     return await product_service.create(data)
 
 # DELETE
 @delete("/products/{product_id:int}")
-async def delete_product(self, product_id: int, product_service: ProductService) -> None:
-    """Delete product."""
+@inject(signature_types=(ProductService,))
+async def delete_product(
+    self,
+    product_id: int,
+    product_service: Inject[ProductService],
+) -> None:
+    """Delete product with Dishka injection."""
     await product_service.delete(product_id)
 
 # PUT/PATCH
 @patch("/products/{product_id:int}")
+@inject(signature_types=(ProductService,))
 async def update_product(
     self,
     product_id: int,
     data: Annotated[ProductUpdate, Body()],
-    product_service: ProductService,
+    product_service: Inject[ProductService],
 ) -> Product:
-    """Update product."""
+    """Update product with Dishka injection."""
     return await product_service.update(product_id, data)
 ```
 
@@ -810,31 +854,44 @@ async def create_product() -> Product: ...
 
 **Symptom**: `TypeError: missing required argument: 'product_service'`
 
-**Solution**:
+**Solution** (Dishka pattern):
 
 ```python
-# Register dependency in controller
-class MyController(Controller):
-    dependencies = {
-        "product_service": Provide(deps.provide_product_service)
-    }
+from app.lib.di import Inject, inject
+from app.services import ProductService
 
+class MyController(Controller):
     @get("/")
-    async def handler(self, product_service: ProductService):
+    @inject(signature_types=(ProductService,))  # Add this decorator
+    async def handler(self, product_service: Inject[ProductService]):  # Use Inject[T]
         pass
 ```
+
+**Common mistakes**:
+- Forgot `@inject` decorator
+- Used `ProductService` instead of `Inject[ProductService]`
+- Missing service in providers.py
 
 ### Issue: Session Not Closing
 
 **Symptom**: Database connections not released
 
-**Solution**: Always use async context manager:
+**Solution**: Dishka handles this automatically via SQLSpecProvider:
 
 ```python
-async def provide_service() -> AsyncGenerator[Service, None]:
-    async with sqlspec.provide_session(db) as session:
-        yield Service(session)  # Session auto-closes when generator exits
+# In providers.py - Dishka manages lifecycle
+class SQLSpecProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def get_db_session(
+        self,
+        manager: SQLSpec,
+        config: OracleAsyncConfig,
+    ) -> AsyncIterable[AsyncDriverAdapterBase]:
+        async with manager.provide_session(config) as session:
+            yield session  # Auto-closed by Dishka when request ends
 ```
+
+**No manual session management needed** - Dishka handles cleanup!
 
 ### Issue: HTMX Response Not Swapping
 

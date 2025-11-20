@@ -19,7 +19,7 @@ Comprehensive system architecture for the Cymbal Coffee AI-powered search applic
 **Cymbal Coffee** is an AI-powered product search and recommendation system that combines:
 
 - **Oracle Database 23ai**: Native vector search, JSON storage, ACID transactions
-- **Vertex AI**: text-embedding-005 for embeddings, Gemini 2.5 for generation
+- **Vertex AI**: text-embedding-004 for embeddings, Gemini 2.5 for generation
 - **Google ADK**: LlmAgent orchestration for agentic interactions
 - **Litestar**: High-performance async web framework
 - **HTMX**: Server-driven UI with partial page updates
@@ -110,7 +110,7 @@ Comprehensive system architecture for the Cymbal Coffee AI-powered search applic
 ┌───────────▼─────────────────────────────────────────────────────┐
 │                     Google Vertex AI                             │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │  text-embedding-005 (768 dimensions)                     │  │
+│  │  text-embedding-004 (768 dimensions)                     │  │
 │  │  • RETRIEVAL_QUERY for search queries                    │  │
 │  │  • RETRIEVAL_DOCUMENT for product descriptions           │  │
 │  └──────────────────────────────────────────────────────────┘  │
@@ -134,7 +134,7 @@ Comprehensive system architecture for the Cymbal Coffee AI-powered search applic
 | **DB Driver**         | python-oracledb      | 2.x     | Async driver, connection pooling     |
 | **DB Abstraction**    | SQLSpec              | Latest  | Type-safe queries, parameter binding |
 | **AI Platform**       | Google Vertex AI     | Latest  | Embeddings, generation               |
-| **AI SDK**            | Vertex AI Python SDK | 1.101+  | text-embedding-005, Gemini 2.5       |
+| **AI SDK**            | Vertex AI Python SDK | 1.101+  | text-embedding-004, Gemini 2.5       |
 | **Agent Framework**   | Google ADK           | 1.0+    | LlmAgent orchestration               |
 | **Schema Validation** | msgspec              | Latest  | Fast serialization, validation       |
 | **Logging**           | structlog            | Latest  | Structured logging                   |
@@ -218,6 +218,30 @@ provide_metrics_service() → MetricsService
 - Record search metrics
 - Dashboard aggregations
 - Performance tracking
+
+**ExemplarService** (NEW):
+
+- Manage intent exemplar embeddings
+- Load cached exemplars for semantic routing
+- Support intent classification
+
+**IntentService** (NEW):
+
+- Semantic intent classification
+- Route queries to appropriate handlers
+- Use exemplar-based matching
+
+**StoreService** (NEW):
+
+- Manage coffee shop locations
+- Search by city, state, ZIP code
+- Store hours and location data
+
+**AgentToolsService** (ADK Integration):
+
+- Provide tools for ADK agents
+- Coordinate product search, metrics, and intents
+- Bridge between ADK and business services
 
 ### Data Layer
 
@@ -303,7 +327,7 @@ Dependencies injected (product_service, vertex_ai_service)
 OracleVectorSearchService.similarity_search(query)
     ├─ Check embedding_cache for query
     │  ├─ Cache HIT → Use cached embedding
-    │  └─ Cache MISS → Call Vertex AI text-embedding-005
+    │  └─ Cache MISS → Call Vertex AI text-embedding-004
     │      └─ Task type: RETRIEVAL_QUERY
     │      └─ Store in embedding_cache
     ↓

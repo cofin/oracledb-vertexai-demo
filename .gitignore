@@ -181,3 +181,19 @@ specs/archive/*
 # - specs/README.md (system documentation)
 # - specs/example-requirement/ (template)
 !tools/lib
+
+# Gemini Agent System
+specs/active/
+specs/archive/
+.gemini/mcp-tools.txt
+.gemini/mcp-strategy.md
+!specs/active/.gitkeep
+!specs/archive/.gitkeep
+!specs/guides/
+!specs/guides/**/*.md
+!specs/guides/**/*.yaml
+!specs/template-spec/
+!specs/template-spec/**/*.md
+
+# Agent telemetry logs
+specs/guides/telemetry/*.jsonl

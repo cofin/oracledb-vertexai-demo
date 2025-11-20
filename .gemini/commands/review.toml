@@ -1,0 +1,819 @@
+# Command: /review {{slug}}
+description = "Execute documentation, quality gates, pattern extraction, and workspace archival"
+name = "review"
+
+prompt = """
+# INTELLIGENT DOCS & VISION PHASE
+
+Execute comprehensive documentation, quality validation, and knowledge capture for `specs/active/{{slug}}/`.
+
+## 🧠 INTELLIGENCE LAYER
+
+Before starting checkpoints, activate intelligence mode:
+
+1. **Read Pattern Library**: Load existing patterns from `specs/guides/patterns/`
+2. **Load MCP Strategy**: Use `.gemini/mcp-strategy.md` for tool selection
+3. **Prepare Pattern Extraction**: Identify new reusable patterns from implementation
+4. **Load Quality Gates**: Read `specs/guides/quality-gates.yaml` for validation criteria
+
+This phase has 5 sub-phases:
+1. **Documentation Update** (Checkpoints 1-2)
+2. **Quality Gate Validation** (Checkpoint 3)
+3. **Knowledge Capture** (Checkpoint 4)
+4. **Re-validation** (Checkpoint 5)
+5. **Workspace Cleanup & Archive** (Checkpoint 6)
+
+---
+
+## CHECKPOINT-BASED EXECUTION
+
+Follow each checkpoint sequentially. Mark complete before proceeding.
+
+---
+
+## Checkpoint 0: Intelligence Bootstrap
+
+**Actions:**
+
+1. **Load workspace context:**
+```bash
+cd specs/active/{{slug}}
+cat prd.md | head -50
+cat tasks.md
+ls -la tmp/
+```
+
+2. **Review implementation artifacts:**
+```bash
+# Find files modified
+git diff --name-only main...HEAD
+
+# Review implementation summary
+cat tmp/implementation-summary.md
+
+# Review test summary
+cat tmp/test-summary.md
+```
+
+3. **Identify new patterns to extract:**
+```markdown
+# specs/active/{{slug}}/tmp/pattern-extraction-plan.md
+
+## Patterns to Extract
+
+Review implementation for these pattern types:
+
+### Architectural Patterns
+- [ ] New class hierarchies
+- [ ] Novel composition patterns
+- [ ] Service/adapter structures
+
+### Type Handling Patterns
+- [ ] New type converters
+- [ ] Type handler implementations
+- [ ] Schema mapping approaches
+
+### Configuration Patterns
+- [ ] driver_features additions
+- [ ] pool_config patterns
+- [ ] extension_config patterns
+
+### Testing Patterns
+- [ ] Novel test fixtures
+- [ ] Unique assertion patterns
+- [ ] Performance testing approaches
+
+### Error Handling Patterns
+- [ ] New exception types
+- [ ] Error recovery strategies
+- [ ] Validation patterns
+
+## Extraction Checklist
+
+For each pattern identified:
+- [ ] Document context (when/why to use)
+- [ ] Extract code example
+- [ ] Note similar patterns
+- [ ] Add to pattern library
+```
+
+4. **Update tasks:**
+```markdown
+# specs/active/{{slug}}/tasks.md
+
+## Review & Documentation Phase
+- [x] Checkpoint 0: Intelligence bootstrap complete
+  - Implementation reviewed
+  - Test results reviewed
+  - Pattern extraction plan created
+```
+
+**Output:**
+```
+✓ Checkpoint 0 complete - Review intelligence bootstrapped
+Files modified: [list]
+Patterns identified for extraction: [count]
+Ready for documentation phase
+```
+
+---
+
+## PHASE 1: DOCUMENTATION UPDATE
+
+## Checkpoint 1: Update Adapter/Feature Documentation
+
+**Actions:**
+
+1. **Determine documentation scope:**
+```bash
+# If adapter feature:
+DOCS_FILE="docs/guides/adapters/{adapter}.md"
+
+# If core feature:
+DOCS_FILE="docs/guides/core/{feature}.md"
+
+# If extension:
+DOCS_FILE="docs/guides/extensions/{extension}.md"
+```
+
+2. **Read existing documentation:**
+```bash
+cat $DOCS_FILE | head -200
+```
+
+3. **Update documentation following patterns:**
+```markdown
+# Add to appropriate section in docs file
+
+## {Feature Name}
+
+### Overview
+
+{Feature description - what it does and why it exists}
+
+### Configuration
+
+{Configuration TypedDict and example}
+
+Example:
+```python
+from sqlspec.adapters.{adapter} import {Adapter}Config
+
+config = {Adapter}Config(
+    pool_config={"dsn": "..."},
+    driver_features={
+        "enable_{feature}": True,  # Auto-enabled when {condition}
+    }
+)
+```
+
+### Usage
+
+{Usage examples}
+
+```python
+async with sql.provide_session(db) as session:
+    result = await session.{feature_method}(...)
+    # {expected result}
+```
+
+### Type Handling
+
+{If feature involves type conversion}
+
+```python
+# Input type → Database type
+{Python type} → {Database type}
+
+# Output type
+{Database type} → {Python type}
+```
+
+### Best Practices
+
+- {Practice 1}
+- {Practice 2}
+- {Practice 3}
+
+### Limitations
+
+- {Limitation 1}
+- {Limitation 2}
+```
+
+4. **Update tasks:**
+```markdown
+## Review & Documentation Phase
+- [x] Checkpoint 1: Feature documentation updated
+  - File: {docs_file}
+  - Sections added: [list]
+```
+
+**Output:**
+```
+✓ Checkpoint 1 complete - Feature documentation updated
+Documentation file: {docs_file}
+Sections updated: [list]
+```
+
+---
+
+## Checkpoint 2: Update AGENTS.md (if new patterns)
+
+**Actions:**
+
+1. **Review pattern extraction plan:**
+```bash
+cat specs/active/{{slug}}/tmp/pattern-extraction-plan.md
+```
+
+2. **Update AGENTS.md with new patterns:**
+```markdown
+# Find appropriate section in AGENTS.md based on pattern type
+
+# For driver_features patterns:
+## driver_features Pattern
+
+### New Feature: {Feature Name}
+
+**Pattern:**
+```python
+class AdapterDriverFeatures(TypedDict):
+    enable_{feature}: NotRequired[bool]
+    \"\"\"{Feature description.
+
+    Requirements: {dependencies/versions}
+    Defaults to {condition}
+    When enabled: {behavior}
+    \"\"\"
+```
+
+**Implementation:**
+```python
+# In config.py
+def __init__(self, *, driver_features=None, **kwargs):
+    processed_features = dict(driver_features) if driver_features else {}
+
+    if "enable_{feature}" not in processed_features:
+        processed_features["enable_{feature}"] = {DEFAULT_CONDITION}
+
+    super().__init__(driver_features=processed_features, **kwargs)
+```
+
+**When to use:**
+- {Use case 1}
+- {Use case 2}
+
+---
+
+# For testing patterns:
+## Testing Strategy
+
+### New Pattern: {Test Pattern Name}
+
+**Context:** Used when testing {scenario}
+
+**Implementation:**
+```python
+{code example from tests}
+```
+
+**Benefits:**
+- {Benefit 1}
+- {Benefit 2}
+
+---
+
+# For type handler patterns:
+## Type Handler Pattern
+
+### New Example: {Type Name} Support
+
+**Pattern:**
+```python
+# In _type_handlers.py
+def converter_in(value: Any) -> Any:
+    {conversion logic}
+
+def converter_out(value: Any) -> Any:
+    {conversion logic}
+
+def register_handlers(connection):
+    {registration logic}
+```
+
+**Configuration:**
+```python
+driver_features={"enable_{feature}": True}
+```
+```
+
+3. **Update tasks:**
+```markdown
+## Review & Documentation Phase
+- [x] Checkpoint 2: AGENTS.md updated with new patterns
+  - Patterns added: [list]
+  - Sections: [list sections]
+```
+
+**Output:**
+```
+✓ Checkpoint 2 complete - AGENTS.md updated
+New patterns documented: [count]
+Sections updated: [list]
+```
+
+---
+
+## PHASE 2: QUALITY GATE VALIDATION
+
+## Checkpoint 3: Quality Gate Validation
+
+**Actions:**
+
+1. **Run linting checks:**
+```bash
+uv run ruff check sqlspec/
+uv run ruff format --check sqlspec/
+```
+
+2. **Run type checking:**
+```bash
+uv run mypy sqlspec/
+```
+
+3. **Run full test suite:**
+```bash
+uv run pytest -n 2 --dist=loadgroup tests/
+```
+
+4. **Build documentation:**
+```bash
+make docs
+```
+
+5. **Verify quality gates:**
+```markdown
+# specs/active/{{slug}}/tmp/quality-gate-report.md
+
+## Quality Gate Validation
+
+### Linting
+- [x] Ruff check: PASSED
+- [x] Ruff format: PASSED
+- Issues found: {0 or list}
+
+### Type Checking
+- [x] Mypy: PASSED
+- Issues found: {0 or list}
+
+### Testing
+- [x] All tests passing: PASSED
+- Test count: {X}
+- Coverage: {X}%
+- Regressions: None
+
+### Documentation
+- [x] Docs build: PASSED
+- Warnings: {0 or list}
+
+### Overall Status
+✅ ALL QUALITY GATES PASSED
+
+## Blockers
+
+{None or list issues that must be fixed}
+```
+
+6. **Fix any issues found:**
+```bash
+# If ruff issues:
+uv run ruff check --fix sqlspec/
+
+# If mypy issues:
+# Fix type hints in code
+
+# If test failures:
+# Fix failing tests
+
+# If doc build issues:
+# Fix documentation syntax
+```
+
+7. **Update tasks:**
+```markdown
+## Review & Documentation Phase
+- [x] Checkpoint 3: Quality gates validated
+  - Linting: ✓
+  - Type checking: ✓
+  - Tests: ✓
+  - Docs build: ✓
+  - Blockers: {0 or list}
+```
+
+**Output:**
+```
+✓ Checkpoint 3 complete - Quality gates passed
+Linting: ✓ | Type checking: ✓ | Tests: ✓ | Docs: ✓
+Blockers: None
+```
+
+---
+
+## PHASE 3: KNOWLEDGE CAPTURE
+
+## Checkpoint 4: Extract Patterns to Library
+
+**Actions:**
+
+1. **For each pattern identified in Checkpoint 0:**
+
+```bash
+# Create pattern document
+cat > specs/guides/patterns/{pattern-name}.md << 'EOF'
+# {Pattern Name}
+
+## Overview
+
+{What this pattern is and when it was created}
+
+**Source Feature**: specs/active/{{slug}}/
+**Created**: {date}
+**Category**: [Architectural|Type Handling|Configuration|Testing|Error Handling]
+
+## Problem
+
+{What problem does this pattern solve}
+
+## Solution
+
+{How the pattern solves it}
+
+## Implementation
+
+```python
+{Full code example from implementation}
+```
+
+## When to Use
+
+- {Use case 1}
+- {Use case 2}
+- {Use case 3}
+
+## When NOT to Use
+
+- {Anti-pattern case 1}
+- {Anti-pattern case 2}
+
+## Related Patterns
+
+- [{Related Pattern 1}](./related-pattern-1.md)
+- [{Related Pattern 2}](./related-pattern-2.md)
+
+## Examples
+
+### Example 1: {Scenario}
+
+```python
+{Real usage example from project}
+```
+
+### Example 2: {Scenario}
+
+```python
+{Real usage example from project}
+```
+
+## Testing
+
+```python
+{Test example showing pattern validation}
+```
+
+## Performance Considerations
+
+{Any performance notes}
+
+## See Also
+
+- [AGENTS.md Section](../../AGENTS.md#{section})
+- [Documentation](../../docs/guides/{guide}.md)
+EOF
+```
+
+2. **Update pattern library index:**
+```bash
+# Add to specs/guides/patterns/README.md
+
+cat >> specs/guides/patterns/README.md << 'EOF'
+
+### {Pattern Name}
+
+**File**: [{pattern-name}.md](./{pattern-name}.md)
+**Category**: {Category}
+**Source**: specs/active/{{slug}}/
+**Use Case**: {Brief description}
+
+EOF
+```
+
+3. **Update tasks:**
+```markdown
+## Review & Documentation Phase
+- [x] Checkpoint 4: Patterns extracted to library
+  - Patterns extracted: [list with links]
+  - Pattern library index updated
+```
+
+**Output:**
+```
+✓ Checkpoint 4 complete - Patterns captured in library
+Patterns extracted: [count]
+Files: [list pattern files]
+Pattern library updated
+```
+
+---
+
+## PHASE 4: RE-VALIDATION
+
+## Checkpoint 5: Re-validate After Documentation Updates
+
+**Actions:**
+
+1. **Re-run tests:**
+```bash
+uv run pytest -n 2 --dist=loadgroup tests/
+```
+
+2. **Re-build documentation:**
+```bash
+make docs
+```
+
+3. **Verify no new issues:**
+```markdown
+# specs/active/{{slug}}/tmp/revalidation-report.md
+
+## Re-validation After Documentation Updates
+
+### Tests
+- Status: {PASSED or issues}
+- Regressions: {None or list}
+
+### Documentation Build
+- Status: {PASSED or issues}
+- New warnings: {None or list}
+
+### Overall Status
+{✅ PASSED or ❌ ISSUES FOUND}
+
+## Action Required
+
+{None or list fixes needed}
+```
+
+4. **Fix any issues:**
+```bash
+# If new issues found, fix them before proceeding
+```
+
+5. **Update tasks:**
+```markdown
+## Review & Documentation Phase
+- [x] Checkpoint 5: Re-validation complete
+  - Tests: ✓
+  - Docs build: ✓
+  - Ready for archival
+```
+
+**Output:**
+```
+✓ Checkpoint 5 complete - Re-validation passed
+Tests: ✓ | Docs: ✓
+Ready for workspace cleanup and archival
+```
+
+---
+
+## PHASE 5: WORKSPACE CLEANUP & ARCHIVE
+
+## Checkpoint 6: Clean and Archive Workspace
+
+**Actions:**
+
+1. **Clean tmp/ directory:**
+```bash
+cd specs/active/{{slug}}
+
+# Archive important tmp files to archive
+mkdir -p archive/
+mv tmp/pattern-extraction-plan.md archive/
+mv tmp/quality-gate-report.md archive/
+mv tmp/revalidation-report.md archive/
+mv tmp/test-summary.md archive/
+
+# Remove remaining tmp files
+rm -rf tmp/
+
+# Recreate empty tmp/ for workspace template
+mkdir tmp/
+```
+
+2. **Create completion summary:**
+```markdown
+# specs/active/{{slug}}/COMPLETION-SUMMARY.md
+
+# Feature Completion Summary: {Feature Name}
+
+**Completed**: {date}
+**Workspace**: specs/active/{{slug}}/
+
+---
+
+## Implementation Summary
+
+### Files Modified
+{list from git diff}
+
+### New Features
+- {Feature 1}
+- {Feature 2}
+
+### Configuration Options
+- {Config option 1}
+- {Config option 2}
+
+---
+
+## Testing Summary
+
+### Unit Tests
+- Files: {X}
+- Tests: {X}
+- Coverage: {X}%
+
+### Integration Tests
+- Adapters: [list]
+- Tests: {X}
+- Coverage: {X}%
+
+### Performance Tests
+- Benchmarks: {X}
+- All within thresholds: ✓
+
+---
+
+## Documentation Summary
+
+### Documentation Updated
+- {File 1}
+- {File 2}
+
+### AGENTS.md Updates
+- Patterns added: [list]
+- Sections updated: [list]
+
+### Pattern Library
+- New patterns: [list with links]
+
+---
+
+## Quality Gates
+
+- [x] Linting: PASSED
+- [x] Type checking: PASSED
+- [x] Tests: PASSED ({X}% coverage)
+- [x] Docs build: PASSED
+- [x] Re-validation: PASSED
+
+---
+
+## Knowledge Captured
+
+### Patterns Extracted
+1. [{Pattern 1}](../../guides/patterns/{pattern-1}.md)
+2. [{Pattern 2}](../../guides/patterns/{pattern-2}.md)
+
+### AGENTS.md Additions
+- {Section 1}: {Pattern name}
+- {Section 2}: {Pattern name}
+
+---
+
+## Next Steps for Future Maintainers
+
+{Any notes about future enhancements or considerations}
+
+---
+
+## Archive Location
+
+This workspace will be moved to: `specs/archive/{{slug}}/`
+```
+
+3. **Move to archive:**
+```bash
+# Move entire workspace to archive
+mv specs/active/{{slug}} specs/archive/{{slug}}
+
+# Verify
+ls -la specs/archive/{{slug}}/
+```
+
+4. **Update tasks (in archive):**
+```markdown
+# specs/archive/{{slug}}/tasks.md
+
+## Review & Documentation Phase
+- [x] Checkpoint 6: Workspace archived
+  - Completion summary created
+  - tmp/ cleaned
+  - Moved to: specs/archive/{{slug}}/
+
+---
+
+## ✅ FEATURE COMPLETE
+
+All phases finished. Workspace archived.
+```
+
+5. **Final output:**
+```markdown
+# specs/archive/{{slug}}/recovery.md
+
+## Status: COMPLETED ✅
+
+Feature implementation, testing, documentation, and archival complete.
+
+**Completed**: {date}
+**Archive Location**: specs/archive/{{slug}}/
+
+## Summary
+
+- Implementation: ✓
+- Testing: ✓
+- Documentation: ✓
+- Quality gates: ✓
+- Pattern extraction: ✓
+- Re-validation: ✓
+- Archival: ✓
+
+See COMPLETION-SUMMARY.md for full details.
+```
+
+**Output:**
+```
+✅ Checkpoint 6 complete - Workspace archived
+
+Feature: {Feature Name}
+Status: COMPLETE ✅
+
+Summary:
+- Implementation: ✓
+- Tests: {X} tests, {X}% coverage ✓
+- Documentation: Updated ✓
+- Patterns extracted: {X} ✓
+- Quality gates: All passed ✓
+- Archive: specs/archive/{{slug}}/ ✓
+
+COMPLETION-SUMMARY.md created with full details.
+```
+
+---
+
+## FINAL DELIVERABLES
+
+1. ✅ **Documentation Updated:**
+   - Feature documentation in docs/guides/
+   - AGENTS.md updated with new patterns
+   - Pattern library updated
+
+2. ✅ **Quality Validated:**
+   - All linting checks passed
+   - All type checks passed
+   - All tests passing
+   - Documentation builds successfully
+   - Re-validation passed
+
+3. ✅ **Knowledge Captured:**
+   - Patterns extracted to specs/guides/patterns/
+   - Pattern library index updated
+   - AGENTS.md enhanced with learnings
+
+4. ✅ **Workspace Archived:**
+   - tmp/ cleaned (important files saved to archive/)
+   - COMPLETION-SUMMARY.md created
+   - Workspace moved to specs/archive/{{slug}}/
+   - Recovery.md marked COMPLETED
+
+---
+
+## SESSION COMPLETE
+
+Feature {Feature Name} is fully implemented, tested, documented, and archived.
+
+**Next Feature:**
+Run `/prd` to start planning the next feature.
+"""

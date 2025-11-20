@@ -1,0 +1,714 @@
+# Command: /test {{slug}}
+description = "Execute comprehensive testing phase with intelligent test pattern recognition"
+name = "test"
+
+prompt = """
+# INTELLIGENT TESTING PHASE
+
+Execute comprehensive testing for feature in `specs/active/{{slug}}/`.
+
+## 🧠 INTELLIGENCE LAYER
+
+Before starting checkpoints, activate intelligence mode:
+
+1. **Read Pattern Library**: Load test patterns from `specs/guides/patterns/test-*.md`
+2. **Learn from Similar Tests**: Read test files for the 3-5 similar features identified in PRD
+3. **Load MCP Strategy**: Use `.gemini/mcp-strategy.md` for tool selection
+4. **Assess Test Complexity**: Determine test coverage needs based on feature complexity
+
+Create analysis document: `specs/active/{{slug}}/tmp/test-analysis.md`
+
+---
+
+## CHECKPOINT-BASED EXECUTION
+
+Follow each checkpoint sequentially. Mark complete before proceeding.
+
+---
+
+## Checkpoint 0: Intelligence Bootstrap
+
+**Actions:**
+
+1. **Load workspace context:**
+```bash
+cd specs/active/{{slug}}
+cat prd.md | head -50
+cat tasks.md | grep -A5 "Implementation Phase"
+ls -la tmp/
+```
+
+2. **Assess test complexity:**
+
+- **Simple Feature**: Single file, basic CRUD → 6 test checkpoints (unit + integration)
+- **Medium Feature**: New service/adapter, 2-3 files → 8 test checkpoints (unit + integration + edge cases)
+- **Complex Feature**: Architecture change, multi-component → 9+ test checkpoints (unit + integration + edge cases + performance)
+
+3. **Identify similar test files:**
+```bash
+# Find tests for similar features
+find tests/ -type f -name "test_*" | grep -i "{feature_keyword}"
+
+# Read 3-5 example test files
+cat tests/unit/test_similar_feature1.py | head -100
+cat tests/integration/test_adapters/test_asyncpg/test_similar_feature2.py | head -100
+```
+
+4. **Create test analysis:**
+```markdown
+# specs/active/{{slug}}/tmp/test-analysis.md
+
+## Test Complexity Assessment
+
+**Feature Type**: [simple|medium|complex]
+**Test Checkpoint Count**: [6|8|9+]
+
+## Similar Test Files Analyzed
+
+1. `tests/unit/test_similar1.py` - Unit test patterns for {similar_feature_1}
+2. `tests/integration/test_adapters/test_asyncpg/test_similar2.py` - Integration patterns
+3. `tests/integration/test_similar3.py` - Edge case patterns
+
+## Key Test Patterns Identified
+
+### Pattern 1: [Pattern Name]
+- **File**: tests/unit/test_example.py
+- **Lines**: 10-30
+- **Purpose**: {what this pattern tests}
+- **Reusable for**: {our feature aspect}
+
+### Pattern 2: [Pattern Name]
+- **File**: tests/integration/test_example.py
+- **Lines**: 45-80
+- **Purpose**: {what this pattern tests}
+- **Reusable for**: {our feature aspect}
+
+## Test Coverage Requirements
+
+Based on similar features:
+- **Unit Tests**: {list areas needing unit tests}
+- **Integration Tests**: {list adapter-specific tests needed}
+- **Edge Cases**: {list edge cases to test}
+- **Performance Tests**: {if applicable}
+```
+
+5. **Update tasks:**
+```markdown
+# specs/active/{{slug}}/tasks.md
+
+## Testing Phase
+- [x] Checkpoint 0: Intelligence bootstrap complete
+  - Test complexity: [simple|medium|complex]
+  - Checkpoints adapted: [6|8|9+]
+  - Similar tests identified: [list 3-5]
+  - Test patterns analyzed
+```
+
+**Output:**
+```
+✓ Checkpoint 0 complete - Test intelligence bootstrapped
+Test complexity assessed: [simple|medium|complex]
+Checkpoint count adapted: [6|8|9+]
+Similar test files identified: [list 3-5]
+Key test patterns documented in tmp/test-analysis.md
+```
+
+---
+
+## Checkpoint 1: Unit Test Creation
+
+**Actions:**
+
+1. **Review feature implementation:**
+```bash
+# Find files created/modified in implementation
+git diff --name-only main...HEAD | grep "sqlspec/"
+```
+
+2. **Follow test patterns from analysis:**
+```markdown
+Read `specs/active/{{slug}}/tmp/test-analysis.md` for patterns.
+
+For each new file/class created:
+- Match pattern from similar tests
+- Use same fixture structure
+- Follow same assertion patterns
+```
+
+3. **Create unit tests:**
+```python
+# tests/unit/test_{feature_name}.py
+
+\"\"\"Unit tests for {feature_name}.
+
+Following patterns from:
+- tests/unit/test_similar1.py (Pattern: {pattern_name})
+- tests/unit/test_similar2.py (Pattern: {pattern_name})
+\"\"\"
+import pytest
+from unittest.mock import Mock, patch
+
+# Import feature components
+from sqlspec.{{module}} import {FeatureClass}
+
+
+class TestFeatureClass:
+    \"\"\"Test {FeatureClass} functionality.\"\"\"
+
+    def test_{basic_functionality}(self):
+        \"\"\"Test basic {functionality} works correctly.\"\"\"
+        # Pattern: Basic success case
+        # Similar to: tests/unit/test_similar1.py:25-40
+
+        # Arrange
+        instance = {FeatureClass}(...)
+
+        # Act
+        result = instance.method(...)
+
+        # Assert
+        assert result == expected_value
+
+    def test_{{edge_case}}(self):
+        \"\"\"Test {edge_case} is handled correctly.\"\"\"
+        # Pattern: Edge case handling
+        # Similar to: tests/unit/test_similar1.py:55-70
+
+        # Arrange
+        instance = {FeatureClass}(...)
+
+        # Act & Assert
+        with pytest.raises(ExpectedException):
+            instance.method(invalid_input)
+
+    @pytest.mark.parametrize(
+        "input_val,expected",
+        [
+            (val1, expected1),
+            (val2, expected2),
+            (val3, expected3),
+        ],
+    )
+    def test_{{parameterized_case}}(self, input_val, expected):
+        \"\"\"Test {functionality} with multiple inputs.\"\"\"
+        # Pattern: Parameterized testing
+        # Similar to: tests/unit/test_similar2.py:80-95
+
+        instance = {FeatureClass}(...)
+        result = instance.method(input_val)
+        assert result == expected
+```
+
+4. **Run unit tests:**
+```bash
+uv run pytest tests/unit/test_{{feature_name}}.py -v
+```
+
+5. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 1: Unit tests created
+  - Files: tests/unit/test_{{feature_name}}.py
+  - Test count: {X} tests
+  - Status: All passing ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 1 complete - Unit tests created and passing
+Unit test file: tests/unit/test_{{feature_name}}.py
+Test count: {X}
+Pattern compliance verified
+```
+
+---
+
+## Checkpoint 2: Integration Test Setup
+
+**Actions:**
+
+1. **Determine adapter coverage:**
+```markdown
+Based on feature implementation, determine which adapters need testing:
+
+- [ ] asyncpg (if PostgreSQL-specific)
+- [ ] psycopg (if PostgreSQL-specific)
+- [ ] asyncmy (if MySQL-specific)
+- [ ] aiosqlite (if SQLite-specific)
+- [ ] duckdb (if DuckDB-specific)
+- [ ] oracle (if Oracle-specific)
+- [ ] bigquery (if BigQuery-specific)
+- [ ] ALL adapters (if core feature)
+```
+
+2. **Review integration test patterns:**
+```bash
+# Read integration tests for similar features
+cat tests/integration/test_adapters/test_asyncpg/test_similar_feature.py | head -150
+cat tests/integration/test_similar_cross_adapter.py | head -150
+```
+
+3. **Create integration test structure:**
+```bash
+# If adapter-specific:
+touch tests/integration/test_adapters/test_{{adapter}}/test_{{feature_name}}.py
+
+# If cross-adapter:
+touch tests/integration/test_{{feature_name}}.py
+```
+
+4. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 2: Integration test structure created
+  - Adapter coverage: [list adapters]
+  - Test files created: [list files]
+```
+
+**Output:**
+```
+✓ Checkpoint 2 complete - Integration test structure ready
+Adapter coverage: [list]
+Test files created: [list]
+```
+
+---
+
+## Checkpoint 3: AsyncPG Integration Tests
+
+**Actions:**
+
+1. **Create AsyncPG tests:**
+```python
+# tests/integration/test_adapters/test_asyncpg/test_{feature_name}.py
+
+\"\"\"Integration tests for {feature_name} with AsyncPG adapter.
+
+Following patterns from:
+- tests/integration/test_adapters/test_asyncpg/test_similar1.py
+\"\"\"
+import pytest
+
+from sqlspec.adapters.asyncpg import AsyncpgConfig
+from sqlspec.base import SQLSpec
+
+
+@pytest.mark.asyncio @pytest.mark.asyncpg
+async def test_{{feature}}_basic_usage(asyncpg_dsn):
+    \"\"\"Test {{feature}} works with AsyncPG adapter.\"\"\"
+    # Pattern: Basic adapter integration
+    # Similar to: test_similar1.py:30-55
+
+    sql = SQLSpec()
+    config = AsyncpgConfig(pool_config={"dsn": asyncpg_dsn})
+    sql.add_config(config)
+
+    async with sql.provide_session(config) as session:
+        # Test feature functionality
+        result = await session.{feature_method}(...)
+        assert result.{expected_property} == expected_value
+
+
+@pytest.mark.asyncio @pytest.mark.asyncpg
+async def test_{{feature}}_edge_case(asyncpg_dsn):
+    \"\"\"Test {{feature}} edge case with AsyncPG.\"\"\"
+    # Pattern: Edge case testing
+    # Similar to: test_similar1.py:70-90
+
+    sql = SQLSpec()
+    config = AsyncpgConfig(pool_config={"dsn": asyncpg_dsn})
+    sql.add_config(config)
+
+    async with sql.provide_session(config) as session:
+        # Test edge case
+        with pytest.raises(ExpectedException):
+            await session.{feature_method}(invalid_input)
+```
+
+2. **Run AsyncPG tests:**
+```bash
+uv run pytest tests/integration/test_adapters/test_asyncpg/test_{{feature_name}}.py -v
+```
+
+3. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 3: AsyncPG integration tests complete
+  - Test count: {X} tests
+  - Status: All passing ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 3 complete - AsyncPG integration tests passing
+Test count: {X}
+```
+
+---
+
+## Checkpoint 4: Additional Adapter Tests
+
+**Actions:**
+
+1. **For each additional adapter, create tests:**
+```python
+# tests/integration/test_adapters/test_{{adapter}}/test_{{feature_name}}.py
+
+\"\"\"Integration tests for {feature_name} with {Adapter} adapter.
+
+Following patterns from:
+- tests/integration/test_adapters/test_{adapter}/test_similar1.py
+- tests/integration/test_adapters/test_asyncpg/test_{feature_name}.py (template)
+\"\"\"
+
+# Similar structure to AsyncPG tests, adapter-specific
+```
+
+2. **Run each adapter test:**
+```bash
+uv run pytest tests/integration/test_adapters/test_psycopg/test_{{feature_name}}.py -v
+uv run pytest tests/integration/test_adapters/test_sqlite/test_{{feature_name}}.py -v
+# ... for each adapter
+```
+
+3. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 4: Additional adapter tests complete
+  - Psycopg: {X} tests ✓
+  - SQLite: {X} tests ✓
+  - [other adapters]: {X} tests ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 4 complete - All adapter integration tests passing
+Adapters tested: [list]
+Total integration tests: {X}
+```
+
+---
+
+## Checkpoint 5: Edge Case Testing
+
+**Actions:**
+
+1. **Review edge cases from analysis:**
+```bash
+cat specs/active/{{slug}}/tmp/test-analysis.md | grep -A10 "Edge Cases"
+```
+
+2. **Create edge case tests:**
+```python
+# Add to existing test files
+
+@pytest.mark.parametrize(
+    "edge_input,expected_behavior",
+    [
+        (None, "raises TypeError"),
+        (empty_value, "returns empty result"),
+        (invalid_type, "raises ValueError"),
+        (boundary_value, "handles correctly"),
+    ],
+)
+async def test_{{feature}}_edge_cases(edge_input, expected_behavior, session):
+    \"\"\"Test {{feature}} handles edge cases correctly.\"\"\"
+    # Pattern: Comprehensive edge case coverage
+    # Similar to: test_similar2.py:120-150
+
+    if "raises" in expected_behavior:
+        exception_type = eval(expected_behavior.split()[1])
+        with pytest.raises(exception_type):
+            await session.{feature_method}(edge_input)
+    else:
+        result = await session.{feature_method}(edge_input)
+        # Assert expected behavior
+```
+
+3. **Run edge case tests:**
+```bash
+uv run pytest -k "edge_case" -v
+```
+
+4. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 5: Edge case testing complete
+  - Edge cases tested: {X}
+  - Status: All passing ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 5 complete - Edge cases covered
+Edge case tests: {X}
+```
+
+---
+
+## Checkpoint 6: Test Coverage Verification
+
+**Actions:**
+
+1. **Run coverage report:**
+```bash
+uv run pytest --cov=sqlspec.{{module}} --cov-report=term-missing tests/
+```
+
+2. **Verify coverage thresholds:**
+```markdown
+Based on similar features, verify:
+
+- **Unit Test Coverage**: ≥90% for new code
+- **Integration Coverage**: ≥80% for adapter interactions
+- **Edge Case Coverage**: All identified edge cases tested
+
+If below thresholds:
+1. Identify uncovered lines
+2. Add missing tests
+3. Re-run coverage
+```
+
+3. **Document coverage:**
+```markdown
+# specs/active/{{slug}}/tmp/test-coverage.md
+
+## Coverage Report
+
+### Unit Tests
+- Coverage: {X}%
+- Uncovered lines: [list if any]
+
+### Integration Tests
+- AsyncPG: {X}%
+- Psycopg: {X}%
+- [other adapters]: {X}%
+
+### Edge Cases
+- Total edge cases: {X}
+- Covered: {X}
+- Coverage: {X}%
+
+## Threshold Compliance
+- [x] Unit coverage ≥90%
+- [x] Integration coverage ≥80%
+- [x] All edge cases tested
+```
+
+4. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 6: Coverage verification complete
+  - Overall coverage: {X}%
+  - Unit coverage: {X}%
+  - Integration coverage: {X}%
+  - Thresholds met: ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 6 complete - Coverage thresholds met
+Overall coverage: {X}%
+Unit: {X}% | Integration: {X}% | Edge cases: {X}
+```
+
+---
+
+## Checkpoint 7: Performance Testing (if applicable)
+
+**Actions:**
+
+1. **Determine if performance testing needed:**
+```markdown
+Performance testing required if:
+- Feature affects query execution time
+- Feature involves data transformation
+- Feature adds overhead to existing operations
+- Similar features have performance tests
+```
+
+2. **Create performance benchmarks:**
+```python
+# tests/integration/test_{{feature_name}}_performance.py
+
+\"\"\"Performance tests for {feature_name}.
+
+Following patterns from:
+- tests/integration/test_performance_similar.py
+\"\"\"
+import pytest
+import time
+
+
+@pytest.mark.asyncio @pytest.mark.performance
+async def test_{{feature}}_performance_baseline(session):
+    \"\"\"Benchmark {{feature}} performance.\"\"\"
+    # Pattern: Performance baseline
+    # Similar to: test_performance_similar.py:40-65
+
+    iterations = 1000
+
+    start = time.perf_counter()
+    for _ in range(iterations):
+        await session.{feature_method}(test_input)
+    end = time.perf_counter()
+
+    avg_time = (end - start) / iterations
+
+    # Assert performance threshold
+    assert avg_time < 0.010  # 10ms threshold (adjust based on similar features)
+```
+
+3. **Run performance tests:**
+```bash
+uv run pytest -k "performance" -v
+```
+
+4. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 7: Performance testing complete
+  - Baseline: {X}ms avg
+  - Threshold: {X}ms
+  - Status: Within threshold ✓
+```
+
+**Output:**
+```
+✓ Checkpoint 7 complete - Performance benchmarks established
+Average execution time: {X}ms
+Threshold met: ✓
+```
+
+---
+
+## Checkpoint 8: Final Test Suite Execution
+
+**Actions:**
+
+1. **Run complete test suite:**
+```bash
+# Run all tests for feature
+uv run pytest -k "{{feature_name}}" -v
+
+# Run full test suite to ensure no regressions
+uv run pytest -n 2 --dist=loadgroup tests/
+```
+
+2. **Verify all tests pass:**
+```markdown
+Expected results:
+- All new tests: PASSED
+- Existing tests: PASSED (no regressions)
+- Coverage: Above thresholds
+```
+
+3. **Create test summary:**
+```markdown
+# specs/active/{{slug}}/tmp/test-summary.md
+
+## Test Suite Summary
+
+### Unit Tests
+- Files: [list]
+- Test count: {X}
+- Status: All passing ✓
+
+### Integration Tests
+- Adapters tested: [list]
+- Test count per adapter: {X}
+- Total integration tests: {X}
+- Status: All passing ✓
+
+### Edge Case Tests
+- Edge cases: {X}
+- Status: All passing ✓
+
+### Performance Tests
+- Benchmarks: {X}
+- Status: All within thresholds ✓
+
+### Coverage
+- Overall: {X}%
+- Unit: {X}%
+- Integration: {X}%
+- Thresholds: Met ✓
+
+### Total Test Count
+- New tests added: {X}
+- Total project tests: {X}
+- Test execution time: {X}s
+```
+
+4. **Update tasks:**
+```markdown
+## Testing Phase
+- [x] Checkpoint 8: Final test suite execution complete
+  - All tests passing: ✓
+  - No regressions: ✓
+  - Coverage thresholds met: ✓
+  - Ready for review phase
+```
+
+5. **Update recovery.md:**
+```markdown
+# specs/active/{{slug}}/recovery.md
+
+## Current Status: TESTING COMPLETE ✓
+
+Testing phase finished. Ready for documentation and review.
+
+## Next Actions
+
+1. Execute `/review` command
+2. Docs & Vision agent will:
+   - Update documentation
+   - Extract test patterns
+   - Archive workspace
+```
+
+**Output:**
+```
+✓ Checkpoint 8 complete - Testing phase finished
+
+Test Summary:
+- Unit tests: {X} ✓
+- Integration tests: {X} ✓
+- Edge case tests: {X} ✓
+- Performance tests: {X} ✓
+- Coverage: {X}% ✓
+
+Ready for review phase.
+Run: /review
+```
+
+---
+
+## FINAL DELIVERABLES
+
+1. ✅ **Test Files Created:**
+   - `tests/unit/test_{{feature_name}}.py` - Unit tests following similar test patterns
+   - `tests/integration/test_adapters/test_{{adapter}}/test_{{feature_name}}.py` - Integration tests per adapter
+   - `tests/integration/test_{{feature_name}}_performance.py` - Performance benchmarks (if applicable)
+
+2. ✅ **Test Documentation:**
+   - `specs/active/{{slug}}/tmp/test-analysis.md` - Test pattern analysis
+   - `specs/active/{{slug}}/tmp/test-coverage.md` - Coverage report
+   - `specs/active/{{slug}}/tmp/test-summary.md` - Complete test summary
+
+3. ✅ **Workspace Updates:**
+   - `specs/active/{{slug}}/tasks.md` - Testing phase checkpoints marked complete
+   - `specs/active/{{slug}}/recovery.md` - Updated to "Testing Complete"
+
+4. ✅ **Quality Gates:**
+   - All tests passing
+   - Coverage thresholds met (Unit ≥90%, Integration ≥80%)
+   - No regressions in existing tests
+   - Performance benchmarks established (if applicable)
+
+---
+
+## NEXT STEP
+
+Execute `/review` command to begin documentation and review phase.
+"""
