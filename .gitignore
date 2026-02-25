@@ -166,6 +166,7 @@ todo
 .codex/
 specs/
 .gemini/
-.agent/
+!.agent/specs
+# .agent/
 !tools/lib
 .beads
