@@ -164,20 +164,8 @@ todo
 # AI-specific invocation layers (gitignored, created locally)
 .claude/
 .codex/
-
-# Workspace content (gitignored)
-specs/active/*
-!specs/active/.gitkeep
-specs/archive/*
-!specs/archive/.gitkeep
-!specs/guides/
-!specs/agents/
-!specs/workflows/
-# What gets committed in specs/
-# - specs/guides/ (technical documentation)
-# - specs/agents/ (agent configurations)
-# - specs/workflows/ (workflow definitions)
-# - specs/AGENTS.md (coordination guide)
-# - specs/README.md (system documentation)
-# - specs/example-requirement/ (template)
+specs/
+.gemini/
+.agent/
 !tools/lib
+.beads
