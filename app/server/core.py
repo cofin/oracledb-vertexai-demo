@@ -45,7 +45,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
         from litestar.params import Body
-        from litestar.plugins.htmx import HTMXRequest
         from litestar.static_files import create_static_files_router
         from sqlspec import AsyncDriverAdapterBase
         from sqlspec.adapters.oracledb import OracleAsyncDriver
@@ -83,11 +82,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 plugins.granian,
                 plugins.sqlspec,
                 plugins.structlog,
-                plugins.htmx,
             ],
         )
-        # Set HTMXRequest as the default request class
-        app_config.request_class = HTMXRequest
         app_config.template_config = config.templates
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
@@ -134,7 +130,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "OracleVectorSearchService": OracleVectorSearchService,
                 "ADKRunner": ADKRunner,
                 "Request": Request,
-                "HTMXRequest": HTMXRequest,
                 "AsyncDriverAdapterBase": AsyncDriverAdapterBase,
             },
         )

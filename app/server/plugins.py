@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from litestar.plugins.htmx import HTMXPlugin
 from litestar.plugins.problem_details import ProblemDetailsPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
@@ -27,5 +26,4 @@ app_config = ApplicationCore()
 sqlspec = SQLSpecPlugin(config.db_manager)
 granian = GranianPlugin()
 structlog = StructlogPlugin(config=config.log)
-htmx = HTMXPlugin()
 problem_details = ProblemDetailsPlugin(config=config.problem_details)
