@@ -1,0 +1,127 @@
+{
+  "litestar_version": "Version(major=2, minor=21, patch=0, release_level='final', serial=0)",
+  "routes": {
+    "chat.stream": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "parameterTypes": {
+        "query_id": "string"
+      },
+      "parameters": [
+        "query_id"
+      ],
+      "uri": "/chat/stream/{query_id}"
+    },
+    "coffee_chat.get": {
+      "method": "post",
+      "methods": [
+        "POST"
+      ],
+      "uri": "/chat"
+    },
+    "coffee_chat.show": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/chat"
+    },
+    "favicon": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/favicon.ico"
+    },
+    "help.query_log": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "parameterTypes": {
+        "message_id": "string"
+      },
+      "parameters": [
+        "message_id"
+      ],
+      "uri": "/api/help/query-log/{message_id}"
+    },
+    "metrics": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/metrics"
+    },
+    "metrics.charts": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/api/metrics/charts"
+    },
+    "metrics.summary": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/api/metrics/summary"
+    },
+    "openapi.json": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/schema/openapi.json"
+    },
+    "performance_dashboard": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/dashboard"
+    },
+    "vector.demo": {
+      "method": "post",
+      "methods": [
+        "POST"
+      ],
+      "uri": "/api/vector-demo"
+    },
+    "vite": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "parameterTypes": {
+        "file_path": "any"
+      },
+      "parameters": [
+        "file_path"
+      ],
+      "uri": "/static/dist/{file_path}"
+    },
+    "vite_spa": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "uri": "/"
+    },
+    "vite_spa_path:path": {
+      "method": "get",
+      "methods": [
+        "GET"
+      ],
+      "parameterTypes": {
+        "path": "URI"
+      },
+      "parameters": [
+        "path"
+      ],
+      "uri": "/{path}"
+    }
+  }
+}

@@ -1,0 +1,493 @@
+{
+  "components": {
+    "schemas": {
+      "ChartDataResponse": {
+        "properties": {
+          "breakdown_data": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "scatter_data": {
+            "items": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "time_series": {
+            "$ref": "#/components/schemas/TimeSeriesData"
+          }
+        },
+        "required": [
+          "breakdown_data",
+          "scatter_data",
+          "time_series"
+        ],
+        "title": "ChartDataResponse",
+        "type": "object"
+      },
+      "CoffeeChatMessage": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "persona": {
+            "default": "enthusiast",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "CoffeeChatMessage",
+        "type": "object"
+      },
+      "TimeSeriesData": {
+        "properties": {
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "oracle_latency": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "total_latency": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "vertex_latency": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "labels",
+          "oracle_latency",
+          "total_latency",
+          "vertex_latency"
+        ],
+        "title": "TimeSeriesData",
+        "type": "object"
+      },
+      "VectorDemoRequest": {
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "VectorDemoRequest",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "app",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/help/query-log/{message_id}": {
+      "get": {
+        "deprecated": false,
+        "description": "Get query execution details for help tooltips.",
+        "operationId": "ApiHelpQueryLogMessageIdGetQueryLog",
+        "parameters": [
+          {
+            "deprecated": false,
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "detail": "Bad Request",
+                      "extra": {},
+                      "status_code": 400
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    },
+                    "status_code": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request syntax or unsupported method"
+          }
+        },
+        "summary": "GetQueryLog"
+      }
+    },
+    "/api/metrics/charts": {
+      "get": {
+        "deprecated": false,
+        "description": "Get chart data for dashboard visualizations.",
+        "operationId": "ApiMetricsChartsGetChartData",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChartDataResponse"
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          }
+        },
+        "summary": "GetChartData"
+      }
+    },
+    "/api/metrics/summary": {
+      "get": {
+        "deprecated": false,
+        "description": "Get summary metrics for dashboard cards.",
+        "operationId": "ApiMetricsSummaryGetMetricsSummary",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          }
+        },
+        "summary": "GetMetricsSummary"
+      }
+    },
+    "/api/vector-demo": {
+      "post": {
+        "deprecated": false,
+        "description": "Interactive vector search demonstration.",
+        "operationId": "ApiVectorDemoVectorSearchDemo",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/VectorDemoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Document created, URL follows",
+            "headers": {}
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "detail": "Bad Request",
+                      "extra": {},
+                      "status_code": 400
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    },
+                    "status_code": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request syntax or unsupported method"
+          }
+        },
+        "summary": "VectorSearchDemo"
+      }
+    },
+    "/chat": {
+      "get": {
+        "deprecated": false,
+        "description": "Serve site root with CSP nonce.",
+        "operationId": "ChatShowCoffeeChat",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          }
+        },
+        "summary": "ShowCoffeeChat"
+      },
+      "post": {
+        "deprecated": false,
+        "description": "Handle chat submission with optimistic UI pattern.",
+        "operationId": "ChatHandleCoffeeChat",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/CoffeeChatMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Document created, URL follows",
+            "headers": {}
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "detail": "Bad Request",
+                      "extra": {},
+                      "status_code": 400
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    },
+                    "status_code": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request syntax or unsupported method"
+          }
+        },
+        "summary": "HandleCoffeeChat"
+      }
+    },
+    "/chat/stream/{query_id}": {
+      "get": {
+        "deprecated": false,
+        "description": "Stream AI response using Server-Sent Events.",
+        "operationId": "ChatStreamQueryIdStreamResponse",
+        "parameters": [
+          {
+            "deprecated": false,
+            "in": "path",
+            "name": "query_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Stream Response",
+            "headers": {}
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "detail": "Bad Request",
+                      "extra": {},
+                      "status_code": 400
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    },
+                    "status_code": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request syntax or unsupported method"
+          }
+        },
+        "summary": "StreamResponse"
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "deprecated": false,
+        "description": "Display performance dashboard.",
+        "operationId": "DashboardPerformanceDashboard",
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          }
+        },
+        "summary": "PerformanceDashboard"
+      }
+    },
+    "/metrics": {
+      "get": {
+        "deprecated": false,
+        "description": "Get performance metrics with validation.",
+        "operationId": "MetricsGetMetrics",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object"
+                    },
+                    {}
+                  ]
+                }
+              }
+            },
+            "description": "Request fulfilled, document follows",
+            "headers": {}
+          }
+        },
+        "summary": "GetMetrics"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}

@@ -27,6 +27,7 @@ from sqlspec.adapters.oracledb import OracleAsyncConfig
 
 if TYPE_CHECKING:
     from litestar.data_extractors import RequestExtractorField, ResponseExtractorField
+    from litestar_vite import ViteConfig
 
 
 DEFAULT_MODULE_NAME = "app"
@@ -378,17 +379,18 @@ class ViteSettings:
         """Whether to serve static files locally."""
         return self.ASSET_URL.startswith("/")
 
-    def get_config(self) -> "ViteConfig":
+    def get_config(self) -> ViteConfig:
         """Create Vite configuration for Litestar.
 
         Returns:
             ViteConfig instance for Vite frontend integration.
         """
-        from litestar_vite import PathConfig, RuntimeConfig, ViteConfig
+        from litestar_vite import PathConfig, RuntimeConfig, TypeGenConfig, ViteConfig
 
         return ViteConfig(
             mode="spa",
             dev_mode=self.DEV_MODE,
+            types=TypeGenConfig(),
             paths=PathConfig(
                 root=BASE_DIR.parent / "src" / "js" / "web", bundle_dir=self.BUNDLE_DIR, asset_url=self.ASSET_URL
             ),
