@@ -13,6 +13,7 @@
 | `adk-chat-dashboard_20260225` | 2026-02-26 | adk, dishka, litestar, react, tanstack, testing | Delivered ADK chat + dashboard on Litestar-Vite stack with Dishka-aligned routing and tests. |
 | `initial-setup-synthesis_20260225` | 2026-02-26 | flow, beads, documentation, process | Established baseline Flow/Beads scaffolding and synthesized legacy guidance into active context docs. |
 | `migrate-to-adk-runner_20251010` | 2026-02-26 | adk, dishka, ddd, runner | Finalized ADK runner migration bookkeeping and validated modern runner/controller wiring. |
+| `modernize-oracle-schema_20251017` | 2026-02-26 | oracle, schema, sqlspec, fixtures, testing | Validated modern Oracle schema parity and refreshed schema-facing documentation and verification steps. |
 
 ## Topic Index
 
@@ -35,9 +36,11 @@
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
 - [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
+- [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
 
 ### oracle
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
+- [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
 
 ### adk
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
@@ -68,3 +71,12 @@
 
 ### process
 - [initial-setup-synthesis_20260225](./initial-setup-synthesis_20260225.md)
+
+### schema
+- [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
+
+### sqlspec
+- [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
+
+### fixtures
+- [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
