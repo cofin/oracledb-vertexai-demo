@@ -10,7 +10,7 @@ This file tracks all flows for the project.
 ## [ ] Flow: ADK Chat Dashboard
 *Link: [./specs/adk-chat-dashboard_20260225/](./specs/adk-chat-dashboard_20260225/)*
 
-## [ ] Flow: Agent UI Update
+## [x] Flow: Agent UI Update
 *Link: [./specs/agent-ui-update_20251024/](./specs/agent-ui-update_20251024/)*
 
 ## [ ] Flow: Fix Tests and Runner

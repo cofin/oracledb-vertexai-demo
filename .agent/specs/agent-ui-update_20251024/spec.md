@@ -12,18 +12,18 @@ Transform the Coffee Chat agent UI from a blocking synchronous pattern to an asy
 ## Implementation Plan
 
 ### Phase 1: Optimistic UI + Query State
-- [ ] Task bd-mwx.1: Add CacheService query state methods in `app/domain/system/services/_cache.py`.
-- [ ] Task bd-mwx.2: Create `chat_optimistic.html` template and remove old templates.
-- [ ] Task bd-mwx.3: Replace `handle_coffee_chat()` in `app/domain/chat/controllers/_chat.py`.
+- [x] Task bd-mwx.1: Add CacheService query state methods in `app/domain/system/services/_cache.py`.
+- [-] Task bd-mwx.2: Create `chat_optimistic.html` template and remove old templates.
+- [x] Task bd-mwx.3: Replace `handle_coffee_chat()` in `app/domain/chat/controllers/_chat.py`.
 
 ### Phase 2: SSE Streaming
-- [ ] Task bd-mwx.4: Create `ADKRunner.stream_request()` method in `app/domain/chat/services/_adk_runner.py`.
-- [ ] Task bd-mwx.5: Replace `stream_response()` endpoint with SSE.
-- [ ] Task bd-mwx.6: Create `chat-streaming.js` for SSE handling.
+- [x] Task bd-mwx.4: Create `ADKRunner.stream_request()` method in `app/domain/chat/services/_adk_runner.py`.
+- [x] Task bd-mwx.5: Replace `stream_response()` endpoint with SSE.
+- [-] Task bd-mwx.6: Create `chat-streaming.js` for SSE handling.
 
 ### Phase 3: Help Bubbles & Polish
-- [ ] Task bd-mwx.7: Lazy-load help tooltip content.
-- [ ] Task bd-mwx.8: Optimize scroll behavior.
+- [-] Task bd-mwx.7: Lazy-load help tooltip content.
+- [x] Task bd-mwx.8: Optimize scroll behavior.
 
 ### Phase 4: Performance Optimization
-- [ ] Task bd-mwx.9: Benchmark streaming overhead and load test.
+- [-] Task bd-mwx.9: Benchmark streaming overhead and load test.
