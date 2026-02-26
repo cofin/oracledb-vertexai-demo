@@ -7,12 +7,6 @@ This file tracks all flows for the project.
 ## [x] Flow: Agent UI Update
 *Link: [./specs/agent-ui-update_20251024/](./specs/agent-ui-update_20251024/)*
 
-## [ ] Flow: Idempotent Install Commands
-*Link: [./specs/idempotent-install-commands_20251010/](./specs/idempotent-install-commands_20251010/)*
-
-## [ ] Flow: Oracle 23ai Features
-*Link: [./specs/oracle-23ai-features_20251017/](./specs/oracle-23ai-features_20251017/)*
-
 ---
 
 ## Archived Flows
@@ -34,3 +28,9 @@ This file tracks all flows for the project.
 
 ### [x] Flow: Modernize Oracle Schema (archived 2026-02-26)
 *Link: [./archive/modernize-oracle-schema_20251017/](./archive/modernize-oracle-schema_20251017/)*
+
+### [x] Flow: Idempotent Install Commands (archived 2026-02-26)
+*Link: [./archive/idempotent-install-commands_20251010/](./archive/idempotent-install-commands_20251010/)*
+
+### [x] Flow: Oracle 23ai Features (archived 2026-02-26)
+*Link: [./archive/oracle-23ai-features_20251017/](./archive/oracle-23ai-features_20251017/)*

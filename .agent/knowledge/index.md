@@ -14,6 +14,8 @@
 | `initial-setup-synthesis_20260225` | 2026-02-26 | flow, beads, documentation, process | Established baseline Flow/Beads scaffolding and synthesized legacy guidance into active context docs. |
 | `migrate-to-adk-runner_20251010` | 2026-02-26 | adk, dishka, ddd, runner | Finalized ADK runner migration bookkeeping and validated modern runner/controller wiring. |
 | `modernize-oracle-schema_20251017` | 2026-02-26 | oracle, schema, sqlspec, fixtures, testing | Validated modern Oracle schema parity and refreshed schema-facing documentation and verification steps. |
+| `idempotent-install-commands_20251010` | 2026-02-26 | install, tooling, process | Archived completed install-command implementation notes for future operational reference. |
+| `oracle-23ai-features_20251017` | 2026-02-26 | oracle, research, migration | Archived Oracle 23ai data-type research and migration guide artifacts for reuse. |
 
 ## Topic Index
 
@@ -41,6 +43,7 @@
 ### oracle
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
 - [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
+- [oracle-23ai-features_20251017](./oracle-23ai-features_20251017.md)
 
 ### adk
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
@@ -71,6 +74,7 @@
 
 ### process
 - [initial-setup-synthesis_20260225](./initial-setup-synthesis_20260225.md)
+- [idempotent-install-commands_20251010](./idempotent-install-commands_20251010.md)
 
 ### schema
 - [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
@@ -80,3 +84,15 @@
 
 ### fixtures
 - [modernize-oracle-schema_20251017](./modernize-oracle-schema_20251017.md)
+
+### install
+- [idempotent-install-commands_20251010](./idempotent-install-commands_20251010.md)
+
+### tooling
+- [idempotent-install-commands_20251010](./idempotent-install-commands_20251010.md)
+
+### research
+- [oracle-23ai-features_20251017](./oracle-23ai-features_20251017.md)
+
+### migration
+- [oracle-23ai-features_20251017](./oracle-23ai-features_20251017.md)
