@@ -32,7 +32,7 @@ function getSessionId() {
   return created
 }
 
-function ChatPage() {
+export function ChatPage() {
   const sessionId = useMemo(getSessionId, [])
   const [persona, setPersona] = useState<(typeof PERSONAS)[number]>('enthusiast')
   const [input, setInput] = useState('')

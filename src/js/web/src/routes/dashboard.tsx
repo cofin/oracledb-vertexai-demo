@@ -42,7 +42,7 @@ async function getJson<T>(url: string): Promise<T> {
   return (await response.json()) as T
 }
 
-function DashboardPage() {
+export function DashboardPage() {
   const metricsQuery = useQuery({
     queryKey: ['dashboard', 'metrics'],
     queryFn: () => getJson<MetricsSummary>('/metrics'),
