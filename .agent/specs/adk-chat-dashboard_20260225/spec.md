@@ -18,7 +18,7 @@ Port the modern frontend architecture from the `accelerator` project into `oracl
 
 ### Phase 1: Environment & Dependency Setup
 - [x] Task bd-2t6.3: Update `pyproject.toml` with `uv` overrides for legacy dependencies.
-- [ ] Task bd-2t6.4: Install `google-adk` and `google-genai`.
+- [x] Task bd-2t6.4: Install `google-adk` and `google-genai`.
 
 ### Phase 2: Database & Domain Services (SQLSpec & DDD)
 - [ ] Task bd-2t6.5: Configure Dishka DI providers/scopes for `OracleAsyncADKStore` and chat services, aligned with `accelerator` (`LitestarPersistenceProvider` + domain provider pattern).
