@@ -1,11 +1,17 @@
-import React from 'react'
+import { RouterProvider, createRouter } from '@tanstack/react-router'
 import ReactDOM from 'react-dom/client'
+
+import { routeTree } from './routeTree'
 import './index.css'
 
+const router = createRouter({ routeTree })
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router
+  }
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <div className="p-4 bg-background text-foreground">
-      <h1 className="text-2xl font-bold text-primary">Chat Dashboard</h1>
-    </div>
-  </React.StrictMode>,
+  <RouterProvider router={router} />,
 )
