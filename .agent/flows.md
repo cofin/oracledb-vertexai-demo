@@ -4,9 +4,6 @@ This file tracks all flows for the project.
 
 ---
 
-## [~] Flow: Initial Setup and Legacy Guide Synthesis
-*Link: [./specs/initial-setup-synthesis_20260225/](./specs/initial-setup-synthesis_20260225/)*
-
 ## [x] Flow: Agent UI Update
 *Link: [./specs/agent-ui-update_20251024/](./specs/agent-ui-update_20251024/)*
 
@@ -34,3 +31,6 @@ This file tracks all flows for the project.
 
 ### [x] Flow: ADK Chat Dashboard (archived 2026-02-26)
 *Link: [./archive/adk-chat-dashboard_20260225/](./archive/adk-chat-dashboard_20260225/)*
+
+### [x] Flow: Initial Setup and Legacy Guide Synthesis (archived 2026-02-26)
+*Link: [./archive/initial-setup-synthesis_20260225/](./archive/initial-setup-synthesis_20260225/)*
