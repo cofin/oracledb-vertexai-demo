@@ -1,18 +1,37 @@
 # Project Patterns
 
 > Consolidated learnings and patterns from all flows.
+> This file is the single source of truth for project conventions.
 
 ## Code Conventions
-- **Imports:** Place all imports at the top of the file. Avoid nested imports except for `TYPE_CHECKING` blocks.
-- **Error Messages:** Write in lowercase without trailing periods. Include context where possible.
-- **Naming:** Prefer snake_case for modules/functions, PascalCase for classes. Avoid "workaround" suffixes like `_optimized` or `_fallback`.
+
+- **Type Hints:** Python 3.11+ type hints (`mypy --strict` compliant).
+- **Oracle Binding:** Use Oracle's `:name` style for parameter binding in SQL queries (never `?` or `%s`).
+- **Naming:** Clean, descriptive naming (no `_optimized`, `_with_cache` suffixes). Snake_case for functions/vars, PascalCase for classes.
+- **Imports:** Top-level imports only (except `typing.TYPE_CHECKING` blocks).
+- **Errors:** Error messages in lowercase without trailing periods.
 
 ## Architecture Patterns
-- **SQLSpec Service:** Service classes should wrap the SQLSpec driver and handle session management via async generators.
-- **Oracle Vector Search:** Use `:name` style for parameter binding. Use `array.array('f', embedding)` for Oracle `VECTOR` type compatibility.
-- **ADK Agents:** Use `LlmAgent` for reasoning. Tools must have full type hints and docstrings with `Args` and `Returns` sections.
+
+- **Service Wrapper Pattern:** Service class wraps the driver (SQLSpec, Vertex AI, ADK).
+- **Layered Flow:** Controllers (Routing) -> Services (Business Logic/Orchestration) -> Repositories (Data Access).
+- **Dependency Injection:** Use Dishka scopes (`AppScope` for singletons, `RequestScope` for per-request contexts like DB transactions).
 
 ## Gotchas & Warnings
-- **Dead Code:** Never leave dead code in a reference application.
-- **Oracle 23ai:** Native binary format (OSON) is preferred for JSON storage.
-- **Vertex AI:** Use `RETRIEVAL_QUERY` for search queries and `RETRIEVAL_DOCUMENT` for product descriptions when creating embeddings.
+
+- **Oracle Vector Arrays:** Missing `array.array('f', embedding)` pattern when binding VECTOR types leads to `ORA-51805` vector format errors. Always cast embeddings correctly.
+- **Loops in MCP SQLcl:** Prevent loops by providing precise prompts to SQLcl with explicit `WHERE` clauses and `FETCH FIRST N ROWS ONLY`.
+- **N+1 Queries:** Be cautious of N+1 query patterns in product recommendation iterations; use batching in the repository layer.
+- **Defensive Coding:** Never use `hasattr`/`getattr` workarounds. Enforce structural typing via Python `Protocols`.
+
+## Testing Patterns
+
+- **Pytest + Asyncio:** Test suites rely on `pytest-asyncio`. Run with `uv run pytest -n 2 --dist=loadgroup`.
+- **Database Fixtures:** Use `pytest-databases` for managing Oracle database lifecycles in tests.
+- **Mocking:** Inject mock Protocol implementations via Dishka rather than using `unittest.mock.patch` where possible.
+
+## Context for AI Assistants
+
+- **Workspace Boundaries:** Always work within `.agent/specs/{flow_id}/`. Never write scratch files to the project root.
+- **Cleanup:** Temporary files in `tmp/` must be cleaned up manually or by the Docs & Vision agent during the Review phase.
+- **Research Preference:** Consult `.agent/knowledge/guides/` before reaching out to Web Search or Context7.

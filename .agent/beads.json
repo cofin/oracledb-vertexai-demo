@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "mode": "stealth",
+  "sync": "bidirectional",
+  "epicPrefix": "flow",
+  "autoCreateTasks": true,
+  "autoSyncOnComplete": true,
+  "compactOnArchive": false,
+  "taskStatusMapping": {
+    "pending": "[ ]",
+    "in_progress": "[~]",
+    "completed": "[x]",
+    "blocked": "[!]",
+    "skipped": "[-]"
+  }
+}
