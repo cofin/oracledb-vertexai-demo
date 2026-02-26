@@ -7,18 +7,29 @@
 - **No Dead Code:** Unused imports, variables, and functions MUST be removed.
 - **Correctness:** Full type hints (`mypy --strict` compliant) and rigorous validation are required. Error messages must be lowercase without trailing periods.
 
-## Architectural Principles
-- **Service Layer:** All business logic lives in `app/services/`. Routing layer (Controllers) must be extremely thin, delegating to Services.
-- **Repository Pattern:** Database access is isolated in repositories utilizing SQLSpec. Services should never expose raw driver cursors.
-- **HTMX First:** Prioritize server-side interactivity with minimal client-side JavaScript. Litestar endpoints should return HTML fragments rendered via Jinja2 for HTMX swapping.
-- **Async Everywhere:** Use `async/await` for all I/O and non-blocking operations.
-- **Dependency Injection:** Use Dishka for wiring configurations, services, database connection pools, and Vertex AI clients.
+## Architecture Standards
+- **Domain-Driven Layout:** Organize code under `app/domain/<domain>/` with domain-local `controllers`, `services`, `schemas`, and optional `jobs`.
+- **Thin Controllers:** Route handlers are orchestration boundaries only. Business logic belongs in domain services.
+- **Service Construction:** Services receive dependencies through `__init__`; never pull from a global locator.
+- **Data Access:** Use SQLSpec via injected driver/session objects. Keep SQL and persistence logic in service/repository methods, not in controllers.
+- **Async I/O:** Use `async/await` for all external I/O (database, network, AI clients).
+
+## Dishka DI Standards
+- **Centralized Wiring:** Configure Dishka once in app startup/factory (`setup_dishka(container, app)`), not per-route.
+- **Plugin Integration:** Use `DomainPlugin(..., use_dishka_router=True)` so discovered controllers are Dishka-aware.
+- **Route Signatures:** Prefer `Inject[T]` parameters in handlers. Do not use route-level `@inject` decorators when DishkaRouter is configured.
+- **Provider Scopes:** Use `AppScope` for long-lived singletons (settings, shared clients) and `RequestScope` for request/session-scoped dependencies.
+- **Domain Providers:** Each domain should expose explicit providers for its services and adapters, with clear dependency boundaries.
+- **Tool/Job Context:** For background jobs and ADK tools, use `worker_scope`, `job_inject`, and `request_container_var` context patterns from `app/lib/di.py`.
 
 ## UI/UX Standards
 - **Clean Aesthetics:** Use Tailwind CSS for a modern, clean, and polished aesthetic.
-- **Real-time Feedback:** Use HTMX for interactive elements like chat and search.
 - **Performance:** Aim for low latency; use Oracle-backed caching for embeddings and responses.
-- **Asset Pipeline:** Utilize **Litestar-Vite** for modern frontend bundling and HMR.
+- **Asset Pipeline:** Utilize Litestar-Vite for frontend bundling, type generation, and HMR.
+
+## Quality Gates
+- **Pre-merge Verification:** `uv run manage.py doctor` and `make test` must pass before closing implementation tasks.
+- **Fail-Fast Tests:** Test commands must fail on pytest errors (no false-green targets).
 
 ## Agent System Standards
 - **Cleanup Mandatory:** The Review Phase/Docs & Vision Agent MUST clean all `tmp/` directories and archive completed requirements to `.agent/archive/` (previously `specs/archive/`).
