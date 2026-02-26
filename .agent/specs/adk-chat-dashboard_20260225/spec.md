@@ -39,4 +39,4 @@ Port the modern frontend architecture from the `accelerator` project into `oracl
 
 ### Phase 6: Testing & Quality Gate
 - [x] Task bd-2t6.14: Write Pytest unit/integration tests for the backend.
-- [ ] Task bd-2t6.15: Write Vitest tests for frontend components.
+- [x] Task bd-2t6.15: Write Vitest tests for frontend components.
