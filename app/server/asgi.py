@@ -31,12 +31,9 @@ def create_app() -> Litestar:
 
     from contextlib import asynccontextmanager
 
-    from dishka import make_async_container
     from litestar import Litestar
 
-    from app.domain.chat.services import ChatServiceProvider
-    from app.domain.products.services import ProductsServiceProvider
-    from app.domain.system.services import SystemServiceProvider
+    from app.ioc import make_litestar_container
     from app.lib.di import setup_dishka
     from app.lib.settings import get_settings
     from app.server.core import ApplicationCore
@@ -44,11 +41,7 @@ def create_app() -> Litestar:
     settings = get_settings()
 
     # Create Dishka container with all providers
-    container = make_async_container(
-        SystemServiceProvider(),
-        ProductsServiceProvider(),
-        ChatServiceProvider(),
-    )
+    container = make_litestar_container()
 
     # Make container available to ADK tools
     from app.domain.chat.services._adk.tools import set_app_container

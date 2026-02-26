@@ -1,9 +1,6 @@
-from collections.abc import AsyncIterable
-
 from dishka import Provider, Scope, provide
 from sqlspec.adapters.oracledb import OracleAsyncConfig
 from sqlspec.base import SQLSpec
-from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.config import db, db_manager
 
@@ -23,15 +20,6 @@ class SystemServiceProvider(Provider):
     @provide(scope=Scope.APP)
     def get_database_config(self) -> OracleAsyncConfig:
         return db
-
-    @provide(scope=Scope.REQUEST)
-    async def get_db_session(
-        self,
-        manager: SQLSpec,
-        config: OracleAsyncConfig,
-    ) -> AsyncIterable[AsyncDriverAdapterBase]:
-        async with manager.provide_session(config) as session:
-            yield session
 
     cache_service = provide(CacheService)
     exemplar_service = provide(ExemplarService)

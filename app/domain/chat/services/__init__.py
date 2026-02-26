@@ -1,4 +1,7 @@
 from dishka import Provider, Scope, provide
+from sqlspec.adapters.oracledb import OracleAsyncConfig
+from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
+from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.lib.di import QueryContext, query_id_var
 
@@ -11,8 +14,16 @@ class ChatServiceProvider(Provider):
     scope = Scope.REQUEST
 
     @provide(scope=Scope.APP)
-    def get_adk_runner(self) -> ADKRunner:
-        return ADKRunner()
+    def get_adk_store(self, config: OracleAsyncConfig) -> OracleAsyncADKStore:
+        return OracleAsyncADKStore(config=config)
+
+    @provide(scope=Scope.APP)
+    def get_session_service(self, store: OracleAsyncADKStore) -> SQLSpecSessionService:
+        return SQLSpecSessionService(store)
+
+    @provide(scope=Scope.APP)
+    def get_adk_runner(self, session_service: SQLSpecSessionService) -> ADKRunner:
+        return ADKRunner(session_service=session_service)
 
     @provide
     def get_query_context(self) -> QueryContext | None:
@@ -29,4 +40,6 @@ __all__ = (
     "AgentToolsService",
     "ChatServiceProvider",
     "IntentService",
+    "OracleAsyncADKStore",
+    "SQLSpecSessionService",
 )

@@ -13,13 +13,10 @@ import structlog
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.genai import types
-from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
-from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db, settings
+from app.config import settings
 from app.domain.chat.services._adk.monkey_patches import apply_genai_client_patch
 from app.domain.chat.services._adk.tools import ALL_TOOLS
-from app.domain.system.services import CacheService
 from app.domain.system.services._persona_manager import BASE_SYSTEM_INSTRUCTION, PersonaManager
 
 # Apply monkey patches for ADK library issues
@@ -29,6 +26,9 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from google.adk.sessions import Session
+    from sqlspec.extensions.adk import SQLSpecSessionService
+
+    from app.domain.system.services import CacheService
 
 
 logger = structlog.get_logger()
@@ -54,10 +54,9 @@ class ADKRunner:
     following ADK best practices for agent reuse and memory efficiency.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, session_service: SQLSpecSessionService) -> None:
         """Initialize the ADK runner with SQLSpec session service and single Runner instance."""
-        store = OracleAsyncADKStore(config=db)
-        self.session_service = SQLSpecSessionService(store)
+        self.session_service = session_service
         # Single runner for all personas (ADK best practice)
         self._runner = Runner(
             agent=_coffee_agent,
