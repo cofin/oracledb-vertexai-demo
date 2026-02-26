@@ -18,11 +18,35 @@ export type ChartDataResponse = {
 };
 
 /**
+ * ChatMessage
+ */
+export type ChatMessage = {
+    message: string;
+    source: string;
+};
+
+/**
  * CoffeeChatMessage
  */
 export type CoffeeChatMessage = {
     message: string;
     persona?: string;
+};
+
+/**
+ * CoffeeChatReply
+ */
+export type CoffeeChatReply = {
+    answer: string;
+    embedding_cache_hit?: boolean;
+    from_cache?: boolean;
+    intent_detected?: string;
+    message: string;
+    messages: Array<ChatMessage>;
+    query_id: string;
+    search_metrics?: {
+        [key: string]: unknown;
+    };
 };
 
 /**
@@ -41,6 +65,37 @@ export type TimeSeriesData = {
 export type VectorDemoRequest = {
     query: string;
 };
+
+export type ApiChatSendChatMessageData = {
+    body: CoffeeChatMessage;
+    path?: never;
+    query?: never;
+    url: '/api/chat';
+};
+
+export type ApiChatSendChatMessageErrors = {
+    /**
+     * Validation Exception
+     */
+    400: {
+        detail: string;
+        extra?: null | {
+            [key: string]: unknown;
+        } | Array<unknown>;
+        status_code: number;
+    };
+};
+
+export type ApiChatSendChatMessageError = ApiChatSendChatMessageErrors[keyof ApiChatSendChatMessageErrors];
+
+export type ApiChatSendChatMessageResponses = {
+    /**
+     * Document created, URL follows
+     */
+    201: CoffeeChatReply;
+};
+
+export type ApiChatSendChatMessageResponse = ApiChatSendChatMessageResponses[keyof ApiChatSendChatMessageResponses];
 
 export type ApiHelpQueryLogMessageIdGetQueryLogData = {
     body?: never;

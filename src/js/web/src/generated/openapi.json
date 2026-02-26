@@ -28,6 +28,22 @@
         "title": "ChartDataResponse",
         "type": "object"
       },
+      "ChatMessage": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "source"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
       "CoffeeChatMessage": {
         "properties": {
           "message": {
@@ -42,6 +58,48 @@
           "message"
         ],
         "title": "CoffeeChatMessage",
+        "type": "object"
+      },
+      "CoffeeChatReply": {
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "embedding_cache_hit": {
+            "default": false,
+            "type": "boolean"
+          },
+          "from_cache": {
+            "default": false,
+            "type": "boolean"
+          },
+          "intent_detected": {
+            "default": "GENERAL_CONVERSATION",
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "type": "array"
+          },
+          "query_id": {
+            "type": "string"
+          },
+          "search_metrics": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "answer",
+          "message",
+          "messages",
+          "query_id"
+        ],
+        "title": "CoffeeChatReply",
         "type": "object"
       },
       "TimeSeriesData": {
@@ -100,6 +158,75 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/chat": {
+      "post": {
+        "deprecated": false,
+        "description": "Handle chat submission for SPA clients.",
+        "operationId": "ApiChatSendChatMessage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoffeeChatMessage"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoffeeChatReply"
+                }
+              }
+            },
+            "description": "Document created, URL follows",
+            "headers": {}
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Validation Exception",
+                  "examples": [
+                    {
+                      "detail": "Bad Request",
+                      "extra": {},
+                      "status_code": 400
+                    }
+                  ],
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    },
+                    "extra": {
+                      "additionalProperties": {},
+                      "type": [
+                        "null",
+                        "object",
+                        "array"
+                      ]
+                    },
+                    "status_code": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "detail",
+                    "status_code"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad request syntax or unsupported method"
+          }
+        },
+        "summary": "SendChatMessage"
+      }
+    },
     "/api/help/query-log/{message_id}": {
       "get": {
         "deprecated": false,

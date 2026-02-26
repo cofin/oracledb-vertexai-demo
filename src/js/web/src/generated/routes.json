@@ -1,6 +1,13 @@
 {
   "litestar_version": "Version(major=2, minor=21, patch=0, release_level='final', serial=0)",
   "routes": {
+    "chat.api.send": {
+      "method": "post",
+      "methods": [
+        "POST"
+      ],
+      "uri": "/api/chat"
+    },
     "chat.stream": {
       "method": "get",
       "methods": [

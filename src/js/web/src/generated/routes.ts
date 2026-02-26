@@ -12,6 +12,7 @@ export type URI = string;
 
 /** All available route names */
 export type RouteName =
+  | 'chat.api.send'
   | 'chat.stream'
   | 'coffee_chat.get'
   | 'coffee_chat.show'
@@ -29,6 +30,7 @@ export type RouteName =
 
 /** Path parameter definitions per route */
 export interface RoutePathParams {
+  'chat.api.send': Record<string, never>;
   'chat.stream': {
     query_id: string;
   };
@@ -55,6 +57,7 @@ export interface RoutePathParams {
 
 /** Query parameter definitions per route */
 export interface RouteQueryParams {
+  'chat.api.send': Record<string, never>;
   'chat.stream': Record<string, never>;
   'coffee_chat.get': Record<string, never>;
   'coffee_chat.show': Record<string, never>;
@@ -80,6 +83,13 @@ export type RouteParams<T extends RouteName> = MergeParams<RoutePathParams[T], R
 
 /** Route metadata */
 export const routeDefinitions = {
+  'chat.api.send': {
+    path: '/api/chat',
+    methods: ['POST'] as const,
+    method: 'post',
+    pathParams: [] as const,
+    queryParams: [] as const,
+  },
   'chat.stream': {
     path: '/chat/stream/{query_id}',
     methods: ['GET'] as const,

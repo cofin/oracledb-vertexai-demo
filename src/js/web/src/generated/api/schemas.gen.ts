@@ -28,6 +28,23 @@ export const ChartDataResponseSchema = {
     type: 'object'
 } as const;
 
+export const ChatMessageSchema = {
+    properties: {
+        message: {
+            type: 'string'
+        },
+        source: {
+            type: 'string'
+        }
+    },
+    required: [
+        'message',
+        'source'
+    ],
+    title: 'ChatMessage',
+    type: 'object'
+} as const;
+
 export const CoffeeChatMessageSchema = {
     properties: {
         message: {
@@ -42,6 +59,49 @@ export const CoffeeChatMessageSchema = {
         'message'
     ],
     title: 'CoffeeChatMessage',
+    type: 'object'
+} as const;
+
+export const CoffeeChatReplySchema = {
+    properties: {
+        answer: {
+            type: 'string'
+        },
+        embedding_cache_hit: {
+            default: false,
+            type: 'boolean'
+        },
+        from_cache: {
+            default: false,
+            type: 'boolean'
+        },
+        intent_detected: {
+            default: 'GENERAL_CONVERSATION',
+            type: 'string'
+        },
+        message: {
+            type: 'string'
+        },
+        messages: {
+            items: {
+                $ref: '#/components/schemas/ChatMessage'
+            },
+            type: 'array'
+        },
+        query_id: {
+            type: 'string'
+        },
+        search_metrics: {
+            type: 'object'
+        }
+    },
+    required: [
+        'answer',
+        'message',
+        'messages',
+        'query_id'
+    ],
+    title: 'CoffeeChatReply',
     type: 'object'
 } as const;
 

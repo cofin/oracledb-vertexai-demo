@@ -21,6 +21,7 @@ from typing import Annotated, Any
 
 import structlog
 from litestar import Controller, get, post
+from litestar.connection import Request
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import ValidationException
 from litestar.params import Body
@@ -124,6 +125,45 @@ class CoffeeChatController(Controller):
             trigger_event="chat:user-message-added",
             params={"query_id": query_id},
             after="settle",
+        )
+
+    @post(path="/api/chat", name="chat.api.send")
+    async def send_chat_message(
+        self,
+        data: schemas.CoffeeChatMessage,
+        adk_runner: Inject[ADKRunner],
+        cache_service: Inject[CacheService],
+        request: Request,
+    ) -> schemas.CoffeeChatReply:
+        """Handle chat submission for SPA clients."""
+        clean_message = self.validate_message(data.message)
+        validated_persona = self.validate_persona(data.persona)
+        session_id = request.headers.get("x-session-id", str(uuid.uuid4()))
+
+        result = await adk_runner.process_request(
+            query=clean_message,
+            user_id="web_user",
+            session_id=session_id,
+            persona=validated_persona,
+            cache_service=cache_service,
+        )
+
+        return schemas.CoffeeChatReply(
+            message=clean_message,
+            messages=[
+                schemas.ChatMessage(message=clean_message, source="human"),
+                schemas.ChatMessage(message=result.get("answer", ""), source="ai"),
+            ],
+            answer=result.get("answer", ""),
+            query_id=str(uuid.uuid4()),
+            search_metrics={
+                "response_time_ms": result.get("response_time_ms", 0),
+                "agent_processing_ms": result.get("agent_processing_ms", 0),
+                "session_id": result.get("session_id", session_id),
+            },
+            from_cache=bool(result.get("from_cache", False)),
+            embedding_cache_hit=bool(result.get("embedding_cache_hit", False)),
+            intent_detected=result.get("intent_detected", "GENERAL_CONVERSATION"),
         )
 
     async def _stream_cached_response(
@@ -334,4 +374,3 @@ class CoffeeChatController(Controller):
                 "X-Content-Type-Options": "nosniff",
             },
         )
-

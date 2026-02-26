@@ -2,7 +2,7 @@
 
 import { type Client, type Options as Options2, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { ApiHelpQueryLogMessageIdGetQueryLogData, ApiHelpQueryLogMessageIdGetQueryLogErrors, ApiHelpQueryLogMessageIdGetQueryLogResponses, ApiMetricsChartsGetChartDataData, ApiMetricsChartsGetChartDataResponses, ApiMetricsSummaryGetMetricsSummaryData, ApiMetricsSummaryGetMetricsSummaryResponses, ApiVectorDemoVectorSearchDemoData, ApiVectorDemoVectorSearchDemoErrors, ApiVectorDemoVectorSearchDemoResponses, ChatHandleCoffeeChatData, ChatHandleCoffeeChatErrors, ChatHandleCoffeeChatResponses, ChatShowCoffeeChatData, ChatShowCoffeeChatResponses, ChatStreamQueryIdStreamResponseData, ChatStreamQueryIdStreamResponseErrors, ChatStreamQueryIdStreamResponseResponses, DashboardPerformanceDashboardData, DashboardPerformanceDashboardResponses, MetricsGetMetricsData, MetricsGetMetricsResponses } from './types.gen';
+import type { ApiChatSendChatMessageData, ApiChatSendChatMessageErrors, ApiChatSendChatMessageResponses, ApiHelpQueryLogMessageIdGetQueryLogData, ApiHelpQueryLogMessageIdGetQueryLogErrors, ApiHelpQueryLogMessageIdGetQueryLogResponses, ApiMetricsChartsGetChartDataData, ApiMetricsChartsGetChartDataResponses, ApiMetricsSummaryGetMetricsSummaryData, ApiMetricsSummaryGetMetricsSummaryResponses, ApiVectorDemoVectorSearchDemoData, ApiVectorDemoVectorSearchDemoErrors, ApiVectorDemoVectorSearchDemoResponses, ChatHandleCoffeeChatData, ChatHandleCoffeeChatErrors, ChatHandleCoffeeChatResponses, ChatShowCoffeeChatData, ChatShowCoffeeChatResponses, ChatStreamQueryIdStreamResponseData, ChatStreamQueryIdStreamResponseErrors, ChatStreamQueryIdStreamResponseResponses, DashboardPerformanceDashboardData, DashboardPerformanceDashboardResponses, MetricsGetMetricsData, MetricsGetMetricsResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -17,6 +17,21 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+/**
+ * SendChatMessage
+ *
+ * Handle chat submission for SPA clients.
+ */
+export const apiChatSendChatMessage = <ThrowOnError extends boolean = false>(options: Options<ApiChatSendChatMessageData, ThrowOnError>) => (options.client ?? client).post<ApiChatSendChatMessageResponses, ApiChatSendChatMessageErrors, ThrowOnError>({
+    responseType: 'json',
+    url: '/api/chat',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * GetQueryLog

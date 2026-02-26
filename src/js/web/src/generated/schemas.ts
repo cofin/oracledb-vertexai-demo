@@ -6,6 +6,9 @@ export * from "./api/types.gen"
 
 // Import specific operation types for mapping
 import type {
+  ApiChatSendChatMessageData,
+  ApiChatSendChatMessageErrors,
+  ApiChatSendChatMessageResponses,
   ApiMetricsChartsGetChartDataData,
   ApiMetricsChartsGetChartDataResponses,
   ApiMetricsSummaryGetMetricsSummaryData,
@@ -35,6 +38,7 @@ import type {
  * const op: OperationName = 'api:login'
  */
 export type OperationName =
+  | 'chat.api.send'
   | 'coffee_chat.get'
   | 'coffee_chat.show'
   | 'metrics'
@@ -48,6 +52,7 @@ export type OperationName =
  * Data types contain body, path, query, and url properties.
  */
 export interface OperationDataTypes {
+  'chat.api.send': ApiChatSendChatMessageData
   'coffee_chat.get': ChatHandleCoffeeChatData
   'coffee_chat.show': ChatHandleCoffeeChatData
   'metrics': MetricsGetMetricsData
@@ -62,6 +67,7 @@ export interface OperationDataTypes {
  * Responses types map status codes to response shapes.
  */
 export interface OperationResponseTypes {
+  'chat.api.send': ApiChatSendChatMessageResponses
   'coffee_chat.get': ChatHandleCoffeeChatResponses
   'coffee_chat.show': ChatHandleCoffeeChatResponses
   'metrics': MetricsGetMetricsResponses
@@ -76,6 +82,7 @@ export interface OperationResponseTypes {
  * Error types represent non-2xx responses.
  */
 export interface OperationErrorTypes {
+  'chat.api.send': ApiChatSendChatMessageErrors
   'coffee_chat.get': ChatHandleCoffeeChatErrors
   'coffee_chat.show': ChatHandleCoffeeChatErrors
   'metrics': never
