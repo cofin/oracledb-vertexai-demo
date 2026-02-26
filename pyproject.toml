@@ -49,9 +49,9 @@ requires = ["hatchling", "nodeenv"]
 allow-direct-references = true
 
 [tool.hatch.build]
-dev-mode-dirs = ["./"]
-include = ["CHANGELOG.md", "/public/**/*", "/app/**/*.sql", "/app/db/**/*.ini", "manage.py", "tools/"]
-packages = ["app"]
+dev-mode-dirs = ["./src/py", "./"]
+include = ["CHANGELOG.md", "/public/**/*", "/src/py/app/**/*.sql", "/src/py/app/db/**/*.ini", "manage.py", "tools/"]
+packages = ["src/py/app"]
 
 [dependency-groups]
 build = ["bump-my-version"]
@@ -114,7 +114,7 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
-    "app/db/migrations/versions/*.py",
+    "src/py/app/db/migrations/versions/*.py",
 ]
 fix = true
 line-length = 120
@@ -187,7 +187,7 @@ known-first-party = ["tests", "app", "config"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
-"app/db/migrations/versions/*.py" = ["ANN201", "INP001"]
+"src/py/app/db/migrations/versions/*.py" = ["ANN201", "INP001"]
 "docs/**/*.*" = ["S", "B", "DTZ", "A", "ERA", "D", "RET", "E731", "RUF012", "FA100", "ARG001"]
 "docs/conf.py" = ["FIX002", "ARG001", "INP001"]
 "tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
@@ -255,7 +255,8 @@ ignore_errors = true
 module = ["app.db.migrations.*"]
 
 [tool.pytest.ini_options]
-addopts = ["-ra", "--ignore", "app/db/migrations"]
+addopts = ["-ra", "--ignore", "src/py/app/db/migrations"]
+pythonpath = ["src/py"]
 markers = [
     "slow: marks tests as slow (integration/runtime checks)",
 ]
@@ -269,5 +270,6 @@ testpaths = ["tests"]
 
 [tool.pyright]
 exclude = ["scripts", "docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
-include = ["app", "tests"]
+include = ["src/py/app", "tests"]
+extraPaths = ["src/py"]
 reportMissingImports = "information"
