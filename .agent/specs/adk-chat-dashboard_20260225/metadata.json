@@ -1,8 +1,0 @@
-{
-  "flow_id": "adk-chat-dashboard_20260225",
-  "title": "ADK Chat & Dashboard",
-  "description": "Implement a simple chat interface and a complex dashboard using Google ADK, Litestar, SQLSpec, and React 19.",
-  "status": "planned",
-  "created_at": "2026-02-25T00:00:00Z",
-  "tags": ["adk", "litestar", "react", "tanstack", "sqlspec", "shadcn"]
-}

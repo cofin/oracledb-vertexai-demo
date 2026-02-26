@@ -10,6 +10,7 @@
 |---------|-----------|--------|---------|
 | `migrate-to-dishka-di_20251020` | 2026-02-26 | dishka, ddd, litestar, testing, oracle | Completed DI + DDD migration and stabilized Oracle integration verification under parallel tests. |
 | `fix-tests-and-runner_20260226` | 2026-02-26 | adk, runner, chat, testing | Restored runner context propagation and verified backend/frontend chat behavior with enriched context assertions. |
+| `adk-chat-dashboard_20260225` | 2026-02-26 | adk, dishka, litestar, react, tanstack, testing | Delivered ADK chat + dashboard on Litestar-Vite stack with Dishka-aligned routing and tests. |
 
 ## Topic Index
 
@@ -17,25 +18,35 @@
 
 ### dishka
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
 
 ### ddd
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
 
 ### litestar
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
 
 ### testing
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
 
 ### oracle
 - [migrate-to-dishka-di_20251020](./migrate-to-dishka-di_20251020.md)
 
 ### adk
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
 
 ### runner
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
 
 ### chat
 - [fix-tests-and-runner_20260226](./fix-tests-and-runner_20260226.md)
+
+### react
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
+
+### tanstack
+- [adk-chat-dashboard_20260225](./adk-chat-dashboard_20260225.md)
