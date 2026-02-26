@@ -10,9 +10,6 @@ This file tracks all flows for the project.
 ## [ ] Flow: Idempotent Install Commands
 *Link: [./specs/idempotent-install-commands_20251010/](./specs/idempotent-install-commands_20251010/)*
 
-## [ ] Flow: Migrate to ADK Runner
-*Link: [./specs/migrate-to-adk-runner_20251010/](./specs/migrate-to-adk-runner_20251010/)*
-
 ## [ ] Flow: Modernize Oracle Schema
 *Link: [./specs/modernize-oracle-schema_20251017/](./specs/modernize-oracle-schema_20251017/)*
 
@@ -34,3 +31,6 @@ This file tracks all flows for the project.
 
 ### [x] Flow: Initial Setup and Legacy Guide Synthesis (archived 2026-02-26)
 *Link: [./archive/initial-setup-synthesis_20260225/](./archive/initial-setup-synthesis_20260225/)*
+
+### [x] Flow: Migrate to ADK Runner (archived 2026-02-26)
+*Link: [./archive/migrate-to-adk-runner_20251010/](./archive/migrate-to-adk-runner_20251010/)*
