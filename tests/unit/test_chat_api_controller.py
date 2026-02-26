@@ -37,6 +37,11 @@ class FakeRunner:
             "response_time_ms": 42.0,
             "agent_processing_ms": 12.0,
             "session_id": session_id,
+            "intent_details": {"intent": "PRODUCT_SEARCH", "confidence": 0.93},
+            "search_details": {"results_count": 2, "embedding_ms": 7.0, "search_ms": 9.0},
+            "store_details": {"count": 1, "function": "get_store_locations"},
+            "products_found": [{"name": "Guatemala Huehuetenango", "price": 16.5}],
+            "stores_found": [{"name": "Cymbal Downtown", "city": "Austin"}],
         }
 
 
@@ -62,6 +67,11 @@ async def test_send_chat_message_uses_header_session_id_and_returns_reply() -> N
     assert reply.intent_detected == "PRODUCT_SEARCH"
     assert reply.messages[0].source == "human"
     assert reply.messages[1].source == "ai"
+    assert reply.search_metrics["intent_details"]["intent"] == "PRODUCT_SEARCH"
+    assert reply.search_metrics["search_details"]["results_count"] == 2
+    assert reply.search_metrics["store_details"]["count"] == 1
+    assert reply.search_metrics["products_found"][0]["name"] == "Guatemala Huehuetenango"
+    assert reply.search_metrics["stores_found"][0]["name"] == "Cymbal Downtown"
 
 
 @pytest.mark.anyio

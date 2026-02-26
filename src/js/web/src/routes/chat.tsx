@@ -13,6 +13,13 @@ type ChatReply = {
   answer: string
   from_cache?: boolean
   intent_detected?: string
+  search_metrics?: {
+    response_time_ms?: number
+    agent_processing_ms?: number
+    search_details?: { results_count?: number }
+    products_found?: Array<{ name?: string }>
+    stores_found?: Array<{ name?: string }>
+  }
 }
 
 const PERSONAS = ['novice', 'enthusiast', 'expert', 'barista'] as const
@@ -88,13 +95,48 @@ export function ChatPage() {
 
       const payload = (await response.json()) as ChatReply
       const suffix = payload.from_cache ? ' (cached)' : ''
-      const intent = payload.intent_detected ? `\n\nIntent: ${payload.intent_detected}` : ''
+      const details: string[] = []
+
+      if (payload.intent_detected) {
+        details.push(`Intent: ${payload.intent_detected}`)
+      }
+
+      const metrics = payload.search_metrics
+      if (metrics) {
+        if (typeof metrics.response_time_ms === 'number') {
+          details.push(`Response: ${Math.round(metrics.response_time_ms)}ms`)
+        }
+        if (typeof metrics.agent_processing_ms === 'number') {
+          details.push(`Agent: ${Math.round(metrics.agent_processing_ms)}ms`)
+        }
+        if (typeof metrics.search_details?.results_count === 'number') {
+          details.push(`Results: ${metrics.search_details.results_count}`)
+        }
+        if (metrics.products_found?.length) {
+          const names = metrics.products_found
+            .map((product) => product.name)
+            .filter((name): name is string => Boolean(name))
+          if (names.length > 0) {
+            details.push(`Products: ${names.join(', ')}`)
+          }
+        }
+        if (metrics.stores_found?.length) {
+          const names = metrics.stores_found
+            .map((store) => store.name)
+            .filter((name): name is string => Boolean(name))
+          if (names.length > 0) {
+            details.push(`Stores: ${names.join(', ')}`)
+          }
+        }
+      }
+
+      const context = details.length > 0 ? `\n\n${details.join('\n')}` : ''
       setMessages((previous) => [
         ...previous,
         {
           id: crypto.randomUUID(),
           role: 'ai',
-          text: `${payload.answer}${suffix}${intent}`,
+          text: `${payload.answer}${suffix}${context}`,
         },
       ])
     } catch (caughtError) {

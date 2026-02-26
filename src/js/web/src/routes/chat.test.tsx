@@ -16,6 +16,16 @@ describe('ChatPage', () => {
           answer: 'Try our Ethiopia Yirgacheffe.',
           from_cache: false,
           intent_detected: 'PRODUCT_SEARCH',
+          search_metrics: {
+            response_time_ms: 120.5,
+            agent_processing_ms: 88.2,
+            search_details: { results_count: 3 },
+            products_found: [
+              { name: 'Ethiopia Yirgacheffe' },
+              { name: 'Kenya AA' },
+            ],
+            stores_found: [{ name: 'Cymbal Downtown' }],
+          },
         }),
         { status: 201, headers: { 'Content-Type': 'application/json' } },
       ),
@@ -43,5 +53,8 @@ describe('ChatPage', () => {
 
     expect(await screen.findByText(/Try our Ethiopia Yirgacheffe/)).toBeInTheDocument()
     expect(screen.getByText(/Intent: PRODUCT_SEARCH/)).toBeInTheDocument()
+    expect(screen.getByText(/Products: Ethiopia Yirgacheffe, Kenya AA/)).toBeInTheDocument()
+    expect(screen.getByText(/Stores: Cymbal Downtown/)).toBeInTheDocument()
+    expect(screen.getByText(/Results: 3/)).toBeInTheDocument()
   })
 })

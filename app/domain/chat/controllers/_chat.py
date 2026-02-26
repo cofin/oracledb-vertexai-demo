@@ -160,10 +160,16 @@ class CoffeeChatController(Controller):
                 "response_time_ms": result.get("response_time_ms", 0),
                 "agent_processing_ms": result.get("agent_processing_ms", 0),
                 "session_id": result.get("session_id", session_id),
+                "intent_details": result.get("intent_details", {}),
+                "search_details": result.get("search_details", {}),
+                "store_details": result.get("store_details", {}),
+                "products_found": result.get("products_found", []),
+                "stores_found": result.get("stores_found", []),
             },
             from_cache=bool(result.get("from_cache", False)),
             embedding_cache_hit=bool(result.get("embedding_cache_hit", False)),
-            intent_detected=result.get("intent_detected", "GENERAL_CONVERSATION"),
+            intent_detected=result.get("intent_detected")
+            or result.get("intent_details", {}).get("intent", "GENERAL_CONVERSATION"),
         )
 
     async def _stream_cached_response(
