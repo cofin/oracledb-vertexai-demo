@@ -34,8 +34,8 @@ Port the modern frontend architecture from the `accelerator` project into `oracl
 - [x] Task bd-2t6.11: Scaffold TanStack Router file-based route tree.
 
 ### Phase 5: UI Implementation (React & Shadcn)
-- [ ] Task bd-2t6.12: Build the Simple Chat Interface (`/chat`).
-- [ ] Task bd-2t6.13: Build the Complex Dashboard (`/dashboard`).
+- [x] Task bd-2t6.12: Build the Simple Chat Interface (`/chat`).
+- [x] Task bd-2t6.13: Build the Complex Dashboard (`/dashboard`).
 
 ### Phase 6: Testing & Quality Gate
 - [ ] Task bd-2t6.14: Write Pytest unit/integration tests for the backend.
