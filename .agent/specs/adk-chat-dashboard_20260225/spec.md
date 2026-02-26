@@ -21,17 +21,17 @@ Port the modern frontend architecture from the `accelerator` project into `oracl
 - [x] Task bd-2t6.4: Install `google-adk` and `google-genai`.
 
 ### Phase 2: Database & Domain Services (SQLSpec & DDD)
-- [ ] Task bd-2t6.5: Configure Dishka DI providers/scopes for `OracleAsyncADKStore` and chat services, aligned with `accelerator` (`LitestarPersistenceProvider` + domain provider pattern).
-- [ ] Task bd-2t6.6: Implement the Litestar `ChatController` in `app/domain/chat/controllers/_chat.py` using `Inject[T]` parameters and Dishka router integration (no route-level `@inject`).
-- [ ] Task bd-2t6.7: Integrate Google ADK Agent within the domain service.
+- [x] Task bd-2t6.5: Configure Dishka DI providers/scopes for `OracleAsyncADKStore` and chat services, aligned with `accelerator` (`LitestarPersistenceProvider` + domain provider pattern).
+- [x] Task bd-2t6.6: Implement the Litestar `ChatController` in `app/domain/chat/controllers/_chat.py` using `Inject[T]` parameters and Dishka router integration (no route-level `@inject`).
+- [x] Task bd-2t6.7: Integrate Google ADK Agent within the domain service.
 
 ### Phase 3: Frontend Bootstrapping (Litestar-Vite & React)
 - [x] Task bd-2t6.8: Add `litestar-vite` and configure `VitePlugin`.
 - [x] Task bd-2t6.9: Scaffold `src/js/web` directory (React, Bun, TanStack, Shadcn).
 
 ### Phase 4: Frontend Setup & Routing (TanStack)
-- [ ] Task bd-2t6.10: Run `litestar assets generate-types` for TanStack Query hooks.
-- [ ] Task bd-2t6.11: Scaffold TanStack Router file-based route tree.
+- [x] Task bd-2t6.10: Run `litestar assets generate-types` for TanStack Query hooks.
+- [x] Task bd-2t6.11: Scaffold TanStack Router file-based route tree.
 
 ### Phase 5: UI Implementation (React & Shadcn)
 - [ ] Task bd-2t6.12: Build the Simple Chat Interface (`/chat`).
