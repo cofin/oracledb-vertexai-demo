@@ -82,6 +82,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 plugins.granian,
                 plugins.sqlspec,
                 plugins.structlog,
+                plugins.domain,
+                plugins.problem_details,
             ],
         )
         app_config.template_config = config.templates

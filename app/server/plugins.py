@@ -20,6 +20,7 @@ from sqlspec.extensions.litestar import SQLSpecPlugin
 from app import config
 from app.lib.settings import get_settings
 from app.server.core import ApplicationCore
+from app.utils.domains import DomainPlugin, DomainPluginConfig
 
 settings = get_settings()
 app_config = ApplicationCore()
@@ -27,3 +28,13 @@ sqlspec = SQLSpecPlugin(config.db_manager)
 granian = GranianPlugin()
 structlog = StructlogPlugin(config=config.log)
 problem_details = ProblemDetailsPlugin(config=config.problem_details)
+
+domain = DomainPlugin(
+    DomainPluginConfig(
+        domain_packages=["app.domain"],
+        discover_controllers=True,
+        discover_listeners=True,
+        use_dishka_router=True,
+        log_discovered=True,
+    )
+)

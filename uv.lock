@@ -211,7 +211,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dishka", specifier = ">=1.7.2" },
+    { name = "dishka", specifier = ">=1.4.2" },
     { name = "google-adk" },
     { name = "google-cloud-aiplatform" },
     { name = "google-genai" },
