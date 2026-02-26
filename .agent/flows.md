@@ -22,11 +22,15 @@ This file tracks all flows for the project.
 ## [ ] Flow: Migrate to ADK Runner
 *Link: [./specs/migrate-to-adk-runner_20251010/](./specs/migrate-to-adk-runner_20251010/)*
 
-## [ ] Flow: Migrate to Dishka DI
-*Link: [./specs/migrate-to-dishka-di_20251020/](./specs/migrate-to-dishka-di_20251020/)*
-
 ## [ ] Flow: Modernize Oracle Schema
 *Link: [./specs/modernize-oracle-schema_20251017/](./specs/modernize-oracle-schema_20251017/)*
 
 ## [ ] Flow: Oracle 23ai Features
 *Link: [./specs/oracle-23ai-features_20251017/](./specs/oracle-23ai-features_20251017/)*
+
+---
+
+## Archived Flows
+
+### [x] Flow: Migrate to Dishka DI (archived 2026-02-26)
+*Link: [./archive/migrate-to-dishka-di_20251020/](./archive/migrate-to-dishka-di_20251020/)*

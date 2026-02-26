@@ -16,6 +16,7 @@
 - **Service Wrapper Pattern:** Service class wraps the driver (SQLSpec, Vertex AI, ADK).
 - **Layered Flow:** Controllers (Routing) -> Services (Business Logic/Orchestration) -> Repositories (Data Access).
 - **Dependency Injection:** Use Dishka scopes (`AppScope` for singletons, `RequestScope` for per-request contexts like DB transactions).
+- **Dishka Route Pattern:** When `DomainPlugin` uses `use_dishka_router=True` and `setup_dishka(container, app)` is configured centrally, route handlers should use `Inject[T]` parameters without route-level `@inject` decorators.
 
 ## Gotchas & Warnings
 
@@ -29,6 +30,9 @@
 - **Pytest + Asyncio:** Test suites rely on `pytest-asyncio`. Run with `uv run pytest -n 2 --dist=loadgroup`.
 - **Database Fixtures:** Use `pytest-databases` for managing Oracle database lifecycles in tests.
 - **Mocking:** Inject mock Protocol implementations via Dishka rather than using `unittest.mock.patch` where possible.
+- **Fail-Fast Test Targets:** When Makefile uses `.ONESHELL`, enforce `set -e` in test targets so pytest failures do not report false-green.
+- **Oracle Pool Loop Safety:** Under `pytest-anyio` + xdist, reset/close shared Oracle pool state in function-scoped fixtures to avoid cross-event-loop pool reuse errors.
+- **Parallel Test Isolation:** Use unique resource keys in integration tests (for example cache keys) to avoid cross-worker interference.
 
 ## Context for AI Assistants
 
