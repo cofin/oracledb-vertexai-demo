@@ -357,6 +357,19 @@ class CacheSettings:
 
 
 @dataclass
+class ViteSettings:
+    """Vite configuration settings."""
+
+    DEV_MODE: bool = field(default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES)
+    """Enable Vite dev server mode."""
+    USE_SERVER_LIFESPAN: bool = field(default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "True") in TRUE_VALUES)
+    """Use server lifespan to manage Vite process."""
+    PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
+    """Vite dev server port."""
+    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))
+    """Vite dev server host."""
+
+@dataclass
 class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
@@ -365,6 +378,7 @@ class Settings:
     vertex_ai: VertexAISettings = field(default_factory=VertexAISettings)
     agent: AgentSettings = field(default_factory=AgentSettings)
     cache: CacheSettings = field(default_factory=CacheSettings)
+    vite: ViteSettings = field(default_factory=ViteSettings)
 
     @classmethod
     @lru_cache(maxsize=1, typed=True)

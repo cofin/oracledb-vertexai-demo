@@ -15,6 +15,7 @@
 from litestar.plugins.problem_details import ProblemDetailsPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
+from litestar_vite import VitePlugin
 from sqlspec.extensions.litestar import SQLSpecPlugin
 
 from app import config
@@ -28,6 +29,7 @@ sqlspec = SQLSpecPlugin(config.db_manager)
 granian = GranianPlugin()
 structlog = StructlogPlugin(config=config.log)
 problem_details = ProblemDetailsPlugin(config=config.problem_details)
+vite = VitePlugin(config=config.vite)
 
 domain = DomainPlugin(
     DomainPluginConfig(

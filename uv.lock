@@ -150,6 +150,7 @@ dependencies = [
     { name = "litestar", extra = ["cryptography", "jinja", "jwt", "structlog"] },
     { name = "litestar-granian", extra = ["uvloop"] },
     { name = "litestar-mcp" },
+    { name = "litestar-vite" },
     { name = "msgspec" },
     { name = "numpy" },
     { name = "python-dotenv" },
@@ -218,6 +219,7 @@ requires-dist = [
     { name = "litestar", extras = ["jinja", "jwt", "cryptography", "structlog"] },
     { name = "litestar-granian", extras = ["uvloop"] },
     { name = "litestar-mcp" },
+    { name = "litestar-vite", specifier = ">=0.18.2" },
     { name = "msgspec" },
     { name = "numpy", specifier = ">=2.3.3" },
     { name = "python-dotenv" },
@@ -1636,6 +1638,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/48/ff/bd7f0d14766e4dae815b053a502f19017ce47903e20e5b771a504c909788/litestar_mcp-0.2.2.tar.gz", hash = "sha256:4a576b0cbd63877fdf485d643a11fa3008499a5076a1ccab0b57d0686c40d805", size = 282884, upload-time = "2025-09-30T12:11:18.891Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f3/7c/294fb7c2e5c672d19a48b5c2485566402903f6af490baffff35ded611207/litestar_mcp-0.2.2-py3-none-any.whl", hash = "sha256:86f6c904d73e67014f6ced622104c0d0fbe6dd0b8188af0015aaca1b9296f34c", size = 23918, upload-time = "2025-09-30T12:11:17.433Z" },
+]
+
+[[package]]
+name = "litestar-vite"
+version = "0.18.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "litestar" },
+    { name = "typing-extensions" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/41/4d/c28b131afbad33bf6c1cc08693df019e8d90f488e355720327051d53b701/litestar_vite-0.18.2.tar.gz", hash = "sha256:8885d7a4d9fd5aa90347c4aa916993b75c7492aab01719cbe26d1d938f5d32e9", size = 410097, upload-time = "2026-02-23T21:47:20.93Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/e9/0f709a9cebdf386e1d8c2100250a67ee535b91ae40f5b004832d0b3c299f/litestar_vite-0.18.2-py3-none-any.whl", hash = "sha256:51837584ba957cfc9d446a3fc6419cca321e7d10498dbe583c798b142074d792", size = 227649, upload-time = "2026-02-23T21:47:19.196Z" },
 ]
 
 [[package]]
