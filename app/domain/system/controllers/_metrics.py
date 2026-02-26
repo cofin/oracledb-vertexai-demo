@@ -16,7 +16,7 @@ import re
 import secrets
 
 from litestar import Controller, get
-from litestar.plugins.htmx import HTMXRequest, HTMXTemplate, HXStopPolling
+from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app import schemas
 from app.domain.products.services._vertex_ai import VertexAIService
@@ -55,15 +55,10 @@ class MetricsController(Controller):
         )
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: Inject[MetricsService], request: HTMXRequest) -> dict | HXStopPolling:
+    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> dict:
         """Get performance metrics with validation."""
-        if request.headers.get("X-Requested-With") != "XMLHttpRequest" and not request.htmx:
-            return {"error": "Invalid request"}
-
         try:
             metrics = await metrics_service.get_performance_stats(hours=24)
-            if request.htmx and metrics.get("total_searches", 0) == 0:
-                return HXStopPolling()
             return {
                 "total_searches": int(metrics.get("total_searches", 0)),
                 "avg_search_time_ms": float(metrics.get("avg_search_time_ms", 0)),

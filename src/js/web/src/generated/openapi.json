@@ -595,12 +595,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "oneOf": [
-                    {
-                      "type": "object"
-                    },
-                    {}
-                  ]
+                  "type": "object"
                 }
               }
             },

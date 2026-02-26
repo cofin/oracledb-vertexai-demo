@@ -302,7 +302,7 @@ export type MetricsGetMetricsResponses = {
      */
     200: {
         [key: string]: unknown;
-    } | unknown;
+    };
 };
 
 export type MetricsGetMetricsResponse = MetricsGetMetricsResponses[keyof MetricsGetMetricsResponses];
