@@ -128,12 +128,13 @@ This demo combines:
 - **Google Vertex AI** - Embeddings (text-embedding-004) and chat (Gemini 2.5)
 - **SQLSpec** - Type-safe database operations with async connection pooling
 - **Litestar** - High-performance async Python web framework
-- **HTMX** - Real-time UI updates with minimal JavaScript
+- **React + TanStack Router** - Modern SPA UI for chat and dashboard routes
 
 ## 🎯 Key Features
 
 - **AI-Powered Chat** - Personalized coffee recommendations with configurable AI personas
 - **Vector Similarity Search** - Find products by semantic meaning, not just keywords
+- **Store Finder Data Model** - Dedicated `store` table with JSON business hours metadata
 - **Oracle-Based Caching** - Response and embedding cache stored in-database
 - **Performance Metrics** - Live monitoring of vector search timing and cache hit rates
 - **Intent Classification** - Route queries using vector similarity on exemplars

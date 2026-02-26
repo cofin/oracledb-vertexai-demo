@@ -56,3 +56,11 @@ The timestamp is automatically generated in UTC timezone.
 Migrations are applied in chronological order based on their timestamps.
 The database tracks both version and execution order separately to handle
 out-of-order migrations gracefully (e.g., from late-merging branches).
+
+## Current Baseline Schema (0001)
+
+The initial Oracle 23ai schema in this project includes:
+
+- `product` table with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(768, FLOAT32)` embeddings.
+- `store` table for location data with `JSON`-encoded business hours.
+- `response_cache`, `embedding_cache`, `intent_exemplar`, and `search_metric` support tables.
