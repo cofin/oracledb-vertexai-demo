@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoute } from '@tanstack/react-router'
 
 import { Route as RootRoute } from './__root'
@@ -34,6 +34,8 @@ function getSessionId() {
 
 export function ChatPage() {
   const sessionId = useMemo(getSessionId, [])
+  const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
+  const hasMountedRef = useRef(false)
   const [persona, setPersona] = useState<(typeof PERSONAS)[number]>('enthusiast')
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)
@@ -45,6 +47,12 @@ export function ChatPage() {
       text: 'Ask about coffee products, brewing methods, or nearby stores to start.',
     },
   ])
+
+  useEffect(() => {
+    const behavior: ScrollBehavior = hasMountedRef.current ? 'smooth' : 'auto'
+    hasMountedRef.current = true
+    bottomAnchorRef.current?.scrollIntoView({ behavior, block: 'end' })
+  }, [messages])
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -146,6 +154,7 @@ export function ChatPage() {
               {message.text}
             </article>
           ))}
+          <div ref={bottomAnchorRef} />
         </div>
 
         <form className="grid gap-3" onSubmit={sendMessage}>

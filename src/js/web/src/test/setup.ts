@@ -24,3 +24,10 @@ Object.defineProperty(window, 'localStorage', {
   value: new MemoryStorage(),
   configurable: true,
 })
+
+if (!HTMLElement.prototype.scrollIntoView) {
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    value: () => {},
+    configurable: true,
+  })
+}
