@@ -13,9 +13,6 @@ This file tracks all flows for the project.
 ## [x] Flow: Agent UI Update
 *Link: [./specs/agent-ui-update_20251024/](./specs/agent-ui-update_20251024/)*
 
-## [ ] Flow: Fix Tests and Runner
-*Link: [./specs/fix-tests-and-runner_20260226/](./specs/fix-tests-and-runner_20260226/)*
-
 ## [ ] Flow: Idempotent Install Commands
 *Link: [./specs/idempotent-install-commands_20251010/](./specs/idempotent-install-commands_20251010/)*
 
@@ -34,3 +31,6 @@ This file tracks all flows for the project.
 
 ### [x] Flow: Migrate to Dishka DI (archived 2026-02-26)
 *Link: [./archive/migrate-to-dishka-di_20251020/](./archive/migrate-to-dishka-di_20251020/)*
+
+### [x] Flow: Fix Tests and Runner (archived 2026-02-26)
+*Link: [./archive/fix-tests-and-runner_20260226/](./archive/fix-tests-and-runner_20260226/)*

@@ -17,6 +17,7 @@
 - **Layered Flow:** Controllers (Routing) -> Services (Business Logic/Orchestration) -> Repositories (Data Access).
 - **Dependency Injection:** Use Dishka scopes (`AppScope` for singletons, `RequestScope` for per-request contexts like DB transactions).
 - **Dishka Route Pattern:** When `DomainPlugin` uses `use_dishka_router=True` and `setup_dishka(container, app)` is configured centrally, route handlers should use `Inject[T]` parameters without route-level `@inject` decorators.
+- **Runner Context Passthrough:** Preserve ADK runner context (`intent_details`, `search_details`, `store_details`, `products_found`, `stores_found`) through `/api/chat` response payloads so SPA clients can render full context without duplicating orchestration logic.
 
 ## Gotchas & Warnings
 
