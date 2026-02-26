@@ -70,7 +70,7 @@ async def driver() -> AsyncGenerator[Any, None]:
 @pytest.fixture
 async def product_service(driver: Any) -> Any:
     """Provide ProductService for testing."""
-    from app.services import ProductService
+    from app.domain.products.services import ProductService
 
     return ProductService(driver)
 
@@ -78,7 +78,7 @@ async def product_service(driver: Any) -> Any:
 @pytest.fixture
 async def cache_service(driver: Any) -> Any:
     """Provide CacheService for testing."""
-    from app.services import CacheService
+    from app.domain.system.services import CacheService
 
     return CacheService(driver)
 
@@ -88,7 +88,7 @@ async def intent_service(driver: Any) -> Any:
     """Provide IntentService for testing."""
     from unittest.mock import MagicMock
 
-    from app.services import IntentService
+    from app.domain.chat.services import IntentService
 
     # Create mock services
     mock_vertex = MagicMock()

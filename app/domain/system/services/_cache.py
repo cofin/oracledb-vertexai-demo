@@ -5,8 +5,8 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
+from app.lib.service import SQLSpecService
 from app.schemas import EmbeddingCache, ResponseCache
-from app.services.base import SQLSpecService
 
 
 class CacheService(SQLSpecService):

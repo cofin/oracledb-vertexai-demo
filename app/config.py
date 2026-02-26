@@ -34,7 +34,6 @@ from litestar.plugins.problem_details import ProblemDetailsConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.stores.registry import StoreRegistry
 from litestar.template import TemplateConfig
-from litestar_vite import ViteConfig
 from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 
@@ -44,14 +43,7 @@ from app.lib.settings import BASE_DIR, get_settings
 _settings = get_settings()
 settings = _settings  # Alias for compatibility
 
-vite = ViteConfig(
-    bundle_dir=BASE_DIR / "server" / "static" / "dist",
-    resource_dir=BASE_DIR / ".." / "src" / "js" / "web",
-    use_server_lifespan=_settings.vite.USE_SERVER_LIFESPAN,
-    dev_mode=_settings.vite.DEV_MODE,
-    port=_settings.vite.PORT,
-    host=_settings.vite.HOST,
-)
+vite = _settings.vite.get_config()
 
 csrf = CSRFConfig(
     secret=_settings.app.SECRET_KEY,

@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 import structlog
 
 from app import config
-from app.services import INTENT_EXEMPLARS, ExemplarService, ProductService, VertexAIService
+from app.domain.chat.services._intent import INTENT_EXEMPLARS
+from app.domain.products.services import ProductService, VertexAIService
+from app.domain.system.services import ExemplarService
 
 if TYPE_CHECKING:
     from litestar import Litestar

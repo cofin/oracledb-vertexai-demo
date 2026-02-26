@@ -3,7 +3,7 @@
 
 import pytest
 
-from app.services._cache import CacheService
+from app.domain.system.services import CacheService
 
 pytestmark = pytest.mark.anyio
 

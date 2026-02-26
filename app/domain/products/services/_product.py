@@ -2,8 +2,8 @@
 
 from typing import Any
 
+from app.lib.service import SQLSpecService
 from app.schemas import Product
-from app.services.base import SQLSpecService
 
 
 class ProductService(SQLSpecService):

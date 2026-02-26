@@ -103,8 +103,8 @@ def bulk_embed(batch_size: int, force: bool) -> None:
 
     async def _bulk_embed_products() -> None:
         from app.config import db, db_manager
-        from app.services import ProductService, VertexAIService
-        from app.services._cache import CacheService
+        from app.domain.products.services import ProductService, VertexAIService
+        from app.domain.system.services import CacheService
 
         # Use SQLSpec session directly
         async with db_manager.provide_session(db) as session:
@@ -203,7 +203,7 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
     async def _clear_cache() -> None:
         """Clear cache tables."""
         from app.config import db, db_manager
-        from app.services._cache import CacheService
+        from app.domain.system.services import CacheService
 
         async with db_manager.provide_session(db) as session:
             cache_service = CacheService(session)
@@ -222,8 +222,8 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
 @coffee_demo_group.command(name="model-info", help="Show information about currently configured AI models.")
 def model_info() -> None:
     """Show information about currently configured AI models."""
+    from app.domain.products.services import VertexAIService
     from app.lib.settings import get_settings
-    from app.services import VertexAIService
 
     console = get_console()
     console.rule("[bold blue]AI Model Configuration", style="blue", align="left")

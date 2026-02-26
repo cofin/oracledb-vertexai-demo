@@ -49,21 +49,14 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from sqlspec import AsyncDriverAdapterBase
         from sqlspec.adapters.oracledb import OracleAsyncDriver
 
-        from app import config, schemas, services
+        from app import config, schemas
         from app.lib import log
         from app.lib.settings import BASE_DIR, get_settings
         from app.server import plugins, startup
-        from app.server.controllers import CoffeeChatController
         from app.server.exception_handlers import exception_handlers
-        from app.services import (
-            CacheService,
-            ExemplarService,
-            MetricsService,
-            OracleVectorSearchService,
-            ProductService,
-            VertexAIService,
-        )
-        from app.services._adk.runner import ADKRunner
+        from app.domain.system.services import CacheService, ExemplarService, MetricsService
+        from app.domain.products.services import OracleVectorSearchService, ProductService, VertexAIService
+        from app.domain.chat.services import ADKRunner
 
         settings = get_settings()
         # logging
@@ -84,6 +77,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 plugins.structlog,
                 plugins.domain,
                 plugins.problem_details,
+                plugins.vite,
             ],
         )
         app_config.template_config = config.templates
@@ -97,14 +91,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         # routes
         app_config.route_handlers.extend(
             [
-                CoffeeChatController,
-                create_static_files_router(
-                    path="/static",
-                    directories=[str(BASE_DIR / "server" / "static")],
-                    name="static",
-                    html_mode=False,
-                    send_as_attachment=False,
-                ),
             ],
         )
         # startup hooks
@@ -123,7 +109,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 "WebSocket": WebSocket,
                 "AsyncGenerator": AsyncGenerator,
                 "schemas": schemas,
-                "services": services,
                 "ProductService": ProductService,
                 "CacheService": CacheService,
                 "MetricsService": MetricsService,

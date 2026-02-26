@@ -366,8 +366,34 @@ class ViteSettings:
     """Use server lifespan to manage Vite process."""
     PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
     """Vite dev server port."""
-    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))
+    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
     """Vite dev server host."""
+    BUNDLE_DIR: Path = field(default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "server" / "static" / "dist"))))
+    """Vite bundle directory."""
+    ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL", "/static/dist/"))
+    """Vite asset URL."""
+
+    @property
+    def set_static_files(self) -> bool:
+        """Whether to serve static files locally."""
+        return self.ASSET_URL.startswith("/")
+
+    def get_config(self) -> "ViteConfig":
+        """Create Vite configuration for Litestar.
+
+        Returns:
+            ViteConfig instance for Vite frontend integration.
+        """
+        from litestar_vite import PathConfig, RuntimeConfig, ViteConfig
+
+        return ViteConfig(
+            mode="spa",
+            dev_mode=self.DEV_MODE,
+            paths=PathConfig(
+                root=BASE_DIR.parent / "src" / "js" / "web", bundle_dir=self.BUNDLE_DIR, asset_url=self.ASSET_URL
+            ),
+            runtime=RuntimeConfig(executor="bun", host=self.HOST, port=self.PORT),
+        )
 
 @dataclass
 class Settings:

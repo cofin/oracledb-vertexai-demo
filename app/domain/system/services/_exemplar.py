@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING, cast
 import numpy as np
 import structlog
 
-from app.services.base import SQLSpecService
+from sqlspec import AsyncDriverAdapterBase
+
+from app.lib.service import SQLSpecService
+from app.domain.products.services._vertex_ai import VertexAIService
 
 if TYPE_CHECKING:
-    from sqlspec import AsyncDriverAdapterBase
-
-    from app.services._vertex_ai import VertexAIService
+    pass
 
 logger = structlog.get_logger()
 

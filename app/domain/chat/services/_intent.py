@@ -6,14 +6,15 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from sqlspec import AsyncDriverAdapterBase
+
+from app.lib.service import SQLSpecService
 from app.schemas import IntentResult, SimilarIntent
-from app.services.base import SQLSpecService
+from app.domain.products.services._vertex_ai import VertexAIService
+from app.domain.system.services import ExemplarService
 
 if TYPE_CHECKING:
-    from sqlspec import AsyncDriverAdapterBase
-
-    from app.services._exemplar import ExemplarService
-    from app.services._vertex_ai import VertexAIService
+    pass
 
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": [

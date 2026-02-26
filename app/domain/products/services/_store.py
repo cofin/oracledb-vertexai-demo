@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from app.lib.service import SQLSpecService
 from app.schemas import Store
-from app.services.base import SQLSpecService
 
 
 class StoreService(SQLSpecService):

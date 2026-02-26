@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.services._adk.monkey_patches import apply_genai_client_patch
+from app.domain.chat.services._adk.monkey_patches import apply_genai_client_patch
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -34,22 +34,24 @@ def create_app() -> Litestar:
     from dishka import make_async_container
     from litestar import Litestar
 
+    from app.domain.chat.services import ChatServiceProvider
+    from app.domain.products.services import ProductsServiceProvider
+    from app.domain.system.services import SystemServiceProvider
     from app.lib.di import setup_dishka
     from app.lib.settings import get_settings
     from app.server.core import ApplicationCore
-    from app.server.providers import ADKProvider, CoreServiceProvider, SQLSpecProvider
 
     settings = get_settings()
 
     # Create Dishka container with all providers
     container = make_async_container(
-        SQLSpecProvider(),
-        CoreServiceProvider(),
-        ADKProvider(),
+        SystemServiceProvider(),
+        ProductsServiceProvider(),
+        ChatServiceProvider(),
     )
 
     # Make container available to ADK tools
-    from app.services._adk.tools import set_app_container
+    from app.domain.chat.services._adk.tools import set_app_container
 
     set_app_container(container)
 

@@ -19,11 +19,11 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from app.services.base import SQLSpecService
+from sqlspec import AsyncDriverAdapterBase
+
+from app.lib.service import SQLSpecService
 
 if TYPE_CHECKING:
-    from sqlspec import AsyncDriverAdapterBase
-
     from app.schemas import SearchMetricsCreate
 
 

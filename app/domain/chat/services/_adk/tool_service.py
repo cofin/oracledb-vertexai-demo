@@ -11,15 +11,15 @@ import uuid
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from sqlspec import AsyncDriverAdapterBase
 
-from app.services.base import SQLSpecService
+from app.lib.service import SQLSpecService
+from app.domain.chat.services._intent import IntentService
+from app.domain.products.services import ProductService, StoreService, VertexAIService
+from app.domain.system.services import MetricsService
 
 if TYPE_CHECKING:
-    from app.services._intent import IntentService
-    from app.services._metrics import MetricsService
-    from app.services._product import ProductService
-    from app.services._store import StoreService
-    from app.services._vertex_ai import VertexAIService
+    pass
 
 logger = structlog.get_logger()
 
@@ -29,7 +29,7 @@ class AgentToolsService(SQLSpecService):
 
     def __init__(
         self,
-        driver: Any,
+        driver: AsyncDriverAdapterBase,
         product_service: ProductService,
         metrics_service: MetricsService,
         intent_service: IntentService,

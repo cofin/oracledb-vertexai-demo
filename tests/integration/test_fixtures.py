@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from app.config import db
-from app.services._product import ProductService
+from app.domain.products.services import ProductService
 
 
 @pytest.fixture

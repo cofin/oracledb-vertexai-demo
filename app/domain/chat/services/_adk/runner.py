@@ -17,9 +17,10 @@ from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db, settings
-from app.services._adk.monkey_patches import apply_genai_client_patch
-from app.services._adk.tools import ALL_TOOLS
-from app.services._persona_manager import BASE_SYSTEM_INSTRUCTION, PersonaManager
+from app.domain.chat.services._adk.monkey_patches import apply_genai_client_patch
+from app.domain.chat.services._adk.tools import ALL_TOOLS
+from app.domain.system.services import CacheService
+from app.domain.system.services._persona_manager import BASE_SYSTEM_INSTRUCTION, PersonaManager
 
 # Apply monkey patches for ADK library issues
 apply_genai_client_patch()
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
 
     from google.adk.sessions import Session
 
-    from app.services._cache import CacheService
 
 logger = structlog.get_logger()
 

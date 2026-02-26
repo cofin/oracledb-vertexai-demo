@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING, Any, overload
 import structlog
 from google import genai
 
+from app.domain.system.services import CacheService
+from app.domain.products.services._product import ProductService
 from app.lib.settings import get_settings
-from app.services._cache import CacheService
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -22,7 +23,7 @@ logger = structlog.get_logger()
 class VertexAIService:
     """Vertex AI service for embeddings and chat completions."""
 
-    def __init__(self, cache_service: CacheService | None = None) -> None:
+    def __init__(self, cache_service: CacheService) -> None:
         """Initialize Vertex AI service.
 
         Args:
@@ -297,9 +298,9 @@ class OracleVectorSearchService:
 
     def __init__(
         self,
-        products_service: Any,
+        products_service: "ProductService",
         vertex_ai_service: VertexAIService,
-        embedding_cache: CacheService | None = None,
+        embedding_cache: CacheService,
     ) -> None:
         """Initialize Oracle vector search service.
 
