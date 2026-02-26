@@ -6,15 +6,14 @@ without table-specific logic. Uses SQLSpec for database operations.
 
 from __future__ import annotations
 
+import contextlib
 import gzip
-import re
 from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-import oracledb
 from sqlspec import sql
 
 from app.utils.serialization import from_json, to_json
@@ -59,6 +58,9 @@ def _infer_oracle_type(value: Any) -> str:
 def _prepare_value_for_export(value: Any) -> Any:
     """Normalize values for JSON serialization when exporting fixtures."""
 
+    if hasattr(value, "tolist"):
+        with contextlib.suppress(TypeError):
+            return value.tolist()
     if hasattr(value, "isoformat"):
         return value.isoformat()
     if isinstance(value, bytes):
@@ -114,12 +116,6 @@ class FixtureProcessor:
                 prepared[key] = Decimal(value)
                 continue
 
-            if key == "embedding" and isinstance(value, str):
-                parsed_embedding = self._parse_embedding(value)
-                if parsed_embedding is not None:
-                    prepared[key] = parsed_embedding
-                continue
-
             if key in DATETIME_FIELDS and isinstance(value, str):
                 prepared[key] = datetime.fromisoformat(value)
                 continue
@@ -127,23 +123,6 @@ class FixtureProcessor:
             prepared[key] = value
 
         return prepared
-
-    @staticmethod
-    def _parse_embedding(value: str) -> list[float] | None:
-        """Normalize embedding strings to float lists."""
-
-        import numpy as np
-
-        cleaned = re.sub(r"\s+", " ", value.replace("\n", " ")).strip()
-        try:
-            if cleaned.startswith("[") and cleaned.endswith("]"):
-                numbers_str = cleaned[1:-1].strip()
-                return [float(num) for num in numbers_str.split() if num.strip()]
-
-            array_data = np.fromstring(cleaned, sep=" ")
-            return cast("list[float]", array_data.tolist())
-        except (ValueError, TypeError):
-            return None
 
     def get_fixture_files(self, table_order: list[str] | None = None) -> list[Path]:
         """Get all available fixture files sorted by dependency order.
@@ -299,14 +278,9 @@ class FixtureLoader:
 
         # Convert records to JSON payload using project's serialization
         payload = to_json(processed_records, as_bytes=True)
-        # Execute MERGE with JSON payload bound as CLOB to handle large payloads (>1MB)
-
-        async with self.driver.with_cursor(self.driver.connection) as cursor:
-            temp_clob = await self.driver.connection.createlob(oracledb.DB_TYPE_CLOB)
-            await temp_clob.write(payload)
-            await cursor.execute(merge_sql.strip(), {"payload": temp_clob})
-            rowcount = cursor.rowcount or 0
-            upserted = rowcount if rowcount > 0 else total
+        # SQLSpec auto-coerces strings >4000 chars to CLOB via coerce_large_string_parameters_async
+        result = await self.driver.execute(merge_sql.strip(), payload=payload.decode())
+        upserted = result.rows_affected if result.rows_affected > 0 else total
 
         # Commit the transaction to persist the changes
         await self.driver.commit()
@@ -393,7 +367,9 @@ class FixtureExporter:
         # Convert to JSON-serializable format
         json_data = []
         for record in records:
-            normalized = {key: _prepare_value_for_export(value) for key, value in dict(record).items()}
+            normalized: dict[str, Any] = {}
+            for key, value in dict(record).items():
+                normalized[key] = _prepare_value_for_export(value)
             json_data.append(normalized)
 
         filename = f"{table_name}.json" if not compress else f"{table_name}.json.gz"

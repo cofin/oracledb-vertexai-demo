@@ -6,16 +6,17 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import structlog
-
-from sqlspec import AsyncDriverAdapterBase
+from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.lib.service import SQLSpecService
-from app.domain.products.services._vertex_ai import VertexAIService
 
 if TYPE_CHECKING:
-    pass
+    from app.domain.products.services._vertex_ai import VertexAIService
 
 logger = structlog.get_logger()
+
+# Keep constructor types runtime-visible for Dishka provider analysis.
+DISHKA_RUNTIME_TYPES = (AsyncDriverAdapterBase,)
 
 
 class ExemplarService(SQLSpecService):
@@ -39,18 +40,13 @@ class ExemplarService(SQLSpecService):
 
         result: dict[str, list[tuple[str, list[float]]]] = {}
         for row in results:
-            # Oracle returns column names in uppercase by default
             intent: str = cast("str", row.get("intent"))
             phrase = cast("str", row.get("phrase"))
             embedding_vector = row.get("embedding")
-            if embedding_vector is None:
-                embedding_vector = row.get("EMBEDDING")
             if embedding_vector is not None:
-                # SQLSpec handles Oracle VECTOR to Python list conversion automatically
-                embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
                 if intent not in result:
                     result[intent] = []
-                result[intent].append((phrase, embedding))
+                result[intent].append((phrase, embedding_vector))
 
         return result
 
@@ -70,10 +66,9 @@ class ExemplarService(SQLSpecService):
             intent = cast("str", row.get("intent"))
             embedding_vector = cast("list[float] | None", row.get("embedding"))
             if embedding_vector is not None:
-                embedding = list(embedding_vector) if not isinstance(embedding_vector, list) else embedding_vector
                 if intent not in result:
                     result[intent] = []
-                result[intent].append(embedding)
+                result[intent].append(embedding_vector)
 
         # Convert lists to numpy arrays
         numpy_result: dict[str, np.ndarray] = {}
@@ -130,10 +125,7 @@ class ExemplarService(SQLSpecService):
                     phrase=phrase,
                 )
 
-                # Oracle returns column names in uppercase by default
                 embedding_value = result.get("embedding") if result else None
-                if embedding_value is None and result:
-                    embedding_value = result.get("EMBEDDING")
                 if embedding_value is None:
                     # Generate embedding
                     embedding = await vertex_ai_service.get_text_embedding(phrase)
@@ -176,9 +168,6 @@ class ExemplarService(SQLSpecService):
             )
 
             embedding_value = result.get("embedding") if result else None
-            if embedding_value is None and result:
-                embedding_value = result.get("EMBEDDING")
-
             if embedding_value is None:
                 # Generate embedding
                 embedding = await vertex_ai_service.get_text_embedding(phrase)

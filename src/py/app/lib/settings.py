@@ -254,12 +254,6 @@ class AppSettings:
     """CSRF Header Name"""
     CSRF_COOKIE_SECURE: bool = field(default_factory=lambda: False)
     """CSRF Secure Cookie"""
-    GOOGLE_PROJECT_ID: str = field(default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID", ""))
-    """Google Project ID"""
-    GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
-    """Gemini model identifier - defaults to latest 2.5 Flash"""
-    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-004"))
-    """Text embedding model identifier"""
 
     def __post_init__(self) -> None:
         # Check if the ALLOWED_CORS_ORIGINS is a string.
@@ -282,32 +276,22 @@ class AppSettings:
 class VertexAISettings:
     """Vertex AI configuration settings."""
 
-    PROJECT_ID: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_PROJECT_ID") or ""
-    )
+    PROJECT_ID: str = field(default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID", ""))
     """Google Cloud Project ID for Vertex AI."""
     LOCATION: str = field(default_factory=lambda: os.getenv("VERTEX_AI_LOCATION") or "us-central1")
     """Vertex AI location/region."""
     API_KEY: str | None = field(
         default_factory=lambda: (
             os.getenv("VERTEX_AI_API_KEY")
-            or os.getenv("GOOGLE_AI_API_KEY")
             or os.getenv("GOOGLE_API_KEY")
-            or os.getenv("GENAI_API_KEY")
         )
     )
     """Optional API key for Google AI clients."""
-    EMBEDDING_MODEL: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL")
-        or os.getenv("EMBEDDING_MODEL")
-        or "text-embedding-004"
-    )
+    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001"))
     """Vertex AI embedding model."""
-    EMBEDDING_DIMENSIONS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_EMBEDDING_DIMENSIONS", "768")))
+    EMBEDDING_DIMENSIONS: int = 768
     """Embedding vector dimensions."""
-    CHAT_MODEL: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL") or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash-lite"
-    )
+    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3-flash-preview"))
     """Vertex AI chat model."""
 
     # Context Caching Settings
@@ -363,13 +347,17 @@ class ViteSettings:
 
     DEV_MODE: bool = field(default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES)
     """Enable Vite dev server mode."""
-    USE_SERVER_LIFESPAN: bool = field(default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "True") in TRUE_VALUES)
+    USE_SERVER_LIFESPAN: bool = field(
+        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "True") in TRUE_VALUES
+    )
     """Use server lifespan to manage Vite process."""
     PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
     """Vite dev server port."""
     HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
     """Vite dev server host."""
-    BUNDLE_DIR: Path = field(default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "server" / "static" / "dist"))))
+    BUNDLE_DIR: Path = field(
+        default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "server" / "static" / "dist")))
+    )
     """Vite bundle directory."""
     ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL", "/static/dist/"))
     """Vite asset URL."""
@@ -390,12 +378,15 @@ class ViteSettings:
         return ViteConfig(
             mode="spa",
             dev_mode=self.DEV_MODE,
-            types=TypeGenConfig(),
+            types=TypeGenConfig(output=Path("src/lib/generated")),
             paths=PathConfig(
-                root=BASE_DIR.parent / "src" / "js" / "web", bundle_dir=self.BUNDLE_DIR, asset_url=self.ASSET_URL
+                root=BASE_DIR.parents[2] / "src" / "js",
+                bundle_dir=self.BUNDLE_DIR,
+                asset_url=self.ASSET_URL,
             ),
             runtime=RuntimeConfig(executor="bun", host=self.HOST, port=self.PORT),
         )
+
 
 @dataclass
 class Settings:

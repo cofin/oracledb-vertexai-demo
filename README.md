@@ -125,7 +125,7 @@ Comprehensive documentation is coming soon! For now:
 This demo combines:
 
 - **Oracle 23ai** - Native vector search with HNSW indexes
-- **Google Vertex AI** - Embeddings (text-embedding-004) and chat (Gemini 2.5)
+- **Google Vertex AI** - Embeddings (gemini-embedding-001, 768 dims) and chat (`gemini-3-flash-preview`)
 - **SQLSpec** - Type-safe database operations with async connection pooling
 - **Litestar** - High-performance async Python web framework
 - **React + TanStack Router** - Modern SPA UI for chat and dashboard routes

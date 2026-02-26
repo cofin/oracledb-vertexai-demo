@@ -45,6 +45,32 @@ class SuppressADKWarningsFilter(logging.Filter):
         return "returning concatenated text result from text parts" not in msg
 
 
+class SuppressAsyncioTaskExceptionFilter(logging.Filter):
+    """Filter to suppress asyncio task warnings that duplicate handled errors."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "Task exception was never retrieved" not in msg
+
+
+class SuppressGranianExcInfoFilter(logging.Filter):
+    """Filter duplicate traceback logging from Granian lifespan/error paths."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+
+        if "Traceback (most recent call last)" in msg:
+            record.exc_info = None
+            record.exc_text = None
+            return True
+
+        if record.exc_info and "lifespan" in msg.lower():
+            record.exc_info = None
+            record.exc_text = None
+
+        return True
+
+
 HTTP_RESPONSE_START: Literal["http.response.start"] = "http.response.start"
 HTTP_RESPONSE_BODY: Literal["http.response.body"] = "http.response.body"
 REQUEST_BODY_FIELD: Literal["body"] = "body"

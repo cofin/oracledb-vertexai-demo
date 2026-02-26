@@ -33,18 +33,18 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-# Define single static agent at module level (ADK best practice)
-# Persona-specific instructions are injected at runtime via system messages
-_coffee_agent = LlmAgent(
-    name="CoffeeAssistant",
-    description=(
-        "AI-powered coffee assistant for Cymbal Coffee - "
-        "helps with product discovery, store locations, and coffee expertise."
-    ),
-    instruction=BASE_SYSTEM_INSTRUCTION,  # Base instruction only
-    model=settings.vertex_ai.CHAT_MODEL,
-    tools=ALL_TOOLS,  # type: ignore[arg-type]
-)
+def _build_coffee_agent(chat_model: str) -> LlmAgent:
+    """Build the coffee assistant agent using current runtime settings."""
+    return LlmAgent(
+        name="CoffeeAssistant",
+        description=(
+            "AI-powered coffee assistant for Cymbal Coffee - "
+            "helps with product discovery, store locations, and coffee expertise."
+        ),
+        instruction=BASE_SYSTEM_INSTRUCTION,
+        model=chat_model,
+        tools=ALL_TOOLS,  # type: ignore[arg-type]
+    )
 
 
 class ADKRunner:
@@ -57,13 +57,13 @@ class ADKRunner:
     def __init__(self, session_service: SQLSpecSessionService) -> None:
         """Initialize the ADK runner with SQLSpec session service and single Runner instance."""
         self.session_service = session_service
-        # Single runner for all personas (ADK best practice)
+        agent = _build_coffee_agent(settings.vertex_ai.CHAT_MODEL)
         self._runner = Runner(
-            agent=_coffee_agent,
+            agent=agent,
             app_name="coffee-assistant",
             session_service=self.session_service,
         )
-        logger.debug("ADKRunner initialized with single Runner instance")
+        logger.debug("ADKRunner initialized with single Runner instance", chat_model=settings.vertex_ai.CHAT_MODEL)
 
     async def process_request(
         self,

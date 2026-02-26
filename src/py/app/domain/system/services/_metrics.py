@@ -19,12 +19,15 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from sqlspec import AsyncDriverAdapterBase
+from sqlspec.driver import AsyncDriverAdapterBase
 
 from app.lib.service import SQLSpecService
 
 if TYPE_CHECKING:
     from app.schemas import SearchMetricsCreate
+
+# Keep constructor types runtime-visible for Dishka provider analysis.
+DISHKA_RUNTIME_TYPES = (AsyncDriverAdapterBase,)
 
 
 class MetricsService(SQLSpecService):

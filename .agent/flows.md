@@ -9,7 +9,24 @@ This file tracks all flows for the project.
 
 ---
 
+## [x] PRD: Dark React Redesign + HTMX Retirement
+*Link: [./specs/dark-react-redesign_20260226/](./specs/dark-react-redesign_20260226/)*
+
+### [x] Flow: UI Foundation and Routing
+*Link: [./specs/ui-foundation-routing_20260226/](./specs/ui-foundation-routing_20260226/)*
+
+### [x] Flow: Chat Experience Modernization
+*Link: [./specs/chat-modernization_20260226/](./specs/chat-modernization_20260226/)*
+
+### [x] Flow: Performance Experience Modernization
+*Link: [./specs/performance-modernization_20260226/](./specs/performance-modernization_20260226/)*
+
+---
+
 ## Archived Flows
+
+### [x] Flow: HTMX Retirement (archived 2026-02-26)
+*Link: [./archive/htmx-retirement_20260226/](./archive/htmx-retirement_20260226/)*
 
 ### [x] Flow: Migrate to Dishka DI (archived 2026-02-26)
 *Link: [./archive/migrate-to-dishka-di_20251020/](./archive/migrate-to-dishka-di_20251020/)*

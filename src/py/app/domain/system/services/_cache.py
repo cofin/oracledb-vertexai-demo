@@ -215,7 +215,7 @@ class CacheService(SQLSpecService):
 
         Args:
             cache_type: Type of cache to clear ('response', 'embedding', or None for all)
-            include_exemplars: Whether to also clear intent exemplar embeddings (slow to regenerate)
+            include_exemplars: Whether to also clear intent exemplars (slow to regenerate)
 
         Returns:
             Number of records deleted
@@ -230,11 +230,13 @@ class CacheService(SQLSpecService):
             result = await self.driver.execute("DELETE FROM embedding_cache")
             deleted_count += result.rows_affected
 
-        # Only clear exemplars if explicitly requested (expensive to regenerate)
+        # Only clear exemplars if explicitly requested (expensive to regenerate).
+        # intent_exemplar.embedding is NOT NULL, so we must delete rows instead of setting embedding to NULL.
         if include_exemplars:
-            result = await self.driver.execute("UPDATE intent_exemplar SET embedding = NULL")
+            result = await self.driver.execute("DELETE FROM intent_exemplar")
             deleted_count += result.rows_affected
 
+        await self.driver.commit()
         return deleted_count
 
     async def cleanup_expired(self) -> int:

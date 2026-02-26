@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import structlog
+from sqlspec.driver import AsyncDriverAdapterBase
 
-from sqlspec import AsyncDriverAdapterBase
-
+from app.domain.products.services._vertex_ai import VertexAIService
+from app.domain.system.services._exemplar import ExemplarService
 from app.lib.service import SQLSpecService
 from app.schemas import IntentResult, SimilarIntent
-from app.domain.products.services._vertex_ai import VertexAIService
-from app.domain.system.services import ExemplarService
 
-if TYPE_CHECKING:
-    pass
+# Keep constructor types runtime-visible for Dishka provider analysis.
+DISHKA_RUNTIME_TYPES = (AsyncDriverAdapterBase, ExemplarService, VertexAIService)
 
 INTENT_EXEMPLARS = {
     "PRODUCT_RAG": [

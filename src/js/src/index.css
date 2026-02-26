@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-zinc-800;
+  }
+
+  body {
+    @apply min-h-screen bg-[#0a0b0d] text-zinc-100 antialiased;
+    font-family: "Space Grotesk", "Sora", "Manrope", sans-serif;
+    font-feature-settings:
+      "ss01" 1,
+      "ss03" 1,
+      "cv01" 1;
+  }
+}

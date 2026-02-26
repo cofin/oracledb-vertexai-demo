@@ -45,17 +45,16 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
         from litestar.params import Body
-        from litestar.static_files import create_static_files_router
         from sqlspec import AsyncDriverAdapterBase
         from sqlspec.adapters.oracledb import OracleAsyncDriver
 
         from app import config, schemas
-        from app.lib import log
-        from app.lib.settings import BASE_DIR, get_settings
-        from app.server import plugins, startup
-        from app.domain.system.services import CacheService, ExemplarService, MetricsService
-        from app.domain.products.services import OracleVectorSearchService, ProductService, VertexAIService
         from app.domain.chat.services import ADKRunner
+        from app.domain.products.services import OracleVectorSearchService, ProductService, VertexAIService
+        from app.domain.system.services import CacheService, ExemplarService, MetricsService
+        from app.lib import log
+        from app.lib.settings import get_settings
+        from app.server import plugins, startup
 
         settings = get_settings()
         # logging
@@ -79,7 +78,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
                 plugins.vite,
             ],
         )
-        app_config.template_config = config.templates
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
             version="0.2.0",

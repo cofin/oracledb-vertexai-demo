@@ -15,6 +15,8 @@
 from litestar import Controller, get
 from litestar.response import File
 
+from app.lib.settings import BASE_DIR
+
 
 class SystemController(Controller):
     """System controller for root-level and un-grouped system routes."""
@@ -28,6 +30,6 @@ class SystemController(Controller):
     async def favicon(self) -> File:
         """Serve favicon with security headers."""
         return File(
-            path="app/server/static/favicon.ico",
+            path=BASE_DIR / "server" / "static" / "favicon.ico",
             headers={"Cache-Control": "public, max-age=31536000", "X-Content-Type-Options": "nosniff"},
         )

@@ -15,25 +15,19 @@
 import re
 import time
 import uuid
-from typing import Annotated
+from typing import Any
 
-import structlog
 from litestar import Controller, post
-from litestar.enums import RequestEncodingType
 from litestar.exceptions import ValidationException
-from litestar.params import Body
-from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app import schemas
-from app.domain.products.services._vertex_ai import OracleVectorSearchService, VertexAIService
+from app.domain.products.services._vertex_ai import OracleVectorSearchService
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
-logger = structlog.get_logger()
-
 
 class VectorController(Controller):
-    """Vector Search Controller."""
+    """Vector search controller with JSON responses."""
 
     @staticmethod
     def validate_message(message: str) -> str:
@@ -52,13 +46,11 @@ class VectorController(Controller):
     @post(path="/api/vector-demo", name="vector.demo")
     async def vector_search_demo(
         self,
-        data: Annotated[schemas.VectorDemoRequest, Body(media_type=RequestEncodingType.URL_ENCODED)],
-        vertex_ai_service: Inject[VertexAIService],
+        data: schemas.VectorDemoRequest,
         vector_search_service: Inject[OracleVectorSearchService],
         metrics_service: Inject[MetricsService],
-        request: HTMXRequest,
-    ) -> HTMXTemplate:
-        """Interactive vector search demonstration."""
+    ) -> dict[str, Any]:
+        """Run interactive vector search demonstration."""
         query = self.validate_message(data.query)
 
         full_request_start = time.time()
@@ -83,65 +75,33 @@ class VectorController(Controller):
         )
         detailed_timings["metrics_recording_ms"] = (time.time() - metrics_record_start) * 1000
 
-        format_results_start = time.time()
         demo_results = [
             {
                 "name": r["name"],
                 "description": r["description"],
-                "similarity": f"{(1 - r['distance']) * 100:.1f}%",
+                "similarity": round((1 - r["distance"]) * 100, 1),
                 "distance": r["distance"],
             }
             for r in results
         ]
-        detailed_timings["results_formatting_ms"] = (time.time() - format_results_start) * 1000
 
-        pre_template_total = (time.time() - full_request_start) * 1000
+        total_ms = (time.time() - full_request_start) * 1000
+        detailed_timings["total_endpoint_ms"] = total_ms
 
-        known_duration = sum([
-            detailed_timings.get("similarity_search_total_ms", 0),
-            detailed_timings.get("metrics_recording_ms", 0),
-            detailed_timings.get("results_formatting_ms", 0),
-        ])
-        detailed_timings["pre_template_overhead_ms"] = pre_template_total - known_duration
-
-        request.logger.info(
-            "vector_demo_detailed_timings",
-            query=query[:50],
-            timings=detailed_timings,
-            cache_hit=embedding_cache_hit,
+        performance_level = (
+            "excellent"
+            if total_ms < 100  # noqa: PLR2004
+            else "good"
+            if total_ms < 500  # noqa: PLR2004
+            else "needs-optimization"
         )
 
-        performance_event = None
-        perf_params = {}
-
-        if pre_template_total < 100:  # noqa: PLR2004
-            performance_event = "vector:search-fast"
-            perf_params = {"level": "excellent"}
-        elif pre_template_total < 500:  # noqa: PLR2004
-            performance_event = "vector:search-normal"
-            perf_params = {"level": "good"}
-        else:
-            performance_event = "vector:search-slow"
-            perf_params = {"level": "needs-optimization"}
-
-        template_start = time.time()
-        response = HTMXTemplate(
-            template_name="partials/_vector_results.html",
-            context={
-                "results": demo_results,
-                "search_time": f"{pre_template_total:.0f}ms",
-                "embedding_time": f"{vector_timings['embedding_ms']:.1f}ms",
-                "oracle_time": f"{vector_timings['oracle_ms']:.1f}ms",
-                "cache_hit": embedding_cache_hit,
-                "debug_timings": {k: f"{v:.1f}ms" for k, v in detailed_timings.items()},
-            },
-            trigger_event=performance_event,
-            params={**perf_params, "total_ms": pre_template_total},
-            after="settle",
-        )
-        detailed_timings["template_creation_ms"] = (time.time() - template_start) * 1000
-
-        detailed_timings["total_endpoint_ms"] = (time.time() - full_request_start) * 1000
-        request.logger.info("vector_demo_final_timings", timings=detailed_timings)
-
-        return response
+        return {
+            "results": demo_results,
+            "search_time_ms": round(total_ms, 2),
+            "embedding_time_ms": round(vector_timings["embedding_ms"], 2),
+            "oracle_time_ms": round(vector_timings["oracle_ms"], 2),
+            "cache_hit": embedding_cache_hit,
+            "performance_level": performance_level,
+            "debug_timings": {k: round(v, 2) for k, v in detailed_timings.items()},
+        }

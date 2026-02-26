@@ -6,11 +6,12 @@ import secrets
 from typing import TYPE_CHECKING
 
 import structlog
+from sqlspec.adapters.oracledb.litestar.store import OracleAsyncStore
 
 from app import config
 from app.domain.chat.services._intent import INTENT_EXEMPLARS
 from app.domain.products.services import ProductService, VertexAIService
-from app.domain.system.services import ExemplarService
+from app.domain.system.services import CacheService, ExemplarService
 
 if TYPE_CHECKING:
     from litestar import Litestar
@@ -79,7 +80,8 @@ async def initialize_intent_exemplar_cache(app: Litestar) -> None:
     # Get Oracle connection from the async pool
     async with config.db_manager.provide_session(config.db) as driver:
         # Create service instances
-        vertex_ai_service = VertexAIService()
+        cache_service = CacheService(driver)
+        vertex_ai_service = VertexAIService(cache_service=cache_service)
         exemplar_service = ExemplarService(driver)
         product_service = ProductService(driver)
 
@@ -143,6 +145,14 @@ async def warm_up_connection_pool(app: Litestar) -> None:
     logger.info("Connection pool warmed up")
 
 
+async def ensure_session_table() -> None:
+    """Ensure Oracle-backed Litestar session table exists."""
+    logger.info("Ensuring Oracle session table exists...")
+    session_store = OracleAsyncStore(config.db)
+    await session_store.create_table()
+    logger.info("Oracle session table check complete")
+
+
 async def on_startup(app: Litestar) -> None:
     """Main startup hook that runs all initialization tasks."""
 
@@ -150,6 +160,11 @@ async def on_startup(app: Litestar) -> None:
 
     app.state.csp_nonce_generator = lambda: secrets.token_urlsafe(16)
 
+    await ensure_session_table()
     await warm_up_connection_pool(app)
-    await initialize_intent_exemplar_cache(app)
+    try:
+        await initialize_intent_exemplar_cache(app)
+    except Exception as e:  # noqa: BLE001
+        # Startup should remain available even if external embedding APIs are unavailable.
+        logger.warning("Skipping intent exemplar warmup due to initialization error", error=str(e), exc_info=True)
     logger.info("Application startup complete")

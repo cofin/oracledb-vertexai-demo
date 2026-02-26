@@ -17,7 +17,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",
@@ -40,7 +40,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",
@@ -64,7 +64,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",
@@ -90,8 +90,9 @@ class ProductService(SQLSpecService):
             WHERE embedding IS NULL
             """
         )
-        # Oracle returns column names in uppercase
-        total_count = count_result.get("total_count") if count_result else 0
+        total_count_value = 0
+        if count_result:
+            total_count_value = count_result.get("total_count") or 0
 
         products = await self.driver.select(
             """
@@ -99,7 +100,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",
@@ -117,7 +118,7 @@ class ProductService(SQLSpecService):
             schema_type=Product,
         )
 
-        return products, total_count
+        return products, total_count_value
 
     async def search_by_vector(
         self, query_embedding: list[float], limit: int = 10, similarity_threshold: float = 0.5
@@ -135,7 +136,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",
@@ -155,10 +156,9 @@ class ProductService(SQLSpecService):
             limit=limit,
         )
 
-        # Convert distance back to similarity score (handle Oracle uppercase column names)
+        # Convert distance back to similarity score
         for result in results:
-            score_key = "similarity_score" if "similarity_score" in result else "SIMILARITY_SCORE"
-            result[score_key] = 1 - result[score_key]
+            result["similarity_score"] = 1 - result["similarity_score"]
 
         return results
 
@@ -219,7 +219,7 @@ class ProductService(SQLSpecService):
                     id AS "id",
                     name AS "name",
                     price AS "price",
-                    DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                    description AS "description",
                     category AS "category",
                     sku AS "sku",
                     NVL(in_stock, TRUE) AS "in_stock",
@@ -240,7 +240,7 @@ class ProductService(SQLSpecService):
                 id AS "id",
                 name AS "name",
                 price AS "price",
-                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                description AS "description",
                 category AS "category",
                 sku AS "sku",
                 NVL(in_stock, TRUE) AS "in_stock",

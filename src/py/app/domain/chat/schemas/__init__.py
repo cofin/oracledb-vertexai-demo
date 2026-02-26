@@ -1,0 +1,1 @@
+"""Chat domain schemas package."""

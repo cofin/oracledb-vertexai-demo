@@ -1,0 +1,1 @@
+"""Products domain schemas package."""

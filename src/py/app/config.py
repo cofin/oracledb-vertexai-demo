@@ -19,8 +19,7 @@ from typing import cast
 import structlog
 from litestar.config.cors import CORSConfig
 from litestar.config.csrf import CSRFConfig
-from litestar.contrib.jinja import JinjaTemplateEngine
-from litestar.exceptions import NotFoundException
+from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
 from litestar.logging.config import (
     LoggingConfig,
     StructLoggingConfig,
@@ -33,7 +32,6 @@ from litestar.middleware.session.server_side import ServerSideSessionConfig
 from litestar.plugins.problem_details import ProblemDetailsConfig
 from litestar.plugins.structlog import StructlogConfig
 from litestar.stores.registry import StoreRegistry
-from litestar.template import TemplateConfig
 from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
 from sqlspec.base import SQLSpec
 
@@ -54,8 +52,6 @@ csrf = CSRFConfig(
 cors = CORSConfig(allow_origins=cast("list[str]", _settings.app.ALLOWED_CORS_ORIGINS))
 problem_details = ProblemDetailsConfig(enable_for_all_http_exceptions=True)
 
-templates = TemplateConfig(directory=BASE_DIR / "server" / "templates", engine=JinjaTemplateEngine)
-
 db_manager = SQLSpec()
 db = _settings.db.create_config()
 db_manager.add_config(db)
@@ -68,7 +64,7 @@ session_config = ServerSideSessionConfig(store="sessions")
 log = StructlogConfig(
     enable_middleware_logging=False,
     structlog_logging_config=StructLoggingConfig(
-        disable_stack_trace={NotFoundException, 404},
+        disable_stack_trace={400, 401, 403, 404, 409, NotAuthorizedException, PermissionDeniedException, NotFoundException},
         log_exceptions="always",
         processors=default_structlog_processors(as_json=False),
         logger_factory=default_logger_factory(as_json=False),
@@ -171,6 +167,14 @@ def setup_logging() -> None:
 
     # Also apply to root logger and queue_listener handlers to catch in listener thread
     logging.root.addFilter(adk_warning_filter)
+
+    # Suppress asyncio duplicate task exception noise.
+    asyncio_filter = log_conf.SuppressAsyncioTaskExceptionFilter()
+    logging.getLogger("asyncio").addFilter(asyncio_filter)
+
+    # Suppress duplicate traceback emission from Granian lifespan/error logging.
+    granian_exc_filter = log_conf.SuppressGranianExcInfoFilter()
+    logging.getLogger("_granian").addFilter(granian_exc_filter)
 
     # Suppress at Python warnings level too (belt and suspenders)
     warnings.filterwarnings(

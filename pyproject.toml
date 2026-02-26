@@ -49,9 +49,27 @@ requires = ["hatchling", "nodeenv"]
 allow-direct-references = true
 
 [tool.hatch.build]
-dev-mode-dirs = ["./src/py", "./"]
-include = ["CHANGELOG.md", "/public/**/*", "/src/py/app/**/*.sql", "/src/py/app/db/**/*.ini", "manage.py", "tools/"]
+dev-mode-dirs = ["src/py", "."]
+ignore-vcs = true
+
+[tool.hatch.build.targets.sdist]
 packages = ["src/py/app"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/py/app"]
+artifacts = [
+    "**/*.j2",
+    "**/*.sql",
+    "**/*.ini",
+    "**/*.ico",
+    "**/*.png",
+    "**/*.svg",
+    "**/*.css",
+    "**/*.js",
+    "**/*.html",
+    "**/*.txt",
+    "**/*.json",
+]
 
 [dependency-groups]
 build = ["bump-my-version"]
@@ -107,6 +125,7 @@ exclude = [
     ".svn",
     ".tox",
     ".venv",
+    ".agent",
     "__pycache__",
     "_build",
     "buck-out",
@@ -118,7 +137,7 @@ exclude = [
 ]
 fix = true
 line-length = 120
-src = ["."]
+src = ["src/py", "tools"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -190,8 +209,8 @@ known-first-party = ["tests", "app", "config"]
 "src/py/app/db/migrations/versions/*.py" = ["ANN201", "INP001"]
 "docs/**/*.*" = ["S", "B", "DTZ", "A", "ERA", "D", "RET", "E731", "RUF012", "FA100", "ARG001"]
 "docs/conf.py" = ["FIX002", "ARG001", "INP001"]
-"tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
-"tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"src/py/tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"src/py/tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
 "tools/*.py" = ["INP001", "ERA001", "N999"]
 "tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001", "S603", "S404", "PLR0915"]
 
@@ -266,10 +285,10 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
     "ignore::UserWarning:sqlalchemy.*",
 ]
-testpaths = ["tests"]
+testpaths = ["src/py/tests"]
 
 [tool.pyright]
 exclude = ["scripts", "docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
-include = ["src/py/app", "tests"]
+include = ["src/py/app", "src/py/tests"]
 extraPaths = ["src/py"]
 reportMissingImports = "information"

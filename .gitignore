@@ -18,6 +18,8 @@ eggs/
 lib/
 !resources/lib
 !app/lib
+!src/js/src/lib/
+!src/js/src/lib/**
 lib64/
 parts/
 sdist/
@@ -148,10 +150,18 @@ node_modules
 .astro
 .vite
 .npmrc
+uv.toml
+src/js/.litestar.json
+src/js/public/hot
+src/js/tsconfig.tsbuildinfo
+src/js/tsconfig.node.tsbuildinfo
+src/js/vite.config.js
+src/js/vite.config.d.ts
+src/js/src/lib/generated/
 install-pdm.py
 .messages.db
 .memory.db
-
+.agent
 demo.py
 CLAUDE.md
 .tmp
@@ -170,3 +180,5 @@ specs/
 # .agent/
 !tools/lib
 .beads
+.gemini
+!src/py/app/lib

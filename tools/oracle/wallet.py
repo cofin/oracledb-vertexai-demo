@@ -339,7 +339,7 @@ class WalletConfigurator:
             has_truststore=has_truststore,
             services=services,
             is_valid=len(errors) == 0,
-            validation_errors=errors if errors else None,
+            validation_errors=errors or None,
         )
 
 

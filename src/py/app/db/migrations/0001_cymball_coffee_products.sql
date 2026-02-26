@@ -20,7 +20,7 @@ CREATE TABLE product (
 );
 
 COMMENT ON TABLE product IS 'Products with vector embeddings for semantic search';
-COMMENT ON COLUMN product.embedding IS '768-dimensional vector for Vertex AI text-embedding-004';
+COMMENT ON COLUMN product.embedding IS '768-dimensional embedding vector for semantic search';
 COMMENT ON COLUMN product.in_stock IS 'Boolean: true=in stock, false=out of stock';
 
 

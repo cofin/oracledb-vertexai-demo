@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.table import Table
 
 
-class DeploymentMode(str, Enum):
+class DeploymentMode(StrEnum):
     """Database deployment modes."""
 
     MANAGED = "managed"  # We manage a Docker container

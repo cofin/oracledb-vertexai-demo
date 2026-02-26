@@ -38,7 +38,7 @@ async def _fetch_products_to_embed(product_service: Any, force: bool) -> tuple[l
 
 
 async def _process_product_batch(
-    batch: list[dict[str, Any]],
+    batch: list[Any],
     product_service: Any,
     vertex_ai_service: Any,
     start_idx: int,
@@ -57,20 +57,32 @@ async def _process_product_batch(
 
     with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
         for i, product in enumerate(batch):
+            product_id: int | None = None
             try:
-                product_name = product.get("name", f"Product {product['id']}")
+                if isinstance(product, dict):
+                    product_id = product["id"]
+                    product_name = product.get("name", f"Product {product_id}")
+                    description = product.get("description", "")
+                else:
+                    product_id = product.id
+                    product_name = product.name or f"Product {product_id}"
+                    description = product.description or ""
+
                 global_idx = start_idx + i + 1
                 status.update(f"[bold yellow]Processing {global_idx}/{total_products}: {product_name}...")
 
                 # Generate embedding
-                description = product.get("description", "")
                 embedding = await vertex_ai_service.get_text_embedding(f"{product_name}: {description}")
-                await product_service.update_embedding(product["id"], embedding)
+                updated = await product_service.update_embedding(product_id, embedding)
+                if not updated:
+                    error_count += 1
+                    logger.warning("Failed to process product", product_id=product_id, error="update affected 0 rows")
+                    continue
                 success_count += 1
 
             except Exception as e:  # noqa: BLE001
                 error_count += 1
-                logger.warning("Failed to process product", product_id=product.get("id"), error=str(e))
+                logger.warning("Failed to process product", product_id=product_id, error=str(e))
 
     return success_count, error_count
 
@@ -222,7 +234,11 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
 @coffee_demo_group.command(name="model-info", help="Show information about currently configured AI models.")
 def model_info() -> None:
     """Show information about currently configured AI models."""
+    from sqlspec.utils.sync_tools import run_
+
+    from app.config import db, db_manager
     from app.domain.products.services import VertexAIService
+    from app.domain.system.services import CacheService
     from app.lib.settings import get_settings
 
     console = get_console()
@@ -231,17 +247,22 @@ def model_info() -> None:
 
     # Show settings
     settings = get_settings()
-    console.print(f"[bold]Chat Model:[/bold] {settings.app.GEMINI_MODEL}")
-    console.print(f"[bold]Embedding Model:[/bold] {settings.app.EMBEDDING_MODEL}")
-    console.print(f"[bold]Google Project:[/bold] {settings.app.GOOGLE_PROJECT_ID}")
-    console.print("[bold]Embedding Dimensions:[/bold] 768")
+    console.print(f"[bold]Chat Model:[/bold] {settings.vertex_ai.CHAT_MODEL}")
+    console.print(f"[bold]Embedding Model:[/bold] {settings.vertex_ai.EMBEDDING_MODEL}")
+    console.print(f"[bold]Google Project:[/bold] {settings.vertex_ai.PROJECT_ID}")
+    console.print(f"[bold]Embedding Dimensions:[/bold] {settings.vertex_ai.EMBEDDING_DIMENSIONS}")
     console.print()
 
     # Test model initialization
     console.print("[bold]🔍 Testing Model Initialization...[/bold]")
+    async def _check_vertex() -> None:
+        async with db_manager.provide_session(db) as session:
+            cache_service = CacheService(session)
+            VertexAIService(cache_service=cache_service)
+            console.print("[bold green]✓ Successfully initialized![/bold green]")
+
     try:
-        VertexAIService()
-        console.print("[bold green]✓ Successfully initialized![/bold green]")
+        run_(_check_vertex)()
     except Exception as e:  # noqa: BLE001
         console.print(f"[bold red]✗ Model initialization failed: {e}[/bold red]")
     console.print()

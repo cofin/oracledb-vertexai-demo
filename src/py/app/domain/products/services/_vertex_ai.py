@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, overload
 import structlog
 from google import genai
 
-from app.domain.system.services import CacheService
 from app.domain.products.services._product import ProductService
+from app.domain.system.services import CacheService
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
@@ -72,7 +72,13 @@ class VertexAIService:
                 await asyncio.sleep(1)  # Rate limiting
 
             batch = texts[i : i + batch_size]
-            response = await self._genai_client.aio.models.embed_content(model=model_name, contents=batch)
+            response = await self._genai_client.aio.models.embed_content(
+                model=model_name,
+                contents=batch,
+                config=genai.types.EmbedContentConfig(
+                    output_dimensionality=self.settings.vertex_ai.EMBEDDING_DIMENSIONS,
+                ),
+            )
 
             if not response.embeddings:
                 msg = f"No embeddings returned from Vertex AI for batch starting at index {i}"
@@ -264,6 +270,9 @@ class VertexAIService:
         response = await self._genai_client.aio.models.embed_content(
             model=model,
             contents=text,
+            config=genai.types.EmbedContentConfig(
+                output_dimensionality=self.settings.vertex_ai.EMBEDDING_DIMENSIONS,
+            ),
         )
         if not response.embeddings or len(response.embeddings) == 0:
             msg = "No embeddings returned from API"
@@ -298,7 +307,7 @@ class OracleVectorSearchService:
 
     def __init__(
         self,
-        products_service: "ProductService",
+        products_service: ProductService,
         vertex_ai_service: VertexAIService,
         embedding_cache: CacheService,
     ) -> None:

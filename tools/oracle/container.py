@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from enum import Enum
+from enum import StrEnum
 
 
-class RuntimeType(str, Enum):
+class RuntimeType(StrEnum):
     """Container runtime types."""
 
     DOCKER = "docker"

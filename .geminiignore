@@ -40,4 +40,4 @@ uv.lock
 static/
 dist/
 build/
-.geminiignore 
+.geminiignore

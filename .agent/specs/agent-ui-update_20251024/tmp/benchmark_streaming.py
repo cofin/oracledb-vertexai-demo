@@ -106,7 +106,7 @@ def print_benchmark_results(results):
 
     if results["chunks_received"]:
         chunks = results["chunks_received"]
-        print(f"\nChunks Received per Response:")
+        print("\nChunks Received per Response:")
         print(f"  Min:    {min(chunks)}")
         print(f"  Max:    {max(chunks)}")
         print(f"  Mean:   {mean(chunks):.1f}")
@@ -115,8 +115,8 @@ def print_benchmark_results(results):
     user_msg_avg = mean(results["user_message_times"])
     first_chunk_avg = mean([t for t in results["first_chunk_times"] if t > 0])
 
-    print(f"\n✨ Perceived Latency Improvement:")
-    print(f"  Baseline (sync):        ~2000ms")
+    print("\n✨ Perceived Latency Improvement:")
+    print("  Baseline (sync):        ~2000ms")
     print(f"  User Message (async):   {user_msg_avg:.0f}ms")
     print(f"  Time to First Token:    {first_chunk_avg:.0f}ms")
     print(f"  Improvement:            ~{(2000 - user_msg_avg) / 2000 * 100:.0f}%")

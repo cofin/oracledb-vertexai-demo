@@ -12,7 +12,6 @@ import asyncio
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any
 
 import aiohttp
 import structlog
@@ -209,7 +208,7 @@ class StreamingLoadTester:
                 print(f"  Avg: {sum(first_chunks) / len(first_chunks):.0f}")
                 print(f"  P95: {sorted(first_chunks)[int(len(first_chunks) * 0.95)]:.0f}")
 
-            print(f"\nChunks Received:")
+            print("\nChunks Received:")
             print(f"  Min: {min(chunks)}")
             print(f"  Max: {max(chunks)}")
             print(f"  Avg: {sum(chunks) / len(chunks):.1f}")

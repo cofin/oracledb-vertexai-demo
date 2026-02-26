@@ -8,20 +8,27 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import structlog
-from sqlspec import AsyncDriverAdapterBase
+from sqlspec.driver import AsyncDriverAdapterBase
 
-from app.lib.service import SQLSpecService
 from app.domain.chat.services._intent import IntentService
 from app.domain.products.services import ProductService, StoreService, VertexAIService
-from app.domain.system.services import MetricsService
-
-if TYPE_CHECKING:
-    pass
+from app.domain.system.services._metrics import MetricsService
+from app.lib.service import SQLSpecService
 
 logger = structlog.get_logger()
+
+# Keep constructor types runtime-visible for Dishka provider analysis.
+DISHKA_RUNTIME_TYPES = (
+    AsyncDriverAdapterBase,
+    ProductService,
+    MetricsService,
+    IntentService,
+    VertexAIService,
+    StoreService,
+)
 
 
 class AgentToolsService(SQLSpecService):

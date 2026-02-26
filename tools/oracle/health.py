@@ -7,7 +7,7 @@ components across both modes (managed, external).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status levels."""
 
     HEALTHY = "healthy"
