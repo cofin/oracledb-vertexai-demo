@@ -93,8 +93,7 @@ class ProductService(SQLSpecService):
         # Oracle returns column names in uppercase
         total_count = count_result.get("total_count") if count_result else 0
 
-        # Get paginated results
-        products, total_count = await self.driver.select_with_total(
+        products = await self.driver.select(
             """
             SELECT
                 id AS "id",
@@ -193,15 +192,13 @@ class ProductService(SQLSpecService):
         embedding: list[float] | None = None,
     ) -> Product | None:
         """Create a new product."""
-        # Insert and get the generated ID
-        result: dict[str, Any] | None = await self.driver.select_one_or_none(
+        insert_result = await self.driver.execute(
             """
             INSERT INTO product (
                 name, price, description, category, sku, in_stock, metadata, embedding
             ) VALUES (
                 :name, :price, :description, :category, :sku, :in_stock, :metadata, :embedding
             )
-            RETURNING id
             """,
             name=name,
             price=price,
@@ -212,17 +209,55 @@ class ProductService(SQLSpecService):
             metadata=metadata,
             embedding=embedding,
         )
+        if insert_result.rows_affected <= 0:
+            return None
 
-        if result:
-            # Oracle returns column names in uppercase
-            id_value = result.get("id") or result.get("ID")
-            if id_value is None:
-                return None
-            product_id: int = int(id_value)
-            # Return the created product
-            return await self.get_by_id(product_id)
+        if sku:
+            return await self.driver.select_one_or_none(
+                """
+                SELECT
+                    id AS "id",
+                    name AS "name",
+                    price AS "price",
+                    DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                    category AS "category",
+                    sku AS "sku",
+                    NVL(in_stock, TRUE) AS "in_stock",
+                    metadata AS "metadata",
+                    embedding AS "embedding",
+                    created_at AS "created_at",
+                    updated_at AS "updated_at"
+                FROM product
+                WHERE sku = :sku
+                """,
+                sku=sku,
+                schema_type=Product,
+            )
 
-        return None
+        return await self.driver.select_one_or_none(
+            """
+            SELECT
+                id AS "id",
+                name AS "name",
+                price AS "price",
+                DBMS_LOB.SUBSTR(description, 4000, 1) AS "description",
+                category AS "category",
+                sku AS "sku",
+                NVL(in_stock, TRUE) AS "in_stock",
+                metadata AS "metadata",
+                embedding AS "embedding",
+                created_at AS "created_at",
+                updated_at AS "updated_at"
+            FROM product
+            WHERE name = :name
+              AND price = :price
+            ORDER BY id DESC
+            FETCH FIRST 1 ROW ONLY
+            """,
+            name=name,
+            price=price,
+            schema_type=Product,
+        )
 
     async def update_product(self, product_id: int, updates: dict[str, Any]) -> Product | None:
         """Update a product."""

@@ -1,5 +1,7 @@
 """Integration tests for ProductService with SQLSpec."""
 
+from uuid import uuid4
+
 import pytest
 
 from app.domain.products.services import ProductService
@@ -121,20 +123,21 @@ class TestProductService:
         assert updated_product.embedding is not None
         assert updated_product.updated_at is not None
 
-    async def test_create_product_with_returning(
+    async def test_create_product(
         self,
         product_service: ProductService,
     ) -> None:
-        """Test creating product with RETURNING clause."""
+        """Test creating a product and fetching it back."""
         # Create a new product with embedding
         test_embedding = [0.1] * 768
+        sku = f"TEST-SKU-{uuid4().hex[:12].upper()}"
 
         new_product = await product_service.create_product(
             name="Test Coffee SQLSpec",
             price=12.99,
             description="A test coffee for SQLSpec validation",
             category="Coffee",
-            sku="TEST-SKU-001",
+            sku=sku,
             in_stock=True,
             embedding=test_embedding,
         )
@@ -143,6 +146,7 @@ class TestProductService:
         assert new_product.id is not None
         assert new_product.name == "Test Coffee SQLSpec"
         assert new_product.price == 12.99
+        assert new_product.sku == sku
         assert new_product.embedding is not None
 
     async def test_update_product(

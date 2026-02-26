@@ -1,6 +1,8 @@
 """Integration tests for CacheService with SQLSpec."""
 
 
+from uuid import uuid4
+
 import pytest
 
 from app.domain.system.services import CacheService
@@ -16,7 +18,7 @@ class TestCacheService:
         cache_service: CacheService,
     ) -> None:
         """Test cache miss followed by cache hit."""
-        query = "test query for caching"
+        query = f"test query for caching {uuid4().hex}"
         model_name = "test-model"
         test_embedding = [0.1] * 768
 
@@ -38,7 +40,7 @@ class TestCacheService:
         cache_service: CacheService,
     ) -> None:
         """Test that embeddings persist in Oracle cache across instances."""
-        query = "oracle persistence test"
+        query = f"oracle persistence test {uuid4().hex}"
         model_name = "test-model"
         test_embedding = [0.2] * 768
 
@@ -62,7 +64,7 @@ class TestCacheService:
         cache_service: CacheService,
     ) -> None:
         """Test that SQLSpec automatically handles Oracle VECTOR type conversion."""
-        query = "vector conversion test"
+        query = f"vector conversion test {uuid4().hex}"
         model_name = "test-model"
         test_embedding = [float(i) / 768 for i in range(768)]  # Unique values
 
@@ -86,8 +88,9 @@ class TestCacheService:
         # In the new design, normalization is not part of the cache service.
         # The service that calls the cache is responsible for normalization.
         # This test is to document that the CacheService itself does not normalize.
-        query1 = "Test Query"
-        query2 = "test query"
+        token = uuid4().hex
+        query1 = f"Test Query {token}"
+        query2 = f"test query {token}"
         model_name = "test-model"
         test_embedding = [0.3] * 768
 
@@ -103,7 +106,7 @@ class TestCacheService:
         cache_service: CacheService,
     ) -> None:
         """Test that MERGE statement properly upserts cache entries."""
-        query = "merge test"
+        query = f"merge test {uuid4().hex}"
         model_name = "test-model"
         embedding1 = [0.5] * 768
         embedding2 = [0.6] * 768

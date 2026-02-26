@@ -250,6 +250,9 @@ module = ["app.db.migrations.*"]
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--ignore", "app/db/migrations"]
+markers = [
+    "slow: marks tests as slow (integration/runtime checks)",
+]
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:google.*",

@@ -72,7 +72,7 @@ class TestSQLSpecConnection:
             assert row["row_num"] == i
 
     async def test_execute_with_rowcount(self, driver: Any) -> None:
-        """Test execute returns rowcount."""
+        """Test execute returns SQLResult with rows_affected."""
         # Create a temp table for testing
         await driver.execute(
             """
@@ -93,13 +93,13 @@ class TestSQLSpecConnection:
         )
 
         # Insert and check rowcount
-        rowcount = await driver.execute(
+        result = await driver.execute(
             "INSERT INTO test_sqlspec_tmp (id, value) VALUES (:id, :value)",
             id=1,
             value="test",
         )
 
-        assert rowcount == 1
+        assert result.rows_affected == 1
 
         # Cleanup
         await driver.execute("DROP TABLE test_sqlspec_tmp")
@@ -198,8 +198,8 @@ class TestSQLSpecConnection:
         # Cleanup
         await driver.execute("DROP TABLE test_merge_tmp")
 
-    async def test_returning_clause_support(self, driver: Any) -> None:
-        """Test that RETURNING clause works with SQLSpec."""
+    async def test_insert_and_fetch_generated_identity(self, driver: Any) -> None:
+        """Test identity insert by selecting the generated row."""
         # Create temp table
         await driver.execute(
             """
@@ -219,19 +219,28 @@ class TestSQLSpecConnection:
             """
         )
 
-        # Insert with RETURNING
+        value = "test_returning"
+        insert_result = await driver.execute(
+            "INSERT INTO test_returning_tmp (value) VALUES (:value)",
+            value=value,
+        )
+        assert insert_result.rows_affected == 1
+
         result = await driver.select_one_or_none(
             """
-            INSERT INTO test_returning_tmp (value)
-            VALUES (:value)
-            RETURNING id
+            SELECT id, value
+            FROM test_returning_tmp
+            WHERE value = :value
+            ORDER BY id DESC
+            FETCH FIRST 1 ROW ONLY
             """,
-            value="test_returning",
+            value=value,
         )
 
         assert result is not None
         assert "id" in result
         assert result["id"] > 0
+        assert result["value"] == value
 
         # Cleanup
         await driver.execute("DROP TABLE test_returning_tmp")

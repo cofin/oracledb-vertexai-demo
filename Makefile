@@ -118,7 +118,7 @@ clean: ## Cleanup temporary build artifacts
 .PHONY: test
 test: ## Run the tests
 	@echo "${INFO} Running test cases... 🧪"
-	@uv run pytest -n 2 --dist=loadgroup tests
+	@set -e; uv run pytest -n 2 --dist=loadgroup tests
 	@echo "${OK} Tests complete ✨"
 
 .PHONY: coverage
