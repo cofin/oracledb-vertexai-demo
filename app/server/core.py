@@ -53,7 +53,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.lib import log
         from app.lib.settings import BASE_DIR, get_settings
         from app.server import plugins, startup
-        from app.server.exception_handlers import exception_handlers
         from app.domain.system.services import CacheService, ExemplarService, MetricsService
         from app.domain.products.services import OracleVectorSearchService, ProductService, VertexAIService
         from app.domain.chat.services import ADKRunner
@@ -95,8 +94,6 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         )
         # startup hooks
         app_config.on_startup.append(startup.on_startup)
-        # exception handlers
-        app_config.exception_handlers.update(exception_handlers)  # type: ignore[arg-type]
         # signatures
         app_config.signature_namespace.update(
             {
