@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test"
 
-import { Route } from "./index"
+import { LandingPage, Route } from "./index"
 
 describe("LandingPage", () => {
-  it("defines the root dashboard route", () => {
-    expect(Route.options.path).toBe("/")
+  it("defines the landing component", () => {
+    expect(Route.options.component).toBe(LandingPage)
   })
 })

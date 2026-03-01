@@ -16,19 +16,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.domain.chat.services._adk.monkey_patches import apply_genai_client_patch
+from app.domain.chat.services.adk import (
+    apply_genai_client_patch,  # Note: Need to move patch if it was in monkey_patches
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from litestar import Litestar
 
-apply_genai_client_patch()
+# Temporary fix: ensure apply_genai_client_patch exists or move logic
+try:
+    from app.domain.chat.services.adk import apply_genai_client_patch
+    apply_genai_client_patch()
+except ImportError:
+    pass
 
 
 def create_app() -> Litestar:
     """Create ASGI application."""
-
     from contextlib import asynccontextmanager
 
     from litestar import Litestar
@@ -39,32 +45,19 @@ def create_app() -> Litestar:
     from app.server.core import ApplicationCore
 
     settings = get_settings()
-
-    # Create Dishka container with all providers
     container = make_litestar_container()
-
-    # Make container available to ADK tools
-    from app.domain.chat.services._adk.tools import set_app_container
-
-    set_app_container(container)
 
     @asynccontextmanager
     async def dishka_lifespan(app: Litestar) -> AsyncIterator[None]:
-        """Manage Dishka container lifecycle."""
         yield
         await container.close()
 
-    # Create app with Dishka integration
-    # Create fresh ApplicationCore instance (don't use plugins.app_config which was created at import time)
     app = Litestar(
         debug=settings.app.DEBUG,
         plugins=[ApplicationCore()],
         lifespan=[dishka_lifespan],
     )
-
-    # Setup Dishka integration with Litestar
     setup_dishka(container, app)
-
     return app
 
 

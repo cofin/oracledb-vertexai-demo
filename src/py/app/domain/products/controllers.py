@@ -20,8 +20,9 @@ from typing import Any
 from litestar import Controller, post
 from litestar.exceptions import ValidationException
 
-from app import schemas
-from app.domain.products.services._vertex_ai import OracleVectorSearchService
+from app.domain.products import schemas as product_schemas
+from app.domain.products.services import OracleVectorSearchService
+from app.domain.system import schemas as system_schemas
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
@@ -46,7 +47,7 @@ class VectorController(Controller):
     @post(path="/api/vector-demo", name="vector.demo")
     async def vector_search_demo(
         self,
-        data: schemas.VectorDemoRequest,
+        data: product_schemas.VectorDemoRequest,
         vector_search_service: Inject[OracleVectorSearchService],
         metrics_service: Inject[MetricsService],
     ) -> dict[str, Any]:
@@ -63,7 +64,7 @@ class VectorController(Controller):
 
         metrics_record_start = time.time()
         await metrics_service.record_search(
-            schemas.SearchMetricsCreate(
+            system_schemas.SearchMetricsCreate(
                 query_id=str(uuid.uuid4()),
                 user_id="demo_user",
                 search_time_ms=(time.time() - full_request_start) * 1000,

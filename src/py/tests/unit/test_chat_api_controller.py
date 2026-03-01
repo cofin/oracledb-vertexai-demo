@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from app import schemas
+from app.domain.chat import schemas
 from app.domain.chat.controllers._chat import CoffeeChatController
 
 

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from sqlspec.core.filters import (
     AnyCollectionFilter,
@@ -71,10 +71,10 @@ T = TypeVar("T")
 AsyncDriverT = TypeVar("AsyncDriverT", bound=AsyncDriverAdapterBase)
 
 
-class SQLSpecService:
+class SQLSpecService(Generic[AsyncDriverT]):
     """Base service class for SQLSpec operations."""
 
-    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
+    def __init__(self, driver: AsyncDriverT) -> None:
         """Initialize the service."""
         self.driver = driver
 

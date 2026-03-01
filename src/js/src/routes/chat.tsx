@@ -1,30 +1,42 @@
 import { createRoute } from "@tanstack/react-router"
-import { Bot, SendHorizontal, UserRound } from "lucide-react"
+import { Bot, Clock, Cpu, Package, SendHorizontal, Store, UserRound, Zap } from "lucide-react"
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 
 import { apiFetch } from "../lib/http"
 import { Route as RootRoute } from "./__root"
 
+type SearchMetrics = {
+  response_time_ms?: number
+  agent_processing_ms?: number
+  search_details?: { results_count?: number }
+  products_found?: Array<{ name?: string }>
+  stores_found?: Array<{ name?: string }>
+}
+
 type ChatMessage = {
   id: string
   role: "human" | "ai" | "system"
   text: string
+  metrics?: SearchMetrics
+  fromCache?: boolean
+  intent?: string
 }
 
 type ChatReply = {
   answer: string
   from_cache?: boolean
   intent_detected?: string
-  search_metrics?: {
-    response_time_ms?: number
-    agent_processing_ms?: number
-    search_details?: { results_count?: number }
-    products_found?: Array<{ name?: string }>
-    stores_found?: Array<{ name?: string }>
-  }
+  search_metrics?: SearchMetrics
 }
 
 const PERSONAS = ["novice", "enthusiast", "expert", "barista"] as const
+
+const PERSONA_DESCRIPTIONS: Record<(typeof PERSONAS)[number], string> = {
+  novice: "Simple, friendly explanations",
+  enthusiast: "Balanced detail and passion",
+  expert: "Technical, detailed responses",
+  barista: "Professional craft perspective",
+}
 
 const SESSION_STORAGE_KEY = "coffee-chat-session-id"
 
@@ -41,8 +53,19 @@ function getSessionId() {
   return created
 }
 
+function MetricBadge({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-color)] bg-[var(--surface-strong)] px-2.5 py-1 text-[0.6rem] font-medium text-[var(--text-muted)] transition-colors hover:border-[var(--text-muted)] hover:text-[var(--text-base)]">
+      <Icon className="h-3 w-3" />
+      <span className="font-semibold text-[var(--text-base)]">{value}</span>
+      <span>{label}</span>
+    </span>
+  )
+}
+
 export function ChatPage() {
   const sessionId = useMemo(getSessionId, [])
+  const formRef = useRef<HTMLFormElement | null>(null)
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null)
   const hasMountedRef = useRef(false)
   const [persona, setPersona] = useState<(typeof PERSONAS)[number]>("enthusiast")
@@ -53,7 +76,7 @@ export function ChatPage() {
     {
       id: "welcome",
       role: "ai",
-      text: "Welcome to Connoisseur. Ask for coffee recommendations, product detail, or store lookup.",
+      text: "Welcome to Cymbal Coffee! Ask me for coffee recommendations, product details, or store locations.",
     },
   ])
 
@@ -97,47 +120,15 @@ export function ChatPage() {
       }
 
       const payload = (await response.json()) as ChatReply
-      const suffix = payload.from_cache ? " (cached)" : ""
-      const details: string[] = []
-
-      if (payload.intent_detected) {
-        details.push(`Intent: ${payload.intent_detected}`)
-      }
-
-      const metrics = payload.search_metrics
-      if (metrics) {
-        if (typeof metrics.response_time_ms === "number") {
-          details.push(`Response: ${Math.round(metrics.response_time_ms)}ms`)
-        }
-        if (typeof metrics.agent_processing_ms === "number") {
-          details.push(`Agent: ${Math.round(metrics.agent_processing_ms)}ms`)
-        }
-        if (typeof metrics.search_details?.results_count === "number") {
-          details.push(`Results: ${metrics.search_details.results_count}`)
-        }
-        if (metrics.products_found?.length) {
-          const names = metrics.products_found
-            .map((product) => product.name)
-            .filter((name): name is string => Boolean(name))
-          if (names.length > 0) {
-            details.push(`Products: ${names.join(", ")}`)
-          }
-        }
-        if (metrics.stores_found?.length) {
-          const names = metrics.stores_found.map((store) => store.name).filter((name): name is string => Boolean(name))
-          if (names.length > 0) {
-            details.push(`Stores: ${names.join(", ")}`)
-          }
-        }
-      }
-
-      const context = details.length > 0 ? `\n\n${details.join("\n")}` : ""
       setMessages((previous) => [
         ...previous,
         {
           id: crypto.randomUUID(),
           role: "ai",
-          text: `${payload.answer}${suffix}${context}`,
+          text: payload.answer,
+          metrics: payload.search_metrics,
+          fromCache: payload.from_cache,
+          intent: payload.intent_detected,
         },
       ])
     } catch (caughtError) {
@@ -156,74 +147,141 @@ export function ChatPage() {
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[280px_1fr]">
-      <aside className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">Assistant</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-100">Coffee Chat</h2>
-        <p className="mt-2 text-sm text-zinc-400">Select tone, then send a question to the agent.</p>
+    <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <aside className="h-fit rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-6 shadow-sm">
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)]">Gemini Assistant</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-strong)]">Chat</h2>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
+          Pick a tone and ask questions against Oracle-backed product context.
+        </p>
 
-        <div className="mt-5 grid gap-2">
+        <div className="mt-8 grid gap-2.5">
           {PERSONAS.map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setPersona(value)}
               className={[
-                "rounded-xl border px-3 py-2 text-left text-sm capitalize transition-colors",
+                "rounded-2xl border px-4 py-3.5 text-left transition-all duration-200",
                 persona === value
-                  ? "border-amber-400/60 bg-amber-400/12 text-amber-200"
-                  : "border-zinc-700 bg-zinc-950 text-zinc-400 hover:text-zinc-200",
+                  ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--text-strong)] ring-1 ring-[var(--accent)]/20 shadow-lg shadow-[var(--accent)]/5"
+                  : "border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/30 hover:text-[var(--text-base)]",
               ].join(" ")}
             >
-              {value}
+              <span className="text-sm font-semibold capitalize">{value}</span>
+              <span className="mt-1 block text-[0.7rem] opacity-70 leading-normal">{PERSONA_DESCRIPTIONS[value]}</span>
             </button>
           ))}
         </div>
       </aside>
 
-      <div className="rounded-3xl border border-zinc-800 bg-zinc-900/80 p-4 md:p-5">
-        <div className="h-[480px] space-y-3 overflow-y-auto rounded-2xl border border-zinc-800 bg-[#0d0f12] p-3 md:p-4">
+      <div className="flex flex-col rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-sm md:p-6">
+        <div className="flex-1 h-[540px] space-y-6 overflow-y-auto rounded-2xl border border-[var(--border-color)] bg-[var(--bg-canvas)]/50 p-4 md:p-6 scrollbar-thin scrollbar-thumb-[var(--surface-soft)]">
           {messages.map((message) => (
             <article
               key={message.id}
               className={[
-                "max-w-[90%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap md:max-w-[80%]",
-                message.role === "human" && "ml-auto border border-amber-500/30 bg-amber-500/15 text-amber-100",
-                message.role === "ai" && "mr-auto border border-zinc-700 bg-zinc-900 text-zinc-200",
-                message.role === "system" && "mr-auto border border-rose-500/30 bg-rose-500/10 text-rose-200",
+                "max-w-[90%] md:max-w-[85%]",
+                message.role === "human" && "ml-auto",
+                message.role !== "human" && "mr-auto",
               ]
                 .filter(Boolean)
                 .join(" ")}
             >
-              <span className="mb-1 flex items-center gap-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                {message.role === "human" ? <UserRound className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-                {message.role}
-              </span>
-              {message.text}
+              <div
+                className={[
+                  "rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm transition-all",
+                  message.role === "human" && "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/10",
+                  message.role === "ai" &&
+                    "border border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-base)]",
+                  message.role === "system" &&
+                    "border border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span
+                  className={[
+                    "mb-2.5 flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-[0.2em]",
+                    message.role === "human" ? "text-white/80" : "text-[var(--text-muted)]",
+                  ].join(" ")}
+                >
+                  {message.role === "human" ? <UserRound className="h-3 w-3" /> : <Bot className="h-3.5 w-3.5" />}
+                  {message.role}
+                  {message.fromCache && (
+                    <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-[0.55rem] font-bold normal-case tracking-normal">
+                      cached
+                    </span>
+                  )}
+                </span>
+                <div className="whitespace-pre-wrap">{message.text}</div>
+              </div>
+
+              {message.role === "ai" && message.metrics && (
+                <div className="mt-3 flex flex-wrap gap-2 px-1">
+                  {typeof message.metrics.response_time_ms === "number" && (
+                    <MetricBadge
+                      icon={Clock}
+                      label="latency"
+                      value={`${Math.round(message.metrics.response_time_ms)}ms`}
+                    />
+                  )}
+                  {typeof message.metrics.agent_processing_ms === "number" && (
+                    <MetricBadge
+                      icon={Cpu}
+                      label="agent"
+                      value={`${Math.round(message.metrics.agent_processing_ms)}ms`}
+                    />
+                  )}
+                  {message.metrics.products_found && message.metrics.products_found.length > 0 && (
+                    <MetricBadge
+                      icon={Package}
+                      label="products"
+                      value={String(message.metrics.products_found.length)}
+                    />
+                  )}
+                  {message.metrics.stores_found && message.metrics.stores_found.length > 0 && (
+                    <MetricBadge icon={Store} label="stores" value={String(message.metrics.stores_found.length)} />
+                  )}
+                  {message.intent && message.intent !== "GENERAL_CONVERSATION" && (
+                    <MetricBadge icon={Zap} label="" value={message.intent.toLowerCase().replace("_", " ")} />
+                  )}
+                </div>
+              )}
             </article>
           ))}
           <div ref={bottomAnchorRef} />
         </div>
 
-        <form className="mt-4 grid gap-3" onSubmit={sendMessage}>
-          <label className="grid gap-2 text-sm font-medium text-zinc-300">
-            Message
+        <form ref={formRef} className="mt-6 space-y-4" onSubmit={sendMessage}>
+          <div className="relative">
             <textarea
-              className="min-h-24 rounded-2xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
-              placeholder="Try: Recommend a bold espresso roast"
+              className="w-full min-h-[100px] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-strong)] px-4 py-4 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 transition-all resize-none"
+              placeholder="Try: Find medium-roast chocolate notes under $20"
               value={input}
               onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault()
+                  formRef.current?.requestSubmit()
+                }
+              }}
             />
-          </label>
-          <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-100 px-4 text-sm font-semibold text-zinc-900 transition-colors hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isSending}
-            type="submit"
-          >
-            <SendHorizontal className="h-4 w-4" />
-            {isSending ? "Sending..." : "Send"}
-          </button>
-          {error && <p className="text-sm text-rose-300">Error: {error}</p>}
+            <div className="absolute right-3 bottom-3 flex items-center gap-4">
+              <span className="hidden sm:block text-[0.65rem] font-medium text-[var(--text-muted)]">
+                <kbd className="rounded bg-[var(--surface-soft)] px-1 py-0.5 text-[var(--text-base)]">↵</kbd> to send
+              </span>
+              <button
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/20 transition-all hover:bg-[var(--accent-strong)] hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
+                disabled={isSending}
+                type="submit"
+              >
+                <SendHorizontal className="h-5 w-5" />
+                <span className="sr-only">Send</span>
+              </button>
+            </div>
+          </div>
+          {error && <p className="text-xs font-medium text-[var(--danger)] ml-1">Error: {error}</p>}
         </form>
       </div>
     </section>

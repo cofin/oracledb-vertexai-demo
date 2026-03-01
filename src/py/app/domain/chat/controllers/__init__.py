@@ -1,1 +1,0 @@
-"""Chat domain controllers package."""

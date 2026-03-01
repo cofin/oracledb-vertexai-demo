@@ -2,16 +2,34 @@
 
 :root {
   color-scheme: dark;
+  --bg-canvas: #09090b;
+  --bg-deep: #000000;
+  --surface: #121212;
+  --surface-strong: #18181b;
+  --surface-soft: #27272a;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-strong: #fafafa;
+  --text-base: #d4d4d8;
+  --text-muted: #71717a;
+  --accent: #a16207;
+  --accent-strong: #ca8a04;
+  --accent-soft: rgba(161, 98, 7, 0.1);
+  --success: #4ade80;
+  --danger: #f87171;
 }
 
 @layer base {
   * {
-    @apply border-zinc-800;
+    border-color: var(--border-color);
   }
 
   body {
-    @apply min-h-screen bg-[#0a0b0d] text-zinc-100 antialiased;
-    font-family: "Space Grotesk", "Sora", "Manrope", sans-serif;
+    min-height: 100vh;
+    background: var(--bg-canvas);
+    color: var(--text-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: "Inter", "Space Grotesk", "Sora", sans-serif;
     font-feature-settings:
       "ss01" 1,
       "ss03" 1,

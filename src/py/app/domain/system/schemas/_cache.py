@@ -12,27 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""System domain schemas package."""
+from __future__ import annotations
 
-from ._cache import EmbeddingCache, ResponseCache
-from ._metrics import (
-    ChartDataResponse,
-    MetricCard,
-    MetricsSummaryResponse,
-    SearchMetricsCreate,
-    TimeSeriesData,
-)
-from ._session import HistoryMeta, UserSessionCreate, UserSessionRead
+from datetime import datetime
+from typing import Any
 
-__all__ = (
-    "ChartDataResponse",
-    "EmbeddingCache",
-    "HistoryMeta",
-    "MetricCard",
-    "MetricsSummaryResponse",
-    "ResponseCache",
-    "SearchMetricsCreate",
-    "TimeSeriesData",
-    "UserSessionCreate",
-    "UserSessionRead",
-)
+import msgspec
+
+
+class ResponseCache(msgspec.Struct, omit_defaults=True):
+    """Response cache entry."""
+
+    id: int
+    cache_key: str
+    response_data: dict[str, Any]
+    created_at: datetime
+    expires_at: datetime | None = None
+
+
+class EmbeddingCache(msgspec.Struct, omit_defaults=True):
+    """Embedding cache entry."""
+
+    id: int
+    text_hash: str
+    embedding: list[float]
+    model: str
+    created_at: datetime
+    last_accessed: datetime
+    hit_count: int = 0

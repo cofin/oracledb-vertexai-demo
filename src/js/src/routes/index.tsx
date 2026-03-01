@@ -13,28 +13,29 @@ type Tile = {
 
 const tiles: Tile[] = [
   {
-    title: "Chat Interface",
-    description: "Talk with the coffee assistant in real time.",
+    title: "Gemini Chat Console",
+    description: "Chat-driven recommendations powered by Gemini and Oracle 26AI context retrieval.",
     href: "/chat",
     status: "live",
     icon: MessageCircleMore,
   },
   {
     title: "Performance Monitor",
-    description: "Inspect latency and vector search health.",
+    description: "Inspect endpoint timing, Oracle vector latency, and retrieval health.",
     href: "/performance",
     status: "live",
     icon: Activity,
   },
   {
-    title: "Coffee Library",
-    description: "Product intelligence modules are queued.",
-    status: "soon",
+    title: "Vector Search Demo",
+    description: "Run semantic similarity queries directly against Oracle 26AI vectors.",
+    href: "/vector-demo",
+    status: "live",
     icon: FlaskConical,
   },
   {
-    title: "Automation Studio",
-    description: "Workflow orchestration panel coming next.",
+    title: "Agent Workbench",
+    description: "Prompt orchestration and tool chains for richer Gemini workflows.",
     status: "soon",
     icon: Sparkles,
   },
@@ -42,43 +43,51 @@ const tiles: Tile[] = [
 
 export function LandingPage() {
   return (
-    <section className="space-y-8 md:space-y-10">
-      <header className="max-w-3xl space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">Dashboard Landing</p>
-        <h2 className="text-4xl font-semibold tracking-tight text-zinc-100 sm:text-5xl">Coffee Operations Command</h2>
-        <p className="text-base leading-relaxed text-zinc-400 md:text-lg">
-          A minimal dark workspace for chat and performance workflows. Start with the core tools below.
+    <section className="space-y-12">
+      <header className="max-w-2xl space-y-5">
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-[var(--accent)]">Demo Control Plane</p>
+        <h2 className="text-4xl font-semibold tracking-tight text-[var(--text-strong)] sm:text-5xl lg:text-6xl">
+          Oracle 26AI Vector <br />
+          <span className="text-[var(--text-muted)]">& Gemini Orchestration</span>
+        </h2>
+        <p className="text-base leading-relaxed text-[var(--text-base)] md:text-lg">
+          Explore semantic search, RAG workflows, and performance metrics across the Cymbal Coffee dataset.
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         {tiles.map((tile) => {
           const Icon = tile.icon
           const commonClass =
-            "group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/70 p-6 transition duration-300 motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-zinc-600 motion-safe:hover:shadow-[0_20px_50px_-28px_rgba(245,158,11,0.5)]"
+            "group relative overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-8 transition-all duration-300 hover:border-[var(--surface-soft)] hover:bg-[var(--surface-strong)] hover:shadow-2xl hover:shadow-black/50"
 
           const content = (
             <>
-              <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-zinc-800/60 blur-2xl transition group-hover:bg-amber-500/20" />
-              <div className="relative flex h-full flex-col gap-6">
+              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[var(--accent)]/5 blur-3xl transition-opacity group-hover:opacity-100" />
+              <div className="relative flex h-full flex-col gap-8">
                 <div className="flex items-start justify-between gap-4">
-                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-950 text-zinc-200">
-                    <Icon className="h-7 w-7" aria-hidden="true" />
+                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--border-color)] bg-[var(--bg-canvas)] text-[var(--text-strong)] transition-colors group-hover:border-[var(--accent)]/30 group-hover:bg-[var(--accent-soft)]">
+                    <Icon
+                      className="h-7 w-7 transition-transform duration-300 group-hover:scale-110"
+                      aria-hidden="true"
+                    />
                   </span>
                   <span
                     className={[
-                      "rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em]",
+                      "rounded-full px-3 py-1 text-[0.6rem] font-bold uppercase tracking-[0.2em]",
                       tile.status === "live"
-                        ? "border border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-                        : "border border-zinc-600 bg-zinc-800 text-zinc-300",
+                        ? "border border-[var(--success)]/20 bg-[var(--success)]/10 text-[var(--success)]"
+                        : "border border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-muted)]",
                     ].join(" ")}
                   >
                     {tile.status === "live" ? "Live" : "Soon"}
                   </span>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-zinc-100">{tile.title}</h3>
-                  <p className="text-sm text-zinc-400">{tile.description}</p>
+                <div className="space-y-3">
+                  <h3 className="text-xl font-semibold text-[var(--text-strong)]">{tile.title}</h3>
+                  <p className="text-sm leading-relaxed text-[var(--text-muted)] group-hover:text-[var(--text-base)]">
+                    {tile.description}
+                  </p>
                 </div>
               </div>
             </>
@@ -93,7 +102,7 @@ export function LandingPage() {
           }
 
           return (
-            <article key={tile.title} className={commonClass} aria-disabled="true">
+            <article key={tile.title} className={`${commonClass} opacity-60 grayscale-[0.5]`} aria-disabled="true">
               {content}
             </article>
           )

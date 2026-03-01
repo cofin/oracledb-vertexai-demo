@@ -12,22 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from app.lib.di import Provider, Scope, provide
+from __future__ import annotations
 
-from .services import CacheService, ExemplarService, MetricsService
+from datetime import datetime
+from uuid import UUID
 
-
-class SystemServiceProvider(Provider):
-    scope = Scope.REQUEST
-
-    cache_service = provide(CacheService)
-    metrics_service = provide(MetricsService)
-    exemplar_service = provide(ExemplarService)
+import msgspec
 
 
-__all__ = (
-    "CacheService",
-    "ExemplarService",
-    "MetricsService",
-    "SystemServiceProvider",
-)
+class UserSessionCreate(msgspec.Struct, omit_defaults=True):
+    """Session creation payload."""
+
+    user_id: str
+    data: dict = {}
+
+
+class UserSessionRead(msgspec.Struct, omit_defaults=True):
+    """Session response payload."""
+
+    id: UUID
+    session_id: str
+    user_id: str
+    data: dict
+    expires_at: datetime
+    created_at: datetime
+
+
+class HistoryMeta(msgspec.Struct, omit_defaults=True):
+    """History metadata."""
+
+    conversation_id: str
+    user_id: str

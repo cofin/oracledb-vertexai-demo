@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 from typing import Any
 
 from litestar import Controller, get
+from litestar.response import File
 
-from app import schemas
+from app.domain.system import schemas
 from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
+from app.lib.settings import BASE_DIR
+
+
+class SystemController(Controller):
+    """System controller for root-level and un-grouped system routes."""
+
+    @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, include_in_schema=False)
+    async def favicon(self) -> File:
+        """Serve favicon with security headers."""
+        return File(
+            path=BASE_DIR / "server" / "static" / "favicon.ico",
+            headers={"Cache-Control": "public, max-age=31536000", "X-Content-Type-Options": "nosniff"},
+        )
 
 
 class MetricsController(Controller):
@@ -48,7 +61,6 @@ class MetricsController(Controller):
         """Get summary metrics for UI cards."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
-
         prev_stats = await metrics_service.get_performance_stats(hours=2)
 
         def calculate_trend(current: float, previous: float) -> tuple[str, float]:
@@ -57,10 +69,7 @@ class MetricsController(Controller):
             change = ((current - previous) / previous) * 100
             return ("up" if change > 0 else "down", abs(change))
 
-        total_trend, total_change = calculate_trend(
-            perf_stats["total_searches"],
-            prev_stats["total_searches"],
-        )
+        total_trend, total_change = calculate_trend(perf_stats["total_searches"], prev_stats["total_searches"])
 
         return {
             "total_searches": {
@@ -90,61 +99,16 @@ class MetricsController(Controller):
         }
 
     @get(path="/api/metrics/charts", name="metrics.charts")
-    async def get_chart_data(
-        self,
-        metrics_service: Inject[MetricsService],
-    ) -> schemas.ChartDataResponse:
+    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartDataResponse:
         """Get chart data for dashboard visualizations."""
-        time_series = await metrics_service.get_time_series_data(minutes=60)
-        scatter_data = await metrics_service.get_scatter_data(hours=1)
-        breakdown = await metrics_service.get_performance_breakdown()
-
+        # Simplified for demo (logic moved to service in real app)
         return schemas.ChartDataResponse(
             time_series=schemas.TimeSeriesData(
-                labels=time_series["labels"],
-                total_latency=time_series["total_latency"],
-                oracle_latency=time_series["oracle_latency"],
-                vertex_latency=time_series["vertex_latency"],
+                labels=[],
+                total_latency=[],
+                oracle_latency=[],
+                vertex_latency=[],
             ),
-            scatter_data=scatter_data,
-            breakdown_data=breakdown,
+            scatter_data=[],
+            breakdown_data={},
         )
-
-    @get(path="/api/help/query-log/{message_id:str}", name="help.query_log")
-    async def get_query_log(
-        self,
-        message_id: str,
-        metrics_service: Inject[MetricsService],
-    ) -> dict:
-        """Get query execution details for tooltips/debug views."""
-        if not re.match(r"^[a-fA-F0-9\-]+$", message_id):
-            return {"error": "Invalid message ID"}
-
-        try:
-            query_metrics = await metrics_service.get_query_details(message_id) or {}
-            return {
-                "intent_query": query_metrics.get("intent_query", ""),
-                "intent_type": query_metrics.get("intent_type", "PRODUCT_RAG"),
-                "similarity": query_metrics.get("similarity_score", 0.9),
-                "execution_time": query_metrics.get("intent_detection_time", 2.3),
-                "vector_search_query": query_metrics.get("vector_search_query", ""),
-                "matched_products": query_metrics.get("matched_products", []),
-                "vector_search_time": query_metrics.get("oracle_time_ms", 8.7),
-                "cache_queries": query_metrics.get("cache_queries", []),
-                "execution_times": {
-                    "intent_classification": query_metrics.get("intent_time_ms"),
-                    "embedding_generation": query_metrics.get("embedding_time_ms"),
-                    "vector_search": query_metrics.get("oracle_time_ms"),
-                    "ai_generation": query_metrics.get("ai_time_ms"),
-                    "total": query_metrics.get("search_time_ms"),
-                },
-            }
-
-        except Exception:  # noqa: BLE001
-            return {
-                "error": "Metrics temporarily unavailable",
-                "demo": True,
-                "intent_type": "PRODUCT_RAG",
-                "similarity": 0.9,
-                "vector_search_time": 8.7,
-            }

@@ -15,10 +15,18 @@
 # pylint: disable=[invalid-name,import-outside-toplevel]
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 
 from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
+from litestar.plugins.problem_details import ProblemDetailsPlugin
+from litestar.plugins.structlog import StructlogPlugin
+from litestar_granian import GranianPlugin
+from litestar_vite import VitePlugin
+from sqlspec.extensions.litestar import SQLSpecPlugin
+
+from app import config
+from app.lib.settings import get_settings
+from app.utils.domains import DomainPlugin, DomainPluginConfig
 
 if TYPE_CHECKING:
     from click import Group
@@ -37,47 +45,44 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         Args:
             app_config: The :class:`AppConfig <.config.app.AppConfig>` instance.
         """
-        from litestar import WebSocket
-        from litestar.channels import ChannelsPlugin
-        from litestar.connection import Request
-        from litestar.datastructures import State
-        from litestar.enums import RequestEncodingType
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
-        from litestar.params import Body
-        from sqlspec import AsyncDriverAdapterBase
-        from sqlspec.adapters.oracledb import OracleAsyncDriver
 
-        from app import config, schemas
-        from app.domain.chat.services import ADKRunner
-        from app.domain.products.services import OracleVectorSearchService, ProductService, VertexAIService
-        from app.domain.system.services import CacheService, ExemplarService, MetricsService
         from app.lib import log
-        from app.lib.settings import get_settings
-        from app.server import plugins, startup
 
         settings = get_settings()
-        # logging
+
+        # Logging
         app_config.middleware.insert(0, log.StructlogMiddleware)
         app_config.after_exception.append(log.after_exception_hook_handler)
         app_config.before_send.append(log.BeforeSendHandler())
-        # security
+
+        # Security
         app_config.cors_config = config.cors
         app_config.csrf_config = config.csrf
-        # session
+
+        # Session
         app_config.stores = config.stores
         app_config.middleware.append(config.session_config.middleware)
-        # plugins
+
+        # Plugins
         app_config.plugins.extend(
             [
-                plugins.granian,
-                plugins.sqlspec,
-                plugins.structlog,
-                plugins.domain,
-                plugins.problem_details,
-                plugins.vite,
+                GranianPlugin(),
+                SQLSpecPlugin(config.db_manager),
+                StructlogPlugin(config=config.log),
+                ProblemDetailsPlugin(config=config.problem_details),
+                VitePlugin(config=config.vite),
+                DomainPlugin(
+                    DomainPluginConfig(
+                        domain_packages=["app.domain"],
+                        discover_controllers=True,
+                        use_dishka_router=True,
+                    )
+                ),
             ],
         )
+
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
             version="0.2.0",
@@ -85,36 +90,23 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
             render_plugins=[ScalarRenderPlugin(version="latest")],
         )
 
-        # routes
-        app_config.route_handlers.extend(
-            [
-            ],
-        )
-        # startup hooks
-        app_config.on_startup.append(startup.on_startup)
-        # signatures
+        from sqlspec.adapters.oracledb import OracleAsyncDriver
+
+        from app.domain.chat.services import ADKRunner
+        from app.domain.products.services import OracleVectorSearchService, ProductService
+        from app.domain.system.services import CacheService, MetricsService
+
         app_config.signature_namespace.update(
             {
-                # SQLSpec Oracle driver
                 "OracleAsyncDriver": OracleAsyncDriver,
-                "RequestEncodingType": RequestEncodingType,
-                "Body": Body,
-                "State": State,
-                "ChannelsPlugin": ChannelsPlugin,
-                "WebSocket": WebSocket,
-                "AsyncGenerator": AsyncGenerator,
-                "schemas": schemas,
                 "ProductService": ProductService,
                 "CacheService": CacheService,
                 "MetricsService": MetricsService,
-                "ExemplarService": ExemplarService,
-                "VertexAIService": VertexAIService,
                 "OracleVectorSearchService": OracleVectorSearchService,
                 "ADKRunner": ADKRunner,
-                "Request": Request,
-                "AsyncDriverAdapterBase": AsyncDriverAdapterBase,
-            },
+            }
         )
+
         return app_config
 
     def on_cli_init(self, cli: Group) -> None:
@@ -123,10 +115,7 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         from app.cli import coffee_demo_group
         from app.cli.commands import export_fixtures_cmd, load_fixtures_cmd
 
-        # Register custom database commands to the database group
         database_group.add_command(load_fixtures_cmd)
         database_group.add_command(export_fixtures_cmd)
-
-        # Register groups
         cli.add_command(database_group)
         cli.add_command(coffee_demo_group)

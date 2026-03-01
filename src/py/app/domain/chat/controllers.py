@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
 import uuid
 
@@ -19,7 +21,7 @@ from litestar import Controller, post
 from litestar.connection import Request
 from litestar.exceptions import ValidationException
 
-from app import schemas
+from app.domain.chat import schemas
 from app.domain.chat.services import ADKRunner
 from app.domain.system.services import CacheService
 from app.lib.di import Inject
@@ -78,18 +80,8 @@ class CoffeeChatController(Controller):
             ],
             answer=result.get("answer", ""),
             query_id=str(uuid.uuid4()),
-            search_metrics={
-                "response_time_ms": result.get("response_time_ms", 0),
-                "agent_processing_ms": result.get("agent_processing_ms", 0),
-                "session_id": result.get("session_id", session_id),
-                "intent_details": result.get("intent_details", {}),
-                "search_details": result.get("search_details", {}),
-                "store_details": result.get("store_details", {}),
-                "products_found": result.get("products_found", []),
-                "stores_found": result.get("stores_found", []),
-            },
+            search_metrics=result.get("search_metrics", {}),
             from_cache=bool(result.get("from_cache", False)),
             embedding_cache_hit=bool(result.get("embedding_cache_hit", False)),
-            intent_detected=result.get("intent_detected")
-            or result.get("intent_details", {}).get("intent", "GENERAL_CONVERSATION"),
+            intent_detected=result.get("intent_detected", "GENERAL_CONVERSATION"),
         )
