@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from typing import Any
 
-import msgspec
+from app.lib.schema import CamelizedBaseStruct
 
 
-class SearchMetricsCreate(msgspec.Struct, omit_defaults=True, kw_only=True):
+class SearchMetricsCreate(CamelizedBaseStruct, omit_defaults=True, kw_only=True):
     """Metrics creation payload."""
 
     query_id: str
@@ -33,16 +33,16 @@ class SearchMetricsCreate(msgspec.Struct, omit_defaults=True, kw_only=True):
     result_count: int
 
 
-class MetricCard(msgspec.Struct, omit_defaults=True):
+class MetricCard(CamelizedBaseStruct, omit_defaults=True):
     """Metric card data for dashboard."""
 
     label: str
     value: str | float
     trend: str = "neutral"  # up, down, neutral
-    trend_value: float | None = None
+    trend_value: str | float | None = None
 
 
-class MetricsSummaryResponse(msgspec.Struct, omit_defaults=True):
+class MetricsSummaryResponse(CamelizedBaseStruct, omit_defaults=True):
     """Metrics summary response."""
 
     total_searches: MetricCard
@@ -51,7 +51,7 @@ class MetricsSummaryResponse(msgspec.Struct, omit_defaults=True):
     cache_hit_rate: MetricCard
 
 
-class TimeSeriesData(msgspec.Struct, omit_defaults=True):
+class TimeSeriesData(CamelizedBaseStruct, omit_defaults=True):
     """Time series data for charts."""
 
     labels: list[str]
@@ -60,7 +60,7 @@ class TimeSeriesData(msgspec.Struct, omit_defaults=True):
     vertex_latency: list[float]
 
 
-class ChartDataResponse(msgspec.Struct, omit_defaults=True):
+class ChartDataResponse(CamelizedBaseStruct, omit_defaults=True):
     """Chart data response."""
 
     time_series: TimeSeriesData

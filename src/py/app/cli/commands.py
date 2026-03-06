@@ -114,15 +114,30 @@ def bulk_embed(batch_size: int, force: bool) -> None:
     console.print()
 
     async def _bulk_embed_products() -> None:
+        from google.genai import Client
+
         from app.config import db, db_manager
         from app.domain.products.services import ProductService, VertexAIService
         from app.domain.system.services import CacheService
+        from app.lib.settings import get_settings
+
+        settings = get_settings()
 
         # Use SQLSpec session directly
         async with db_manager.provide_session(db) as session:
             product_service = ProductService(session)
             cache_service = CacheService(session)
-            vertex_ai_service = VertexAIService(cache_service=cache_service)
+            client = Client(
+                api_key=settings.vertex_ai.API_KEY,
+                project=settings.vertex_ai.PROJECT_ID,
+                location=settings.vertex_ai.LOCATION,
+            )
+            vertex_ai_service = VertexAIService(
+                client=client,
+                model=settings.vertex_ai.CHAT_MODEL,
+                embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
+                cache_service=cache_service,
+            )
 
             # Get products to embed
             products, message = await _fetch_products_to_embed(product_service, force)
@@ -255,10 +270,22 @@ def model_info() -> None:
 
     # Test model initialization
     console.print("[bold]🔍 Testing Model Initialization...[/bold]")
+
     async def _check_vertex() -> None:
+        from google.genai import Client
         async with db_manager.provide_session(db) as session:
             cache_service = CacheService(session)
-            VertexAIService(cache_service=cache_service)
+            client = Client(
+                api_key=settings.vertex_ai.API_KEY,
+                project=settings.vertex_ai.PROJECT_ID,
+                location=settings.vertex_ai.LOCATION,
+            )
+            VertexAIService(
+                client=client,
+                model=settings.vertex_ai.CHAT_MODEL,
+                embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
+                cache_service=cache_service,
+            )
             console.print("[bold green]✓ Successfully initialized![/bold green]")
 
     try:

@@ -14,7 +14,7 @@
 
 from app.lib.di import Provider, Scope, provide
 
-from .services import CacheService, ExemplarService, MetricsService
+from .services import BASE_SYSTEM_INSTRUCTION, CacheService, ExemplarService, MetricsService, PersonaManager
 
 
 class SystemServiceProvider(Provider):
@@ -24,10 +24,11 @@ class SystemServiceProvider(Provider):
     metrics_service = provide(MetricsService)
     exemplar_service = provide(ExemplarService)
 
-
 __all__ = (
+    "BASE_SYSTEM_INSTRUCTION",
     "CacheService",
     "ExemplarService",
     "MetricsService",
+    "PersonaManager",
     "SystemServiceProvider",
 )

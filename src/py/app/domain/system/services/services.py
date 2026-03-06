@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import msgspec
@@ -135,36 +135,36 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
         sql = "SELECT id, cache_key, response_data, created_at, expires_at FROM response_cache WHERE cache_key = :key"
-        row = await self.driver.fetch_one(sql, {"key": cache_key})
+        row = await self.driver.select_one_or_none(sql, {"key": cache_key})
         if not row:
             return None
 
         # Check expiration
-        if row.get("expires_at") and row["expires_at"] < datetime.now():
+        if row.get("expires_at") and row["expires_at"] < datetime.now(UTC):
             await self.driver.execute("DELETE FROM response_cache WHERE id = :id", {"id": row["id"]})
             return None
 
         return ResponseCache(**row)
 
-    async def set_cached_response(self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60) -> ResponseCache:
-        expires_at = datetime.now() + timedelta(minutes=ttl_minutes)
+    async def set_cached_response(self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60) -> ResponseCache | None:
+        expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
         sql = """INSERT INTO response_cache (cache_key, response_data, expires_at)
                  VALUES (:key, :data, :expires)
                  ON CONFLICT (cache_key) DO UPDATE SET response_data = :data, expires_at = :expires
                  RETURNING id, cache_key, response_data, created_at, expires_at"""
-        row = await self.driver.fetch_one(sql, {"key": cache_key, "data": response_data, "expires": expires_at})
-        return ResponseCache(**row)
+        row = await self.driver.select_one_or_none(sql, {"key": cache_key, "data": response_data, "expires": expires_at})
+        return ResponseCache(**row) if row else None
 
     async def get_embedding(self, text: str, model: str) -> list[float] | None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         sql = "SELECT embedding FROM embedding_cache WHERE text_hash = :hash AND model = :model"
-        row = await self.driver.fetch_one(sql, {"hash": text_hash, "model": model})
+        row = await self.driver.select_one_or_none(sql, {"hash": text_hash, "model": model})
         if row:
             await self.driver.execute(
                 "UPDATE embedding_cache SET hit_count = hit_count + 1, last_accessed = CURRENT_TIMESTAMP WHERE text_hash = :hash",
                 {"hash": text_hash},
             )
-            return row["embedding"]
+            return list(row["embedding"]) if isinstance(row["embedding"], list) else None
         return None
 
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
@@ -175,10 +175,27 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
 
     async def get_cache_stats(self) -> dict[str, Any]:
         hit_sql = "SELECT SUM(hit_count) as total_hits, COUNT(*) as total_entries FROM embedding_cache"
-        row = await self.driver.fetch_one(hit_sql)
-        total_hits = row.get("total_hits", 0) or 0
-        total_entries = row.get("total_entries", 0) or 0
+        row = await self.driver.select_one_or_none(hit_sql)
+        total_hits = row.get("total_hits", 0) if row else 0
+        total_entries = row.get("total_entries", 0) if row else 0
         return {"total_hits": total_hits, "total_entries": total_entries, "cache_hit_rate": (total_hits / (total_hits + 100)) * 100}
+
+    async def invalidate_cache(self, cache_type: str | None = None, include_exemplars: bool = False) -> int:
+        """Clear cache tables."""
+        total_deleted = 0
+        if cache_type in {None, "response"}:
+            sql = "DELETE FROM response_cache"
+            res = await self.driver.execute(sql)
+            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+        if cache_type in {None, "embedding"}:
+            sql = "DELETE FROM embedding_cache"
+            res = await self.driver.execute(sql)
+            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+        if include_exemplars:
+            sql = "DELETE FROM intent_exemplar"
+            res = await self.driver.execute(sql)
+            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+        return total_deleted
 
 # --- Metrics Service ---
 
@@ -199,9 +216,9 @@ class MetricsService(SQLSpecService[OracleAsyncDriver]):
         sql = """SELECT COUNT(*) as total_searches, AVG(search_time_ms) as avg_search_time_ms,
                         AVG(oracle_time_ms) as avg_oracle_time_ms, AVG(similarity_score) as avg_similarity_score
                  FROM search_metric WHERE created_at > :since"""
-        since = datetime.now() - timedelta(hours=hours)
-        row = await self.driver.fetch_one(sql, {"since": since})
-        return {k: v or 0 for k, v in row.items()}
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        row = await self.driver.select_one_or_none(sql, {"since": since})
+        return {k: v or 0 for k, v in row.items()} if row else {}
 
 # --- Exemplar Service ---
 
@@ -211,4 +228,4 @@ class ExemplarService(SQLSpecService[OracleAsyncDriver]):
     async def search_similar_intents(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
         sql = """SELECT intent, phrase, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity, confidence_threshold
                  FROM intent_exemplar ORDER BY similarity DESC FETCH FIRST :limit ROWS ONLY"""
-        return await self.driver.fetch_all(sql, {"query_vector": query_embedding, "limit": limit})
+        return await self.driver.select(sql, {"query_vector": query_embedding, "limit": limit})

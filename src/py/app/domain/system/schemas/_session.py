@@ -14,20 +14,23 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from uuid import UUID
+from typing import TYPE_CHECKING
 
-import msgspec
+from app.lib.schema import CamelizedBaseStruct
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from uuid import UUID
 
 
-class UserSessionCreate(msgspec.Struct, omit_defaults=True):
+class UserSessionCreate(CamelizedBaseStruct, omit_defaults=True):
     """Session creation payload."""
 
     user_id: str
     data: dict = {}
 
 
-class UserSessionRead(msgspec.Struct, omit_defaults=True):
+class UserSessionRead(CamelizedBaseStruct, omit_defaults=True):
     """Session response payload."""
 
     id: UUID
@@ -38,7 +41,7 @@ class UserSessionRead(msgspec.Struct, omit_defaults=True):
     created_at: datetime
 
 
-class HistoryMeta(msgspec.Struct, omit_defaults=True):
+class HistoryMeta(CamelizedBaseStruct, omit_defaults=True):
     """History metadata."""
 
     conversation_id: str

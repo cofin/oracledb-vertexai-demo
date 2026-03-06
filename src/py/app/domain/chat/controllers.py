@@ -16,15 +16,19 @@ from __future__ import annotations
 
 import re
 import uuid
+from typing import TYPE_CHECKING
 
 from litestar import Controller, post
-from litestar.connection import Request
 from litestar.exceptions import ValidationException
 
 from app.domain.chat import schemas
-from app.domain.chat.services import ADKRunner
-from app.domain.system.services import CacheService
-from app.lib.di import Inject
+
+if TYPE_CHECKING:
+    from litestar.connection import Request
+
+    from app.domain.chat.services import ADKRunner
+    from app.domain.system.services import CacheService
+    from app.lib.di import Inject
 
 
 class CoffeeChatController(Controller):

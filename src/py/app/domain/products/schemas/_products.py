@@ -14,13 +14,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import msgspec
+from app.lib.schema import CamelizedBaseStruct
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
-class Product(msgspec.Struct, omit_defaults=True):
+class Product(CamelizedBaseStruct, omit_defaults=True):
     """Product entity from database."""
 
     id: int
@@ -36,7 +38,7 @@ class Product(msgspec.Struct, omit_defaults=True):
     updated_at: datetime | None = None
 
 
-class Store(msgspec.Struct, omit_defaults=True):
+class Store(CamelizedBaseStruct, omit_defaults=True):
     """Store location entity from database."""
 
     id: int
@@ -52,13 +54,13 @@ class Store(msgspec.Struct, omit_defaults=True):
     metadata: dict[str, Any] | None = None
 
 
-class VectorDemoRequest(msgspec.Struct, omit_defaults=True):
+class VectorDemoRequest(CamelizedBaseStruct, omit_defaults=True):
     """Vector search demo request."""
 
     query: str
 
 
-class VectorDemoResult(msgspec.Struct, omit_defaults=True):
+class VectorDemoResult(CamelizedBaseStruct, omit_defaults=True):
     """Vector search demo result."""
 
     product_name: str

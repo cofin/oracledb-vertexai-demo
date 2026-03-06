@@ -35,19 +35,19 @@ class ProductService(SQLSpecService[OracleAsyncDriver]):
 
     async def get_by_id(self, product_id: int) -> Product | None:
         sql = "SELECT * FROM product WHERE id = :id"
-        row = await self.driver.fetch_one(sql, {"id": product_id})
+        row = await self.driver.select_one_or_none(sql, {"id": product_id})
         return Product(**row) if row else None
 
     async def get_by_name(self, name: str) -> Product | None:
         sql = "SELECT * FROM product WHERE name = :name"
-        row = await self.driver.fetch_one(sql, {"name": name})
+        row = await self.driver.select_one_or_none(sql, {"name": name})
         return Product(**row) if row else None
 
     async def search_by_vector(self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5) -> list[dict[str, Any]]:
         sql = """SELECT id, name, description, current_price, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity_score
                  FROM product WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
                  ORDER BY similarity_score DESC FETCH FIRST :limit ROWS ONLY"""
-        return await self.driver.fetch_all(sql, {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit})
+        return await self.driver.select(sql, {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit})
 
 # --- Store Service ---
 
@@ -56,22 +56,22 @@ class StoreService(SQLSpecService[OracleAsyncDriver]):
 
     async def get_all_stores(self) -> list[Store]:
         sql = "SELECT * FROM store"
-        rows = await self.driver.fetch_all(sql)
+        rows = await self.driver.select(sql)
         return [Store(**row) for row in rows]
 
     async def find_stores_by_city(self, city: str) -> list[Store]:
         sql = "SELECT * FROM store WHERE city = :city"
-        rows = await self.driver.fetch_all(sql, {"city": city})
+        rows = await self.driver.select(sql, {"city": city})
         return [Store(**row) for row in rows]
 
     async def find_stores_by_state(self, state: str) -> list[Store]:
         sql = "SELECT * FROM store WHERE state = :state"
-        rows = await self.driver.fetch_all(sql, {"state": state})
+        rows = await self.driver.select(sql, {"state": state})
         return [Store(**row) for row in rows]
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
         sql = "SELECT * FROM store WHERE id = :id"
-        row = await self.driver.fetch_one(sql, {"id": store_id})
+        row = await self.driver.select_one_or_none(sql, {"id": store_id})
         return Store(**row) if row else None
 
 # --- Vertex AI Service ---
@@ -93,7 +93,10 @@ class VertexAIService:
 
         # Call Vertex AI
         response = await self.client.aio.models.embed_content(model=self.embedding_model, contents=text)
-        embedding = response.embeddings[0].values
+        embedding_list = response.embeddings
+        if not embedding_list or not embedding_list[0].values:
+            return None
+        embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
 

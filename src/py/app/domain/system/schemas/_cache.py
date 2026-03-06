@@ -14,13 +14,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import msgspec
+from app.lib.schema import CamelizedBaseStruct
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
-class ResponseCache(msgspec.Struct, omit_defaults=True):
+class ResponseCache(CamelizedBaseStruct, omit_defaults=True):
     """Response cache entry."""
 
     id: int
@@ -30,7 +32,7 @@ class ResponseCache(msgspec.Struct, omit_defaults=True):
     expires_at: datetime | None = None
 
 
-class EmbeddingCache(msgspec.Struct, omit_defaults=True):
+class EmbeddingCache(CamelizedBaseStruct, omit_defaults=True):
     """Embedding cache entry."""
 
     id: int

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import time
 import uuid
-from typing import TYPE_CHECKING, Any
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 from google.adk import Runner
@@ -27,28 +28,22 @@ from sqlspec.adapters.oracledb import OracleAsyncDriver
 from app.config import settings
 from app.domain.chat.schemas import IntentResult
 from app.domain.products.services import ProductService, StoreService, VertexAIService
-from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, ExemplarService, MetricsService, PersonaManager
+from app.domain.system.services import (
+    BASE_SYSTEM_INSTRUCTION,
+    CacheService,
+    ExemplarService,
+    MetricsService,
+    PersonaManager,
+)
 from app.lib.service import SQLSpecService
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Sequence
+    from collections.abc import AsyncGenerator
 
     from sqlspec.extensions.adk import SQLSpecSessionService
 
-    from app.domain.system.services import CacheService
-
 logger = structlog.get_logger()
-
-def apply_genai_client_patch() -> None:
-    """Apply patch to fix ADK/GenAI client compatibility."""
-    try:
-        from google.genai._api_client import ApiClient
-        if not hasattr(ApiClient, "aio"):
-            # Minimal patch implementation if needed
-            pass
-    except (ImportError, AttributeError):
-        pass
 
 # --- Intent Service ---
 
@@ -93,11 +88,11 @@ class AgentToolsService(SQLSpecService[OracleAsyncDriver]):
             product = await self.product_service.get_by_id(int(product_id))
         except ValueError:
             product = await self.product_service.get_by_name(product_id)
-        return sanitize_for_json(product) if product else {"error": "Product not found"}
+        return cast("dict[str, Any]", sanitize_for_json(product)) if product else {"error": "Product not found"}
 
     async def classify_intent(self, query: str) -> dict[str, Any]:
         result = await self.intent_service.classify_intent(query)
-        return sanitize_for_json(result)
+        return cast("dict[str, Any]", sanitize_for_json(result))
 
     async def record_search_metric(self, session_id: str, query_text: str, intent: str, vector_results: list[dict[str, Any]], total_response_time_ms: int, vector_search_time_ms: int = 0, embedding_time_ms: int = 0, query_id: str | None = None) -> dict[str, Any]:
         from app.domain.system.schemas import SearchMetricsCreate
@@ -107,7 +102,7 @@ class AgentToolsService(SQLSpecService[OracleAsyncDriver]):
 
     async def get_all_store_locations(self) -> list[dict[str, Any]]:
         stores = await self.store_service.get_all_stores()
-        return sanitize_for_json(stores)
+        return cast("list[dict[str, Any]]", sanitize_for_json(stores))
 
 # --- ADK Runner & Tools ---
 
@@ -115,19 +110,19 @@ async def search_products_by_vector(query: str, limit: int = 5, similarity_thres
     from app.lib.di import request_container_var
     async with _resolve_request_container(request_container_var.get()) as container:
         service = await container.get(AgentToolsService)
-        return await service.search_products_by_vector(query, limit, similarity_threshold)
+        return cast("dict[str, Any]", await service.search_products_by_vector(query, limit, similarity_threshold))
 
 async def get_product_details(product_id: str) -> dict[str, Any]:
     from app.lib.di import request_container_var
     async with _resolve_request_container(request_container_var.get()) as container:
         service = await container.get(AgentToolsService)
-        return await service.get_product_details(product_id)
+        return cast("dict[str, Any]", await service.get_product_details(product_id))
 
 async def classify_intent(query: str) -> dict[str, Any]:
     from app.lib.di import request_container_var
     async with _resolve_request_container(request_container_var.get()) as container:
         service = await container.get(AgentToolsService)
-        return await service.classify_intent(query)
+        return cast("dict[str, Any]", await service.classify_intent(query))
 
 @asynccontextmanager
 async def _resolve_request_container(current: Any) -> AsyncGenerator[Any, None]:
@@ -140,7 +135,7 @@ async def _resolve_request_container(current: Any) -> AsyncGenerator[Any, None]:
         async with container(scope=Scope.REQUEST) as scoped:
             yield scoped
 
-ALL_TOOLS: Sequence[Callable[..., Any]] = [search_products_by_vector, get_product_details, classify_intent]
+ALL_TOOLS: list[Any] = [search_products_by_vector, get_product_details, classify_intent]
 
 class ADKRunner:
     """Runner for ADK agent system."""
@@ -165,6 +160,6 @@ class ADKRunner:
         all_text = []
         async for event in events:
             if event.content and event.content.parts:
-                all_text.extend([p.text for p in event.content.parts if hasattr(p, "text")])
+                all_text.extend([str(p.text) for p in event.content.parts if hasattr(p, "text") and p.text is not None])
 
         return {"answer": "".join(all_text), "session_id": session.id, "response_time_ms": (time.time() - start_time) * 1000}

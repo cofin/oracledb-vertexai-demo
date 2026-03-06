@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
 
 from datetime import datetime
 from uuid import UUID
 
-import msgspec
+from app.lib.schema import CamelizedBaseStruct
 
 
-class SimilarIntent(msgspec.Struct, omit_defaults=True):
+class SimilarIntent(CamelizedBaseStruct, omit_defaults=True):
     """Represents a similar intent found by vector search."""
 
     intent: str
@@ -29,7 +28,7 @@ class SimilarIntent(msgspec.Struct, omit_defaults=True):
     confidence_threshold: float
 
 
-class IntentResult(msgspec.Struct, omit_defaults=True):
+class IntentResult(CamelizedBaseStruct, omit_defaults=True):
     """Result of intent classification."""
 
     intent: str
@@ -39,14 +38,14 @@ class IntentResult(msgspec.Struct, omit_defaults=True):
     fallback_used: bool
 
 
-class CoffeeChatMessage(msgspec.Struct):
+class CoffeeChatMessage(CamelizedBaseStruct):
     """Chat message input DTO."""
 
     message: str
     persona: str = "enthusiast"
 
 
-class ChatConversationCreate(msgspec.Struct, omit_defaults=True):
+class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
     """Conversation creation payload."""
 
     session_id: UUID
@@ -56,7 +55,7 @@ class ChatConversationCreate(msgspec.Struct, omit_defaults=True):
     message_metadata: dict = {}
 
 
-class ChatConversationRead(msgspec.Struct, omit_defaults=True):
+class ChatConversationRead(CamelizedBaseStruct, omit_defaults=True):
     """Conversation response payload."""
 
     id: UUID
@@ -67,14 +66,14 @@ class ChatConversationRead(msgspec.Struct, omit_defaults=True):
     created_at: datetime
 
 
-class ChatMessage(msgspec.Struct, omit_defaults=True):
+class ChatMessage(CamelizedBaseStruct, omit_defaults=True):
     """Individual chat message."""
 
     message: str
     source: str  # 'human' | 'ai' | 'system'
 
 
-class CoffeeChatReply(msgspec.Struct, omit_defaults=True):
+class CoffeeChatReply(CamelizedBaseStruct, omit_defaults=True):
     """Complete chat response."""
 
     message: str

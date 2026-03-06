@@ -16,21 +16,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from app.domain.chat.services.adk import (
-    apply_genai_client_patch,  # Note: Need to move patch if it was in monkey_patches
-)
-
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from litestar import Litestar
-
-# Temporary fix: ensure apply_genai_client_patch exists or move logic
-try:
-    from app.domain.chat.services.adk import apply_genai_client_patch
-    apply_genai_client_patch()
-except ImportError:
-    pass
 
 
 def create_app() -> Litestar:

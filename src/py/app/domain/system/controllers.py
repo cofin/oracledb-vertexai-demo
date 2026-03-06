@@ -39,25 +39,25 @@ class MetricsController(Controller):
     """Metrics controller for React dashboard APIs."""
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> dict:
+    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> dict[str, Any]:
         """Get performance metrics with validation."""
         try:
             metrics = await metrics_service.get_performance_stats(hours=24)
             return {
-                "total_searches": metrics.get("total_searches", 0),
-                "avg_search_time_ms": metrics.get("avg_search_time_ms", 0),
-                "avg_oracle_time_ms": metrics.get("avg_oracle_time_ms", 0),
-                "avg_similarity_score": metrics.get("avg_similarity_score", 0),
+                "totalSearches": metrics.get("total_searches", 0),
+                "avgSearchTimeMs": metrics.get("avg_search_time_ms", 0),
+                "avgOracleTimeMs": metrics.get("avg_oracle_time_ms", 0),
+                "avgSimilarityScore": metrics.get("avg_similarity_score", 0),
             }
         except (ValueError, TypeError):
-            return {"total_searches": 0, "avg_search_time_ms": 0, "avg_oracle_time_ms": 0, "avg_similarity_score": 0}
+            return {"totalSearches": 0, "avgSearchTimeMs": 0, "avgOracleTimeMs": 0, "avgSimilarityScore": 0}
 
     @get(path="/api/metrics/summary", name="metrics.summary")
     async def get_metrics_summary(
         self,
         metrics_service: Inject[MetricsService],
         cache_service: Inject[CacheService],
-    ) -> dict[str, Any]:
+    ) -> schemas.MetricsSummaryResponse:
         """Get summary metrics for UI cards."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
@@ -71,32 +71,32 @@ class MetricsController(Controller):
 
         total_trend, total_change = calculate_trend(perf_stats["total_searches"], prev_stats["total_searches"])
 
-        return {
-            "total_searches": {
-                "label": "Total Searches",
-                "value": f"{perf_stats['total_searches']:,}",
-                "trend": total_trend,
-                "trend_value": f"{total_change:.1f}%",
-            },
-            "avg_response_time": {
-                "label": "Avg Response Time",
-                "value": f"{perf_stats['avg_search_time_ms']:.0f}ms",
-                "trend": "down" if perf_stats["avg_search_time_ms"] < 50 else "up",  # noqa: PLR2004
-                "trend_value": None,
-            },
-            "avg_oracle_time": {
-                "label": "Oracle Vector Time",
-                "value": f"{perf_stats['avg_oracle_time_ms']:.0f}ms",
-                "trend": "neutral",
-                "trend_value": None,
-            },
-            "cache_hit_rate": {
-                "label": "Cache Hit Rate",
-                "value": f"{cache_stats['cache_hit_rate']:.1f}%",
-                "trend": "up" if cache_stats["cache_hit_rate"] > 80 else "down",  # noqa: PLR2004
-                "trend_value": None,
-            },
-        }
+        return schemas.MetricsSummaryResponse(
+            total_searches=schemas.MetricCard(
+                label="Total Searches",
+                value=f"{perf_stats['total_searches']:,}",
+                trend=total_trend,
+                trend_value=f"{total_change:.1f}%",
+            ),
+            avg_response_time=schemas.MetricCard(
+                label="Avg Response Time",
+                value=f"{perf_stats['avg_search_time_ms']:.0f}ms",
+                trend="down" if perf_stats["avg_search_time_ms"] < 50 else "up",  # noqa: PLR2004
+                trend_value=None,
+            ),
+            avg_oracle_time=schemas.MetricCard(
+                label="Oracle Vector Time",
+                value=f"{perf_stats['avg_oracle_time_ms']:.0f}ms",
+                trend="neutral",
+                trend_value=None,
+            ),
+            cache_hit_rate=schemas.MetricCard(
+                label="Cache Hit Rate",
+                value=f"{cache_stats['cache_hit_rate']:.1f}%",
+                trend="up" if cache_stats["cache_hit_rate"] > 80 else "down",  # noqa: PLR2004
+                trend_value=None,
+            ),
+        )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
     async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartDataResponse:

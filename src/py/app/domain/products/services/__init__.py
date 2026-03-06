@@ -30,6 +30,14 @@ class ProductsServiceProvider(Provider):
     store_service = provide(StoreService)
 
     @provide(scope=Scope.APP)
+    def get_genai_client(self) -> Client:
+        return Client(
+            api_key=settings.vertex_ai.API_KEY,
+            project=settings.vertex_ai.PROJECT_ID,
+            location=settings.vertex_ai.LOCATION,
+        )
+
+    @provide(scope=Scope.APP)
     def get_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
         return VertexAIService(
             client=client,
