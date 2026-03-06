@@ -15,14 +15,18 @@
 import re
 import uuid
 
+import structlog
 from litestar import Controller, post
 from litestar.connection import Request
-from litestar.exceptions import ValidationException
+from litestar.exceptions import HTTPException, ValidationException
+from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 
 from app.domain.chat import schemas
 from app.domain.chat.services import ADKRunner
 from app.domain.system.services import CacheService
 from app.lib.di import Inject
+
+logger = structlog.get_logger()
 
 
 class CoffeeChatController(Controller):
@@ -62,13 +66,22 @@ class CoffeeChatController(Controller):
         validated_persona = self.validate_persona(data.persona)
         session_id = request.headers.get("x-session-id", str(uuid.uuid4()))
 
-        result = await adk_runner.process_request(
-            query=clean_message,
-            user_id="web_user",
-            session_id=session_id,
-            persona=validated_persona,
-            cache_service=cache_service,
-        )
+        try:
+            result = await adk_runner.process_request(
+                query=clean_message,
+                user_id="web_user",
+                session_id=session_id,
+                persona=validated_persona,
+                cache_service=cache_service,
+            )
+        except ValueError as exc:
+            if "API key" in str(exc) or "credentials" in str(exc).lower():
+                await logger.awarning("AI service not configured", detail=str(exc))
+                raise HTTPException(
+                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file.",
+                ) from exc
+            raise
 
         return schemas.CoffeeChatReply(
             message=clean_message,

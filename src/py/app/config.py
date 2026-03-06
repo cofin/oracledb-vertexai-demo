@@ -64,7 +64,7 @@ session_config = ServerSideSessionConfig(store="sessions")
 log = StructlogConfig(
     enable_middleware_logging=False,
     structlog_logging_config=StructLoggingConfig(
-        disable_stack_trace={400, 401, 403, 404, 409, NotAuthorizedException, PermissionDeniedException, NotFoundException},
+        disable_stack_trace={400, 401, 403, 404, 409, 503, NotAuthorizedException, PermissionDeniedException, NotFoundException},
         log_exceptions="always",
         processors=default_structlog_processors(as_json=False),
         logger_factory=default_logger_factory(as_json=False),

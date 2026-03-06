@@ -38,6 +38,13 @@ const PERSONA_DESCRIPTIONS: Record<(typeof PERSONAS)[number], string> = {
   barista: "Professional craft perspective",
 }
 
+const PERSONA_EMOJI: Record<(typeof PERSONAS)[number], string> = {
+  novice: "🌱",
+  enthusiast: "🔥",
+  expert: "🧪",
+  barista: "☕",
+}
+
 const SESSION_STORAGE_KEY = "coffee-chat-session-id"
 
 function getSessionId() {
@@ -116,7 +123,9 @@ export function ChatPage() {
       })
 
       if (!response.ok) {
-        throw new Error(`chat request failed (${response.status})`)
+        const body = await response.json().catch(() => null)
+        const detail = (body as Record<string, unknown>)?.detail
+        throw new Error(typeof detail === "string" ? detail : `Chat request failed (${response.status})`)
       }
 
       const payload = (await response.json()) as ChatReply
@@ -132,13 +141,14 @@ export function ChatPage() {
         },
       ])
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "unknown chat error")
+      const errorMessage = caughtError instanceof Error ? caughtError.message : "Unknown chat error"
+      setError(errorMessage)
       setMessages((previous) => [
         ...previous,
         {
           id: crypto.randomUUID(),
           role: "system",
-          text: "Unable to get a response right now. Please retry.",
+          text: errorMessage,
         },
       ])
     } finally {
@@ -147,35 +157,29 @@ export function ChatPage() {
   }
 
   return (
-    <section className="grid gap-6 lg:grid-cols-[280px_1fr]">
-      <aside className="h-fit rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-6 shadow-sm">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-[var(--text-muted)]">Gemini Assistant</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-strong)]">Chat</h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">
-          Pick a tone and ask questions against Oracle-backed product context.
-        </p>
-
-        <div className="mt-8 grid gap-2.5">
+    <section className="grid gap-4">
+      <div className="flex flex-col rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-sm md:p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-[0.6rem] font-bold uppercase tracking-[0.25em] text-[var(--text-muted)] mr-1">
+            Tone
+          </span>
           {PERSONAS.map((value) => (
             <button
               key={value}
               type="button"
               onClick={() => setPersona(value)}
               className={[
-                "rounded-2xl border px-4 py-3.5 text-left transition-all duration-200",
+                "rounded-full border px-3 py-1 text-[0.7rem] font-medium capitalize transition-all duration-150",
                 persona === value
-                  ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--text-strong)] ring-1 ring-[var(--accent)]/20 shadow-lg shadow-[var(--accent)]/5"
+                  ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--text-strong)] ring-1 ring-[var(--accent)]/20"
                   : "border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/30 hover:text-[var(--text-base)]",
               ].join(" ")}
+              title={PERSONA_DESCRIPTIONS[value]}
             >
-              <span className="text-sm font-semibold capitalize">{value}</span>
-              <span className="mt-1 block text-[0.7rem] opacity-70 leading-normal">{PERSONA_DESCRIPTIONS[value]}</span>
+              {PERSONA_EMOJI[value]} {value}
             </button>
           ))}
         </div>
-      </aside>
-
-      <div className="flex flex-col rounded-3xl border border-[var(--border-color)] bg-[var(--surface)] p-4 shadow-sm md:p-6">
         <div className="flex-1 h-[540px] space-y-6 overflow-y-auto rounded-2xl border border-[var(--border-color)] bg-[var(--bg-canvas)]/50 p-4 md:p-6 scrollbar-thin scrollbar-thumb-[var(--surface-soft)]">
           {messages.map((message) => (
             <article
@@ -191,9 +195,9 @@ export function ChatPage() {
               <div
                 className={[
                   "rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm transition-all",
-                  message.role === "human" && "bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/10",
-                  message.role === "ai" &&
-                    "border border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-base)]",
+                  message.role === "human" &&
+                    "bg-indigo-500/20 text-indigo-200 shadow-lg shadow-indigo-500/5 border border-indigo-500/20",
+                  message.role === "ai" && "border border-amber-500/10 bg-amber-500/5 text-[var(--text-base)]",
                   message.role === "system" &&
                     "border border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]",
                 ]
@@ -203,7 +207,7 @@ export function ChatPage() {
                 <span
                   className={[
                     "mb-2.5 flex items-center gap-1.5 text-[0.6rem] font-bold uppercase tracking-[0.2em]",
-                    message.role === "human" ? "text-white/80" : "text-[var(--text-muted)]",
+                    message.role === "human" ? "text-indigo-400/80" : "text-[var(--text-muted)]",
                   ].join(" ")}
                 >
                   {message.role === "human" ? <UserRound className="h-3 w-3" /> : <Bot className="h-3.5 w-3.5" />}

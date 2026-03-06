@@ -3,10 +3,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import litestar from "litestar-vite-plugin";
 import tsconfigPaths from "vite-tsconfig-paths";
-import { resolve } from "node:path";
-
-const ASSET_URL = process.env.ASSET_URL ?? "/static/dist/";
-const BUNDLE_DIR = resolve(__dirname, "../py/app/server/static/dist");
 
 export default defineConfig({
   plugins: [
@@ -15,15 +11,16 @@ export default defineConfig({
     tsconfigPaths(),
     litestar({
       input: ["index.html", "src/main.tsx"],
-      bundleDir: BUNDLE_DIR,
-      hotFile: "hot",
-      assetUrl: ASSET_URL,
+      types: "auto",
     }),
   ],
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: Number(process.env.VITE_PORT || "5173"),
     cors: true,
+    hmr: {
+      host: "localhost",
+    },
   },
   build: {
     emptyOutDir: true,

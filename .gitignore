@@ -153,6 +153,7 @@ node_modules
 uv.toml
 src/js/.litestar.json
 src/js/public/hot
+src/py/app/server/static/dist/hot
 src/js/tsconfig.tsbuildinfo
 src/js/tsconfig.node.tsbuildinfo
 src/js/vite.config.js

@@ -207,7 +207,7 @@ class LogSettings:
         default_factory=lambda: (
             int(os.getenv("LOG_LEVEL", "0"))
             if os.getenv("LOG_LEVEL", "").isdigit()
-            else logging.getLevelName(os.getenv("LOG_LEVEL", "INFO").upper())
+            else logging.getLevelNamesMapping().get(os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
         ),
     )
     """Stdlib log level as int. Accepts numeric (e.g. '20') or named (e.g. 'INFO') via LOG_LEVEL env var."""
