@@ -14,6 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import oracledb
 from sqlspec import sql
 
 from app.utils.serialization import from_json, to_json
@@ -278,9 +279,12 @@ class FixtureLoader:
 
         # Convert records to JSON payload using project's serialization
         payload = to_json(processed_records, as_bytes=True)
-        # SQLSpec auto-coerces strings >4000 chars to CLOB via coerce_large_string_parameters_async
-        result = await self.driver.execute(merge_sql.strip(), payload=payload.decode())
-        upserted = result.rows_affected if result.rows_affected > 0 else total
+        # Bind as CLOB explicitly — payloads can be >1MB, exceeding VARCHAR2 limits
+        async with self.driver.with_cursor(self.driver.connection) as cursor:
+            temp_clob = await self.driver.connection.createlob(oracledb.DB_TYPE_CLOB)
+            await temp_clob.write(payload)
+            await cursor.execute(merge_sql.strip(), {"payload": temp_clob})
+            upserted = cursor.rowcount if cursor.rowcount and cursor.rowcount > 0 else total
 
         # Commit the transaction to persist the changes
         await self.driver.commit()

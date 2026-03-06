@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
-
 import time
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import structlog
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.genai import types
 from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import settings
 from app.domain.chat.schemas import IntentResult
@@ -37,11 +37,6 @@ from app.domain.system.services import (
 )
 from app.lib.service import SQLSpecService
 from app.utils.serialization import sanitize_for_json
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from sqlspec.extensions.adk import SQLSpecSessionService
 
 logger = structlog.get_logger()
 

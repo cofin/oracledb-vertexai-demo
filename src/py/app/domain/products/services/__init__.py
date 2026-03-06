@@ -37,7 +37,7 @@ class ProductsServiceProvider(Provider):
             location=settings.vertex_ai.LOCATION,
         )
 
-    @provide(scope=Scope.APP)
+    @provide
     def get_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
         return VertexAIService(
             client=client,

@@ -186,15 +186,15 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
         if cache_type in {None, "response"}:
             sql = "DELETE FROM response_cache"
             res = await self.driver.execute(sql)
-            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+            total_deleted += res.rows_affected
         if cache_type in {None, "embedding"}:
             sql = "DELETE FROM embedding_cache"
             res = await self.driver.execute(sql)
-            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+            total_deleted += res.rows_affected
         if include_exemplars:
             sql = "DELETE FROM intent_exemplar"
             res = await self.driver.execute(sql)
-            total_deleted += res.rowcount if hasattr(res, "rowcount") else 0
+            total_deleted += res.rows_affected
         return total_deleted
 
 # --- Metrics Service ---

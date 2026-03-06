@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import binascii
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -84,6 +85,8 @@ class DatabaseSettings:
     """Pool timeout in seconds."""
     POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
     """Pool recycle time in seconds."""
+    ECHO: bool = field(default_factory=lambda: os.getenv("DATABASE_ECHO", "False") in TRUE_VALUES)
+    """Echo SQL statements to log output."""
     MIGRATION_PATH: str = field(
         default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", str(BASE_DIR / "db" / "migrations"))
     )
@@ -200,11 +203,16 @@ class LogSettings:
     """Log event name for logs from Litestar handlers."""
     INCLUDE_COMPRESSED_BODY: bool = False
     """Include 'body' of compressed responses in log output."""
-    LEVEL: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "ERROR").upper())
-    """Stdlib log levels.
-
-    Only emit logs at this level, or higher.
-    """
+    LEVEL: int = field(
+        default_factory=lambda: (
+            int(os.getenv("LOG_LEVEL", "0"))
+            if os.getenv("LOG_LEVEL", "").isdigit()
+            else logging.getLevelName(os.getenv("LOG_LEVEL", "INFO").upper())
+        ),
+    )
+    """Stdlib log level as int. Accepts numeric (e.g. '20') or named (e.g. 'INFO') via LOG_LEVEL env var."""
+    SQLSPEC_LEVEL: int = field(default_factory=lambda: int(os.getenv("SQLSPEC_LOG_LEVEL", "20")))
+    """SQLSpec driver log level (default: INFO=20)."""
     OBFUSCATE_COOKIES: set[str] = field(default_factory=lambda: {"session", "XSRF-TOKEN"})
     """Request cookie keys to obfuscate."""
     OBFUSCATE_HEADERS: set[str] = field(default_factory=lambda: {"Authorization", "X-API-KEY", "X-XSRF-TOKEN"})

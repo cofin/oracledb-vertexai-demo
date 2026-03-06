@@ -2,8 +2,8 @@ from decimal import Decimal
 from typing import Any
 
 import msgspec
-from sqlspec.utils.serializers import (  # type: ignore
-    NUMPY_INSTALLED,
+from sqlspec.typing import NUMPY_INSTALLED
+from sqlspec.utils.serializers import (
     from_json,
     numpy_array_dec_hook,
     numpy_array_enc_hook,
@@ -38,15 +38,13 @@ def sanitize_for_json(obj: Any) -> Any:
     if NUMPY_INSTALLED:
         import numpy as np
 
-        if isinstance(obj, np.ndarray):
-            return [sanitize_for_json(v) for v in obj.tolist()]
-        if isinstance(obj, np.generic):
-            return obj.item()
+        if isinstance(obj, np.ndarray | np.generic):
+            return [sanitize_for_json(v) for v in obj.tolist()] if isinstance(obj, np.ndarray) else obj.item()
 
     # 2. Handle msgspec Structs
     if isinstance(obj, msgspec.Struct):
         from msgspec import structs
-        from sqlspec._typing import UNSET
+        from sqlspec.typing import UNSET
 
         fields = structs.fields(obj)
         res = {}

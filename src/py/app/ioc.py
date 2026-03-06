@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
-from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
 
 from app.config import db, db_manager
 from app.domain.chat.services import ChatServiceProvider
@@ -14,6 +14,11 @@ from app.lib.di import LitestarProvider
 
 class LitestarPersistenceProvider(Provider):
     """Persistence provider for Litestar requests."""
+
+    @provide(scope=Scope.APP)
+    def provide_config(self) -> OracleAsyncConfig:
+        """Provide the Oracle async config as an APP-scoped singleton."""
+        return db
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:

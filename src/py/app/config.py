@@ -69,7 +69,7 @@ log = StructlogConfig(
         processors=default_structlog_processors(as_json=False),
         logger_factory=default_logger_factory(as_json=False),
         standard_lib_logging_config=LoggingConfig(
-            root={"level": _settings.log.LEVEL, "handlers": ["queue_listener"]},
+            root={"level": logging.getLevelName(_settings.log.LEVEL), "handlers": ["queue_listener"]},
             formatters={
                 "standard": {
                     "()": structlog.stdlib.ProcessorFormatter,
@@ -79,7 +79,7 @@ log = StructlogConfig(
             loggers={
                 "sqlspec": {
                     "propagate": False,
-                    "level": "INFO",
+                    "level": _settings.log.SQLSPEC_LEVEL,
                     "handlers": ["queue_listener"],
                 },
                 "sqlglot": {

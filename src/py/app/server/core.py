@@ -59,7 +59,8 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
 
         # Security
         app_config.cors_config = config.cors
-        app_config.csrf_config = config.csrf
+        if not settings.app.DEBUG:
+            app_config.csrf_config = config.csrf
 
         # Session
         app_config.stores = config.stores
