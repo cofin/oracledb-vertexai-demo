@@ -169,7 +169,7 @@ export function ChatPage() {
               type="button"
               onClick={() => setPersona(value)}
               className={[
-                "rounded-full border px-3 py-1 text-[0.7rem] font-medium capitalize transition-all duration-150",
+                "rounded-full border px-3 py-1 text-[0.7rem] font-semibold capitalize transition-all duration-150",
                 persona === value
                   ? "border-[var(--accent)]/50 bg-[var(--accent-soft)] text-[var(--text-strong)] ring-1 ring-[var(--accent)]/20"
                   : "border-[var(--border-color)] bg-[var(--surface-strong)] text-[var(--text-muted)] hover:border-[var(--text-muted)]/30 hover:text-[var(--text-base)]",
@@ -196,7 +196,7 @@ export function ChatPage() {
                 className={[
                   "rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm transition-all",
                   message.role === "human" &&
-                    "bg-indigo-500/20 text-indigo-200 shadow-lg shadow-indigo-500/5 border border-indigo-500/20",
+                    "bg-indigo-500/20 text-indigo-200 shadow-lg shadow-indigo-500/5 border border-indigo-500/20 font-medium",
                   message.role === "ai" && "border border-amber-500/10 bg-amber-500/5 text-[var(--text-base)]",
                   message.role === "system" &&
                     "border border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]",
@@ -260,7 +260,7 @@ export function ChatPage() {
         <form ref={formRef} className="mt-6 space-y-4" onSubmit={sendMessage}>
           <div className="relative">
             <textarea
-              className="w-full min-h-[100px] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-strong)] px-4 py-4 text-sm text-[var(--text-strong)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 transition-all resize-none"
+              className="w-full min-h-[100px] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-strong)] px-4 py-4 text-sm font-medium text-[var(--text-strong)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 transition-all resize-none"
               placeholder="Try: Find medium-roast chocolate notes under $20"
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -272,7 +272,7 @@ export function ChatPage() {
               }}
             />
             <div className="absolute right-3 bottom-3 flex items-center gap-4">
-              <span className="hidden sm:block text-[0.65rem] font-medium text-[var(--text-muted)]">
+              <span className="hidden sm:block text-[0.65rem] font-semibold text-[var(--text-muted)]">
                 <kbd className="rounded bg-[var(--surface-soft)] px-1 py-0.5 text-[var(--text-base)]">↵</kbd> to send
               </span>
               <button

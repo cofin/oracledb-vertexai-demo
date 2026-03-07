@@ -1,6 +1,8 @@
 import { createRoute, Link } from "@tanstack/react-router"
-import { Activity, FlaskConical, type LucideIcon, MessageCircleMore, Sparkles } from "lucide-react"
+import { Activity, FlaskConical, type LucideIcon, MessageCircleMore, Plus, Sparkles } from "lucide-react"
 
+import { GoogleLogo } from "../components/GoogleLogo"
+import { OracleLogo } from "../components/OracleLogo"
 import { Route as RootRoute } from "./__root"
 
 type Tile = {
@@ -44,15 +46,31 @@ const tiles: Tile[] = [
 export function LandingPage() {
   return (
     <section className="space-y-12">
-      <header className="max-w-2xl space-y-5">
-        <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-[var(--accent)]">Demo Control Plane</p>
-        <h2 className="text-4xl font-semibold tracking-tight text-[var(--text-strong)] sm:text-5xl lg:text-6xl">
-          Oracle 26AI Vector <br />
-          <span className="text-[var(--text-muted)]">& Gemini Orchestration</span>
-        </h2>
-        <p className="text-base leading-relaxed text-[var(--text-base)] md:text-lg">
-          Explore semantic search, RAG workflows, and performance metrics across the Cymbal Coffee dataset.
-        </p>
+      <header className="max-w-3xl space-y-6">
+        <div className="flex items-center gap-4 text-[var(--text-muted)]">
+          <span className="flex h-8 w-auto items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-strong)] px-3 shadow-sm">
+            <OracleLogo className="h-3.5 w-auto opacity-90" />
+            <span className="ml-2 text-xs font-semibold text-[var(--text-strong)] tracking-tight">Oracle</span>
+          </span>
+          <Plus className="h-4 w-4" />
+          <span className="flex h-8 w-auto items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-strong)] px-3 shadow-sm">
+            <GoogleLogo className="h-4 w-auto" />
+            <span className="ml-2 text-xs font-semibold text-[var(--text-strong)] tracking-tight">Gemini</span>
+          </span>
+        </div>
+        <div className="space-y-4">
+          <p className="text-[0.65rem] font-bold uppercase tracking-[0.3em] text-[var(--accent)]">
+            Architecture Showcase
+          </p>
+          <h2 className="text-4xl font-semibold tracking-tight text-[var(--text-strong)] sm:text-5xl lg:text-6xl">
+            Oracle 26AI Vector <br />
+            <span className="text-[var(--text-muted)]">& Google Gemini Demo</span>
+          </h2>
+          <p className="text-base leading-relaxed text-[var(--text-base)] md:text-lg">
+            Explore semantic search, RAG workflows, and performance metrics powered by Oracle 26AI In-Memory Vector
+            Search and Google Gemini on Vertex AI.
+          </p>
+        </div>
       </header>
 
       <div className="grid gap-5 sm:grid-cols-2">
