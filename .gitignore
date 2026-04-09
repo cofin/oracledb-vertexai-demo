@@ -177,8 +177,8 @@ todo
 .codex/
 specs/
 .gemini/
-!.agent/specs
-# .agent/
+.agents/
+.agent/
 !tools/lib
 .beads
 .gemini

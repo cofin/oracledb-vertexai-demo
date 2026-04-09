@@ -598,6 +598,7 @@ dependencies = [
     { name = "google-cloud-bigquery" },
     { name = "google-cloud-bigquery-storage" },
     { name = "google-cloud-bigtable" },
+    { name = "google-cloud-dataplex" },
     { name = "google-cloud-discoveryengine" },
     { name = "google-cloud-pubsub" },
     { name = "google-cloud-secret-manager" },
@@ -682,7 +683,6 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyasn1-modules" },
-    { name = "rsa" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0c/41/242044323fbd746615884b1c16639749e73665b718209946ebad7ba8a813/google_auth-2.48.0.tar.gz", hash = "sha256:4f7e706b0cd3208a3d940a19a822c37a476ddba5450156c3e6624a71f7c841ce", size = 326522, upload-time = "2026-01-26T19:22:47.157Z" }
 wheels = [
@@ -735,6 +735,7 @@ wheels = [
 
 [package.optional-dependencies]
 agent-engines = [
+    { name = "aiohttp" },
     { name = "cloudpickle" },
     { name = "google-cloud-iam" },
     { name = "google-cloud-logging" },
@@ -885,6 +886,7 @@ dependencies = [
     { name = "google-cloud-audit-log" },
     { name = "google-cloud-core" },
     { name = "grpc-google-iam-v1" },
+    { name = "grpcio" },
     { name = "opentelemetry-api" },
     { name = "proto-plus" },
     { name = "protobuf" },
@@ -1523,9 +1525,7 @@ name = "litestar-mcp"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
     { name = "litestar" },
-    { name = "rich" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/48/ff/bd7f0d14766e4dae815b053a502f19017ce47903e20e5b771a504c909788/litestar_mcp-0.2.2.tar.gz", hash = "sha256:4a576b0cbd63877fdf485d643a11fa3008499a5076a1ccab0b57d0686c40d805", size = 282884, upload-time = "2025-09-30T12:11:18.891Z" }
