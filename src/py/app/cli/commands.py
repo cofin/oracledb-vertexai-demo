@@ -127,11 +127,16 @@ def bulk_embed(batch_size: int, force: bool) -> None:
         async with db_manager.provide_session(db) as session:
             product_service = ProductService(session)
             cache_service = CacheService(session)
-            client = Client(
-                api_key=settings.vertex_ai.API_KEY,
-                project=settings.vertex_ai.PROJECT_ID,
-                location=settings.vertex_ai.LOCATION,
-            )
+            if settings.vertex_ai.PROJECT_ID:
+                client = Client(
+                    vertexai=True,
+                    project=settings.vertex_ai.PROJECT_ID,
+                    location=settings.vertex_ai.LOCATION,
+                )
+            else:
+                client = Client(
+                    api_key=settings.vertex_ai.API_KEY,
+                )
             vertex_ai_service = VertexAIService(
                 client=client,
                 model=settings.vertex_ai.CHAT_MODEL,
@@ -275,11 +280,16 @@ def model_info() -> None:
         from google.genai import Client
         async with db_manager.provide_session(db) as session:
             cache_service = CacheService(session)
-            client = Client(
-                api_key=settings.vertex_ai.API_KEY,
-                project=settings.vertex_ai.PROJECT_ID,
-                location=settings.vertex_ai.LOCATION,
-            )
+            if settings.vertex_ai.PROJECT_ID:
+                client = Client(
+                    vertexai=True,
+                    project=settings.vertex_ai.PROJECT_ID,
+                    location=settings.vertex_ai.LOCATION,
+                )
+            else:
+                client = Client(
+                    api_key=settings.vertex_ai.API_KEY,
+                )
             VertexAIService(
                 client=client,
                 model=settings.vertex_ai.CHAT_MODEL,

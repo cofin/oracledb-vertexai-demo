@@ -196,7 +196,7 @@ export function ChatPage() {
                 className={[
                   "rounded-2xl px-5 py-4 text-sm leading-relaxed shadow-sm transition-all",
                   message.role === "human" &&
-                    "bg-indigo-500/20 text-indigo-200 shadow-lg shadow-indigo-500/5 border border-indigo-500/20 font-medium",
+                    "bg-indigo-500/20 text-indigo-950 dark:text-indigo-100 shadow-lg shadow-indigo-500/5 border border-indigo-500/20 font-medium",
                   message.role === "ai" && "border border-amber-500/10 bg-amber-500/5 text-[var(--text-base)]",
                   message.role === "system" &&
                     "border border-[var(--danger)]/30 bg-[var(--danger)]/5 text-[var(--danger)]",

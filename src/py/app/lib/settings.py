@@ -284,9 +284,14 @@ class AppSettings:
 class VertexAISettings:
     """Vertex AI configuration settings."""
 
-    PROJECT_ID: str = field(default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID", ""))
+    PROJECT_ID: str = field(default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or "")
     """Google Cloud Project ID for Vertex AI."""
-    LOCATION: str = field(default_factory=lambda: os.getenv("VERTEX_AI_LOCATION") or "us-central1")
+    LOCATION: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_LOCATION")
+        or os.getenv("GOOGLE_CLOUD_LOCATION")
+        or os.getenv("GOOGLE_LOCATION")
+        or "us-central1"
+    )
     """Vertex AI location/region."""
     API_KEY: str | None = field(
         default_factory=lambda: (
@@ -299,8 +304,20 @@ class VertexAISettings:
     """Vertex AI embedding model."""
     EMBEDDING_DIMENSIONS: int = 768
     """Embedding vector dimensions."""
-    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3-flash-preview"))
+    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash"))
     """Vertex AI chat model."""
+
+    def __post_init__(self) -> None:
+        """Handle environment variable synchronization and conflict resolution."""
+        if self.PROJECT_ID:
+            # When using Vertex AI (project-based), API key must NOT be set in environment
+            # as it causes mutual exclusivity errors in the genai client.
+            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop("VERTEX_AI_API_KEY", None)
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+            os.environ["GOOGLE_CLOUD_PROJECT"] = self.PROJECT_ID
+            os.environ["GOOGLE_CLOUD_LOCATION"] = self.LOCATION
+            self.API_KEY = None
 
     # Context Caching Settings
     CACHE_TTL_SECONDS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_CACHE_TTL_SECONDS", "3600")))

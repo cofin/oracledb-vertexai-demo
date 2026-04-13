@@ -183,3 +183,8 @@ specs/
 .beads
 .gemini
 !src/py/app/lib
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

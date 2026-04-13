@@ -31,10 +31,14 @@ class ProductsServiceProvider(Provider):
 
     @provide(scope=Scope.APP)
     def get_genai_client(self) -> Client:
+        if settings.vertex_ai.PROJECT_ID:
+            return Client(
+                vertexai=True,
+                project=settings.vertex_ai.PROJECT_ID,
+                location=settings.vertex_ai.LOCATION,
+            )
         return Client(
             api_key=settings.vertex_ai.API_KEY,
-            project=settings.vertex_ai.PROJECT_ID,
-            location=settings.vertex_ai.LOCATION,
         )
 
     @provide

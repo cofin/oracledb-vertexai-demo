@@ -16,6 +16,7 @@ def setup_environment() -> None:
     from app.lib.settings import get_settings
 
     _ = config.log.structlog_logging_config.configure()()
+    config.setup_logging()
     settings = get_settings()
     os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
     os.environ.setdefault("LITESTAR_APP_NAME", settings.app.NAME)
