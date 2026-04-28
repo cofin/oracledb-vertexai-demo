@@ -106,29 +106,7 @@ test = [
 ]
 
 [tool.ruff]
-exclude = [
-    ".bzr",
-    ".direnv",
-    ".eggs",
-    ".git",
-    ".hg",
-    ".mypy_cache",
-    ".nox",
-    ".pants.d",
-    ".ruff_cache",
-    ".svn",
-    ".tox",
-    ".venv",
-    ".agent",
-    "__pycache__",
-    "_build",
-    "buck-out",
-    "build",
-    "dist",
-    "node_modules",
-    "venv",
-    "src/py/app/db/migrations/versions/*.py",
-]
+
 fix = true
 line-length = 120
 src = ["src/py", "tools"]
@@ -154,28 +132,27 @@ ignore = [
     "E501",    # pydocstyle line too long, handled by black
     "PLW2901", # pylint - for loop variable overwritten by assignment target
     "RUF012",  # Ruff-specific rule - annotated with classvar
-    "ANN401",
-    "FBT",
+    "ANN401", # Dynamically typed expressions (Any)
+    "FBT",     # Boolean trap
     "PLR0913", # too many arguments
-    "PT",
-    "TD",
+    "PT",      # Pytest rules
+    "TD",      # Todo rules
     "ARG001",  # ignore for now; investigate
     "ARG002",  # ignore for now; investigate
     "ARG003",  # ignore for now; investigate
     "PERF203", # ignore for now; investigate
-    "PD011",   # pandas
-    "PLR0912",
-    "ISC001",
-    "COM812",
-    "CPY001",
-    "PGH003",
-    "FA100",
+    "PLR0912", # Too many branches
+    "ISC001",  # Implicit string concatenation
+    "COM812",  # Trailing comma
+    "CPY001",  # Copyright notice
+    "PGH003",  # Blanket type ignore
+    "FA100",   # Future annotations
     "PLC0415", # import should be at the top of the file
     "PLR0904", # too many public methods
-    "PLR0917",
-    "PLC2701",
-    "PLW3201",
-    "PLR6301",
+    "PLR0917", # Too many positional arguments
+    "PLC2701", # Import private name
+    "PLW3201", # Bad dunder method name
+    "PLR6301", # No self use
 ]
 select = ["ALL"]
 # Allow unused variables when underscore-prefixed.
@@ -190,9 +167,6 @@ max-complexity = 12
 [tool.ruff.lint.pep8-naming]
 classmethod-decorators = [
     "classmethod",
-    "sqlalchemy.ext.declarative.declared_attr",
-    "sqlalchemy.orm.declared_attr.directive",
-    "sqlalchemy.orm.declared_attr",
 ]
 
 [tool.ruff.lint.isort]
@@ -200,9 +174,6 @@ known-first-party = ["tests", "app", "config"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
-"src/py/app/db/migrations/versions/*.py" = ["ANN201", "INP001"]
-"docs/**/*.*" = ["S", "B", "DTZ", "A", "ERA", "D", "RET", "E731", "RUF012", "FA100", "ARG001"]
-"docs/conf.py" = ["FIX002", "ARG001", "INP001"]
 "src/py/tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
 "src/py/tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
 "tools/*.py" = ["INP001", "ERA001", "N999"]
@@ -212,63 +183,25 @@ known-first-party = ["tests", "app", "config"]
 strict-imports = false
 
 [tool.codespell]
-ignore-words-list = "alog"
-skip = 'pdm.lock, package-lock.json'
+ignore-words-list = "alog, uv.lock, src/js/package-lock.json"
 
 [tool.mypy]
 disallow_any_generics = false
-disallow_incomplete_defs = true
-disallow_untyped_decorators = true
-disallow_untyped_defs = true
 exclude = '''(?x)(
-^build/
-|^dist/
-|^.venv/
-|^node_modules/
-|^migrations/
+^.venv/
 )'''
-implicit_reexport = false
 plugins = []
 strict = true
-warn_redundant_casts = true
-warn_return_any = true
 warn_unreachable = true
-warn_unused_configs = true
-warn_unused_ignores = true
 
-[[tool.mypy.overrides]]
-disallow_untyped_decorators = false
-module = ["tests.*"]
 
-[[tool.mypy.overrides]]
-disallow_untyped_calls = false
-disallow_untyped_decorators = false
-module = ["aisoql.*"]
-
-[[tool.mypy.overrides]]
-ignore_missing_imports = true
-module = [
-    "sqlalchemy.*",
-    "saq.*",
-    "uvicorn.*",
-    "aiohttp.*",
-    "jsbeautifier",
-    "jsbeautifier.*",
-    "uvloop",
-    "uvloop.*",
-    "nodeenv",
-    "vertexai",
-    "vertexai.*",
-    "sklearn",
-    "sklearn.*",
-]
 
 [[tool.mypy.overrides]]
 ignore_errors = true
 module = ["app.db.migrations.*"]
 
 [tool.pytest.ini_options]
-addopts = ["-ra", "--ignore", "src/py/app/db/migrations"]
+addopts = ["-ra"]
 pythonpath = ["src/py"]
 markers = [
     "slow: marks tests as slow (integration/runtime checks)",
@@ -277,12 +210,11 @@ filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",
-    "ignore::UserWarning:sqlalchemy.*",
 ]
 testpaths = ["src/py/tests"]
 
 [tool.pyright]
-exclude = ["scripts", "docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
+exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 include = ["src/py/app", "src/py/tests"]
 extraPaths = ["src/py"]
 reportMissingImports = "information"

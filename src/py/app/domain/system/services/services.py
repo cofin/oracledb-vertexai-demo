@@ -148,18 +148,18 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
 
     async def set_cached_response(self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60) -> ResponseCache | None:
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
-        
+
         # Check if exists
         check_sql = "SELECT id FROM response_cache WHERE cache_key = :key"
         existing = await self.driver.select_one_or_none(check_sql, {"key": cache_key})
-        
+
         if existing:
             update_sql = "UPDATE response_cache SET response_data = :data, expires_at = :expires WHERE cache_key = :key"
             await self.driver.execute(update_sql, {"key": cache_key, "data": response_data, "expires": expires_at})
         else:
             insert_sql = "INSERT INTO response_cache (cache_key, response_data, expires_at) VALUES (:key, :data, :expires)"
             await self.driver.execute(insert_sql, {"key": cache_key, "data": response_data, "expires": expires_at})
-            
+
         select_sql = "SELECT id, cache_key, response_data, created_at, expires_at FROM response_cache WHERE cache_key = :key"
         row = await self.driver.select_one_or_none(select_sql, {"key": cache_key})
         return ResponseCache(**row) if row else None
@@ -178,10 +178,10 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
 
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
-        
+
         check_sql = "SELECT id FROM embedding_cache WHERE text_hash = :hash"
         existing = await self.driver.select_one_or_none(check_sql, {"hash": text_hash})
-        
+
         if not existing:
             insert_sql = "INSERT INTO embedding_cache (text_hash, embedding, model) VALUES (:hash, :emb, :model)"
             await self.driver.execute(insert_sql, {"hash": text_hash, "emb": embedding, "model": model})
