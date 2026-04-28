@@ -7,23 +7,25 @@ NC='\033[0m'
 INFO="${BLUE}ℹ${NC}"
 OK="${GREEN}✓${NC}"
 
+# 1. Configure uv (Python)
+echo -e "${INFO} Configuring uv.toml..."
+cat <<EOF > uv.toml
+exclude-dependencies = ["fastapi", "uvicorn", "starlette", "sse-starlette", "sqlalchemy", "alembic", "sqlalchemy-spanner"]
+EOF
+
 # Detect if running on internal Linux (Rodete)
 if [ -f "/etc/os-release" ] && grep -q "rodete" /etc/os-release; then
     echo -e "${INFO} Detected internal environment (Rodete)."
 
-    # Configure uv (Python)
-    if [ ! -f "uv.toml" ]; then
-        echo -e "${INFO} Creating uv.toml to force public PyPI index..."
-        cat <<EOF > uv.toml
+    # Append PyPI index to uv.toml
+    cat <<EOF >> uv.toml
+
 [[index]]
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
 EOF
-        echo -e "${OK} uv.toml created."
-    else
-        echo -e "${INFO} uv.toml already exists. Skipping creation."
-    fi
+    echo -e "${OK} uv.toml updated with public index."
 
     # Configure npm/bun (JavaScript)
     if [ ! -f ".npmrc" ]; then

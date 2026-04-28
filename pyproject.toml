@@ -105,12 +105,6 @@ test = [
     "pytest-xdist",
 ]
 
-[tool.uv]
-override-dependencies = [
-    "google-adk>=1.25.1",
-    "google-genai>=1.64.0",
-]
-
 [tool.ruff]
 exclude = [
     ".bzr",
