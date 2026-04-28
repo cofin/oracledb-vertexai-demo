@@ -175,10 +175,11 @@ todo
 # AI-specific invocation layers (gitignored, created locally)
 .claude/
 .codex/
-specs/
+/specs/
 .gemini/
-.agents/
 .agent/
+.agents/archive/
+.agents/beads.json
 !tools/lib
 .beads
 .gemini
