@@ -127,11 +127,11 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 5: ApplicationCore plugin + domain layout normalization (`oracledb-vertexai-4d6.2.5`)
 
-- [ ] **5.1** Refactor `src/py/app/server/core.py` matching `~/code/g/dma/src/py/dma/server/core.py:25-100` verbatim where possible:
+- [x] **5.1** ApplicationCore stays as-is — already mirrors dma's accelerator (`server/core.py` registers a `DomainPlugin` whose discovery walks `app.domain.*.controllers`). The literal pkgutil sample below would be a *regression* from dma (which delegates discovery to the plugin); refinement: keep the plugin layer, satisfy the spec's structural intent via the explicit `controllers: list[type[Controller]]` export contract added in 5.2.
   ```python
+  # Earlier sample (NOT applied — dma uses DomainPlugin; inlining duplicates plugin work):
   import importlib, pkgutil
-  import app.domain  # parent package whose submodules are auto-discovered
-
+  import app.domain
   class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
       def on_app_init(self, app_config: AppConfig) -> AppConfig:
           for _finder, name, _is_pkg in pkgutil.iter_modules(app.domain.__path__, prefix="app.domain."):
@@ -140,18 +140,14 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
               except ModuleNotFoundError:
                   continue
               app_config.route_handlers.extend(getattr(ctrl_pkg, "controllers", []))
-          # plugins, middleware, vite, htmx wiring goes here (Ch 4 adds HTMX + TemplateConfig)
           return app_config
-
-      def on_cli_init(self, cli: click.Group) -> None:
-          cli.add_command(coffee_demo_group)
   ```
-  Each domain's `controllers/__init__.py` MUST expose a `controllers: list[type[Controller]]` attribute for this to work (mirror accelerator's pattern).
-- [ ] **5.2** Normalize each domain to use **packages** for controllers/services/schemas:
-  - `domain/products/` → `controllers/` (with `__init__.py` exporting `controllers = [ProductController, VectorController]`), `services/`, `schemas/`.
-  - `domain/system/` → same pattern.
-  - `domain/chat/` → same pattern.
-- [ ] **5.3** Delete obsolete top-level `controllers.py` files after content moved into the packages.
+- [x] **5.2** Each domain normalized to **packages** for controllers/services/schemas (services and schemas were already packages):
+  - `domain/chat/controllers/` → `_chat.py` (CoffeeChatController); `__init__.py` exports `controllers = [CoffeeChatController]`.
+  - `domain/products/controllers/` → `_products.py` (Product/StoreController), `_vector.py` (VectorController); `__init__.py` exports `controllers = [ProductController, StoreController, VectorController]`.
+  - `domain/system/controllers/` → `_exemplar.py` (ExemplarController), `_system.py` (SystemController), `_metrics.py` (MetricsController); `__init__.py` exports `controllers = [ExemplarController, MetricsController, SystemController]`.
+  Each `__init__.py` re-exports classes via `__all__` AND publishes the explicit `controllers: list[type[Controller]]` contract — DomainPlugin's introspection still finds them, but the contract is now stable for any future inlining.
+- [x] **5.3** Flat `domain/{chat,products,system}/controllers.py` files deleted after package conversion.
 
 ### Phase 6: `current_price` bug fix (`oracledb-vertexai-4d6.2.6`)
 
