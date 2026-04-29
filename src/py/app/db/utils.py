@@ -38,6 +38,7 @@ async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str
             fixtures_dir=fixtures_dir,
             driver=driver,
             table_order=COFFEE_SHOP_TABLES,
+            expected_vector_dim=settings.vertex_ai.EMBEDDING_DIMENSIONS,
         )
 
         results = await loader.load_all_fixtures(specific_tables=tables)

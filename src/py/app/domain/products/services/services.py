@@ -44,8 +44,26 @@ class ProductService(SQLSpecService[OracleAsyncDriver]):
         row = await self.driver.select_one_or_none(sql, {"name": name})
         return Product(**row) if row else None
 
+    async def get_products_without_embeddings(self) -> tuple[list[dict[str, Any]], int]:
+        """Return (products_missing_embedding, total_product_count)."""
+        rows = await self.driver.select(
+            "SELECT id, name, description FROM product WHERE embedding IS NULL ORDER BY id",
+        )
+        total_row = await self.driver.select_one_or_none("SELECT COUNT(*) AS total FROM product")
+        total = int(total_row["total"]) if total_row else len(rows)
+        return rows, total
+
+    async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
+        result = await self.driver.execute(
+            "UPDATE product SET embedding = :embedding WHERE id = :id",
+            {"embedding": embedding, "id": product_id},
+        )
+        await self.driver.commit()
+        rowcount = getattr(result, "rowcount", None)
+        return bool(rowcount) if rowcount is not None else True
+
     async def search_by_vector(self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5) -> list[dict[str, Any]]:
-        sql = """SELECT id, name, description, current_price, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity_score
+        sql = """SELECT id, name, description, price, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity_score
                  FROM product WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
                  ORDER BY similarity_score DESC FETCH FIRST :limit ROWS ONLY"""
         return await self.driver.select(sql, {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit})
@@ -138,7 +156,6 @@ class OracleVectorSearchService:
         results = await self.product_service.search_by_vector(embedding, similarity_threshold=threshold, limit=k)
         oracle_ms = (time.time() - oracle_start) * 1000
 
-        # Map current_price to distance (1 - similarity) for compatibility with legacy controller
         for r in results:
             r["distance"] = 1 - r["similarity_score"]
 

@@ -15,9 +15,12 @@ from pathlib import Path
 from typing import Any
 
 import oracledb
+import structlog
 from sqlspec import sql
 
 from app.utils.serialization import from_json, to_json
+
+logger = structlog.get_logger(__name__)
 
 # Oracle VARCHAR2 maximum length (use CLOB for larger values)
 VARCHAR2_MAX_LENGTH = 4000
@@ -72,16 +75,31 @@ def _prepare_value_for_export(value: Any) -> Any:
     return value
 
 
+def _is_vector_payload(value: Any) -> bool:
+    """Detect a list-of-floats embedding payload."""
+
+    if not isinstance(value, list) or not value:
+        return False
+    head = value[0]
+    return isinstance(head, (int, float)) and not isinstance(head, bool)
+
+
 class FixtureProcessor:
     """Handles fixture data processing with proper serialization."""
 
-    def __init__(self, fixtures_dir: Path) -> None:
+    def __init__(self, fixtures_dir: Path, expected_vector_dim: int | None = None) -> None:
         """Initialize the fixture processor.
 
         Args:
             fixtures_dir: Path to the fixtures directory
+            expected_vector_dim: When set, vector columns whose length does not
+                match are dropped from each record with a warning. This lets
+                stale fixtures load against an updated VECTOR(N) schema and be
+                refilled by the embedding pipeline afterwards.
         """
         self.fixtures_dir = fixtures_dir
+        self.expected_vector_dim = expected_vector_dim
+        self._dim_warning_emitted: set[str] = set()
 
     def load_fixture_data(self, filepath: Path) -> list[dict[str, Any]]:
         """Load fixture data from file, handling compression.
@@ -119,6 +137,21 @@ class FixtureProcessor:
 
             if key in DATETIME_FIELDS and isinstance(value, str):
                 prepared[key] = datetime.fromisoformat(value)
+                continue
+
+            if (
+                self.expected_vector_dim is not None
+                and _is_vector_payload(value)
+                and len(value) != self.expected_vector_dim
+            ):
+                if key not in self._dim_warning_emitted:
+                    logger.warning(
+                        "Skipping fixture column due to vector dimension mismatch",
+                        column=key,
+                        fixture_dim=len(value),
+                        expected_dim=self.expected_vector_dim,
+                    )
+                    self._dim_warning_emitted.add(key)
                 continue
 
             prepared[key] = value
@@ -166,15 +199,24 @@ class FixtureProcessor:
 class FixtureLoader:
     """Generic fixture loader that works with any table using SQLSpec."""
 
-    def __init__(self, fixtures_dir: Path, driver: Any, table_order: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        fixtures_dir: Path,
+        driver: Any,
+        table_order: list[str] | None = None,
+        expected_vector_dim: int | None = None,
+    ) -> None:
         """Initialize the fixture loader.
 
         Args:
             fixtures_dir: Path to fixtures directory
             driver: SQLSpec driver instance for database operations
             table_order: Optional list defining table loading order for dependencies
+            expected_vector_dim: When set, vector columns whose length does not
+                match are skipped during prep so stale fixtures can load against
+                an updated VECTOR(N) schema.
         """
-        self.processor = FixtureProcessor(fixtures_dir)
+        self.processor = FixtureProcessor(fixtures_dir, expected_vector_dim=expected_vector_dim)
         self.driver = driver
         self.table_order = table_order or []
 

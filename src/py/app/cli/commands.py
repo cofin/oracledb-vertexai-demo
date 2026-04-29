@@ -87,46 +87,115 @@ async def _process_product_batch(
     return success_count, error_count
 
 
+async def _process_exemplar_batch(
+    batch: list[Any],
+    exemplar_service: Any,
+    vertex_ai_service: Any,
+    start_idx: int,
+    total_exemplars: int,
+) -> tuple[int, int]:
+    """Re-embed a batch of intent_exemplar rows."""
+    from rich import get_console
+
+    console = get_console()
+    success_count = 0
+    error_count = 0
+
+    with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
+        for i, row in enumerate(batch):
+            exemplar_id: int | None = None
+            try:
+                exemplar_id = row["id"]
+                phrase = row.get("phrase", "")
+
+                global_idx = start_idx + i + 1
+                status.update(f"[bold yellow]Processing {global_idx}/{total_exemplars}: {phrase[:60]}...")
+
+                embedding = await vertex_ai_service.get_text_embedding(phrase, task_type="RETRIEVAL_DOCUMENT")
+                updated = await exemplar_service.update_embedding(exemplar_id, embedding)
+                if not updated:
+                    error_count += 1
+                    logger.warning("Failed to update exemplar", exemplar_id=exemplar_id, error="update affected 0 rows")
+                    continue
+                success_count += 1
+            except Exception as e:  # noqa: BLE001
+                error_count += 1
+                logger.warning("Failed to embed exemplar", exemplar_id=exemplar_id, error=str(e))
+
+    return success_count, error_count
+
+
+async def _embed_in_batches(
+    items: list[Any],
+    batch_size: int,
+    processor: Any,
+) -> tuple[int, int]:
+    """Iterate items in batches and aggregate (success, error) counts."""
+    from rich import get_console
+
+    console = get_console()
+    total_success = 0
+    total_errors = 0
+    total_batches = (len(items) + batch_size - 1) // batch_size
+
+    for batch_num in range(total_batches):
+        start_idx = batch_num * batch_size
+        end_idx = min(start_idx + batch_size, len(items))
+        batch = items[start_idx:end_idx]
+        console.print(f"[bold]Processing batch {batch_num + 1}/{total_batches} ({len(batch)} items)[/bold]")
+        success, errors = await processor(batch, start_idx, len(items))
+        total_success += success
+        total_errors += errors
+        console.print(f"[green]✓ Batch {batch_num + 1} complete[/green]\n")
+
+    return total_success, total_errors
+
+
 def _print_embedding_results(total_success: int, total_errors: int) -> None:
     """Print final embedding results."""
     from rich import get_console
 
     console = get_console()
-    console.print("[bold]Final Results:[/bold]")
-    console.print(f"[bold green]✓ Successfully processed: {total_success} products[/bold green]")
+    console.print("[bold]Results:[/bold]")
+    console.print(f"[bold green]✓ Successfully processed: {total_success}[/bold green]")
     if total_errors > 0:
-        console.print(f"[bold red]✗ Failed to process: {total_errors} products[/bold red]")
+        console.print(f"[bold red]✗ Failed to process: {total_errors}[/bold red]")
     console.print()
 
 
 @coffee_demo_group.command(
     name="bulk-embed",
-    help="Run bulk embedding job for all products using Vertex AI.",
+    help="Run bulk embedding job for products (and optionally intent exemplars) using Vertex AI.",
 )
-@click.option("--batch-size", default=50, help="Number of products to process in each batch (default: 50)")
-@click.option("--force", "-f", is_flag=True, help="Re-embed all products, even if they already have embeddings")
-def bulk_embed(batch_size: int, force: bool) -> None:
+@click.option("--batch-size", default=50, help="Number of items to process in each batch (default: 50)")
+@click.option("--force", "-f", is_flag=True, help="Re-embed all items, even if they already have embeddings")
+@click.option(
+    "--include-exemplars",
+    is_flag=True,
+    help="Also re-embed intent_exemplar phrases (required after dimension changes).",
+)
+def bulk_embed(batch_size: int, force: bool, include_exemplars: bool) -> None:
     """Run bulk embedding job for all products using Vertex AI."""
     from sqlspec.utils.sync_tools import run_
 
     console = get_console()
-    console.rule("[bold blue]Bulk Product Embedding", style="blue", align="left")
+    console.rule("[bold blue]Bulk Embedding", style="blue", align="left")
     console.print()
 
-    async def _bulk_embed_products() -> None:
+    async def _bulk_embed() -> None:
         from google.genai import Client
 
         from app.config import db, db_manager
         from app.domain.products.services import ProductService, VertexAIService
-        from app.domain.system.services import CacheService
+        from app.domain.system.services import CacheService, ExemplarService
         from app.lib.settings import get_settings
 
         settings = get_settings()
 
-        # Use SQLSpec session directly
         async with db_manager.provide_session(db) as session:
             product_service = ProductService(session)
             cache_service = CacheService(session)
+            exemplar_service = ExemplarService(session)
             if settings.vertex_ai.PROJECT_ID:
                 client = Client(
                     vertexai=True,
@@ -145,45 +214,54 @@ def bulk_embed(batch_size: int, force: bool) -> None:
                 cache_service=cache_service,
             )
 
-            # Get products to embed
+            console.print("[bold]→ Products[/bold]")
             products, message = await _fetch_products_to_embed(product_service, force)
             console.print(message)
 
-            if not products:
-                if force:
-                    console.print("[yellow]No products found in database[/yellow]")
-                else:
-                    console.print("[green]✓ All products already have embeddings![/green]")
-                return
-
-            console.print(f"[dim]Batch size: {batch_size}[/dim]")
-            console.print()
-
-            # Process products in batches
-            total_success = 0
-            total_errors = 0
-            total_batches = (len(products) + batch_size - 1) // batch_size
-
-            for batch_num in range(total_batches):
-                start_idx = batch_num * batch_size
-                end_idx = min(start_idx + batch_size, len(products))
-                batch = products[start_idx:end_idx]
-
-                console.print(f"[bold]Processing batch {batch_num + 1}/{total_batches} ({len(batch)} products)[/bold]")
-
-                success, errors = await _process_product_batch(
-                    batch, product_service, vertex_ai_service, start_idx, len(products)
+            product_success = product_errors = 0
+            if products:
+                console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
+                product_success, product_errors = await _embed_in_batches(
+                    products,
+                    batch_size,
+                    lambda batch, start_idx, total: _process_product_batch(
+                        batch, product_service, vertex_ai_service, start_idx, total
+                    ),
                 )
-                total_success += success
-                total_errors += errors
+            else:
+                console.print(
+                    "[yellow]No products found in database[/yellow]"
+                    if force
+                    else "[green]✓ All products already have embeddings![/green]"
+                )
 
-                console.print(f"[green]✓ Batch {batch_num + 1} complete[/green]")
+            _print_embedding_results(product_success, product_errors)
+
+            if include_exemplars:
                 console.print()
+                console.print("[bold]→ Intent exemplars[/bold]")
+                exemplars, total = await exemplar_service.get_exemplars_without_embeddings(force=force)
+                console.print(
+                    f"[cyan]Processing {len(exemplars)} exemplars without embeddings from a total of {total}[/cyan]"
+                )
+                if not exemplars:
+                    console.print(
+                        "[yellow]No exemplars found in database[/yellow]"
+                        if force
+                        else "[green]✓ All exemplars already have embeddings![/green]"
+                    )
+                    return
+                console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
+                exemplar_success, exemplar_errors = await _embed_in_batches(
+                    exemplars,
+                    batch_size,
+                    lambda batch, start_idx, total: _process_exemplar_batch(
+                        batch, exemplar_service, vertex_ai_service, start_idx, total
+                    ),
+                )
+                _print_embedding_results(exemplar_success, exemplar_errors)
 
-            # Show final results
-            _print_embedding_results(total_success, total_errors)
-
-    run_(_bulk_embed_products)()
+    run_(_bulk_embed)()
 
 
 @coffee_demo_group.command(name="clear-cache", help="Clear cache tables in the database.")

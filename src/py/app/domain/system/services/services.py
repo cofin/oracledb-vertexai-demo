@@ -240,5 +240,25 @@ class ExemplarService(SQLSpecService[OracleAsyncDriver]):
 
     async def search_similar_intents(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
         sql = """SELECT intent, phrase, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity, confidence_threshold
-                 FROM intent_exemplar ORDER BY similarity DESC FETCH FIRST :limit ROWS ONLY"""
+                 FROM intent_exemplar WHERE embedding IS NOT NULL
+                 ORDER BY similarity DESC FETCH FIRST :limit ROWS ONLY"""
         return await self.driver.select(sql, {"query_vector": query_embedding, "limit": limit})
+
+    async def get_exemplars_without_embeddings(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
+        """Return (exemplars_needing_embedding, total_exemplar_count)."""
+        clause = "" if force else "WHERE embedding IS NULL"
+        rows = await self.driver.select(
+            f"SELECT id, intent, phrase FROM intent_exemplar {clause} ORDER BY id",  # noqa: S608
+        )
+        total_row = await self.driver.select_one_or_none("SELECT COUNT(*) AS total FROM intent_exemplar")
+        total = int(total_row["total"]) if total_row else len(rows)
+        return rows, total
+
+    async def update_embedding(self, exemplar_id: int, embedding: list[float]) -> bool:
+        result = await self.driver.execute(
+            "UPDATE intent_exemplar SET embedding = :embedding WHERE id = :id",
+            {"embedding": embedding, "id": exemplar_id},
+        )
+        await self.driver.commit()
+        rowcount = getattr(result, "rowcount", None)
+        return bool(rowcount) if rowcount is not None else True
