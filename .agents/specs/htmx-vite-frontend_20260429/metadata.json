@@ -1,12 +1,12 @@
 {
   "flow_id": "htmx-vite-frontend_20260429",
   "type": "feature",
-  "status": "planned",
+  "status": "completed",
   "parent_prd": "cymbal-coffee-reset_20260429",
   "beads_epic_id": "oracledb-vertexai-4d6.4",
   "created_at": "2026-04-29T01:30:00Z",
-  "updated_at": "2026-04-29T20:32:16Z",
-  "synced_at": "2026-04-29T20:32:16Z",
+  "updated_at": "2026-04-29T20:37:46Z",
+  "synced_at": "2026-04-29T20:37:46Z",
   "revised_at": "2026-04-29T20:00:00Z",
   "description": "Bundle (1) source-tree flatten src/py/{app,tests} \u2192 src/{app,tests} + delete src/js wholesale + CLI restructure (coffee becomes a hand-rolled rich_click group, no more litestar_group(); migrations + assets land on manage.py only, mirroring dma/accelerator's dma-vs-manage.py split), with (2) frontend rebuild as HTMX + Tailwind v4 + Alpine.js + ApexCharts via litestar-vite mode='template' + built-in litestar.plugins.htmx (no separate PyPI dep). End state: src/{app,resources,templates,tests}/, vite.config.ts + package.json at repo root, executor=node (no bun, no biome, no TanStack). coffee retains run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures; manage.py exposes init/install/doctor/infra/database/assets. Two pages: chat (feature parity with deleted React) + explore (5 panels \u2014 vector-search, EXPLAIN PLAN viewer, metrics summary cards via hx-ext='litestar' ls-* templating, latency time-series via Alpine+ApexCharts, classify-compare from Ch 3 CLI output). Single dev command: VITE_DEV_MODE=true uv run coffee run."
 }
