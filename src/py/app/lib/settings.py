@@ -149,7 +149,7 @@ class DatabaseSettings:
             }
 
         return OracleAsyncConfig(
-            pool_config=pool_config,
+            connection_config=pool_config,
             migration_config={
                 "version_table_name": "migrations",
                 "script_location": self.MIGRATION_PATH,

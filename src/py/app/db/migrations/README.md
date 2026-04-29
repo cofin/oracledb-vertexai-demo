@@ -70,13 +70,15 @@ The initial Oracle 23ai schema in this project includes:
 
 Oracle 23ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
 
-Configure the pool once per database (the change is persisted in SPFILE and requires a restart):
+Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle 23ai Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the ~1100 vectors at 3072 dims that ship with the demo (~18 MB with HNSW overhead):
 
 ```sql
-ALTER SYSTEM SET vector_memory_size = 4G SCOPE=SPFILE;
+ALTER SYSTEM SET vector_memory_size = 512M SCOPE=SPFILE;
 SHUTDOWN IMMEDIATE;
 STARTUP;
 ```
+
+For Oracle Standard / Enterprise / Autonomous (no Free SGA cap), scale up — e.g. 6 GB SGA / 4 GB vector pool. The standalone script `tools/oracle/configure_vector_memory.sql` ships with the Standard/Enterprise values; use the Free-friendly values above if you reuse it on Free.
 
 For the dev container the pool is set automatically: `tools/oracle/on_init/00_configure_vector_memory.sql` runs once on first DB creation (executes the `ALTER SYSTEM ... SCOPE=SPFILE` and bounces the instance), and `tools/oracle/on_startup/00_verify_vector_memory.sql` confirms the allocation on every container restart (visible via `make infra-logs`). For autonomous DB or other shared instances, run `tools/oracle/configure_vector_memory.sql` as SYSDBA.
 

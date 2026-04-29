@@ -13,14 +13,14 @@ BEGIN
     SELECT NVL(MAX(BYTES), 0)
       INTO l_pool_bytes
       FROM V$SGAINFO
-     WHERE NAME = 'Vector Memory';
+     WHERE NAME IN ('Vector Memory', 'Vector Memory Area');
 
     IF l_pool_bytes = 0 THEN
         DBMS_OUTPUT.PUT_LINE('WARNING: vector_memory_size is 0 — HNSW INMEMORY indexes will fail.');
         DBMS_OUTPUT.PUT_LINE('  Run tools/oracle/configure_vector_memory.sql or restart the container.');
     ELSE
         DBMS_OUTPUT.PUT_LINE(
-            'Vector Memory pool: ' || ROUND(l_pool_bytes / 1024 / 1024 / 1024, 2) || ' GB allocated.'
+            'Vector Memory pool: ' || ROUND(l_pool_bytes / 1024 / 1024, 2) || ' MB allocated.'
         );
     END IF;
 END;
