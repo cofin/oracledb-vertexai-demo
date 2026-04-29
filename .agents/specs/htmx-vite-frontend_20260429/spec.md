@@ -11,7 +11,7 @@
 
 Bundle two transformations into one chapter, in this order:
 
-1. **Source-tree flatten + CLI restructure** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend resources from `src/js/src/` into `src/resources/`. Move Jinja templates to `src/templates/`. After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root. **And** rebuild `coffee` as a hand-rolled `rich_click` group (mirrors `dma/accelerator`'s `dma`) so it stops routing through `litestar_group()`; migrations and assets land on `manage.py` exclusively.
+1. **Source-tree flatten + CLI restructure** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend build INPUTS to `src/resources/` (parallel to `src/app/`). Land Jinja templates inside a new `src/app/domain/web/` package (web is a peer-domain alongside `chat`/`products`/`system`); Vite's bundle OUTPUT lands at `src/app/domain/web/static/dist/` (gitignored). After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root. **And** rebuild `coffee` as a hand-rolled `rich_click` group (mirrors `dma/accelerator`'s `dma`) so it stops routing through `litestar_group()`; migrations and assets land on `manage.py` exclusively.
 2. **Frontend rewrite** — replace the React + TanStack SPA (`mode="spa"`) with a tasteful **HTMX 2.x + Tailwind v4 + Alpine.js + ApexCharts** UI served via `litestar-vite` in `mode="template"` with `HTMXPlugin()` + `hx-ext="litestar"`. No bun, no biome, no TanStack. Two pages, one shared layout, five panels on the explore page (heatmap dropped). The runtime executor is `node` (npm), not `bun`.
 
 End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run python manage.py assets build`). **`coffee` becomes a hand-rolled `rich_click` group** (no more `litestar_group()`) so it doesn't auto-mount asset/migration/database subcommands at help time. **All asset-pipeline and migration commands route through `manage.py` exclusively**, mirroring `dma/accelerator`'s `dma`-vs-`manage.py` split. Visual polish bar **at least the React version** per PRD global constraint #10.
@@ -109,8 +109,8 @@ These five values must agree on both sides. **Mismatch breaks HMR or manifest re
 | Concept                | Python (`ViteSettings.get_config()`)                          | TS (`vite.config.ts`)                                             |
 |------------------------|---------------------------------------------------------------|-------------------------------------------------------------------|
 | Repo root              | `paths=PathConfig(root=BASE_DIR.parents[1], resource_dir=Path("src/resources"))` | `process.cwd()` (vite default; runs from repo root) |
-| Bundle output          | `paths.bundle_dir = BASE_DIR / "server" / "static" / "dist"`  | `litestar({ bundleDir: "src/app/server/static/dist", ... })` (plugin sets `build.outDir`) |
-| Hot file               | (auto from `bundle_dir`) → `src/app/server/static/dist/hot`   | `litestar({ hotFile: "src/app/server/static/dist/hot", ... })`    |
+| Bundle output          | `paths.bundle_dir = BASE_DIR / "domain" / "web" / "static" / "dist"` | `litestar({ bundleDir: "src/app/domain/web/static/dist", ... })` (plugin sets `build.outDir`) |
+| Hot file               | (auto from `bundle_dir`) → `src/app/domain/web/static/dist/hot` | `litestar({ hotFile: "src/app/domain/web/static/dist/hot", ... })` |
 | Asset URL              | `paths.asset_url = "/static/dist/"`                           | `litestar({ assetUrl: "/static/dist/" })` (plugin sets `base`)    |
 | Inputs                 | (set by TS, plugin reflects)                                  | `litestar({ input: ["src/resources/main.js", "src/resources/styles.css"] })` |
 | Dev port               | `runtime=RuntimeConfig(port=5173, host="0.0.0.0")`            | `server: { port: 5173, host: "0.0.0.0", strictPort: true, cors: true }` |
@@ -118,20 +118,28 @@ These five values must agree on both sides. **Mismatch breaks HMR or manifest re
 
 `paths.root` is `BASE_DIR.parents[1]` (= repo root after the flatten). Vite is invoked from repo root.
 
+**Domain layout (mirrors dma/accelerator's `domain/web` pattern):**
+- **`src/resources/`** — Vite build INPUT. Holds `main.js`, `styles.css`, `public/` (23 brand assets).
+- **`src/app/domain/web/templates/`** — Jinja templates served by Litestar (HTMX partials + base layouts).
+- **`src/app/domain/web/static/dist/`** — Vite build OUTPUT. Gitignored. `manage.py assets build` writes `manifest.json` + hashed bundles here; `dist/hot` is the dev-mode HMR marker.
+
+The web domain is a peer to `chat`/`products`/`system`. `src/app/domain/web/__init__.py` documents the contract; the static subtree exists in dev only via the gitignored `dist/` (no `.gitkeep` is needed because the dir is purely build output).
+
 ### Server-driven HTMX response objects (decisions for this chapter)
 
 Instead of ad-hoc client JS, use `litestar-htmx` response classes server-side wherever the behavior is server-driven:
 
 | Use site                                                     | Object                                  | Why                                                                                  |
 |--------------------------------------------------------------|-----------------------------------------|--------------------------------------------------------------------------------------|
-| `POST /api/chat` HTMX branch — happy path                    | `HTMXTemplate(template_name="partials/message.html.j2", ...) ` plus an OOB metrics fragment in the same response | One round-trip renders the message bubble AND updates the metrics-badges row via `hx-swap-oob="true"` |
-| `POST /api/chat` HTMX branch — validation error              | `HTMXTemplate(..., re_target="#chat-error", re_swap="innerHTML")` | Server overrides the form's `hx-target=#messages` so the error renders into the dedicated error region |
-| `POST /api/chat` HTMX branch — done event                    | `TriggerEvent(name="chat:reply-rendered", after="swap")` (chained with `HTMXTemplate`) | Emits a client event after swap so Alpine can reset the input + scroll-to-bottom without a JS click handler |
-| Explore search box (Panel 1)                                 | `PushUrl(push_url=f"/explore?q={quote(query)}")` paired with the result-list partial | URL is shareable; back/forward navigate to past queries |
+| `POST /api/chat` HTMX branch — happy path                    | `HTMXTemplate(template_name="partials/_chat_response.html.j2", ...)` (wrapper that composes the message bubble + OOB metrics + OOB flash) | One round-trip renders the message bubble AND updates the metrics-badges row via `hx-swap-oob="true"` AND drains pending flash messages from the session into the OOB flash region |
+| `POST /api/chat` HTMX branch — validation error              | `HTMXTemplate(..., re_target="#chat-error", re_swap="innerHTML")` (encodes `Retarget` + `Reswap`) | Server overrides the form's `hx-target=#messages` so the error renders into the dedicated error region |
+| `POST /api/chat` HTMX branch — done event                    | `TriggerEvent(name="chat:reply-rendered", after="swap")` (chained with `HTMXTemplate` via the `trigger_event=` kwarg) | Emits a client event after swap so Alpine can reset the input + scroll-to-bottom without a JS click handler |
+| Explore search box (Panel 1)                                 | `HTMXTemplate(template_name="partials/search_result_list.html.j2", push_url=f"/explore?q={quote(query)}", ...)` (composes `PushUrl`) | URL is shareable; back/forward navigate to past queries |
+| Cache-clear button / persona-save / any side-effect button   | `flash(request, "...", "<category>")` then `HTMXTemplate(template_name="partials/_flash.html.j2", reswap="none")` | Side-effect handlers don't need to update the page they were invoked from — `Reswap("none")` suppresses the default swap; the OOB flash region renders independently |
 | EXPLAIN-PLAN viewer (Panel 2) — query missing                | `raise NotFoundException(detail={"hint": "Type a query in the search box first."})` | Idiomatic 404 with structured detail |
 | classify-compare endpoint (Panel 5) — file missing           | `raise NotFoundException(detail={"hint": "run uv run coffee classify-compare to generate this dataset"})` | Same idiom; surfaces actionable next-step text in the panel |
 
-**Out of scope** (do NOT use): `HXLocation`, `ClientRedirect`, `ClientRefresh`, `HXStopPolling`. Not needed for this chapter's flows.
+**Out of scope** (do NOT use): `HXLocation`, `ClientRedirect`, `ClientRefresh`, `HXStopPolling`. Not needed for this chapter's flows. If a future task introduces auth or session expiry, `ClientRedirect(redirect_to="/login")` is the right tool — defer.
 
 ### Per-panel decision: `hx-ext="litestar"` vs Alpine + fetch
 
@@ -161,8 +169,10 @@ Panel 3 example (canonical `ls-*`):
 
 ### Templates inventory (every `.html.j2` this chapter creates)
 
-`src/templates/`:
-- `base.html.j2` — `<head>` with `{{ vite_hmr() }}` + `{{ vite('src/resources/main.js') }}` + `<meta name="csrf-token" content="{{ csrf_token() }}">`; `<body hx-ext="litestar" class="min-h-screen bg-canvas text-base">`; `{% include "_nav.html.j2" %}`; `{% block content %}{% endblock %}`.
+All templates live under `src/app/domain/web/templates/` (the web-domain Jinja root passed to Litestar's `TemplateConfig`).
+
+`src/app/domain/web/templates/`:
+- `base.html.j2` — `<head>` with `{{ vite_hmr() }}` + `{{ vite('src/resources/main.js') }}` + `<meta name="csrf-token" content="{{ csrf_token() }}">`; `<body hx-ext="litestar" class="min-h-screen bg-canvas text-base">`; `{% include "_nav.html.j2" %}`; **`{% include "partials/_flash.html.j2" %}`** (renders any pending flash messages on full-page loads); `{% block content %}{% endblock %}`.
 - `_nav.html.j2` — top nav: `<nav>` with two anchor links to `/` and `/explore` (no `hx-boost` — full reload is fine for two-page apps).
 - `pages/chat.html.j2` — extends base; persona switcher (Alpine `x-data="{ persona: 'enthusiast', sessionId: localStorage.getItem('sid') ?? crypto.randomUUID() }"`); messages region (`<div id="messages">`); chat error region (`<div id="chat-error">`); chat form (`hx-post="/api/chat"`, `hx-target="#messages"`, `hx-swap="beforeend"`, `hx-headers='js:{ "X-Session-Id": sessionId }'`, `hx-include="[name=persona]"`); metrics badges row (`<div id="metrics-badges">`).
 - `pages/explore.html.j2` — extends base; 5 panels; persistent search input (Panel 1+2+5 share the query); `<input hx-trigger="keyup changed delay:300ms" hx-post="/api/vector-demo" hx-target="#search-results" name="query">` driving the result list; secondary `hx-get="/api/explain-plan"` on the same input with longer debounce (500ms) targeting `#plan`.
@@ -171,6 +181,8 @@ Panel 3 example (canonical `ls-*`):
 - `partials/plan_lines.html.j2` — `<pre id="plan-output" class="overflow-x-auto text-sm">{% for line in plan_lines %}{{ line }}{% endfor %}</pre>` plus a small summary header (`{{ plan_summary.index_used }}` etc.) when present.
 - `partials/chat_error.html.j2` — `<div class="rounded-lg bg-danger/10 px-3 py-2 text-danger">{{ error }}</div>`. Targeted by `Retarget(target="#chat-error")` on validation failure.
 - `partials/_metrics_badges.html.j2` — small fragment used as `hx-swap-oob="true"` payload from `POST /api/chat` to refresh latency/cached/intent badges.
+- `partials/_flash.html.j2` — single fragment rendering `<div id="flash-region" hx-swap-oob="afterbegin">` with `{% for f in get_flashes() %}<div class="flash flash-{{ f.category }}" role="alert">{{ f.message }}</div>{% endfor %}`. Included from `base.html.j2` for full-page renders **and** included from `partials/_chat_response.html.j2` for HTMX swaps. `get_flashes()` pops messages from session — render-once semantics. Categories used: `info`, `success`, `warning`, `error`.
+- `partials/_chat_response.html.j2` — composing wrapper for the chat happy path: `{% include "partials/message.html.j2" %}{% include "partials/_metrics_badges.html.j2" %}{% include "partials/_flash.html.j2" %}`. The HTMX response handler returns a single `HTMXTemplate(template_name="partials/_chat_response.html.j2", ...)`; the message bubble appends to `#messages` while the metrics + flash fragments OOB-swap into their own regions.
 
 ### `main.js` (canonical content for this chapter)
 
@@ -196,7 +208,7 @@ Notes:
 
 ```css
 @import "tailwindcss";
-@source "../templates";
+@source "../app/domain/web/templates";
 
 @theme {
   --color-canvas: #111113;
@@ -218,19 +230,19 @@ Notes:
 /* Chat bubble + chart-container helpers go below as @utility / @layer components */
 ```
 
-`@source "../templates";` tells Tailwind v4 to scan the Jinja templates directory for utility-class strings — without it the v4 auto-detector misses `.html.j2` files.
+`@source "../app/domain/web/templates";` tells Tailwind v4 to scan the Jinja templates directory for utility-class strings — without it the v4 auto-detector misses `.html.j2` files. The relative path resolves from `src/resources/styles.css` to the web-domain templates package.
 
 ### Requirements
 
 1. **Source-tree flatten (Phase 1)** — `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. After Phase 1, `src/py/` does not exist.
 2. **React deletion (Phase 2)** — `src/js/` is deleted *in full* (after Phase 3.4 rescues `src/js/public/`).
 3. **Resources scaffold (Phase 3)** — `src/resources/` (new): `main.js`, `styles.css`, `public/` (24 carryover assets), `generated/` (empty placeholder dir).
-4. **Templates scaffold (Phase 4)** — `src/templates/` (new): base + `_nav` + `pages/chat` + `partials/{message,search_result,chat_error,_metrics_badges}` (Phase 4 ships the chat-only set; explore-page templates land in Phase 5.2-5.3).
+4. **Templates scaffold (Phase 4)** — `src/app/domain/web/templates/` (new — co-located with the new `web` Python sub-package `src/app/domain/web/__init__.py`): base + `_nav` + `pages/chat` + `partials/{message,search_result,chat_error,_metrics_badges}` (Phase 4 ships the chat-only set; explore-page templates land in Phase 5.2-5.3).
 5. **Top-level toolchain (Phase 3.6)** — `package.json`, `vite.config.ts`, `tsconfig.json` at repo root. `pyproject.toml`, `Makefile`, `Dockerfile{,.distroless}`, `manage.py`, `.gitignore` updated for the flatten + npm/node toolchain.
-6. **Python wiring (Phase 4.4-4.5)** — `litestar.plugins.htmx` is built into Litestar 2.x and used from the existing `litestar[jinja,...]` install (no new PyPI dep). `src/app/lib/settings.py:ViteSettings.get_config()` flips `mode="spa"` → `mode="template"`, `executor="bun"` → `executor="node"`, `BASE_DIR.parents[2]` → `BASE_DIR.parents[1]`, adds `resource_dir=Path("src/resources")`, sets `TypeGenConfig(generate_sdk=False, generate_routes=False, generate_schemas=False, generate_page_props=False)`. `ApplicationCore.on_app_init` adds `TemplateConfig(directory=BASE_DIR.parents[1] / "src" / "templates", engine=JinjaTemplateEngine)` and appends `HTMXPlugin()` to the plugin list. `csrf.header_name` is changed to `"X-CSRFToken"` in `app/config.py:46-50` (and the corresponding `CSRF_HEADER_NAME` default in `app/lib/settings.py:261`).
+6. **Python wiring (Phase 4.4-4.5)** — `litestar.plugins.htmx` and `litestar.plugins.flash` ship with Litestar 2.x core (no new PyPI dep). `src/app/lib/settings.py:ViteSettings.get_config()` flips `mode="spa"` → `mode="template"`, `executor="bun"` → `executor="node"`, retargets `BUNDLE_DIR` from `BASE_DIR / "server" / "static" / "dist"` to `BASE_DIR / "domain" / "web" / "static" / "dist"`, adds `resource_dir=Path("src/resources")`, sets `TypeGenConfig(generate_sdk=False, generate_routes=False, generate_schemas=False, generate_page_props=False)`. `ApplicationCore.on_app_init` adds `TemplateConfig(directory=BASE_DIR / "domain" / "web" / "templates", engine=JinjaTemplateEngine)` and appends `HTMXPlugin()` plus `FlashPlugin(FlashConfig(template_config=app_config.template_config))` to the plugin list. `FlashPlugin` rides the existing `ServerSideSessionConfig(store="sessions")` middleware backed by `OracleAsyncStore` (`src/app/config.py:60-61`) — no extra middleware, no extra store. `csrf.header_name` is changed to `"X-CSRFToken"` in `app/config.py:46-50` (and the corresponding `CSRF_HEADER_NAME` default in `app/lib/settings.py:261`).
 7. **`POST /api/chat` HTMX branch (Phase 4.7)** — when `request.htmx`, returns:
-   - On success: `HTMXTemplate(template_name="partials/message.html.j2", context={...}, trigger_event="chat:reply-rendered", after="swap")` plus an OOB-swap rendering `partials/_metrics_badges.html.j2` as `<div id="metrics-badges" hx-swap-oob="true">...`. The OOB fragment is concatenated into the same response body (Litestar `HTMXTemplate` returns a single rendered template — Phase 4.7 implements this by extending `partials/message.html.j2` to include the OOB block guarded by a `{% if metrics_badges %}` flag). Alternatively, return a small wrapper template `partials/_chat_response.html.j2` that includes both. Pick whichever is cleaner during implementation.
-   - On `ValidationException`: `HTMXTemplate(template_name="partials/chat_error.html.j2", context={"error": str(exc)}, re_target="#chat-error", re_swap="innerHTML")`. **Wrap the `validate_message` call in a try/except inside the handler** so the exception path can return an HTMX response instead of bubbling.
+   - On success: build the metrics dict and call `flash(request, f"Reply in {latency_ms} ms{' (cache hit)' if cached else ''}", "info" if not cached else "success")`. Then return `HTMXTemplate(template_name="partials/_chat_response.html.j2", context={"message": reply, "metrics_badges": badges}, trigger_event="chat:reply-rendered", after="swap")`. The wrapper template composes `partials/message.html.j2` + OOB `partials/_metrics_badges.html.j2` + OOB `partials/_flash.html.j2` in one response — one round-trip, three regions updated.
+   - On `ValidationException`: `HTMXTemplate(template_name="partials/chat_error.html.j2", context={"error": str(exc)}, re_target="#chat-error", re_swap="innerHTML")`. **Wrap the `validate_message` call in a try/except inside the handler** so the exception path can return an HTMX response instead of bubbling. (Local error — no flash; the `chat_error.html.j2` partial is the right surface.)
    - On non-HTMX requests: returns `CoffeeChatReply` JSON exactly as today.
    - **OpenAPI return-type annotation stays `-> CoffeeChatReply`.** `HTMXTemplate` is a `Response` subclass; Litestar accepts that. Phase 0.7 verifies OpenAPI doesn't choke. If it does, fall back to a separate `POST /fragments/chat` endpoint and document.
 8. **`POST /api/vector-demo` HTMX branch (Phase 5.6)** — when `request.htmx`, returns `HTMXTemplate(template_name="partials/search_result_list.html.j2", context={"results": demo_results, "query": query})` plus a `PushUrl(push_url=f"/explore?q={quote(query)}")`. (`partials/search_result_list.html.j2` is a tiny wrapper that loops over results and includes `partials/search_result.html.j2`.) Otherwise: JSON as today.
@@ -365,7 +377,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 
 - [ ] **2.1** `mkdir -p src/resources/public && git mv src/js/public/* src/resources/public/` (preserves history for the 23 SVG/icon assets). Verify: `ls src/resources/public/ | wc -l` returns `23`.
 - [ ] **2.2** `git rm -r src/js`. Verify: `ls src/js 2>&1` errors.
-- [ ] **2.3** `.gitignore` audit — remove `src/js/`-specific lines (`!src/js/src/lib/`, `!src/js/src/lib/**`); add `node_modules/` (root) and `dist/` (root, frontend output is `src/app/server/static/dist/`, but `dist/` is also where `classify-compare.json` lives — keep `!dist/.gitkeep` if needed). Failing test: `git status --ignored | grep -q node_modules` returns true after a fresh `npm install`.
+- [ ] **2.3** `.gitignore` audit — remove all `src/js/`-specific lines (`!src/js/src/lib/`, `!src/js/src/lib/**`, `src/js/.litestar.json`, `src/js/public/hot`, `src/js/tsconfig.tsbuildinfo`, `src/js/tsconfig.node.tsbuildinfo`, `src/js/vite.config.js`, `src/js/vite.config.d.ts`, `src/js/src/lib/generated/`) AND scrub the Phase 1A leftovers (`src/py/app/server/static/dist/hot`, `!src/py/app/lib`). Add the new ignores: `src/app/domain/web/static/dist/` (Vite output, including the HMR marker) and `src/resources/generated/` (TypeGen output). `node_modules` is already ignored.
 - [ ] **2.4** Failing test (added now, will pass after Phase 3.4): `src/tests/api/test_static_assets.py::test_favicon_resolves` asserts `await client.get("/favicon.ico")` returns 200 with `image/x-icon`. **Skip this test until Phase 3.4** via `pytest.skip("Phase 3.4 not yet complete")` — Phase 3.4 removes the skip.
 
 ### Phase 3: New frontend scaffold (`oracledb-vertexai-4d6.4.11`)
@@ -377,8 +389,8 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
       tailwindcss(),
       litestar({
         input: ["src/resources/main.js", "src/resources/styles.css"],
-        bundleDir: "src/app/server/static/dist",
-        hotFile: "src/app/server/static/dist/hot",
+        bundleDir: "src/app/domain/web/static/dist",
+        hotFile: "src/app/domain/web/static/dist/hot",
         assetUrl: "/static/dist/",
         resourceDir: "src/resources",
       }),
@@ -389,7 +401,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 - [ ] **3.3** `src/resources/styles.css` — content per the *styles.css* block in this spec (Tailwind import, `@source "../templates"`, `@theme` tokens carried over from the React `index.css`). Failing test: `src/tests/unit/test_styles_source.py` asserts the file contains `@import "tailwindcss"` and `@source "../templates"`.
 - [ ] **3.4** `src/resources/main.js` — content per the *main.js* block in this spec. Verify Phase 2.4's skipped test now passes (favicon resolves through `src/resources/public/favicon.ico`).
 - [ ] **3.5** `tsconfig.json` at repo root — minimal: `{ "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler", "strict": true, "skipLibCheck": true } }`. (No code is TS in this chapter, but vite + the litestar plugin expect a tsconfig to exist.)
-- [ ] **3.6** Failing test: `src/tests/unit/test_repo_layout.py` asserts `Path("vite.config.ts").exists() and Path("package.json").exists() and not Path("src/js").exists()`. Run `npm install` and assert `package-lock.json` exists. Run `npm run build` and assert `src/app/server/static/dist/manifest.json` exists.
+- [ ] **3.6** Failing test: `src/tests/unit/test_repo_layout.py` asserts `Path("vite.config.ts").exists() and Path("package.json").exists() and not Path("src/js").exists()`. Run `npm install` and assert `package-lock.json` exists. Run `npm run build` and assert `src/app/domain/web/static/dist/manifest.json` exists.
 
 ### Phase 4: Python wiring + chat templates (`oracledb-vertexai-4d6.4.1`, rewritten)
 
@@ -420,18 +432,30 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
     ```python
     from litestar.config.template import TemplateConfig
     from litestar.contrib.jinja import JinjaTemplateEngine
+    from litestar.plugins.flash import FlashConfig, FlashPlugin
     from litestar.plugins.htmx import HTMXPlugin
 
     app_config.template_config = TemplateConfig(
         engine=JinjaTemplateEngine,
-        directory=BASE_DIR.parents[1] / "src" / "templates",
+        directory=BASE_DIR / "domain" / "web" / "templates",
     )
-    app_config.plugins.append(HTMXPlugin())  # next to existing VitePlugin entry
+    # HTMXPlugin first (no template dependency); FlashPlugin needs the Jinja
+    # engine instance built by TemplateConfig, so it must run after the
+    # template config is in place — appending here is fine because plugin
+    # `on_app_init` runs in registration order.
+    app_config.plugins.append(HTMXPlugin())
+    app_config.plugins.append(
+        FlashPlugin(config=FlashConfig(template_config=app_config.template_config)),
+    )
     ```
-    Failing test: `src/tests/unit/test_app_plugins.py` asserts the plugin list contains `HTMXPlugin` and `template_config` is set.
+    `FlashPlugin` registers a `get_flashes()` Jinja global that pops `request.session["_messages"]`. Flash relies on the existing `ServerSideSessionConfig(store="sessions")` middleware — no new infrastructure (the Oracle-backed `OracleAsyncStore` from `src/app/config.py:60-61` is already wired). Failing tests:
+    - `src/tests/unit/test_app_plugins.py` — asserts the plugin list contains `HTMXPlugin`, `FlashPlugin`, and that `template_config` is set.
+    - `src/tests/api/test_flash_messages.py::test_flash_round_trip` — boots the app, posts a message that triggers a `flash(request, "saved", "success")` call (e.g. `POST /api/cache/clear`), follows up with a `GET /` and asserts the rendered HTML contains `flash flash-success` exactly once; a second `GET /` proves the message was popped.
 - [ ] **4.4** `src/app/lib/settings.py:259-264` change `CSRF_HEADER_NAME` default `"X-XSRF-TOKEN"` → `"X-CSRFToken"`. `src/app/config.py:46-50` carries through. Failing test: `src/tests/unit/test_csrf_header.py` boots the app and asserts `app.csrf_config.header_name == "X-CSRFToken"`.
-- [ ] **4.5** Create `src/templates/base.html.j2` per the templates inventory above (vite_hmr + vite + csrf meta + hx-ext body + nav + content block).
-- [ ] **4.6** Create `src/templates/_nav.html.j2`, `src/templates/pages/chat.html.j2`, `src/templates/partials/{message,chat_error,_metrics_badges}.html.j2`. Use the dark theme tokens from `styles.css` via Tailwind utilities (`bg-canvas`, `text-base`, `border-border`, `bg-accent`, etc.).
+- [ ] **4.4b** Create `src/app/domain/web/__init__.py` with a one-line docstring (`"""Web domain — Jinja templates and the litestar-vite bundle output for the HTMX frontend."""`). The package marker turns `domain/web` into a peer-domain alongside `chat`/`products`/`system`.
+- [ ] **4.4c** Wire flash usage into the chat success path so the global `flash-region` exercises the wiring end-to-end: on a successful `POST /api/chat`, `flash(request, f"Reply in {latency_ms} ms", "info")` (or the `cached`/`fresh` distinction). The OOB-swap response automatically renders `partials/_flash.html.j2` and pops the message. Confirms the flash → session → Jinja-global → OOB-swap loop without needing a separate non-HTMX action surface to test it.
+- [ ] **4.5** Create `src/app/domain/web/templates/base.html.j2` per the templates inventory above (vite_hmr + vite + csrf meta + hx-ext body + nav + content block).
+- [ ] **4.6** Create `src/app/domain/web/templates/_nav.html.j2`, `src/app/domain/web/templates/pages/chat.html.j2`, `src/app/domain/web/templates/partials/{message,chat_error,_metrics_badges}.html.j2`. Use the dark theme tokens from `styles.css` via Tailwind utilities (`bg-canvas`, `text-base`, `border-border`, `bg-accent`, etc.).
 - [ ] **4.7** **Failing tests first**, then implement:
     - `src/tests/api/test_pages.py::test_chat_page_renders` — `GET /` returns 200, body contains `hx-ext="litestar"`, `id="messages"`, `id="metrics-badges"`, `<meta name="csrf-token"`.
     - `src/tests/api/test_chat_partial.py::test_htmx_returns_partial` — `htmx_client.post("/api/chat", json={...})` returns 200 with body containing `<article class="message"` and NOT containing `<!DOCTYPE html>`.
@@ -471,7 +495,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 
 - [ ] **6.1** `pyproject.toml` final pass — confirm no `litestar-htmx` direct dependency was inadvertently added (HTMX comes from `litestar[jinja,...]`). No `bun` references anywhere. Confirm `[tool.hatch.build.targets.wheel].packages = ["src/app"]` and `artifacts` includes `**/*.j2`.
 - [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run python manage.py assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run python manage.py assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. **No `coffee assets ` or `coffee upgrade` invocations remain in the Makefile** (Phase 1.8 made these unregistered subcommands; `test_cli_surface.py` enforces). Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
-- [ ] **6.3** `.gitignore` final pass — add `node_modules/`, `dist/` (with `!dist/.gitkeep` to keep the directory for classify-compare output), `src/app/server/static/dist/` (Vite output). Remove all `src/js/`-specific entries. Add `src/resources/generated/` to gitignore (TypeGen output, even though we have all flags off — defense in depth).
+- [ ] **6.3** `.gitignore` final pass — verify Phase 2.3 audit landed (no `src/js/` or `src/py/` references; `src/app/domain/web/static/dist/` and `src/resources/generated/` ignored; `node_modules/` ignored). Note: `dist/.gitkeep` does *not* apply to `src/app/domain/web/static/dist/` — that subtree is purely Vite build output and the dir is recreated by `manage.py assets build`. The repo-root `dist/.gitkeep` (for `classify-compare.json`) is unrelated and predates Ch 4.
 - [ ] **6.4** `tools/deploy/docker/run/Dockerfile`:
     - Drop the `oven/bun` COPY layer.
     - `COPY package.json package-lock.json ./` (root, was `src/js/package.json src/js/bun.lock ./src/js/`).
