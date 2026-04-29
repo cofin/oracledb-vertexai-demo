@@ -1,0 +1,9 @@
+{
+  "flow_id": "pyapp-packaging_20260429",
+  "type": "saga",
+  "status": "planning",
+  "beads_epic_id": "oracledb-vertexai-7dh",
+  "created_at": "2026-04-29T00:00:00Z",
+  "updated_at": "2026-04-29T00:00:00Z",
+  "description": "Saga for pyapp enablement and automated GitHub Releases for wheel, sdist, and linux-x86_64 onefile binary."
+}

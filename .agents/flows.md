@@ -35,3 +35,21 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   ### [ ] Ch 5: prune-and-document_20260429
   *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
   *Beads: oracledb-vertexai-4d6.5*
+
+  ### [ ] Ch 6: documentation-setup_20260429
+  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
+  *Beads: oracledb-vertexai-4d6.6*
+
+  ---
+
+  ## [ ] PRD: pyapp-packaging_20260429
+  *Link: [./specs/pyapp-packaging_20260429/](./specs/pyapp-packaging_20260429/)*
+  *Beads: oracledb-vertexai-7dh*
+
+  ### [ ] Ch 1: pyapp-enablement_20260429
+  *Link: [./specs/pyapp-enablement_20260429/](./specs/pyapp-enablement_20260429/)*
+  *Beads: oracledb-vertexai-7dh.1*
+
+  ### [ ] Ch 2: release-automation_20260429
+  *Link: [./specs/release-automation_20260429/](./specs/release-automation_20260429/)*
+  *Beads: oracledb-vertexai-7dh.2*

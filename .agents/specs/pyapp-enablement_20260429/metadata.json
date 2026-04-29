@@ -1,0 +1,10 @@
+{
+  "flow_id": "pyapp-enablement_20260429",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "pyapp-packaging_20260429",
+  "beads_epic_id": "oracledb-vertexai-7dh.1",
+  "created_at": "2026-04-29T00:00:00Z",
+  "updated_at": "2026-04-29T00:00:00Z",
+  "description": "Enable PyApp onefile binary packaging in pyproject.toml and verify local builds."
+}
