@@ -65,30 +65,30 @@ Lay the new substrate for everything that follows: bump deps to current, switch 
 
 ### Phase 1: Dependency Bump
 
-- [ ] **1.1** Update `pyproject.toml` deps: (`oracledb-vertexai-4d6.1.1`)
+- [x] **1.1** Update `pyproject.toml` deps: (`oracledb-vertexai-4d6.1.1`)
   - `sqlspec[adk,mypyc,oracledb,performance]==0.28.1` → `sqlspec[adk,mypyc,oracledb,performance]>=0.46,<0.47`
   - `google-adk` → `google-adk==2.0.0b1`
   - `google-genai` → `google-genai>=1.0` (or current latest)
   - Add explicit `python-oracledb>=3.4,<4` (currently transitive via sqlspec).
   - `sqlglot==27.29.0` → check sqlspec 0.46's required range; bump to satisfy. (Likely 27.x or 28.x; verify via `uv add sqlspec` dry-run after bump.)
-- [ ] **1.2** Run `uv lock --upgrade` then `uv sync`. Resolve conflicts.
-- [ ] **1.3** Smoke test: `uv run python -c "import sqlspec, google.adk, google.genai; print(sqlspec.__version__, google.adk.__version__)"` — expect `0.46.x` and `2.0.0b1`.
-- [ ] **1.4** Audit imports across `src/py/app/` — `grep -rn "from sqlspec" src/py/app/` and confirm each path still resolves under 0.46. Common moves: `sqlspec.driver` → `sqlspec.driver.adapter_base`; check `sqlspec.adapters.oracledb.litestar.OracleAsyncStore`.
+- [x] **1.2** Run `uv lock --upgrade` then `uv sync`. Resolve conflicts.
+- [x] **1.3** Smoke test: `uv run python -c "import sqlspec, google.adk, google.genai; print(sqlspec.__version__, google.adk.__version__)"` — expect `0.46.x` and `2.0.0b1`.
+- [x] **1.4** Audit imports across `src/py/app/` — `grep -rn "from sqlspec" src/py/app/` and confirm each path still resolves under 0.46. Common moves: `sqlspec.driver` → `sqlspec.driver.adapter_base`; check `sqlspec.adapters.oracledb.litestar.OracleAsyncStore`.
 
 ### Phase 2: Schema Rewrite (`src/py/app/db/migrations/0001_cymball_coffee_products.sql`)
 
 This is a **reference app** with a single baseline migration; we modify in place rather than adding a versioned drift migration.
 
-- [ ] **2.1** Replace all three `VECTOR(768, FLOAT32)` → `VECTOR(3072, FLOAT32)`: (`oracledb-vertexai-4d6.1.2`)
+- [x] **2.1** Replace all three `VECTOR(768, FLOAT32)` → `VECTOR(3072, FLOAT32)`: (`oracledb-vertexai-4d6.1.2`) — `[b599aa1]`
   - Line 17: `product.embedding`
   - Line 65: `embedding_cache.embedding`
   - Line 83: `intent_exemplar.embedding`
-- [ ] **2.2** Update column/table comments referencing 768:
+- [x] **2.2** Update column/table comments referencing 768:
   - Line 23: `'768-dimensional embedding vector for semantic search'` → `'3072-dimensional gemini-embedding-001 vector'`
   - Line 75: `'768-dimensional embedding vector'` → `'3072-dimensional gemini-embedding-001 vector'`
   - Line 74: `'MD5 hash of input text'` → `'SHA256 hash of input text'`
-- [ ] **2.3** Add `INMEMORY PRIORITY HIGH` clause to the `product` `CREATE TABLE` statement (line 8-20). Preserves base-table fetch in RAM after the index hit.
-- [ ] **2.4** Replace the three IVF index DDLs (lines 122-136) with HNSW INMEMORY:
+- [x] **2.3** Add `INMEMORY PRIORITY HIGH` clause to the `product` `CREATE TABLE` statement (line 8-20). Preserves base-table fetch in RAM after the index hit.
+- [x] **2.4** Replace the three IVF index DDLs (lines 122-136) with HNSW INMEMORY:
   ```sql
   CREATE VECTOR INDEX product_embedding_idx ON product (embedding)
   ORGANIZATION INMEMORY NEIGHBOR GRAPH
@@ -97,21 +97,21 @@ This is a **reference app** with a single baseline migration; we modify in place
   PARAMETERS (TYPE HNSW, NEIGHBORS 40, EFCONSTRUCTION 500);
   ```
   Apply the same shape to `intent_exemplar_embedding_idx` and `embedding_cache_embedding_idx`. Same `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95` for all three.
-- [ ] **2.5** Update the `migrate-0001-down` section (lines 254-258) — drop statements still work for HNSW indexes, but verify no IVF-specific syntax remains.
-- [ ] **2.6** Update `src/py/app/db/migrations/README.md`:
+- [x] **2.5** Update the `migrate-0001-down` section (lines 254-258) — drop statements still work for HNSW indexes, but verify no IVF-specific syntax remains.
+- [x] **2.6** Update `src/py/app/db/migrations/README.md`:
   - Line 64: `VECTOR(768, FLOAT32)` → `VECTOR(3072, FLOAT32) (gemini-embedding-001)`
   - Add a new section "Vector Memory Pool" describing the `vector_memory_size >= 4G` requirement and how to set it.
 
 ### Phase 3: Vector Memory Pool Operational Docs
 
-- [ ] **3.1** Find the Oracle container/setup script under `tools/oracle/` (`oracledb-vertexai-4d6.1.3`) that initializes the dev container. Add an `ALTER SYSTEM SET vector_memory_size = 4G SCOPE=SPFILE;` step followed by a documented restart instruction.
-- [ ] **3.2** If no such script wraps init (likely just `docker run`), create `tools/oracle/configure_vector_memory.sql` containing the ALTER SYSTEM + a `STARTUP FORCE;` and reference it from `migrations/README.md` and the root `README.md` setup section.
-- [ ] **3.3** Verify post-restart with `SELECT NAME, BYTES FROM V$SGAINFO WHERE NAME LIKE '%Vector%';` showing the allocated pool. Document this verification command in `migrations/README.md`.
+- [x] **3.1** Find the Oracle container/setup script under `tools/oracle/` (`oracledb-vertexai-4d6.1.3`) that initializes the dev container. Add an `ALTER SYSTEM SET vector_memory_size = 4G SCOPE=SPFILE;` step followed by a documented restart instruction. — `[f99de69]`
+- [x] **3.2** If no such script wraps init (likely just `docker run`), create `tools/oracle/configure_vector_memory.sql` containing the ALTER SYSTEM + a `STARTUP FORCE;` and reference it from `migrations/README.md` and the root `README.md` setup section.
+- [x] **3.3** Verify post-restart with `SELECT NAME, BYTES FROM V$SGAINFO WHERE NAME LIKE '%Vector%';` showing the allocated pool. Document this verification command in `migrations/README.md`.
 
 ### Phase 4: Settings + VertexAI Service Alignment (`oracledb-vertexai-4d6.1.4`)
 
-- [ ] **4.1** `src/py/app/lib/settings.py:305` — change `EMBEDDING_DIMENSIONS: int = 768` to `EMBEDDING_DIMENSIONS: int = 3072`.
-- [ ] **4.2** `src/py/app/domain/products/services/services.py:88-99` — modify `VertexAIService.get_text_embedding` signature and call:
+- [x] **4.1** `src/py/app/lib/settings.py:305` — change `EMBEDDING_DIMENSIONS: int = 768` to `EMBEDDING_DIMENSIONS: int = 3072`. — `[2bbaddb]`
+- [x] **4.2** `src/py/app/domain/products/services/services.py:88-99` — modify `VertexAIService.get_text_embedding` signature and call:
   ```python
   from google.genai.types import EmbedContentConfig
 
@@ -137,9 +137,9 @@ This is a **reference app** with a single baseline migration; we modify in place
       ...
   ```
   Keep the cache + post-call save logic intact.
-- [ ] **4.3** Update the one query-path caller (`OracleVectorSearchService.similarity_search`, ~line 105 in same file) to pass `task_type="RETRIEVAL_QUERY"` for the user-query embed. Storage path (the `bulk-embed` CLI) keeps the `RETRIEVAL_DOCUMENT` default.
-- [ ] **4.4** Verify sqlspec's native Oracle vector handlers register automatically when `OracleAsyncConfig` is constructed (config.py:55-58). If 0.46 requires explicit opt-in, add `extension_config={"oracle": {"register_numpy_handlers": True}}` to `db = _settings.db.create_config()`. Test by inserting a `list[float]` literal via REPL.
-- [ ] **4.5** Drop the redundant `numpy>=2.3.3` direct dep from `pyproject.toml:27` if sqlspec 0.46 already pulls it as an extra. (Run `uv tree | grep numpy` to verify.)
+- [x] **4.3** Update the one query-path caller (`OracleVectorSearchService.similarity_search`, ~line 105 in same file) to pass `task_type="RETRIEVAL_QUERY"` for the user-query embed. Storage path (the `bulk-embed` CLI) keeps the `RETRIEVAL_DOCUMENT` default.
+- [x] **4.4** Verify sqlspec's native Oracle vector handlers register automatically when `OracleAsyncConfig` is constructed (config.py:55-58). If 0.46 requires explicit opt-in, add `extension_config={"oracle": {"register_numpy_handlers": True}}` to `db = _settings.db.create_config()`. Test by inserting a `list[float]` literal via REPL. — verified by inspection: `register_numpy_handlers` called from `OracleAsyncConfig` at `config.py:320, 507`. No opt-in needed.
+- [-] **4.5** Drop the redundant `numpy>=2.3.3` direct dep from `pyproject.toml:27` if sqlspec 0.46 already pulls it as an extra. (Run `uv tree | grep numpy` to verify.) — skipped per user pyproject reduction at `f54dfbf` (numpy retained intentionally).
 
 ### Phase 5: Fixture Regeneration (`oracledb-vertexai-4d6.1.5`)
 

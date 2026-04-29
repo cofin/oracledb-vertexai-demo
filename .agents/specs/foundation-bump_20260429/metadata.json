@@ -5,7 +5,7 @@
   "parent_prd": "cymbal-coffee-reset_20260429",
   "beads_epic_id": "oracledb-vertexai-4d6.1",
   "created_at": "2026-04-29T00:50:39Z",
-  "updated_at": "2026-04-29T01:05:00Z",
-  "synced_at": "2026-04-29T01:05:00Z",
+  "updated_at": "2026-04-29T05:28:39Z",
+  "synced_at": "2026-04-29T05:28:39Z",
   "description": "Substrate chapter: bump sqlspec/ADK/genai deps, modify 0001 baseline DDL to VECTOR(3072,FLOAT32) with HNSW INMEMORY indexes, align embedding service for 3072 dims, regenerate fixtures, document vector_memory_size requirement."
 }

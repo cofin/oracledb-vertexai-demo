@@ -78,7 +78,7 @@ SHUTDOWN IMMEDIATE;
 STARTUP;
 ```
 
-For the dev container, see `tools/oracle/configure_vector_memory.sql` and the matching `make` target.
+For the dev container the pool is set automatically: `tools/oracle/on_init/00_configure_vector_memory.sql` runs once on first DB creation (executes the `ALTER SYSTEM ... SCOPE=SPFILE` and bounces the instance), and `tools/oracle/on_startup/00_verify_vector_memory.sql` confirms the allocation on every container restart (visible via `make infra-logs`). For autonomous DB or other shared instances, run `tools/oracle/configure_vector_memory.sql` as SYSDBA.
 
 Verify the pool is allocated:
 
