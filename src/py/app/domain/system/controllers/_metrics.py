@@ -15,57 +15,10 @@
 from typing import Any
 
 from litestar import Controller, get
-from litestar.params import Dependency
-from litestar.response import File
 
 from app.domain.system import schemas
-from app.domain.system.schemas import IntentExemplar
-from app.domain.system.services import CacheService, ExemplarService, MetricsService
+from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
-from app.lib.service import FilterTypes, OffsetPagination, create_filter_dependencies
-from app.lib.settings import BASE_DIR
-
-
-class ExemplarController(Controller):
-    """Intent-classification exemplar endpoints (powers the explore page).
-
-    Ch 4 wires the live-vs-ground-truth panel onto this listing — Ch 2 ships the
-    plumbing only.
-    """
-
-    path = "/api/exemplars"
-    tags = ["Exemplars"]
-    dependencies = create_filter_dependencies({
-        "pagination_type": "limit_offset",
-        "sort_field": "id",
-        "sort_order": "asc",
-        "id_filter": int,
-        "id_field": "id",
-        "search": ["intent", "phrase"],
-        "search_ignore_case": True,
-        "created_at": True,
-    })
-
-    @get("/", operation_id="ListExemplars", name="exemplars:list", summary="List Intent Exemplars")
-    async def list_exemplars(
-        self,
-        exemplars_service: Inject[ExemplarService],
-        filters: list[FilterTypes] = Dependency(skip_validation=True),
-    ) -> OffsetPagination[IntentExemplar]:
-        """List intent exemplars with pagination, search, and filtering."""
-        return await exemplars_service.list_with_count(*filters)
-
-
-class SystemController(Controller):
-    """System controller for root-level and un-grouped system routes."""
-
-    @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, include_in_schema=False)
-    async def favicon(self) -> File:
-        """Serve favicon with security headers."""
-        return File(
-            path=BASE_DIR.parents[2] / "src" / "js" / "public" / "favicon.ico",
-            headers={"Cache-Control": "public, max-age=31536000", "X-Content-Type-Options": "nosniff"},
-        )
 
 
 class MetricsController(Controller):
@@ -134,7 +87,6 @@ class MetricsController(Controller):
     @get(path="/api/metrics/charts", name="metrics.charts")
     async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartDataResponse:
         """Get chart data for dashboard visualizations."""
-        # Simplified for demo (logic moved to service in real app)
         return schemas.ChartDataResponse(
             time_series=schemas.TimeSeriesData(
                 labels=[],
