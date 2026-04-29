@@ -151,11 +151,11 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 6: `current_price` bug fix (`oracledb-vertexai-4d6.2.6`)
 
-- [ ] **6.1** In `src/py/app/db/sql/products.sql`, the `vector-search-products` query selects `price` (not `current_price`).
-- [ ] **6.2** In `src/py/app/domain/products/schemas/_product.py` (or equivalent), the `VectorSearchResult` DTO uses `price: float`, not `current_price`. Same for `Product` DTO.
-- [ ] **6.3** Delete the band-aid `current_price → distance` mapping in `src/py/app/domain/products/services/services.py` (was at line 119 pre-extraction).
-- [ ] **6.4** Update `src/py/tests/integration/test_vector_search.py` assertions to expect `price` not `current_price`.
-- [ ] **6.5** Snapshot test: load fixtures, run vector search, assert each result has `price > 0` and no `current_price` key.
+- [x] **6.1** In `src/py/app/db/sql/products.sql`, the `vector-search-products` query selects `price` (not `current_price`). [6cc3ca2] *(SQL half absorbed during Ch 2.2's named-SQL extraction; verified in 2.6.)*
+- [x] **6.2** A typed `ProductMatch` msgspec Struct (entity-noun naming, not "DTO") in `src/py/app/domain/products/schemas/_products.py` projects `id, name, description, price, similarity_score`. `Product` already uses `price`. Unused `VectorDemoResult` removed. [6cc3ca2]
+- [x] **6.3** Band-aid `r["distance"] = 1 - r["similarity_score"]` deleted from `OracleVectorSearchService.similarity_search`; controller now consumes `similarity_score` directly via attribute access on `ProductMatch`. [6cc3ca2]
+- [x] **6.4** New `src/py/tests/integration/test_vector_search.py` (2 tests) seeds a known embedding, runs vector-search-products, and asserts the `ProductMatch` shape: `price > 0`, `similarity_score ∈ [0,1]`, no `current_price`/`distance` attrs, and self-query yields `similarity_score ≈ 1.0`. [6cc3ca2]
+- [x] **6.5** New `src/py/tests/unit/test_vector_search_shape.py` (4 tests, no DB): static SQL projection assertions + AsyncMock service test + controller `.fn` shape test. Demo response now exposes `price` so the rename is visible to API consumers. [6cc3ca2]
 
 ### Phase 7: Patterns.md rewrite (`oracledb-vertexai-4d6.2.7`)
 
