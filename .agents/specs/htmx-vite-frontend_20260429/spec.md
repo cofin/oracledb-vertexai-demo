@@ -11,10 +11,10 @@
 
 Bundle two transformations into one chapter, in this order:
 
-1. **Source-tree flatten** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend resources from `src/js/src/` into `src/resources/`. Move Jinja templates to `src/templates/`. After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root.
+1. **Source-tree flatten + CLI restructure** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend resources from `src/js/src/` into `src/resources/`. Move Jinja templates to `src/templates/`. After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root. **And** rebuild `coffee` as a hand-rolled `rich_click` group (mirrors `dma/accelerator`'s `dma`) so it stops routing through `litestar_group()`; migrations and assets land on `manage.py` exclusively.
 2. **Frontend rewrite** — replace the React + TanStack SPA (`mode="spa"`) with a tasteful **HTMX 2.x + Tailwind v4 + Alpine.js + ApexCharts** UI served via `litestar-vite` in `mode="template"` with `HTMXPlugin()` + `hx-ext="litestar"`. No bun, no biome, no TanStack. Two pages, one shared layout, five panels on the explore page (heatmap dropped). The runtime executor is `node` (npm), not `bun`.
 
-End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run python manage.py assets build`). **All asset-pipeline commands route through `manage.py assets *` (install, build, serve, generate-types) — same `vite_group` filter as `dma/accelerator/manage.py:401-405`.** `coffee assets *` continues to exist (auto-registered by `VitePlugin.on_cli_init`) but is **not** referenced by Makefile, scripts, CI, or docs. Visual polish bar **at least the React version** per PRD global constraint #10.
+End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run python manage.py assets build`). **`coffee` becomes a hand-rolled `rich_click` group** (no more `litestar_group()`) so it doesn't auto-mount asset/migration/database subcommands at help time. **All asset-pipeline and migration commands route through `manage.py` exclusively**, mirroring `dma/accelerator`'s `dma`-vs-`manage.py` split. Visual polish bar **at least the React version** per PRD global constraint #10.
 
 ### Code Analysis Summary (verified 2026-04-29)
 
@@ -86,10 +86,17 @@ End state: a clean monorepo where the JS/Python boundary is a directory, not a t
 - `OracleVectorSearchService.similarity_search` returns `(results, cache_hit, timings)` per Ch 2 (`services.py:110-123`). Each row has `id, name, description, price, similarity_score, distance`.
 - `litestar[jinja]` is in `pyproject.toml:17`, so JinjaTemplateEngine is import-ready.
 - No `TemplateConfig` exists yet; Phase 4.4 adds it.
-- Two CLI surfaces expose the same `vite_group` subcommands:
-  - `coffee assets ...` — auto-registered by `VitePlugin.on_cli_init` on the Litestar CLI (`coffee` = `app.__main__:run_cli`). Cannot be unregistered without disabling the plugin; must simply not be invoked from Makefile/CI/docs.
-  - `python manage.py assets ...` — explicit subset (`install`, `build`, `serve`, `generate-types`) mounted in `manage.py:152-154` via the accelerator pattern (`dma/accelerator/manage.py:401-405`). **This is the canonical invocation going forward.**
-- A Phase 7 invariant test grep-rejects `coffee assets ` in `Makefile`, `tools/`, `.github/workflows/`, `README.md`, `tools/deploy/docker/` to prevent drift.
+- **Current `coffee` CLI shape (changes in Phase 1.8):** `coffee = "app.__main__:run_cli"` calls `litestar_group()` (`src/py/app/__main__.py:53-55`). That single call boots the full `Litestar(...)` app and triggers every plugin's `on_cli_init`:
+  - `app/server/core.py:125-168` — `ApplicationCore.on_cli_init` lifts sqlspec `upgrade`/`downgrade` and mounts custom commands `load-fixtures`, `export-fixtures`, `bulk-embed`, `clear-cache`, `model-info`.
+  - `litestar_vite.VitePlugin.on_cli_init` — auto-mounts `coffee assets {install, build, serve, init, status, generate-types}`.
+  - `litestar_granian.GranianPlugin.on_cli_init` — auto-mounts `coffee run`.
+  - `sqlspec.extensions.litestar.cli` — auto-mounts `coffee database *` (full migration tree).
+  - **Side-effect we don't want:** `coffee --help` constructs `app.config.db` (the SQLSpec configuration) just to enumerate subcommands. The DB plumbing is mounted into the CLI even for commands that never touch it.
+- **Target shape (Phase 1.8):** Mirror `dma/accelerator/src/py/dma/cli/main.py:28-44` and `manage.py:386-413`. `coffee` becomes a hand-rolled `rich_click` group; subcommands explicitly import only the Litestar/SQLSpec/Vite functions they need, and only when they need them.
+  - `coffee` retains: `run` (wraps `litestar_granian.cli:run_command` lazily, accelerator-style), `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures`. Production-app commands.
+  - `coffee` loses: `assets *`, `upgrade`/`downgrade`, `database *`. These move to `manage.py` exclusively.
+  - `manage.py` keeps: `init`, `install`, `doctor`, `infra`, `database` (with `upgrade`/`downgrade` via `add_migration_commands`), `assets` (with `install`/`build`/`serve`/`generate-types` via the `vite_group` filter — already wired at `manage.py:152-154`).
+  - **No more dual surface.** `coffee assets *` won't exist as a registered subcommand because `coffee` no longer routes through `litestar_group`. The "policy + invariant test" approach is replaced by the architecture itself.
 
 **Visual seed (carry-over from React):**
 
@@ -251,7 +258,8 @@ Notes:
 - `grep -rn "BASE_DIR.parents\[2\]" src/app` returns **zero** matches; `grep -rn "BASE_DIR.parents\[1\]" src/app` returns **2** (settings.py + _system.py).
 - `make install` from a clean checkout succeeds (`uv sync` + `npm ci`).
 - `make build` succeeds (`uv build` + `npm run build` via `python manage.py assets build`).
-- No `coffee assets ` invocations in `Makefile`, `tools/`, `.github/workflows/`, `README.md`, or `tools/deploy/docker/` (Phase 7 invariant test).
+- `uv run coffee --help` shows only `run`, `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures` — no `assets`, `upgrade`, `downgrade`, or `database` group (`test_cli_surface.py` enforces).
+- `uv run python manage.py --help` exposes `init / install / doctor / infra / database / assets`; `database upgrade` and `assets build` both reachable.
 - `make lint` green (ruff + mypy + pyright + Tailwind/Vite TS check via `tsc --noEmit`; biome removed).
 - `make test` green; new tests:
   - `src/tests/api/test_pages.py` — `/`, `/explore` render with expected anchors.
@@ -281,6 +289,12 @@ Notes:
 - **Vite dev server origin mismatch** — `server.cors: true` in `vite.config.ts` is mandatory; without it HMR XHRs from `localhost:5006` to `localhost:5173` fail with CORS errors.
 - **Dishka + `from __future__ import annotations`** — global PRD constraint #2. The new `_pages.py` controller and `_explore.py` controller follow the existing convention (no `__future__` import). Reviewers reject otherwise.
 - **The page on `/` becomes server-rendered.** Old `dashboard` SPA route disappears. PRD considers this acceptable (no auth, simple-greater-than-clever).
+- **CLI restructure breaking change** (Phase 1.8). Three external surfaces shift in one phase:
+  - `coffee upgrade` → `python manage.py database upgrade`. Anyone with shell aliases or CI runbooks pointing at `coffee upgrade` breaks. Acceptable for a reference demo per PRD constraint #3 (no backward-compat shims). README + Makefile updated in same phase; document the rename in the doc-touch (Phase 7.4).
+  - `coffee assets *` removed entirely. Same rationale.
+  - `coffee database *` removed entirely (sqlspec migrations now only on `manage.py database`).
+  Mitigation: `test_cli_surface.py` includes assertions for what *is* present, so accidental regressions in either direction (re-mounting, or losing a command) fail loudly. Also: `coffee --help` printout is captured in Beads notes during Phase 1.9 so the new surface is documented at the moment of switch.
+- **`litestar_granian` run-command import-shape risk.** Phase 1.8's `coffee run` wraps `litestar_granian.cli:run_command` lazily. Accelerator does this in `dma/cli/commands/server.py:40-55` via a `_create_run_command` helper that copies `original_command.params`. If the granian floor in `pyproject.toml` ever bumps in a way that changes the `run_command` callable shape, the wrapper breaks. HALT GATE 0.9 verifies the import; the unit test `test_coffee_retains_runtime_commands` verifies the registration; manual `make run` smoke in Phase 1.10 verifies end-to-end boot.
 
 ---
 
@@ -298,17 +312,20 @@ Notes:
 - [ ] **0.6** EXPLAIN PLAN with VECTOR bind. After Ch 1's fixtures load: `uv run python -c "..."` script that opens a driver session, runs `EXPLAIN PLAN FOR <vector-search-products SQL>` with a real 3072-dim embedding bind, then `SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY())`. Confirm output contains "VECTOR INDEX RANGE SCAN" or equivalent. **If bind fails**, document the failure mode and switch Phase 5.1b to use a hard-coded representative embedding; update the spec risks section.
 - [ ] **0.7** OpenAPI tolerance for `HTMXTemplate` returns. Boot the app post-Phase-4.7 in a scratch fixture (or stub a controller now): `await client.get("/schema/openapi.json")` → confirm `/api/chat` POST declares `CoffeeChatReply` schema only. If multiple content-types appear, switch to the split-endpoint fallback (Phase 4.7 notes).
 - [ ] **0.8** CSRF token reachable in Jinja. Boot a tiny app with `TemplateConfig(engine=JinjaTemplateEngine, ...)` + `CSRFConfig(secret="x", header_name="X-CSRFToken")`. Render a template containing `{{ csrf_token() }}` against a fake request. Confirm it returns a non-empty string. Source: `litestar.contrib.jinja:55` registers the callable.
+- [ ] **0.9** CLI restructure import shape. `uv run python -c "from litestar_granian.cli import run_command; from sqlspec.cli import add_migration_commands; from litestar_vite.cli import vite_group; from litestar.cli._utils import LitestarEnv; print('OK')"`. Confirms the four functions/groups Phase 1.8 needs (granian run command lazy-wrap, sqlspec migrations on `manage.py database`, vite_group already mounted on `manage.py assets`, LitestarEnv lazy construction inside a custom click group) all import cleanly from the existing dependency floors. Read `dma/accelerator/src/py/dma/cli/main.py:28-44`, `dma/accelerator/src/py/dma/cli/commands/server.py:24-58`, and `dma/accelerator/manage.py:386-413` as the canonical reference patterns. Halt if any import fails.
 
-### Phase 1: Source-tree flatten — Python (`oracledb-vertexai-4d6.4.9`)
+### Phase 1: Source-tree flatten + CLI restructure (`oracledb-vertexai-4d6.4.9`)
 
-Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]` audit so the app keeps booting.
+Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich_click` group (no `litestar_group()` call) and migrations/assets reachable only via `manage.py`. Atomic with the `BASE_DIR.parents[*]` audit so the app keeps booting.
+
+**Sub-phase 1A (1.1–1.7): directory move.** Sub-phase 1B (1.8–1.10): CLI restructure. Sub-phase 1A must finish green before 1B begins so the CLI work happens against final paths.
 
 - [ ] **1.1** `git mv src/py/app src/app` (single git operation; preserves history). `git mv src/py/tests src/tests`. `rmdir src/py`.
 - [ ] **1.2** `pyproject.toml` updates:
   - `[tool.hatch.build.targets.sdist] packages = ["src/app"]` (was `["src/py/app"]`).
   - `[tool.hatch.build.targets.wheel] packages = ["src/app"]`.
   - `[tool.hatch.build] dev-mode-dirs = ["src", "."]` (was `["src/py", "."]`).
-- [ ] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths AND route every `coffee assets *` invocation through `python manage.py assets *`. Specifically:
+- [ ] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths AND route every `coffee assets *` / `coffee upgrade` invocation through `python manage.py *` (these subcommands disappear from `coffee` in 1.8). Specifically:
   - `clean` target (`src/js/dist`, `src/js/node_modules` → `dist/`, `node_modules/`).
   - `test` target (`src/py/tests` → `src/tests`).
   - `lint` target (`src/py/app` → `src/app`, drop `cd src/js && bun run fix`).
@@ -317,11 +334,30 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
   - `install` target: drop `install-bun`; drop `@uv run coffee assets generate-types >/dev/null 2>&1` line entirely; rewrite `@uv run coffee assets install` → `@uv run python manage.py assets install`.
   - `destroy` (drop `src/js/node_modules src/js/dist`).
   - `assets-build` target: rewrite `@uv run coffee assets build` → `@uv run python manage.py assets build`.
+  - `migrate` (or equivalent) target: rewrite `@uv run coffee upgrade` → `@uv run python manage.py database upgrade`.
   - Delete the `js-*` targets entirely; delete the `assets-generate-types` target (use `python manage.py assets generate-types` directly when needed).
+  - `coffee load-fixtures` and `coffee run` references stay (those subcommands remain on `coffee` per 1.8).
 - [ ] **1.4** Test fixture path `src/py/tests` → `src/tests` in `pytest.ini`/`pyproject.toml` `[tool.pytest.ini_options]` (`testpaths`).
 - [ ] **1.5** `manage.py:39` — `sys.path.insert(0, str(SCRIPT_DIR / "src" / "py"))` → `sys.path.insert(0, str(SCRIPT_DIR / "src"))`. Failing test: `python manage.py --help` prints commands without ImportError.
 - [ ] **1.6** **`BASE_DIR.parents[*]` audit.** Edit `src/app/lib/settings.py:408` from `BASE_DIR.parents[2] / "src" / "js"` to `BASE_DIR.parents[1]` (root will be the repo, `resource_dir` carries `src/resources`). Edit `src/app/domain/system/controllers/_system.py:28` from `BASE_DIR.parents[2] / "src" / "js" / "public" / "favicon.ico"` to `BASE_DIR.parents[1] / "src" / "resources" / "public" / "favicon.ico"` (Phase 3.4 will populate this directory; the favicon handler temporarily 500s between Phase 1 and Phase 3.4). **Failing test that must pass after Phase 3.4 lands: `src/tests/unit/test_base_dir_audit.py` asserts `BASE_DIR.parents[1].name == <repo-name>` and the favicon path resolves.**
-- [ ] **1.7** Run `make lint && make test` (Python only — frontend is mid-rewrite). Both must pass before Phase 2 starts. Smoke: `uv run coffee --help` lists commands.
+- [ ] **1.7** Run `make lint && make test` (Python only — frontend is mid-rewrite). Both must pass before sub-phase 1B starts. Smoke: `uv run coffee --help` lists commands (still via `litestar_group` at this point — 1.8 changes that).
+- [ ] **1.8** **CLI restructure — `coffee` becomes hand-rolled.** Mirrors `dma/accelerator/src/py/dma/cli/main.py` and `dma/accelerator/src/py/dma/cli/commands/server.py`.
+  - **Rewrite `src/app/__main__.py`:** `run_cli()` no longer calls `litestar_group()`. Instead: `from app.cli import main; main()`. Keep `setup_environment()` for env-var defaults but drop the `LitestarExtensionGroup.format_help` monkey-patch (no longer needed with a plain click group).
+  - **New package `src/app/cli/main.py`:** `@rich_click.group(name="coffee", help="Cymbal Coffee — Oracle 23ai + Vertex AI demo CLI", context_settings={"help_option_names": ["-h", "--help"]})` decorated `cli()` callback (analogous to `dma/cli/main.py:28-44`). `main()` function calls `setup_logging()`, imports `app.cli.commands` (side-effecting registration), then `cli()`.
+  - **New `src/app/cli/commands/__init__.py`:** `from app.cli.commands import server, manage` (each module side-effects subcommand registration via `@cli.command(...)` decorators).
+  - **New `src/app/cli/commands/server.py`:** Wraps `litestar_granian.cli:run_command`. Define a `ServerGroup(click.RichGroup)` whose `invoke()` constructs `LitestarEnv.from_env("app.server.asgi:create_app")` lazily and calls `create_app()`. Mount `run` as the only subcommand under it (or, simpler: top-level `coffee run` that wraps the granian command directly via the `_create_run_command` helper from `dma/cli/commands/server.py:40-55`). Pick one and document the choice in Beads notes.
+  - **New `src/app/cli/commands/manage.py`:** Hosts `bulk_embed_cmd`, `clear_cache_cmd`, `model_info_cmd`, `load_fixtures_cmd`, `export_fixtures_cmd`. Move the implementations from `src/app/cli/commands.py` (the existing file) — they're already plain `@click.command` functions, only the registration changes. **Delete the existing `src/app/cli/commands.py`** after moving (single file → split by concern: `server.py` for runtime, `manage.py` for db/data ops).
+  - **Remove `on_cli_init` from `src/app/server/core.py`:** delete lines 125-168 (the entire `on_cli_init` method on `ApplicationCore`). Server-side plugin registration unchanged; the CLI side is now hand-rolled in `app/cli/`.
+  - **`coffee` no longer mounts `assets`, `upgrade`/`downgrade`, or `database *`** — these are reachable only via `python manage.py {assets,database} ...`.
+  - Failing tests (must RED before code, GREEN after):
+    - `src/tests/unit/test_cli_surface.py::test_coffee_does_not_have_assets_group` — invoke `coffee --help` (subprocess or Click test runner against `app.cli.main:cli`) and assert `"assets"` does not appear in the listed commands.
+    - `src/tests/unit/test_cli_surface.py::test_coffee_does_not_have_database_group` — same, asserting `"database"` and `"upgrade"`/`"downgrade"` are absent.
+    - `src/tests/unit/test_cli_surface.py::test_coffee_retains_runtime_commands` — assert `"run"`, `"bulk-embed"`, `"clear-cache"`, `"model-info"`, `"load-fixtures"`, `"export-fixtures"` are all present.
+    - `src/tests/unit/test_cli_surface.py::test_manage_py_database_upgrade_works` — invoke `python manage.py database upgrade --help` and assert exit code 0.
+    - `src/tests/unit/test_cli_surface.py::test_manage_py_assets_build_works` — invoke `python manage.py assets build --help` and assert exit code 0.
+    - `src/tests/unit/test_cli_surface.py::test_coffee_help_does_not_construct_db_config` — patch `app.config.db` constructor with a sentinel that raises; invoke `coffee --help`; assert no exception raised (proves `--help` no longer materializes the SQLSpec config). This is the architectural-improvement assertion that justifies the whole restructure.
+- [ ] **1.9** Smoke validation post-restructure: `uv run coffee --help` shows only the curated production list; `uv run python manage.py --help` shows `init/install/doctor/infra/database/assets`; `uv run python manage.py database --help` lists `upgrade/downgrade/...`; `uv run python manage.py assets --help` lists `install/build/serve/generate-types`. Document the help-text outputs in Beads notes.
+- [ ] **1.10** Run `make lint && make test` again. Confirm `test_cli_surface.py` is green and no other tests regressed. Smoke: `make migrate` (which now calls `python manage.py database upgrade`) and `uv run coffee bulk-embed --help` both work.
 
 ### Phase 2: Delete React frontend (`oracledb-vertexai-4d6.4.10`)
 
@@ -434,7 +470,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
 ### Phase 6: Toolchain & deployment (`oracledb-vertexai-4d6.4.4`, rewritten + `oracledb-vertexai-4d6.4.6`, rewritten)
 
 - [ ] **6.1** `pyproject.toml` final pass — confirm no `litestar-htmx` direct dependency was inadvertently added (HTMX comes from `litestar[jinja,...]`). No `bun` references anywhere. Confirm `[tool.hatch.build.targets.wheel].packages = ["src/app"]` and `artifacts` includes `**/*.j2`.
-- [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run python manage.py assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run python manage.py assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. **No `coffee assets ` invocations remain in the Makefile** (verified by Phase 7.x invariant test). Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
+- [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run python manage.py assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run python manage.py assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. **No `coffee assets ` or `coffee upgrade` invocations remain in the Makefile** (Phase 1.8 made these unregistered subcommands; `test_cli_surface.py` enforces). Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
 - [ ] **6.3** `.gitignore` final pass — add `node_modules/`, `dist/` (with `!dist/.gitkeep` to keep the directory for classify-compare output), `src/app/server/static/dist/` (Vite output). Remove all `src/js/`-specific entries. Add `src/resources/generated/` to gitignore (TypeGen output, even though we have all flags off — defense in depth).
 - [ ] **6.4** `tools/deploy/docker/run/Dockerfile`:
     - Drop the `oven/bun` COPY layer.
@@ -465,7 +501,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
     - `src/tests/api/test_explain_plan.py` (Phase 5.1b)
     - `src/tests/api/test_classify_compare_endpoint.py` (Phase 5.1c)
     - `src/tests/api/test_vector_demo_partial.py` (Phase 5.5)
-- [ ] **7.2a** **Asset-CLI invariant test** — new `src/tests/unit/test_asset_cli_invariant.py`. Greps `Makefile`, `tools/deploy/docker/run/Dockerfile`, `tools/deploy/docker/run/Dockerfile.distroless`, `.github/workflows/*.yml`, `README.md` for the literal string `coffee assets ` and asserts zero matches. Rationale: prevents drift back to the litestar-CLI surface; project policy is `python manage.py assets *` everywhere. Comments / spec docs are exempt (test scopes to executable files only). Failing-test demo: temporarily inject `coffee assets build` into the Makefile → test RED → revert → test GREEN.
+    - `src/tests/unit/test_cli_surface.py` (Phase 1.8 — replaces the originally-planned grep-based invariant test; architecture-level enforcement).
 - [ ] **7.3** Manual browser smoke (Playwright; document outcomes in Beads notes on the doc-touch task):
     - `make install && make build && uv run coffee run`
     - `/` chat: persona switches; send message; partial appears; metrics badges update via OOB.
@@ -481,7 +517,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
     - `OOB` swap idiom for multi-region updates from one POST.
     - CSRF: `<meta name="csrf-token">` + `registerHtmxExtension()` ⇒ `X-CSRFToken` header.
     - Tailwind v4 `@source` directive for Jinja template scanning.
-    - **Asset-pipeline invocation: always `python manage.py assets *`, never `coffee assets *`** (mirrors `dma/accelerator/manage.py`; protected by `test_asset_cli_invariant.py`).
+    - **CLI split** — `coffee` for production app commands (run / bulk-embed / clear-cache / model-info / load-fixtures / export-fixtures), `manage.py` for infra + db + assets. Mirrors `dma/accelerator`'s `dma`-vs-`manage.py` split. Hand-rolled `rich_click` group; do **not** call `litestar_group()` from `coffee`. Protected by `test_cli_surface.py`.
 
 ---
 
