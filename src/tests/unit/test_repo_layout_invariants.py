@@ -122,3 +122,37 @@ def test_manage_py_subgroup_help_runs(subcommand: str) -> None:
         text=True,
     )
     assert result.returncode == 0, f"manage.py {subcommand} --help failed: stderr={result.stderr!r}"
+
+
+# ---------------------------------------------------------------------------
+# Ch 4 Phase 2 — .gitignore + layout invariants for the React frontend deletion
+# ---------------------------------------------------------------------------
+
+
+def _read_gitignore() -> str:
+    return (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_gitignore_has_no_legacy_src_js_references() -> None:
+    """Phase 2.3 must scrub all ``src/js/...`` patterns from .gitignore."""
+    body = _read_gitignore()
+    legacy = re.findall(r"^!?src/js/.*$", body, flags=re.MULTILINE)
+    assert not legacy, f".gitignore still references src/js/: {legacy}"
+
+
+def test_gitignore_has_no_legacy_src_py_references() -> None:
+    """Phase 1A flatten leftover: ``!src/py/app/lib`` and ``src/py/app/...`` must be gone."""
+    body = _read_gitignore()
+    legacy = re.findall(r"^!?src/py/.*$", body, flags=re.MULTILINE)
+    assert not legacy, f".gitignore still references src/py/: {legacy}"
+
+
+def test_legacy_src_js_directory_is_gone() -> None:
+    """Belt-and-braces with ``test_brand_assets_layout`` — owned by the layout-invariants suite."""
+    assert not (REPO_ROOT / "src" / "js").exists(), "src/js/ must not exist after Ch 4 Phase 2.2"
+
+
+def test_pyproject_has_no_src_js_references_after_phase_2() -> None:
+    """Belt-and-braces — pyproject.toml must remain free of src/js paths."""
+    raw = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "src/js" not in raw, "pyproject.toml still references src/js"

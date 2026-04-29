@@ -18,8 +18,6 @@ eggs/
 lib/
 !resources/lib
 !app/lib
-!src/js/src/lib/
-!src/js/src/lib/**
 lib64/
 parts/
 sdist/
@@ -146,19 +144,17 @@ app/domain/web/public
 log/*
 *.csv
 tmp/*
-node_modules
+node_modules/
 .astro
 .vite
 .npmrc
 uv.toml
-src/js/.litestar.json
-src/js/public/hot
-src/py/app/server/static/dist/hot
-src/js/tsconfig.tsbuildinfo
-src/js/tsconfig.node.tsbuildinfo
-src/js/vite.config.js
-src/js/vite.config.d.ts
-src/js/src/lib/generated/
+# Vite build output served by litestar-vite (bundle dir lives inside the web domain).
+# See src/app/domain/web/__init__.py — `dist/` holds manifest.json + hashed bundles
+# emitted by `manage.py assets build`; `dist/hot` is the HMR marker written in dev mode.
+src/app/domain/web/static/dist/
+# Generated client SDK (re-emitted by `manage.py assets generate-types`)
+src/resources/generated/
 demo.py
 .tmp
 todo
@@ -166,7 +162,7 @@ todo
 # Wallet files and environment-specific configs
 .envs/
 !tools/lib
-!src/py/app/lib
+!src/app/lib
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
