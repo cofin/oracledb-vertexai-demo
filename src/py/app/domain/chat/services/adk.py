@@ -35,14 +35,14 @@ from app.domain.system.services import (
     MetricsService,
     PersonaManager,
 )
-from app.lib.service import SQLSpecService
+from app.lib.service import SQLSpecAsyncService
 from app.utils.serialization import sanitize_for_json
 
 logger = structlog.get_logger()
 
 # --- Intent Service ---
 
-class IntentService(SQLSpecService[OracleAsyncDriver]):
+class IntentService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for vector-based intent classification."""
 
     def __init__(self, driver: OracleAsyncDriver, exemplar_service: ExemplarService, vertex_ai_service: VertexAIService) -> None:
@@ -62,7 +62,7 @@ class IntentService(SQLSpecService[OracleAsyncDriver]):
 
 # --- Agent Tools Service ---
 
-class AgentToolsService(SQLSpecService[OracleAsyncDriver]):
+class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Business logic for ADK tools."""
 
     def __init__(self, driver: OracleAsyncDriver, product_service: ProductService, metrics_service: MetricsService, intent_service: IntentService, vertex_ai_service: VertexAIService, store_service: StoreService) -> None:

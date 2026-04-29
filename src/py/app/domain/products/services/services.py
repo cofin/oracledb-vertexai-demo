@@ -22,7 +22,7 @@ from google.genai.types import EmbedContentConfig
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.domain.products.schemas import Product, Store
-from app.lib.service import SQLSpecService
+from app.lib.service import SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
@@ -31,7 +31,7 @@ logger = structlog.get_logger()
 
 # --- Product Service ---
 
-class ProductService(SQLSpecService[OracleAsyncDriver]):
+class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def get_by_id(self, product_id: int) -> Product | None:
@@ -70,7 +70,7 @@ class ProductService(SQLSpecService[OracleAsyncDriver]):
 
 # --- Store Service ---
 
-class StoreService(SQLSpecService[OracleAsyncDriver]):
+class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing store locations."""
 
     async def get_all_stores(self) -> list[Store]:

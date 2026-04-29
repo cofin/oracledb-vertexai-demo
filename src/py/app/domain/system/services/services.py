@@ -23,7 +23,7 @@ import structlog
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.domain.system.schemas import ResponseCache, SearchMetricsCreate
-from app.lib.service import SQLSpecService
+from app.lib.service import SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -130,7 +130,7 @@ class PersonaManager:
 
 # --- Cache Service ---
 
-class CacheService(SQLSpecService[OracleAsyncDriver]):
+class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for response and embedding cache."""
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
@@ -212,7 +212,7 @@ class CacheService(SQLSpecService[OracleAsyncDriver]):
 
 # --- Metrics Service ---
 
-class MetricsService(SQLSpecService[OracleAsyncDriver]):
+class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles performance metrics and search logging."""
 
     async def record_search(self, metrics: SearchMetricsCreate) -> None:
@@ -235,7 +235,7 @@ class MetricsService(SQLSpecService[OracleAsyncDriver]):
 
 # --- Exemplar Service ---
 
-class ExemplarService(SQLSpecService[OracleAsyncDriver]):
+class ExemplarService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing intent exemplars and vector-based intent classification."""
 
     async def search_similar_intents(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
