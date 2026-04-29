@@ -12,56 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.genai import Client
-
-from app.domain.system.services import CacheService
-from app.lib.di import Provider, Scope, provide
-from app.lib.settings import get_settings
-
 from .services import OracleVectorSearchService, ProductService, StoreService, VertexAIService
-
-settings = get_settings()
-
-
-class ProductsServiceProvider(Provider):
-    scope = Scope.REQUEST
-
-    product_service = provide(ProductService)
-    store_service = provide(StoreService)
-
-    @provide(scope=Scope.APP)
-    def get_genai_client(self) -> Client:
-        if settings.vertex_ai.PROJECT_ID:
-            return Client(
-                vertexai=True,
-                project=settings.vertex_ai.PROJECT_ID,
-                location=settings.vertex_ai.LOCATION,
-            )
-        return Client(
-            api_key=settings.vertex_ai.API_KEY,
-        )
-
-    @provide
-    def get_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
-        return VertexAIService(
-            client=client,
-            model=settings.vertex_ai.CHAT_MODEL,
-            embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
-            embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
-            cache_service=cache_service,
-        )
-
-    @provide
-    def get_vector_search_service(
-        self, vertex_ai_service: VertexAIService, product_service: ProductService
-    ) -> OracleVectorSearchService:
-        return OracleVectorSearchService(vertex_ai_service=vertex_ai_service, product_service=product_service)
-
 
 __all__ = (
     "OracleVectorSearchService",
     "ProductService",
-    "ProductsServiceProvider",
     "StoreService",
     "VertexAIService",
 )

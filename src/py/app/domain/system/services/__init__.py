@@ -12,17 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from app.lib.di import Provider, Scope, provide
-
 from .services import BASE_SYSTEM_INSTRUCTION, CacheService, ExemplarService, MetricsService, PersonaManager
-
-
-class SystemServiceProvider(Provider):
-    scope = Scope.REQUEST
-
-    cache_service = provide(CacheService)
-    metrics_service = provide(MetricsService)
-    exemplar_service = provide(ExemplarService)
 
 __all__ = (
     "BASE_SYSTEM_INSTRUCTION",
@@ -30,5 +20,4 @@ __all__ = (
     "ExemplarService",
     "MetricsService",
     "PersonaManager",
-    "SystemServiceProvider",
 )

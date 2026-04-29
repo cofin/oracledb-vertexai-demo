@@ -1,12 +1,14 @@
+"""Unit tests for IntegrationsProvider's ADK wiring (Ch 2.3)."""
+
 from __future__ import annotations
 
 from typing import Any
 
-import app.domain.chat.services as chat_services
+import app.ioc as ioc_module
 
 
-def test_chat_provider_builds_oracle_adk_store_from_injected_config(monkeypatch: Any) -> None:
-    provider = chat_services.ChatServiceProvider()
+def test_integrations_provider_builds_oracle_adk_store_from_injected_config(monkeypatch: Any) -> None:
+    provider = ioc_module.IntegrationsProvider()
     sentinel_config = object()
     captured: dict[str, object] = {}
 
@@ -14,16 +16,16 @@ def test_chat_provider_builds_oracle_adk_store_from_injected_config(monkeypatch:
         def __init__(self, config: object) -> None:
             captured["config"] = config
 
-    monkeypatch.setattr(chat_services, "OracleAsyncADKStore", FakeStore, raising=False)
+    monkeypatch.setattr(ioc_module, "OracleAsyncADKStore", FakeStore, raising=False)
 
-    store = provider.get_adk_store(sentinel_config)
+    store = provider.provide_adk_store(sentinel_config)  # type: ignore[arg-type]
 
     assert isinstance(store, FakeStore)
     assert captured["config"] is sentinel_config
 
 
-def test_chat_provider_builds_sqlspec_session_service_from_store(monkeypatch: Any) -> None:
-    provider = chat_services.ChatServiceProvider()
+def test_integrations_provider_builds_sqlspec_session_service_from_store(monkeypatch: Any) -> None:
+    provider = ioc_module.IntegrationsProvider()
     sentinel_store = object()
     captured: dict[str, object] = {}
 
@@ -31,25 +33,25 @@ def test_chat_provider_builds_sqlspec_session_service_from_store(monkeypatch: An
         def __init__(self, store: object) -> None:
             captured["store"] = store
 
-    monkeypatch.setattr(chat_services, "SQLSpecSessionService", FakeSessionService, raising=False)
+    monkeypatch.setattr(ioc_module, "SQLSpecSessionService", FakeSessionService, raising=False)
 
-    session_service = provider.get_session_service(sentinel_store)
+    session_service = provider.provide_session_service(sentinel_store)  # type: ignore[arg-type]
 
     assert isinstance(session_service, FakeSessionService)
     assert captured["store"] is sentinel_store
 
 
-def test_chat_provider_builds_runner_from_injected_session_service(monkeypatch: Any) -> None:
-    provider = chat_services.ChatServiceProvider()
+def test_integrations_provider_builds_runner_from_injected_session_service(monkeypatch: Any) -> None:
+    provider = ioc_module.IntegrationsProvider()
     sentinel_session_service = object()
 
     class FakeRunner:
         def __init__(self, session_service: object) -> None:
             self.session_service = session_service
 
-    monkeypatch.setattr(chat_services, "ADKRunner", FakeRunner)
+    monkeypatch.setattr(ioc_module, "ADKRunner", FakeRunner)
 
-    runner = provider.get_adk_runner(sentinel_session_service)
+    runner = provider.provide_adk_runner(sentinel_session_service)  # type: ignore[arg-type]
 
     assert isinstance(runner, FakeRunner)
     assert runner.session_service is sentinel_session_service
