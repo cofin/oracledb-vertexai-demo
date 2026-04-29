@@ -61,6 +61,29 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 The initial Oracle 23ai schema in this project includes:
 
-- `product` table with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(768, FLOAT32)` embeddings.
+- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-001`.
 - `store` table for location data with `JSON`-encoded business hours.
 - `response_cache`, `embedding_cache`, `intent_exemplar`, and `search_metric` support tables.
+- HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product`, `intent_exemplar`, and `embedding_cache`.
+
+## Vector Memory Pool
+
+Oracle 23ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
+
+Configure the pool once per database (the change is persisted in SPFILE and requires a restart):
+
+```sql
+ALTER SYSTEM SET vector_memory_size = 4G SCOPE=SPFILE;
+SHUTDOWN IMMEDIATE;
+STARTUP;
+```
+
+For the dev container, see `tools/oracle/configure_vector_memory.sql` and the matching `make` target.
+
+Verify the pool is allocated:
+
+```sql
+SELECT NAME, BYTES FROM V$SGAINFO WHERE NAME LIKE '%Vector%';
+```
+
+A non-zero `Vector Memory` row confirms the pool is live. `4G` is the project floor; bump higher if `bulk-embed` runs report `ORA-51963` (pool exhausted) — the rule of thumb is `2 × (rows × dim × 4 bytes × HNSW overhead ~1.4×)`.
