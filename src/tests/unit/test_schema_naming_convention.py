@@ -11,7 +11,7 @@ entity-first qualifiers for projections (e.g., `ProductMatch`,
 entity names. Strip them.
 
 Examples of allowed forms:
-- `Product`, `Store`, `IntentExemplar`        (entity)
+- `Product`, `Store`, `EmbeddingCache`         (entity)
 - `ProductCreate`, `ProductUpdate`            (mutating input)
 - `ProductMatch`, `MetricsChart`, `MetricsSummary`  (entity-first qualifier)
 

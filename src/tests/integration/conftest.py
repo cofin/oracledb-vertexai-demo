@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from litestar import Litestar
     from sqlspec.adapters.oracledb import OracleAsyncDriver
 
-    from app.domain.chat.services import IntentService
     from app.domain.products.services import ProductService
     from app.domain.system.services import CacheService
 
@@ -239,16 +238,3 @@ async def cache_service(driver: OracleAsyncDriver) -> CacheService:
     from app.domain.system.services import CacheService
 
     return CacheService(driver)
-
-
-@pytest.fixture
-async def intent_service(driver: OracleAsyncDriver) -> IntentService:
-    """Provide IntentService for testing."""
-    from unittest.mock import MagicMock
-
-    from app.domain.chat.services import IntentService
-
-    mock_vertex = MagicMock()
-    mock_exemplar = MagicMock()
-
-    return IntentService(driver=driver, vertex_ai_service=mock_vertex, exemplar_service=mock_exemplar)

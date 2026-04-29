@@ -29,7 +29,6 @@ def _filter_keys(controller_cls: type) -> set[str]:
     [
         ("app.domain.products.controllers.ProductController", {"filters", "limit_offset_filter", "search_filter"}),
         ("app.domain.products.controllers.StoreController", {"filters", "limit_offset_filter", "search_filter"}),
-        ("app.domain.system.controllers.ExemplarController", {"filters", "limit_offset_filter", "search_filter"}),
     ],
 )
 def test_controller_dependencies_include_filter_keys(controller_path: str, expected_keys: set[str]) -> None:
@@ -48,7 +47,6 @@ def test_controller_dependencies_include_filter_keys(controller_path: str, expec
     [
         ("app.domain.products.services.ProductService", "app.domain.products.schemas.Product"),
         ("app.domain.products.services.StoreService", "app.domain.products.schemas.Store"),
-        ("app.domain.system.services.ExemplarService", "app.domain.system.schemas.IntentExemplar"),
     ],
 )
 def test_service_exposes_list_with_count(service_path: str, schema_path: str) -> None:
@@ -82,13 +80,6 @@ def test_service_exposes_list_with_count(service_path: str, schema_path: str) ->
     assert args and args[0] is schema_cls, (
         f"{svc_attr}.list_with_count must return OffsetPagination[{schema_attr}], got OffsetPagination[{args}]"
     )
-
-
-def test_exemplar_controller_path_is_api_exemplars() -> None:
-    """The explore page consumes ``/api/exemplars``; the path must stay stable."""
-    from app.domain.system.controllers import ExemplarController
-
-    assert ExemplarController.path == "/api/exemplars"
 
 
 def test_product_controller_path_is_api_products() -> None:

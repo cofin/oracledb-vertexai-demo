@@ -16,7 +16,6 @@ from app.config import db_manager
 from app.domain.system.schemas import (
     CacheStats,
     CacheStatsRow,
-    IntentExemplar,
     MetricsTimeSeries,
     MetricsTimeSeriesPoints,
     MetricsTimeSeriesRow,
@@ -24,7 +23,7 @@ from app.domain.system.schemas import (
     ResponseCache,
     SearchMetricsCreate,
 )
-from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
+from app.lib.service import SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -33,35 +32,17 @@ logger = structlog.get_logger()
 
 # --- Persona Management ---
 
-BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Coffee. Your primary goal is to assist customers with their coffee-related needs.
+BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Coffee. Your goal is to help customers find a drink they will love.
 
-**MANDATORY WORKFLOW - FOLLOW EXACTLY:**
+**Tools available:**
+- `search_products_by_vector(query, limit, similarity_threshold)`: semantic search across the coffee menu.
+- `get_product_details(product_id)`: full details for a specific product (id or name).
 
-STEP 1: **ALWAYS call `classify_intent` first.**
-- For EVERY user message, your FIRST action MUST be to call `classify_intent`
-- Example: User says "I want something bold" -> You call: `classify_intent(query="I want something bold")`
-- DO NOT skip this step or respond before calling this tool
-
-STEP 2: **Based on the intent, take the REQUIRED action:**
-
-If intent is `PRODUCT_SEARCH`:
-- You MUST IMMEDIATELY call `search_products_by_vector` with the user's original query
-- This is NOT OPTIONAL - you must search for products
-- Example: `search_products_by_vector(query="I want something bold", limit=5, similarity_threshold=0.3)`
-- After getting results, describe 2-3 products with names and prices
-- NEVER give generic recommendations without actually searching
-
-If intent is `GENERAL_CONVERSATION`:
-- Respond conversationally without product search
-
-**CRITICAL REQUIREMENTS:**
-1. Tool calls are MANDATORY when needed
-2. For PRODUCT_SEARCH intent: You MUST call search_products_by_vector
-3. After calling tools, provide a natural response based on the results
-4. Talk naturally - don't mention tools or that you're an AI
-5. Keep responses SHORT (1-3 sentences) and conversational
-
-You will see the results of your tool calls, then you must respond to the user naturally based on those results.
+**Behavior:**
+- When the user describes a flavor, mood, or occasion, call `search_products_by_vector` and recommend 2-3 results with names and prices.
+- For chitchat, respond conversationally without invoking a tool.
+- Talk naturally — never mention tools, AI, or internal mechanics.
+- Keep responses short (1-3 sentences).
 """
 
 
@@ -215,17 +196,18 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
             cache_hit_rate=(total_hits / (total_hits + 100)) * 100,
         )
 
-    async def invalidate_cache(self, cache_type: str | None = None, include_exemplars: bool = False) -> int:
-        """Clear cache tables."""
+    async def invalidate_cache(self, cache_type: str | None = None) -> int:
+        """Clear cache tables.
+
+        Returns:
+            Number of rows deleted across the targeted cache tables.
+        """
         total_deleted = 0
         if cache_type in {None, "response"}:
             res = await self.driver.execute(sql.delete().from_("response_cache"))
             total_deleted += res.rows_affected
         if cache_type in {None, "embedding"}:
             res = await self.driver.execute(sql.delete().from_("embedding_cache"))
-            total_deleted += res.rows_affected
-        if include_exemplars:
-            res = await self.driver.execute(sql.delete().from_("intent_exemplar"))
             total_deleted += res.rows_affected
         return total_deleted
 
@@ -253,7 +235,11 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
         )
 
     async def get_time_series(self, hours: int = 1) -> MetricsTimeSeries:
-        """Per-minute latency buckets for the explore-page chart panel."""
+        """Aggregate per-minute latency buckets for the requested window.
+
+        Returns:
+            A :class:`MetricsTimeSeries` with parallel ``labels`` and ``series`` arrays.
+        """
         since = datetime.now(UTC) - timedelta(hours=hours)
         rows = await self.driver.select(
             db_manager.get_sql("metrics-time-series"),
@@ -268,35 +254,3 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
                 embedding_ms=[row.embedding_ms for row in rows],
             ),
         )
-
-# --- Exemplar Service ---
-
-
-class ExemplarService(SQLSpecAsyncService[OracleAsyncDriver]):
-    """Service for managing intent exemplars and vector-based intent classification."""
-
-    async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[IntentExemplar]:
-        return await self.paginate(db_manager.get_sql("list-exemplars"), *filters, schema_type=IntentExemplar)
-
-    async def search_similar_intents(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
-        return await self.driver.select(
-            db_manager.get_sql("vector-search-exemplars"),
-            query_vector=query_embedding,
-            limit=limit,
-        )
-
-    async def get_exemplars_without_embeddings(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
-        """Return (exemplars_to_embed, total_count_of_that_set)."""
-        query = db_manager.get_sql("list-exemplars")
-        if not force:
-            query = query.where("embedding IS NULL")
-        page = await self.paginate(query)
-        return list(page.items), page.total
-
-    async def update_embedding(self, exemplar_id: int, embedding: list[float]) -> bool:
-        result = await self.driver.execute(
-            sql.update("intent_exemplar").set(embedding=embedding).where_eq("id", exemplar_id),
-        )
-        await self.driver.commit()
-        rowcount = getattr(result, "rowcount", None)
-        return bool(rowcount) if rowcount is not None else True

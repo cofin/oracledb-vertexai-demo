@@ -25,13 +25,17 @@ from app.cli.utils import async_inject
 # get_type_hints() to resolve dependencies, which evaluates string annotations against
 # the module globals.
 from app.domain.products.services import ProductService, VertexAIService  # noqa: TC001
-from app.domain.system.services import CacheService, ExemplarService  # noqa: TC001
+from app.domain.system.services import CacheService  # noqa: TC001
 
 logger = structlog.get_logger()
 
 
 async def _fetch_products_to_embed(product_service: Any, force: bool) -> tuple[list[dict[str, Any]], str]:
-    """Fetch products that need embeddings."""
+    """Fetch products that need embeddings.
+
+    Returns:
+        ``(products, status_message)`` — the rows to embed and a rich-markup banner to print.
+    """
     from rich import get_console
 
     console = get_console()
@@ -92,50 +96,16 @@ async def _process_product_batch(
     return success_count, error_count
 
 
-async def _process_exemplar_batch(
-    batch: list[Any],
-    exemplar_service: Any,
-    vertex_ai_service: Any,
-    start_idx: int,
-    total_exemplars: int,
-) -> tuple[int, int]:
-    """Re-embed a batch of intent_exemplar rows."""
-    from rich import get_console
-
-    console = get_console()
-    success_count = 0
-    error_count = 0
-
-    with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
-        for i, row in enumerate(batch):
-            exemplar_id: int | None = None
-            try:
-                exemplar_id = row["id"]
-                phrase = row.get("phrase", "")
-
-                global_idx = start_idx + i + 1
-                status.update(f"[bold yellow]Processing {global_idx}/{total_exemplars}: {phrase[:60]}...")
-
-                embedding = await vertex_ai_service.get_text_embedding(phrase, task_type="RETRIEVAL_DOCUMENT")
-                updated = await exemplar_service.update_embedding(exemplar_id, embedding)
-                if not updated:
-                    error_count += 1
-                    logger.warning("Failed to update exemplar", exemplar_id=exemplar_id, error="update affected 0 rows")
-                    continue
-                success_count += 1
-            except Exception as e:  # noqa: BLE001
-                error_count += 1
-                logger.warning("Failed to embed exemplar", exemplar_id=exemplar_id, error=str(e))
-
-    return success_count, error_count
-
-
 async def _embed_in_batches(
     items: list[Any],
     batch_size: int,
     processor: Any,
 ) -> tuple[int, int]:
-    """Iterate items in batches and aggregate (success, error) counts."""
+    """Iterate items in batches and aggregate (success, error) counts.
+
+    Returns:
+        ``(total_success, total_errors)`` summed across every batch.
+    """
     from rich import get_console
 
     console = get_console()
@@ -168,24 +138,14 @@ def _print_embedding_results(total_success: int, total_errors: int) -> None:
     console.print()
 
 
-@cli.command(
-    name="bulk-embed",
-    help="Run bulk embedding job for products (and optionally intent exemplars) using Vertex AI.",
-)
+@cli.command(name="bulk-embed", help="Run bulk embedding job for products using Vertex AI.")
 @click.option("--batch-size", default=50, help="Number of items to process in each batch (default: 50)")
 @click.option("--force", "-f", is_flag=True, help="Re-embed all items, even if they already have embeddings")
-@click.option(
-    "--include-exemplars",
-    is_flag=True,
-    help="Also re-embed intent_exemplar phrases (required after dimension changes).",
-)
 @async_inject
 async def bulk_embed_cmd(
     batch_size: int,
     force: bool,
-    include_exemplars: bool,
     product_service: ProductService,
-    exemplar_service: ExemplarService,
     vertex_ai_service: VertexAIService,
 ) -> None:
     """Run bulk embedding job for all products using Vertex AI."""
@@ -193,89 +153,40 @@ async def bulk_embed_cmd(
     console.rule("[bold blue]Bulk Embedding", style="blue", align="left")
     console.print()
 
-    console.print("[bold]→ Products[/bold]")
     products, message = await _fetch_products_to_embed(product_service, force)
     console.print(message)
 
-    product_success = product_errors = 0
-    if products:
-        console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
-        product_success, product_errors = await _embed_in_batches(
-            products,
-            batch_size,
-            lambda batch, start_idx, total: _process_product_batch(
-                batch, product_service, vertex_ai_service, start_idx, total
-            ),
-        )
-    else:
+    if not products:
         console.print(
             "[yellow]No products found in database[/yellow]"
             if force
             else "[green]✓ All products already have embeddings![/green]"
         )
-
-    _print_embedding_results(product_success, product_errors)
-
-    if not include_exemplars:
+        _print_embedding_results(0, 0)
         return
 
-    console.print()
-    console.print("[bold]→ Intent exemplars[/bold]")
-    exemplars, _total = await exemplar_service.get_exemplars_without_embeddings(force=force)
-    label = "ALL exemplars (force mode)" if force else "exemplars without embeddings"
-    console.print(f"[cyan]Processing {len(exemplars)} {label}[/cyan]")
-    if not exemplars:
-        console.print(
-            "[yellow]No exemplars found in database[/yellow]"
-            if force
-            else "[green]✓ All exemplars already have embeddings![/green]"
-        )
-        return
     console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
-    exemplar_success, exemplar_errors = await _embed_in_batches(
-        exemplars,
+    success, errors = await _embed_in_batches(
+        products,
         batch_size,
-        lambda batch, start_idx, total: _process_exemplar_batch(
-            batch, exemplar_service, vertex_ai_service, start_idx, total
+        lambda batch, start_idx, total: _process_product_batch(
+            batch, product_service, vertex_ai_service, start_idx, total
         ),
     )
-    _print_embedding_results(exemplar_success, exemplar_errors)
+    _print_embedding_results(success, errors)
 
 
-@cli.command(name="clear-cache", help="Clear cache tables in the database.")
-@click.option(
-    "--include-exemplars",
-    is_flag=True,
-    help="Also clear intent exemplar embeddings (slow to regenerate)",
-)
-@click.option(
-    "--force",
-    "-f",
-    is_flag=True,
-    help="Skip confirmation prompt",
-)
+@cli.command(name="clear-cache", help="Clear response and embedding cache tables.")
+@click.option("--force", "-f", is_flag=True, help="Skip confirmation prompt")
 @async_inject
-async def clear_cache_cmd(include_exemplars: bool, force: bool, cache_service: CacheService) -> None:
-    """Clear application caches.
-
-    By default, clears response_cache and embedding_cache only.
-    Intent exemplar embeddings are preserved (expensive to regenerate).
-    """
+async def clear_cache_cmd(force: bool, cache_service: CacheService) -> None:
+    """Clear application caches (response_cache + embedding_cache)."""
     console = get_console()
-
-    tables_to_clear = ["response_cache", "embedding_cache"]
-    if include_exemplars:
-        tables_to_clear.append("intent_exemplar")
 
     if not force:
         console.print("[bold]Tables to clear:[/bold]")
-        for table in tables_to_clear:
+        for table in ("response_cache", "embedding_cache"):
             console.print(f"  • {table}")
-
-        if include_exemplars:
-            console.print(
-                "\n[bold red]⚠️  WARNING: Clearing intent exemplars will require regenerating embeddings![/bold red]"
-            )
 
         confirm = Prompt.ask(
             "\n[bold red]Are you sure you want to clear these caches?[/bold red]",
@@ -288,14 +199,14 @@ async def clear_cache_cmd(include_exemplars: bool, force: bool, cache_service: C
 
     console.rule("[bold blue]Clearing Caches", style="blue", align="left")
     console.print()
-    deleted_count = await cache_service.invalidate_cache(cache_type=None, include_exemplars=include_exemplars)
+    deleted_count = await cache_service.invalidate_cache()
     console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
     console.print()
 
 
 @cli.command(name="model-info", help="Show information about currently configured AI models.")
 @async_inject
-async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
+async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # noqa: RUF029
     """Show information about currently configured AI models."""
     from app.lib.settings import get_settings
 

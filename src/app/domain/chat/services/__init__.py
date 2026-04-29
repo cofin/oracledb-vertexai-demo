@@ -4,12 +4,11 @@
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from .adk import ADKRunner, AgentToolsService, IntentService
+from .adk import ADKRunner, AgentToolsService
 
 __all__ = (
     "ADKRunner",
     "AgentToolsService",
-    "IntentService",
     "OracleAsyncADKStore",
     "SQLSpecSessionService",
 )

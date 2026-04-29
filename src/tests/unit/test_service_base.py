@@ -20,8 +20,6 @@ def test_lib_service_reexports_sqlspec_async_service() -> None:
         ("app.domain.products.services.services", "StoreService"),
         ("app.domain.system.services.services", "CacheService"),
         ("app.domain.system.services.services", "MetricsService"),
-        ("app.domain.system.services.services", "ExemplarService"),
-        ("app.domain.chat.services.adk", "IntentService"),
         ("app.domain.chat.services.adk", "AgentToolsService"),
     ],
 )

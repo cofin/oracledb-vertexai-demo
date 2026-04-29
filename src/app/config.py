@@ -61,6 +61,7 @@ def _initialize() -> None:
     import structlog
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
+    from litestar.contrib.jinja import JinjaTemplateEngine
     from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
     from litestar.logging.config import (
         LoggingConfig,
@@ -72,7 +73,6 @@ def _initialize() -> None:
     from litestar.middleware.logging import LoggingMiddlewareConfig
     from litestar.middleware.session.server_side import ServerSideSessionConfig as _SessionConfig
     from litestar.plugins.problem_details import ProblemDetailsConfig as _ProblemDetailsConfig
-    from litestar.contrib.jinja import JinjaTemplateEngine
     from litestar.plugins.structlog import StructlogConfig as _StructlogConfig
     from litestar.stores.registry import StoreRegistry as _StoreRegistry
     from litestar.template import TemplateConfig as _TemplateConfig

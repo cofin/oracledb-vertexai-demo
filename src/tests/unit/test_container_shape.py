@@ -87,14 +87,14 @@ def test_domain_service_provider_request_scoped() -> None:
     instance = DomainServiceProvider()
     factories = {f.provides.type_hint: f for f in instance.factories}
 
-    from app.domain.chat.services.adk import AgentToolsService, IntentService
+    from app.domain.chat.services.adk import AgentToolsService
     from app.domain.products.services.services import (
         OracleVectorSearchService,
         ProductService,
         StoreService,
         VertexAIService,
     )
-    from app.domain.system.services.services import CacheService, ExemplarService, MetricsService
+    from app.domain.system.services.services import CacheService, MetricsService
 
     for cls in (
         ProductService,
@@ -103,8 +103,6 @@ def test_domain_service_provider_request_scoped() -> None:
         OracleVectorSearchService,
         CacheService,
         MetricsService,
-        ExemplarService,
-        IntentService,
         AgentToolsService,
     ):
         assert cls in factories, f"{cls.__name__} factory missing from DomainServiceProvider"

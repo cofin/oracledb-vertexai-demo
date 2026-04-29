@@ -5,10 +5,9 @@
 
 from litestar import Controller
 
-from app.domain.system.controllers._exemplar import ExemplarController
 from app.domain.system.controllers._metrics import MetricsController
 from app.domain.system.controllers._system import SystemController
 
-controllers: list[type[Controller]] = [ExemplarController, MetricsController, SystemController]
+controllers: list[type[Controller]] = [MetricsController, SystemController]
 
-__all__ = ("ExemplarController", "MetricsController", "SystemController", "controllers")
+__all__ = ("MetricsController", "SystemController", "controllers")

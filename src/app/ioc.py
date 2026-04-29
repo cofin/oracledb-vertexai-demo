@@ -21,14 +21,14 @@ from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db, db_manager
-from app.domain.chat.services.adk import ADKRunner, AgentToolsService, IntentService
+from app.domain.chat.services.adk import ADKRunner, AgentToolsService
 from app.domain.products.services.services import (
     OracleVectorSearchService,
     ProductService,
     StoreService,
     VertexAIService,
 )
-from app.domain.system.services.services import CacheService, ExemplarService, MetricsService
+from app.domain.system.services.services import CacheService, MetricsService
 from app.lib.di import LitestarProvider, QueryContext, query_id_var
 from app.lib.settings import get_settings
 
@@ -82,9 +82,7 @@ class DomainServiceProvider(Provider):
     store_service = provide(StoreService)
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
-    exemplar_service = provide(ExemplarService)
     agent_tools_service = provide(AgentToolsService)
-    intent_service = provide(IntentService)
 
     @provide
     def provide_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
@@ -119,7 +117,11 @@ PROVIDERS: tuple[type[Provider], ...] = (
 
 
 def make_litestar_container() -> AsyncContainer:
-    """Build the Dishka container for Litestar (LitestarProvider + the 3 user providers)."""
+    """Build the Dishka container for Litestar.
+
+    Returns:
+        A configured :class:`AsyncContainer` with ``LitestarProvider`` plus the 3 user providers.
+    """
     return make_async_container(LitestarProvider(), *(P() for P in PROVIDERS))
 
 

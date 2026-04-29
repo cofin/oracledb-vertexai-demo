@@ -9,7 +9,7 @@
 <!-- truth: start -->
 ## Summary
 
-Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Alpine.js + ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` → `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures); migrations + assets + infra moved exclusively to `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (5 panels: vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series, classify-compare). All toolchain finalization (pyproject / Makefile / .gitignore / Dockerfile / README) was locked behind `test_repo_layout_invariants.py` invariants so future commits can't regress to bun / litestar-htmx / `coffee upgrade` / `src/py`.
+Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Alpine.js + ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` → `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures); migrations + assets + infra moved exclusively to `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series).
 
 ## Patterns Elevated (see patterns.md for full list)
 
@@ -32,10 +32,9 @@ Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and re
 - `src/app/domain/web/templates/partials/{search_result,search_result_list,plan_lines,_chat_response,_flash,_metrics_badges,message,chat_error}.html.j2`
 - `src/app/domain/products/controllers/_vector.py` — `vector_search_demo` (HTMX/JSON branching) + `explain_plan` endpoint
 - `src/app/domain/products/services/services.py` — `OracleVectorSearchService.explain_search_plan` (two driver calls)
-- `src/app/domain/system/controllers/_explore.py` — `/api/classify-compare` reading `dist/classify-compare.json`
-- `src/app/domain/system/controllers/_metrics.py` — typed `MetricsDashboard` / `MetricsSummary` / `MetricsTimeSeries`
+- `src/app/domain/system/controllers/_metrics.py` — typed `MetricsSummary` / `MetricsTimeSeries`
 - `src/app/domain/products/schemas/_products.py` — `VectorDemo`, `VectorDemoMatch`, `ExplainPlan` Structs
-- `src/app/domain/system/schemas/_metrics.py` — `MetricsSummary{cards}`, `MetricsTimeSeries{labels,series}`, `ClassifyCompare{intents}`, `PerformanceStats`, `CacheStats`
+- `src/app/domain/system/schemas/_metrics.py` — `MetricsSummary{cards}`, `MetricsTimeSeries{labels,series}`, `PerformanceStats`, `CacheStats`
 - `src/app/db/sql/system.sql` — `metrics-time-series` + `explain-plan-display` named queries (with `COALESCE`)
 - `src/app/db/sql/products.sql` — `explain-plan-vector-search` named query
 - `src/resources/{main.js,styles.css,public/}` — frontend entry + brand assets
@@ -72,7 +71,6 @@ Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and re
 - `MetricsChart` / `scatter_data` / `breakdown_data` were unused holdovers from a React-dashboard era — replaced with Phase 5 typed Structs.
 - `test_named_sql_loading::test_no_inline_sql_strings_in_domain_services` is a real invariant — extracted EXPLAIN PLAN SQL into named queries (`explain-plan-vector-search` + `explain-plan-display`).
 - 404 body is empty under `raise_server_exceptions=False` — tests assert only `status_code == 404`; the detail string only renders in real browser responses.
-- Module-scoped `CLASSIFY_COMPARE_PATH` enables tmp-file redirection in tests without polluting settings or class attributes.
 - Alpine `x-show` toggles beat imperative DOM mutation: same UX, no XSS surface.
 - Mid-phase user direction crystallized into 6 engineering conventions now spec'd in spec.md's Engineering Conventions section.
 
@@ -83,6 +81,4 @@ Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and re
 - `make build` was Python-only before Phase 6.2 — never rebuilt the frontend bundle. Now chains `manage.py assets build` then `uv build`.
 - `make lint` skipped frontend type-checking before Phase 6.2 — now chains `frontend-typecheck` (npx tsc --noEmit) after pyright.
 - Dockerfile `CMD` was `app run` — `app` was never a registered console script. Fixed to `coffee run`.
-- 404 console errors on `/explore` are part of the contract — Panel 5's classify-compare endpoint 404s when `dist/classify-compare.json` is absent; Alpine `x-show=missing` handles it gracefully. **Expected behavior**, not a regression.
-- Toolchain invariants in tests beat smoke-only verification — 14 new pyproject/Makefile/.gitignore/Dockerfile assertions in `test_repo_layout_invariants.py` catch regressions instantly.
 <!-- truth: end -->

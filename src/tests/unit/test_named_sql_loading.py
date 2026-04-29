@@ -23,8 +23,6 @@ EXPECTED_KEYS = (
     "get-cached-embedding",
     "get-cache-stats",
     "get-performance-stats",
-    "vector-search-exemplars",
-    "list-exemplars",
 )
 
 # Match a SQL keyword inside a Python string literal *only* when followed by whitespace

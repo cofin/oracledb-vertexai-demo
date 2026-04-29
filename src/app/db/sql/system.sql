@@ -37,23 +37,3 @@ ORDER BY TRUNC(created_at, 'MI');
 
 -- name: explain-plan-display
 SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY());
-
--- name: vector-search-exemplars
-SELECT intent,
-       phrase,
-       1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) AS similarity,
-       confidence_threshold
-FROM intent_exemplar
-WHERE embedding IS NOT NULL
-ORDER BY similarity DESC
-FETCH FIRST :limit ROWS ONLY;
-
--- name: list-exemplars
-SELECT id,
-       intent,
-       phrase,
-       confidence_threshold,
-       usage_count,
-       created_at,
-       updated_at
-FROM intent_exemplar;

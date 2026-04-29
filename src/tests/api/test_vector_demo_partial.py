@@ -9,7 +9,7 @@ the focus here is the HTMX/JSON response branch.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -18,9 +18,6 @@ from litestar.plugins.htmx import HTMXTemplate
 from app.domain.products import schemas as product_schemas
 from app.domain.products.controllers import VectorController
 from app.domain.products.schemas import ProductMatch
-
-if TYPE_CHECKING:
-    pass
 
 pytestmark = pytest.mark.anyio
 

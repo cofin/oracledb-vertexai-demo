@@ -9,7 +9,9 @@
 
 ### Objective
 
-Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph orchestration) and eliminate the slow path from intent classification. The new runner replaces the exemplar-vector intent lookup with a **Gemini 2.5 Flash-Lite enum-classifier**, **dispatched in parallel** with the main agent's response generation via `asyncio.gather` inside a custom `@node`. Perceived intent latency drops from ~150–400ms (embedding + vector top-1) to ~0ms (hidden behind retrieval). The `request_container_var` workaround disappears in favor of **closure-bound tools** built per-request. The `intent_exemplar` table is retained as **offline ground-truth** + a comparison panel on the Ch 4 explore page, fed by a new `uv run coffee classify-compare` CLI.
+Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orchestration; floor pin `google-adk>=2.0.0b1`) and eliminate the slow path from intent classification. The runner classifies intent with a **Gemini 2.5 Flash-Lite enum-classifier** **dispatched in parallel** with the main agent's response generation via `asyncio.gather` inside a custom `@node`. Perceived intent latency drops from ~150–400ms (embedding + vector top-1) to ~0ms (hidden behind retrieval). The `request_container_var` workaround disappears in favor of **closure-bound tools** built per-request.
+
+**Pre-Ch3 cleanup (landed):** `IntentService`, `ExemplarService`, `ExemplarController`, `IntentExemplar` schema, `--include-exemplars` CLI flags, and the legacy `BASE_SYSTEM_INSTRUCTION` "ALWAYS call classify_intent first" prose are deleted. The `intent_exemplar` table and `intent_exemplar.json.gz` fixture are retained as data-only artifacts; their removal is queued as a follow-up once the new classifier replaces them.
 
 ### Code Analysis Summary (verified 2026-04-29)
 
@@ -25,10 +27,7 @@ Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph o
 - `process_request` composes persona overlay by **string-concatenating into the user turn** (`f"[System Context: {persona_instruction}]\n\nUser Query: {query}"`) — the persona never reaches `LlmAgent.instruction`.
 - Returns `{"answer", "session_id", "response_time_ms"}`. The `intent_detected`, `search_metrics`, `from_cache`, `embedding_cache_hit` keys the controller expects (`controllers.py:94-97`) default to empty/false because the runner never emits them.
 
-**Current intent classifier:**
-
-- `IntentService.classify_intent(query)` (`adk.py:45-61`): `vertex_ai.get_text_embedding(query)` → `exemplar.search_similar_intents(embedding, limit=1)` → returns top-1 intent regardless of similarity threshold.
-- Exposed as an ADK tool the LLM may call. `BASE_SYSTEM_INSTRUCTION` *insists* it run first, but compliance is at LLM discretion. **Hot-path latency: one embedding call + one Oracle vector top-1 query + one extra LLM round trip** (tool call → summary → final response).
+**Intent classifier (post-cleanup):** the legacy exemplar-vector lookup is gone — `IntentService` and `ExemplarService` are deleted. Until Ch 3 lands the Flash-Lite classifier the runner has no intent step; the LLM responds directly using `search_products_by_vector` / `get_product_details`.
 
 **Persona system (`src/app/domain/system/services/services.py`):**
 
@@ -40,9 +39,9 @@ Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph o
 
 **ADK store wiring (`src/app/ioc.py`):** `OracleAsyncADKStore(config)` + `SQLSpecSessionService(store)` already provided as APP-singletons. Missing: `await store.ensure_tables()` at startup.
 
-### ADK 2.0b1 contract (verified against adk.dev + PyPI 2026-04-21):
+### ADK 2.0 contract (verified against adk.dev + PyPI 2026-04-21):
 
-- Pin: `google-adk==2.0.0b1`. Backwards-compatible with 1.x `LlmAgent`.
+- Pin: `google-adk>=2.0.0b1` (floor only — bump as betas/RCs ship). Backwards-compatible with 1.x `LlmAgent`.
 - Imports:
   ```python
   from google.adk import Context, Runner, Workflow
@@ -59,29 +58,25 @@ Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph o
 
 ### Requirements
 
-1. `pyproject.toml` pins `google-adk==2.0.0b1` (Ch 1 sets the version; Ch 3 actually uses it).
+1. `pyproject.toml` pin remains floor-only at `google-adk>=2.0.0b1`.
 2. New `src/app/domain/chat/services/workflow.py` defines an ADK 2.0 `Workflow` with one custom `@node` (`classify_and_respond`) that fans out **`intent_node`** (Gemini Flash-Lite enum classifier) and **`coffee_turn`** (the `LlmAgent` response) via `asyncio.gather`.
-3. New `src/app/domain/chat/services/classifier.py` exposes `FlashLiteIntentClassifier` with `async classify(phrase: str) -> Intent` using `text/x.enum` structured output.
+3. New `src/app/domain/chat/services/classifier.py` exposes `FlashLiteIntentClassifier` with `async classify(phrase: str) -> IntentLabel` using `text/x.enum` structured output.
 4. `ADKRunner.process_request` becomes:
    - Resolve services via Dishka at the controller layer; pass them in.
    - Build the per-request `LlmAgent` with **closure-bound tools** (no module-level functions, no `request_container_var`).
    - Construct the `Workflow` for this turn; invoke via `Runner.run_async`.
    - Return `{"answer", "session_id", "response_time_ms", "intent_detected", "search_metrics", "from_cache", "embedding_cache_hit"}` with all keys populated.
 5. Persona overlay flows into `LlmAgent(instruction=composed_prompt, generate_content_config=GenerateContentConfig(temperature=persona.temperature))` — `temperature` is finally honored.
-6. `request_container_var` and `_resolve_request_container` are deleted; module-level tool functions (`search_products_by_vector`, `get_product_details`, `classify_intent`) are deleted.
+6. `request_container_var`, `_resolve_request_container`, and the module-level `search_products_by_vector` / `get_product_details` tool functions are deleted; tools become per-request closures.
 7. `before_agent_callback` on the `LlmAgent` runs the credential guard — returns `types.Content(parts=[Part(text="...")])` with the 503 message text when the Vertex client can't be initialized; controller maps the response to HTTP 503 via a typed `AIServiceUnconfigured` exception path.
 8. App startup hook (`src/app/server/asgi.py`) calls `await store.ensure_tables()` so the demo boots without a separate ADK-session DDL step. Main product migrations still run through `uv run python manage.py database upgrade`.
-9. `BASE_SYSTEM_INSTRUCTION` (in `domain/system/services/services.py`) is rewritten to **drop the "ALWAYS call classify_intent first" prose** — the workflow enforces it now.
-10. New CLI `uv run coffee classify-compare` runs both classifiers (legacy vector + new Flash-Lite) on every `intent_exemplar` row, emits a JSON confusion matrix to `dist/classify-compare.json`, and prints a per-intent precision/recall summary. **Ch 4 reads this JSON for the comparison chart.**
-11. New integration test `src/tests/integration/test_chat_workflow.py` asserts (a) `intent_detected` is one of the enum values, (b) `answer` is non-empty, (c) `response_time_ms < 4000` (95th pct expectation; widen if needed).
-12. New unit test `src/tests/unit/test_classifier_compare.py` mocks the genai client and verifies the CLI emits well-formed confusion-matrix JSON.
+9. New integration test `src/tests/integration/test_chat_workflow.py` asserts (a) `intent_detected` is one of the enum values, (b) `answer` is non-empty, (c) `response_time_ms < 4000` (95th pct expectation; widen if needed).
 
 ### Acceptance Criteria
 
 - `grep -rn "request_container_var" src/app/` returns **zero** hits.
 - `grep -rn "_resolve_request_container" src/app/` returns **zero** hits.
 - `python -c "from app.domain.chat.services.workflow import make_workflow; print(make_workflow.__doc__)"` runs without ImportError.
-- `uv run coffee classify-compare --limit 50` exits 0, writes `<repo-root>/dist/classify-compare.json` with 50 rows shaped `{phrase, gold, legacy, new}`. Precision/recall numbers are logged to Beads notes for human review (no hard numeric gate — bootstrap labels are not academic ground truth).
 - Manual `POST /api/chat` returns response within 4 seconds; response includes populated `intent_detected`, `search_metrics`, `from_cache`, `embedding_cache_hit`.
 - App boot logs include `ADKStore.ensure_tables() OK` (or equivalent).
 - `make lint && make test` green; `uv run pytest src/tests/integration/test_chat_workflow.py -v` passes.
@@ -95,7 +90,11 @@ Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph o
 - **Per-turn `LlmAgent` construction is cheap** (Pydantic init only). The expensive call is the model invocation. Don't micro-optimize agent caching.
 - **`worker_container_var` (used by SAQ in `lib/di.py:74`) must remain.** Only delete `request_container_var`, not the worker variant.
 - **`store.ensure_tables()` adds 30–100ms to first boot** issuing idempotent `CREATE TABLE IF NOT EXISTS`. Acceptable for a reference demo.
-- **Confusion-matrix comparison uses `intent_exemplar.intent` as gold** — this is bootstrap data, not human-labeled. Document this in `classify-compare` output: agreement, not academic accuracy.
+---
+
+### Follow-ups (not blocking Ch 3)
+
+- **`intent_exemplar` table + `intent_exemplar.json.gz` fixture removal.** The runtime classifier no longer reads this data. Schedule deletion (DDL drop + migration entry + fixture file removal + `COFFEE_SHOP_TABLES` trim + integration-test bootstrap trim) once Ch 3 has shipped and there are no consumers.
 
 ---
 
@@ -211,52 +210,32 @@ Rebuild the chat runner on **Google ADK 2.0b1** (`Workflow` / `BaseNode` graph o
 
 ### Phase 5: Cleanup of pre-2.0 workarounds (`oracledb-vertexai-4d6.3.5`)
 
+> Sub-tasks 5.5 and 5.7 already landed in the pre-Ch3 cleanup commit. The remainder happens once Phase 4 switches to closure-bound tools.
+
 - [ ] **5.1** Delete `request_container_var` from `src/app/lib/di.py` (keep `worker_container_var`).
 - [ ] **5.2** Delete `_resolve_request_container` from `src/app/domain/chat/services/adk.py`.
-- [ ] **5.3** Delete module-level `search_products_by_vector`, `get_product_details`, `classify_intent` functions from `adk.py`.
+- [ ] **5.3** Delete module-level `search_products_by_vector`, `get_product_details` from `adk.py`.
 - [ ] **5.4** Delete `ALL_TOOLS` constant from `adk.py`.
-- [ ] **5.5** Delete `IntentService` class from `adk.py` — no longer used at request time. (`ExemplarService` remains for Ch 4 / classify-compare.)
+- [x] **5.5** ~~`IntentService`, `ExemplarService`, `ExemplarController`, `IntentExemplar` schema, `vector-search-exemplars` / `list-exemplars` named queries deleted.~~
 - [ ] **5.6** `grep -rn "from app.lib.di import" src/app/` — confirm only `worker_container_var` references remain.
-- [ ] **5.7** Update `BASE_SYSTEM_INSTRUCTION` in `domain/system/services/services.py`: drop the "MANDATORY WORKFLOW: ALWAYS call classify_intent first" block. Keep persona+tone scaffolding only.
+- [x] **5.7** ~~`BASE_SYSTEM_INSTRUCTION` stripped of the classify-first workflow.~~
 
-### Phase 6: classify-compare CLI (`oracledb-vertexai-4d6.3.6`)
+### Phase 6: Integration test + verification (`oracledb-vertexai-4d6.3.7`)
 
-- [ ] **6.1** Add `coffee classify-compare` subcommand in `src/app/cli/commands/manage.py` and register it with the hand-rolled `cli` group via `@cli.command(name="classify-compare")`. **Output path contract:** default `--output` is `dist/classify-compare.json` resolved from repo root (`Path.cwd() / "dist" / "classify-compare.json"`); ensure `dist/` is created if missing. Ch 4 reads from this exact path.
-  ```python
-  @cli.command(name="classify-compare")
-  @click.option("--limit", default=0)
-  @click.option("--output", type=click.Path(), default="dist/classify-compare.json")
-  def classify_compare(limit: int, output: str) -> None:
-      from sqlspec.utils.sync_tools import run_
-      async def _run():
-          # resolve driver, exemplar service, classifier, vertex_ai service
-          # for each row in intent_exemplar (limited): legacy_pred = vector top-1; new_pred = classifier.classify(phrase)
-          # write JSON [{phrase, gold, legacy, new}, ...]
-          # compute & print confusion matrix
-      run_(_run)
-  ```
-- [ ] **6.2** Helper `_render_matrix(rows: list[dict]) -> None` prints a 2-column matrix per intent with precision/recall.
-- [ ] **6.3** Unit test `src/tests/unit/test_classify_compare.py`: monkeypatch the classifier + DB rows, invoke the click command in-process, assert JSON output shape and matrix print.
-
-### Phase 7: Integration test + verification (`oracledb-vertexai-4d6.3.7`)
-
-- [ ] **7.1** `src/tests/integration/test_chat_workflow.py`:
+- [ ] **6.1** `src/tests/integration/test_chat_workflow.py`:
   - Fixture: real Oracle (already present), mock `genai.Client` to return deterministic responses.
   - Call `ADKRunner.process_request("What's a good dark roast?", ..., persona="enthusiast", tools_service=AgentToolsService(...))`.
   - Assert response dict contains `intent_detected == "PRODUCT_RAG"`, `answer` non-empty, `search_metrics["products_found"] >= 1`.
-- [ ] **7.2** Capture latency snapshot: log `response_time_ms` per test run. Assert < 4000 (sanity bound, mocked LLM should be < 100).
-- [ ] **7.3** Manual smoke checklist (document outcomes in Beads notes):
+- [ ] **6.2** Capture latency snapshot: log `response_time_ms` per test run. Assert < 4000 (sanity bound, mocked LLM should be < 100).
+- [ ] **6.3** Manual smoke checklist (document outcomes in Beads notes):
   - `uv run coffee run` boots without exceptions.
-  - Browser: `/` loads chat (Ch 4 page; Ch 3 acceptance is a curl test).
   - `curl -X POST localhost:5006/api/chat -H "Content-Type: application/json" -d '{"message":"Tell me about Cymbal Espresso","persona":"enthusiast"}'` returns JSON with all 7 keys populated.
-  - `uv run coffee classify-compare --limit 100` produces a confusion matrix.
-- [ ] **7.4** Append to `.agents/patterns.md`: ADK 2.0 workflow pattern (closure-bound tools, parallel fan-out via `asyncio.gather`, `before_agent_callback` credential guard, `text/x.enum` classifier).
+- [ ] **6.4** Append to `.agents/patterns.md`: ADK 2.0 workflow pattern (closure-bound tools, parallel fan-out via `asyncio.gather`, `before_agent_callback` credential guard, `text/x.enum` classifier).
 
 ---
 
 ## Out of Scope (defer to other chapters)
 
-- Frontend explore-page comparison chart for `classify-compare` output — Ch 4.
 - HITL pause/resume via `RequestInput` — future flow.
 - `SQLSpecMemoryService` / `SQLSpecArtifactService` adoption — future flow (Ch 3 only wires sessions).
 - Streaming chat (PRD says "not yet canonical").
