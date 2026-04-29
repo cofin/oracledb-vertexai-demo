@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from litestar import Litestar
     from litestar.testing import AsyncTestClient
 
@@ -89,8 +91,35 @@ def app() -> Litestar:
 
 
 @pytest.fixture
-def client(app: Litestar) -> AsyncTestClient:
-    """Create test client."""
+async def client(app: Litestar) -> AsyncIterator[AsyncTestClient]:
+    """Create test client.
+
+    Enters the AsyncTestClient as a context manager so the Litestar lifespan
+    runs — this is what closes the Dishka container and Oracle pool between
+    tests. Without it, container.close() is never invoked and subsequent
+    tests fail with 500 errors from leaked pool handles.
+
+    Yields:
+        AsyncTestClient bound to ``app`` with the lifespan entered.
+    """
     from litestar.testing import AsyncTestClient
 
-    return AsyncTestClient(app=app, raise_server_exceptions=False)
+    async with AsyncTestClient(app=app, raise_server_exceptions=False) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+async def htmx_client(app: Litestar) -> AsyncIterator[AsyncTestClient]:
+    """Test client that masquerades as HTMX (sends ``HX-Request: true``).
+
+    Phase 4 chat partials and Phase 5 explore partials branch on
+    ``request.htmx``; this fixture exercises that branch end-to-end.
+
+    Yields:
+        AsyncTestClient that always sends ``HX-Request: true``.
+    """
+    from litestar.testing import AsyncTestClient
+
+    async with AsyncTestClient(app=app, raise_server_exceptions=False) as test_client:
+        test_client.headers["HX-Request"] = "true"
+        yield test_client

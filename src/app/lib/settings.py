@@ -258,8 +258,13 @@ class AppSettings:
     """Allowed CORS Origins"""
     CSRF_COOKIE_NAME: str = field(default_factory=lambda: "XSRF-TOKEN")
     """CSRF Cookie Name"""
-    CSRF_HEADER_NAME: str = field(default_factory=lambda: "X-XSRF-TOKEN")
-    """CSRF Header Name"""
+    CSRF_HEADER_NAME: str = field(default_factory=lambda: "X-CSRFToken")
+    """CSRF Header Name (matches ``litestar-vite-plugin/helpers`` default).
+
+    ``registerHtmxExtension()`` forwards this header on every HTMX request, so
+    the Litestar default and the JS helper default must agree. Renamed from
+    ``X-XSRF-TOKEN`` in Ch 4 Phase 4.4.
+    """
     CSRF_COOKIE_SECURE: bool = field(default_factory=lambda: False)
     """CSRF Secure Cookie"""
 
@@ -381,9 +386,16 @@ class ViteSettings:
     HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
     """Vite dev server host."""
     BUNDLE_DIR: Path = field(
-        default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "server" / "static" / "dist")))
+        default_factory=lambda: Path(
+            os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static" / "dist")),
+        ),
     )
-    """Vite bundle directory."""
+    """Vite bundle directory.
+
+    Vite emits ``manifest.json`` + hashed bundles here; ``dist/hot`` is the
+    HMR marker written when ``DEV_MODE`` is true. Lives inside the ``web``
+    domain peer-package so templates and bundle output stay co-located.
+    """
     ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL", "/static/dist/"))
     """Vite asset URL."""
 
@@ -395,21 +407,34 @@ class ViteSettings:
     def get_config(self) -> ViteConfig:
         """Create Vite configuration for Litestar.
 
+        Phase 4 flips this from SPA mode (Bun + React) to template mode (Node +
+        HTMX + Jinja). Inputs live at ``src/resources/{main.js,styles.css}``;
+        output lands in ``src/app/domain/web/static/dist/`` (the gitignored
+        bundle dir matching the JS-side ``vite.config.ts``).
+
         Returns:
-            ViteConfig instance for Vite frontend integration.
+            ``ViteConfig`` wired for ``mode="template"`` with the coupled
+            paths that match the repo-root ``vite.config.ts``.
         """
         from litestar_vite import PathConfig, RuntimeConfig, TypeGenConfig, ViteConfig
 
         return ViteConfig(
-            mode="spa",
+            mode="template",
             dev_mode=self.DEV_MODE,
-            types=TypeGenConfig(output=Path("src/lib/generated")),
+            types=TypeGenConfig(
+                output=Path("src/resources/generated"),
+                generate_sdk=False,
+                generate_routes=False,
+                generate_schemas=False,
+                generate_page_props=False,
+            ),
             paths=PathConfig(
-                root=BASE_DIR.parents[1] / "src" / "js",
+                root=BASE_DIR.parents[1],
+                resource_dir=Path("src/resources"),
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
-            runtime=RuntimeConfig(executor="bun", host=self.HOST, port=self.PORT),
+            runtime=RuntimeConfig(executor="node", host=self.HOST, port=self.PORT),
         )
 
 

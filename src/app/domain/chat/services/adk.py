@@ -146,13 +146,13 @@ class ADKRunner:
     def __init__(self, session_service: SQLSpecSessionService) -> None:
         self.session_service = session_service
         agent = LlmAgent(name="CoffeeAssistant", instruction=BASE_SYSTEM_INSTRUCTION, model=settings.vertex_ai.CHAT_MODEL, tools=ALL_TOOLS)
-        self._runner = Runner(agent=agent, app_name="coffee-assistant", session_service=session_service)
+        self._runner = Runner(agent=agent, app_name="coffee_assistant", session_service=session_service)
 
     async def process_request(self, query: str, user_id: str = "default", session_id: str | None = None, persona: str = "enthusiast", cache_service: CacheService | None = None) -> dict[str, Any]:
         start_time = time.time()
-        session = await self.session_service.get_session(app_name="coffee-assistant", user_id=user_id, session_id=session_id) if session_id else None
+        session = await self.session_service.get_session(app_name="coffee_assistant", user_id=user_id, session_id=session_id) if session_id else None
         if not session:
-            session = await self.session_service.create_session(app_name="coffee-assistant", user_id=user_id, session_id=session_id)
+            session = await self.session_service.create_session(app_name="coffee_assistant", user_id=user_id, session_id=session_id)
 
         persona_instruction = PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
         content = types.Content(role="user", parts=[types.Part(text=f"[System Context: {persona_instruction}]\n\nUser Query: {query}")])

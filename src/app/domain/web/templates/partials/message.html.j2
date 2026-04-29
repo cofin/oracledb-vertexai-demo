@@ -1,0 +1,15 @@
+<article class="message message-{{ message.source }} rounded-xl border border-border bg-surface px-4 py-3 shadow-sm">
+  <header class="flex items-center justify-between text-xs uppercase tracking-wider">
+    <span class="text-muted">{{ "You" if message.source == "human" else "Barista" }}</span>
+    {% if message.source == "ai" and intent_detected %}
+      <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] text-accent-strong">{{ intent_detected }}</span>
+    {% endif %}
+  </header>
+  <p class="mt-2 whitespace-pre-wrap text-base text-strong">{{ message.message }}</p>
+  {% if message.source == "ai" and (latency_ms is not none or from_cache) %}
+    <footer class="mt-2 flex items-center gap-3 text-xs text-muted">
+      {% if latency_ms is not none %}<span>{{ latency_ms }} ms</span>{% endif %}
+      {% if from_cache %}<span class="rounded bg-success/15 px-1.5 py-0.5 text-success">cached</span>{% endif %}
+    </footer>
+  {% endif %}
+</article>

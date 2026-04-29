@@ -1,0 +1,23 @@
+<div id="metrics-badges" hx-swap-oob="true" class="flex flex-wrap items-center gap-2 text-xs">
+  {% if metrics_badges.total_ms is not none %}
+    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+      total <span class="font-semibold text-strong">{{ metrics_badges.total_ms }} ms</span>
+    </span>
+  {% endif %}
+  {% if metrics_badges.oracle_ms is not none %}
+    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+      oracle <span class="font-semibold text-strong">{{ metrics_badges.oracle_ms }} ms</span>
+    </span>
+  {% endif %}
+  {% if metrics_badges.embedding_ms is not none %}
+    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+      embed <span class="font-semibold text-strong">{{ metrics_badges.embedding_ms }} ms</span>
+    </span>
+  {% endif %}
+  {% if metrics_badges.from_cache %}
+    <span class="rounded-full bg-success/15 px-2 py-0.5 text-success">cache hit</span>
+  {% endif %}
+  {% if metrics_badges.intent %}
+    <span class="rounded-full bg-accent-soft px-2 py-0.5 text-accent-strong">{{ metrics_badges.intent }}</span>
+  {% endif %}
+</div>

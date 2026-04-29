@@ -25,6 +25,7 @@ class SystemController(Controller):
     async def favicon(self) -> File:
         """Serve favicon with security headers."""
         return File(
-            path=BASE_DIR.parents[1] / "src" / "js" / "public" / "favicon.ico",
+            path=BASE_DIR.parents[1] / "src" / "resources" / "public" / "favicon.ico",
+            media_type="image/x-icon",
             headers={"Cache-Control": "public, max-age=31536000", "X-Content-Type-Options": "nosniff"},
         )

@@ -60,10 +60,15 @@ class ApplicationCore(InitPluginProtocol):
         Args:
             app_config: The :class:`AppConfig <.config.app.AppConfig>` instance.
         """
+        from litestar.contrib.jinja import JinjaTemplateEngine
         from litestar.openapi import OpenAPIConfig
         from litestar.openapi.plugins import ScalarRenderPlugin
+        from litestar.plugins.flash import FlashConfig, FlashPlugin
+        from litestar.plugins.htmx import HTMXPlugin
+        from litestar.template import TemplateConfig
 
         from app.lib import log
+        from app.lib.settings import BASE_DIR
 
         settings = get_settings()
 
@@ -81,6 +86,13 @@ class ApplicationCore(InitPluginProtocol):
         app_config.stores = config.stores
         app_config.middleware.append(config.session_config.middleware)
 
+        # Templates — owned by Litestar, scanned by the FlashPlugin Jinja globals
+        # and the litestar-vite plugin's ``vite()``/``vite_hmr()`` helpers.
+        app_config.template_config = TemplateConfig(
+            engine=JinjaTemplateEngine,
+            directory=BASE_DIR / "domain" / "web" / "templates",
+        )
+
         # Plugins
         app_config.plugins.extend(
             [
@@ -89,6 +101,8 @@ class ApplicationCore(InitPluginProtocol):
                 StructlogPlugin(config=config.log),
                 ProblemDetailsPlugin(config=config.problem_details),
                 VitePlugin(config=config.vite),
+                HTMXPlugin(),
+                FlashPlugin(config=FlashConfig(template_config=app_config.template_config)),
                 DomainPlugin(
                     DomainPluginConfig(
                         domain_packages=["app.domain"],
