@@ -24,7 +24,17 @@ from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.system.schemas import IntentExemplar, ResponseCache, SearchMetricsCreate
+from app.domain.system.schemas import (
+    CacheStats,
+    CacheStatsRow,
+    IntentExemplar,
+    MetricsTimeSeries,
+    MetricsTimeSeriesPoints,
+    MetricsTimeSeriesRow,
+    PerformanceStats,
+    ResponseCache,
+    SearchMetricsCreate,
+)
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
@@ -205,11 +215,16 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
                 ),
             )
 
-    async def get_cache_stats(self) -> dict[str, Any]:
-        row = await self.driver.select_one_or_none(db_manager.get_sql("get-cache-stats"))
-        total_hits = row.get("total_hits", 0) if row else 0
-        total_entries = row.get("total_entries", 0) if row else 0
-        return {"total_hits": total_hits, "total_entries": total_entries, "cache_hit_rate": (total_hits / (total_hits + 100)) * 100}
+    async def get_cache_stats(self) -> CacheStats:
+        row = await self.driver.select_one_or_none(
+            db_manager.get_sql("get-cache-stats"), schema_type=CacheStatsRow
+        )
+        total_hits = row.total_hits if row else 0
+        return CacheStats(
+            total_hits=total_hits,
+            total_entries=row.total_entries if row else 0,
+            cache_hit_rate=(total_hits / (total_hits + 100)) * 100,
+        )
 
     async def invalidate_cache(self, cache_type: str | None = None, include_exemplars: bool = False) -> int:
         """Clear cache tables."""
@@ -234,10 +249,36 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
     async def record_search(self, metrics: SearchMetricsCreate) -> None:
         await self.driver.execute(sql.insert("search_metric").values(**msgspec.to_builtins(metrics)))
 
-    async def get_performance_stats(self, hours: int = 24) -> dict[str, Any]:
+    async def get_performance_stats(self, hours: int = 24) -> PerformanceStats:
         since = datetime.now(UTC) - timedelta(hours=hours)
-        row = await self.driver.select_one_or_none(db_manager.get_sql("get-performance-stats"), since=since)
-        return {k: v or 0 for k, v in row.items()} if row else {}
+        row = await self.driver.select_one_or_none(
+            db_manager.get_sql("get-performance-stats"),
+            since=since,
+            schema_type=PerformanceStats,
+        )
+        return row or PerformanceStats(
+            total_searches=0,
+            avg_search_time_ms=0.0,
+            avg_oracle_time_ms=0.0,
+            avg_similarity_score=0.0,
+        )
+
+    async def get_time_series(self, hours: int = 1) -> MetricsTimeSeries:
+        """Per-minute latency buckets for the explore-page chart panel."""
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        rows = await self.driver.select(
+            db_manager.get_sql("metrics-time-series"),
+            since=since,
+            schema_type=MetricsTimeSeriesRow,
+        )
+        return MetricsTimeSeries(
+            labels=[row.bucket for row in rows],
+            series=MetricsTimeSeriesPoints(
+                total_ms=[row.total_ms for row in rows],
+                oracle_ms=[row.oracle_ms for row in rows],
+                embedding_ms=[row.embedding_ms for row in rows],
+            ),
+        )
 
 # --- Exemplar Service ---
 

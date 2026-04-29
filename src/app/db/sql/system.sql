@@ -10,17 +10,30 @@ WHERE text_hash = :hash
   AND model = :model;
 
 -- name: get-cache-stats
-SELECT SUM(hit_count) AS total_hits,
-       COUNT(*)       AS total_entries
+SELECT COALESCE(SUM(hit_count), 0) AS total_hits,
+       COALESCE(COUNT(*), 0)       AS total_entries
 FROM embedding_cache;
 
 -- name: get-performance-stats
-SELECT COUNT(*)              AS total_searches,
-       AVG(search_time_ms)   AS avg_search_time_ms,
-       AVG(oracle_time_ms)   AS avg_oracle_time_ms,
-       AVG(similarity_score) AS avg_similarity_score
+SELECT COALESCE(COUNT(*), 0)              AS total_searches,
+       COALESCE(AVG(search_time_ms), 0)   AS avg_search_time_ms,
+       COALESCE(AVG(oracle_time_ms), 0)   AS avg_oracle_time_ms,
+       COALESCE(AVG(similarity_score), 0) AS avg_similarity_score
 FROM search_metric
 WHERE created_at > :since;
+
+-- name: metrics-time-series
+SELECT TO_CHAR(TRUNC(created_at, 'MI'), 'HH24:MI') AS bucket,
+       COALESCE(AVG(search_time_ms), 0)            AS total_ms,
+       COALESCE(AVG(oracle_time_ms), 0)            AS oracle_ms,
+       COALESCE(AVG(embedding_time_ms), 0)         AS embedding_ms
+FROM search_metric
+WHERE created_at > :since
+GROUP BY TRUNC(created_at, 'MI')
+ORDER BY TRUNC(created_at, 'MI');
+
+-- name: explain-plan-display
+SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY());
 
 -- name: vector-search-exemplars
 SELECT intent,

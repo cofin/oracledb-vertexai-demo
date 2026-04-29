@@ -119,9 +119,11 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
 
 @pytest.mark.anyio
 async def test_vector_demo_controller_surfaces_price_and_similarity_without_distance() -> None:
-    """The /api/vector-demo response must include 'price' and 'similarity' (0-100), not 'distance'."""
+    """The /api/vector-demo SPA response surfaces ``price`` and ``similarity`` (0-100), not ``distance``."""
 
-    from app.domain.products import schemas as product_schemas
+    from unittest.mock import MagicMock
+
+    from app.domain.products.schemas import VectorDemo, VectorQuery
 
     mock_vector_search = AsyncMock()
     mock_vector_search.similarity_search.return_value = (
@@ -146,37 +148,38 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
     )
 
     mock_metrics = AsyncMock()
+    request = MagicMock()
+    request.htmx = False
 
-    controller = object.__new__(VectorController)
-    response: dict[str, Any] = await VectorController.vector_search_demo.fn(
-        controller,
-        data=product_schemas.VectorQuery(query="dark roast"),
+    response = await VectorController.vector_search_demo.fn(
+        object.__new__(VectorController),
+        data=VectorQuery(query="dark roast"),
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
+        request=request,
     )
 
-    assert response["cache_hit"] is False
-    assert response["embedding_time_ms"] == pytest.approx(12.0)
-    assert response["oracle_time_ms"] == pytest.approx(4.0)
+    payload = response.content
+    assert isinstance(payload, VectorDemo)
+    assert payload.cache_hit is False
+    assert payload.embedding_time_ms == pytest.approx(12.0)
+    assert payload.oracle_time_ms == pytest.approx(4.0)
 
-    demo_results = response["results"]
-    assert len(demo_results) == 2
-    for row in demo_results:
-        assert {"name", "description", "price", "similarity"} <= row.keys(), (
-            f"vector-demo result must surface name/description/price/similarity, got {row.keys()}"
+    assert len(payload.results) == 2
+    for row in payload.results:
+        assert {"name", "description", "price", "similarity"} <= set(row.__struct_fields__), (
+            f"VectorDemoMatch must surface name/description/price/similarity, got {row.__struct_fields__}"
         )
-        assert "distance" not in row, (
-            "demo result must not expose 'distance' — that key only existed because of the band-aid"
+        assert not hasattr(row, "distance"), (
+            "VectorDemoMatch must not expose 'distance' — that key only existed because of the band-aid"
         )
 
     # similarity is a 0-100 percentage derived from similarity_score, so check round-trip.
-    assert demo_results[0]["similarity"] == pytest.approx(91.0)
-    assert demo_results[0]["price"] == pytest.approx(5.25)
+    assert payload.results[0].similarity == pytest.approx(91.0)
+    assert payload.results[0].price == pytest.approx(5.25)
 
     # And the metrics record call uses similarity_score (not 1 - distance).
-    record_call = mock_metrics.record_search.await_args
-    assert record_call is not None, "metrics_service.record_search must be awaited once"
-    metric_arg = record_call.args[0]
-    assert metric_arg.similarity_score == pytest.approx(0.91), (
+    assert mock_metrics.record_search.await_args is not None, "metrics_service.record_search must be awaited once"
+    assert mock_metrics.record_search.await_args.args[0].similarity_score == pytest.approx(0.91), (
         "recorded similarity_score must come straight from the top result, not via 1 - distance"
     )

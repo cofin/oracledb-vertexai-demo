@@ -70,3 +70,31 @@ class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
     description: str
     price: float
     similarity_score: float
+
+
+class VectorDemoMatch(CamelizedBaseStruct, omit_defaults=True):
+    """A vector-search hit shaped for the explore-page Panel 1 partial."""
+
+    name: str
+    description: str
+    price: float
+    similarity: float
+
+
+class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
+    """Full ``POST /api/vector-demo`` payload for SPA / JSON consumers."""
+
+    results: list[VectorDemoMatch]
+    search_time_ms: float
+    embedding_time_ms: float
+    oracle_time_ms: float
+    cache_hit: bool
+    performance_level: str
+    debug_timings: dict[str, float]
+
+
+class ExplainPlan(CamelizedBaseStruct, omit_defaults=True):
+    """Oracle EXPLAIN PLAN output for the vector-search SQL (Panel 2)."""
+
+    plan_lines: list[str]
+    plan_summary: str

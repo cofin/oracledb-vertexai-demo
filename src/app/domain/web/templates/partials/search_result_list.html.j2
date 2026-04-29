@@ -1,0 +1,12 @@
+{# Result list returned by POST /api/vector-demo when HX-Request is set. #}
+<div id="search-results" class="space-y-2">
+  {% if matches %}
+    {% for match in matches %}
+      {% include "partials/search_result.html.j2" %}
+    {% endfor %}
+  {% else %}
+    <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
+      No matches for &ldquo;{{ query }}&rdquo;.
+    </p>
+  {% endif %}
+</div>

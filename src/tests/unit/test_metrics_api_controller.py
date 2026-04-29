@@ -1,52 +1,53 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+
 from __future__ import annotations
 
 import pytest
 
 from app.domain.system.controllers import MetricsController
+from app.domain.system.schemas import PerformanceStats
 
 
 class FakeMetricsService:
-    async def get_performance_stats(self, hours: int) -> dict[str, float]:
+    async def get_performance_stats(self, hours: int) -> PerformanceStats:
         assert hours == 24
-        return {
-            "total_searches": 12,
-            "avg_search_time_ms": 45.5,
-            "avg_oracle_time_ms": 8.1,
-            "avg_similarity_score": 0.91,
-        }
+        return PerformanceStats(
+            total_searches=12,
+            avg_search_time_ms=45.5,
+            avg_oracle_time_ms=8.1,
+            avg_similarity_score=0.91,
+        )
 
 
 class FailingMetricsService:
-    async def get_performance_stats(self, hours: int) -> dict[str, float]:
+    async def get_performance_stats(self, hours: int) -> PerformanceStats:
+        del hours
         msg = "metrics unavailable"
         raise ValueError(msg)
 
 
 @pytest.mark.anyio
 async def test_get_metrics_returns_normalized_payload() -> None:
-    controller = object.__new__(MetricsController)
     result = await MetricsController.get_metrics.fn(
-        controller, metrics_service=FakeMetricsService()
+        object.__new__(MetricsController), metrics_service=FakeMetricsService()
     )
 
-    assert result == {
-        "totalSearches": 12,
-        "avgSearchTimeMs": 45.5,
-        "avgOracleTimeMs": 8.1,
-        "avgSimilarityScore": 0.91,
-    }
+    assert result.total_searches == 12
+    assert result.avg_search_time_ms == 45.5
+    assert result.avg_oracle_time_ms == 8.1
+    assert result.avg_similarity_score == 0.91
 
 
 @pytest.mark.anyio
 async def test_get_metrics_returns_zero_fallback_on_service_error() -> None:
-    controller = object.__new__(MetricsController)
     result = await MetricsController.get_metrics.fn(
-        controller, metrics_service=FailingMetricsService()
+        object.__new__(MetricsController), metrics_service=FailingMetricsService()
     )
 
-    assert result == {
-        "totalSearches": 0,
-        "avgSearchTimeMs": 0,
-        "avgOracleTimeMs": 0,
-        "avgSimilarityScore": 0,
-    }
+    assert result.total_searches == 0
+    assert result.avg_search_time_ms == 0
+    assert result.avg_oracle_time_ms == 0
+    assert result.avg_similarity_score == 0

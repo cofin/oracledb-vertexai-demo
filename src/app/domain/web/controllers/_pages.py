@@ -4,12 +4,12 @@
 # you may not use this file except in compliance with the License.
 """Page-level routes for the HTMX frontend.
 
-Both pages render a Jinja template; HTMX-aware partials live alongside
-domain controllers (e.g. ``app.domain.chat.controllers``).
+HTMX-aware partials live alongside the domain controllers that own
+their data (e.g. ``app.domain.chat.controllers``,
+``app.domain.products.controllers``).
 """
 
 from litestar import Controller, get
-from litestar.exceptions import NotFoundException
 from litestar.response import Template
 
 
@@ -22,5 +22,4 @@ class PageController(Controller):
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
     async def explore_page(self) -> Template:
-        # Phase 5.4 swaps the placeholder for the real 5-panel template.
-        raise NotFoundException(detail="Explore page lands in Phase 5.")
+        return Template(template_name="pages/explore.html.j2")

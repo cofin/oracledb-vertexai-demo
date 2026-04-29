@@ -23,7 +23,7 @@ from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.products.schemas import Product, ProductMatch, Store
+from app.domain.products.schemas import ExplainPlan, Product, ProductMatch, Store
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
@@ -182,3 +182,28 @@ class OracleVectorSearchService:
         oracle_ms = (time.time() - oracle_start) * 1000
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}
+
+    async def explain_search_plan(self, query: str) -> ExplainPlan:
+        """Run EXPLAIN PLAN against the vector-search SQL and pull the plan.
+
+        Two driver round-trips: ``EXPLAIN PLAN FOR <vector-search>`` then
+        ``DBMS_XPLAN.DISPLAY()``. The returned summary is the first plan
+        operation that mentions the VECTOR access path (Oracle 23ai's
+        hallmark for HNSW/IVF lookups).
+        """
+        embedding, _ = await self.vertex_ai_service.get_text_embedding(
+            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+        )
+        await self.product_service.driver.execute(
+            db_manager.get_sql("explain-plan-vector-search"),
+            query_vector=embedding,
+            threshold=0.5,
+            limit=5,
+        )
+        rows = await self.product_service.driver.select(db_manager.get_sql("explain-plan-display"))
+        plan_lines = [str(row["plan_table_output"]) for row in rows]
+        plan_summary = next(
+            (line.strip() for line in plan_lines if "VECTOR" in line.upper()),
+            plan_lines[0].strip() if plan_lines else "",
+        )
+        return ExplainPlan(plan_lines=plan_lines, plan_summary=plan_summary)

@@ -40,3 +40,15 @@ FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
 ORDER BY similarity_score DESC
 FETCH FIRST :limit ROWS ONLY;
+
+-- name: explain-plan-vector-search
+EXPLAIN PLAN FOR
+SELECT id,
+       name,
+       description,
+       price,
+       1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) AS similarity_score
+FROM product
+WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
+ORDER BY similarity_score DESC
+FETCH FIRST :limit ROWS ONLY;

@@ -2,33 +2,30 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 import re
 import time
 import uuid
-from typing import Any
+from urllib.parse import quote
 
-from litestar import Controller, post
+from litestar import Controller, Response, get, post
 from litestar.exceptions import ValidationException
+from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
-from app.domain.products import schemas as product_schemas
+from app.domain.products.schemas import (
+    ExplainPlan,
+    VectorDemo,
+    VectorDemoMatch,
+    VectorQuery,
+)
 from app.domain.products.services import OracleVectorSearchService
-from app.domain.system import schemas as system_schemas
+from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
 
 class VectorController(Controller):
-    """Vector search controller with JSON responses."""
+    """Vector search controller with HTMX-aware partial / JSON responses."""
 
     @staticmethod
     def validate_message(message: str) -> str:
@@ -47,11 +44,12 @@ class VectorController(Controller):
     @post(path="/api/vector-demo", name="vector.demo")
     async def vector_search_demo(
         self,
-        data: product_schemas.VectorQuery,
+        data: VectorQuery,
         vector_search_service: Inject[OracleVectorSearchService],
         metrics_service: Inject[MetricsService],
-    ) -> dict[str, Any]:
-        """Run interactive vector search demonstration."""
+        request: HTMXRequest,
+    ) -> Response | HTMXTemplate:
+        """Run vector search; HTMX clients get a partial + PushUrl, SPA clients JSON."""
         query = self.validate_message(data.query)
 
         full_request_start = time.time()
@@ -64,7 +62,7 @@ class VectorController(Controller):
 
         metrics_record_start = time.time()
         await metrics_service.record_search(
-            system_schemas.SearchMetricsCreate(
+            SearchMetricsCreate(
                 query_id=str(uuid.uuid4()),
                 user_id="demo_user",
                 search_time_ms=(time.time() - full_request_start) * 1000,
@@ -76,14 +74,14 @@ class VectorController(Controller):
         )
         detailed_timings["metrics_recording_ms"] = (time.time() - metrics_record_start) * 1000
 
-        demo_results = [
-            {
-                "name": r.name,
-                "description": r.description,
-                "price": r.price,
-                "similarity": round(r.similarity_score * 100, 1),
-            }
-            for r in results
+        matches = [
+            VectorDemoMatch(
+                name=row.name,
+                description=row.description,
+                price=row.price,
+                similarity=round(row.similarity_score * 100, 1),
+            )
+            for row in results
         ]
 
         total_ms = (time.time() - full_request_start) * 1000
@@ -97,12 +95,30 @@ class VectorController(Controller):
             else "needs-optimization"
         )
 
-        return {
-            "results": demo_results,
-            "search_time_ms": round(total_ms, 2),
-            "embedding_time_ms": round(vector_timings["embedding_ms"], 2),
-            "oracle_time_ms": round(vector_timings["oracle_ms"], 2),
-            "cache_hit": embedding_cache_hit,
-            "performance_level": performance_level,
-            "debug_timings": {k: round(v, 2) for k, v in detailed_timings.items()},
-        }
+        if request.htmx:
+            return HTMXTemplate(
+                template_name="partials/search_result_list.html.j2",
+                context={"matches": matches, "query": query},
+                push_url=f"/explore?q={quote(query)}",
+            )
+
+        return Response(
+            content=VectorDemo(
+                results=matches,
+                search_time_ms=round(total_ms, 2),
+                embedding_time_ms=round(vector_timings["embedding_ms"], 2),
+                oracle_time_ms=round(vector_timings["oracle_ms"], 2),
+                cache_hit=embedding_cache_hit,
+                performance_level=performance_level,
+                debug_timings={k: round(v, 2) for k, v in detailed_timings.items()},
+            ),
+        )
+
+    @get(path="/api/explain-plan", name="vector.explain_plan", exclude_from_auth=True)
+    async def explain_plan(
+        self,
+        query: str,
+        vector_search_service: Inject[OracleVectorSearchService],
+    ) -> ExplainPlan:
+        """Return the Oracle EXPLAIN PLAN for the vector-search SQL."""
+        return await vector_search_service.explain_search_plan(self.validate_message(query))

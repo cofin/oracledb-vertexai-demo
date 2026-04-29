@@ -17,24 +17,38 @@
 from ._cache import EmbeddingCache, ResponseCache
 from ._exemplar import IntentExemplar
 from ._metrics import (
+    CacheStats,
+    CacheStatsRow,
+    ClassifyCompare,
+    ClassifyCompareIntent,
     MetricCard,
-    MetricsChart,
+    MetricsDashboard,
     MetricsSummary,
+    MetricsTimeSeries,
+    MetricsTimeSeriesPoints,
+    MetricsTimeSeriesRow,
+    PerformanceStats,
     SearchMetricsCreate,
-    TimeSeries,
 )
 from ._session import HistoryMeta, UserSession, UserSessionCreate
 
 __all__ = (
+    "CacheStats",
+    "CacheStatsRow",
+    "ClassifyCompare",
+    "ClassifyCompareIntent",
     "EmbeddingCache",
     "HistoryMeta",
     "IntentExemplar",
     "MetricCard",
-    "MetricsChart",
+    "MetricsDashboard",
     "MetricsSummary",
+    "MetricsTimeSeries",
+    "MetricsTimeSeriesPoints",
+    "MetricsTimeSeriesRow",
+    "PerformanceStats",
     "ResponseCache",
     "SearchMetricsCreate",
-    "TimeSeries",
     "UserSession",
     "UserSessionCreate",
 )

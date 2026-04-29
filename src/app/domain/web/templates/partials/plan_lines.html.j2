@@ -1,0 +1,8 @@
+{# Oracle EXPLAIN PLAN viewer rendered for the explore-page Panel 2. #}
+<div id="plan" class="space-y-2">
+  <p class="text-xs text-muted">
+    Top vector op: <span class="font-mono text-accent-strong">{{ planSummary or '—' }}</span>
+  </p>
+  <pre class="max-h-64 overflow-auto rounded-lg border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-base">{% for line in planLines %}{{ line }}
+{% endfor %}</pre>
+</div>

@@ -2,49 +2,48 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-from typing import Any
 
 from litestar import Controller, get
 
-from app.domain.system import schemas
+from app.domain.system.schemas import (
+    MetricCard,
+    MetricsDashboard,
+    MetricsSummary,
+    MetricsTimeSeries,
+)
 from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
 
 
 class MetricsController(Controller):
-    """Metrics controller for React dashboard APIs."""
+    """Metrics endpoints feeding the explore-page panels and ops dashboard."""
 
     @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> dict[str, Any]:
-        """Get performance metrics with validation."""
+    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> MetricsDashboard:
+        """24-hour rollup for the legacy operations dashboard."""
         try:
-            metrics = await metrics_service.get_performance_stats(hours=24)
-            return {
-                "totalSearches": metrics.get("total_searches", 0),
-                "avgSearchTimeMs": metrics.get("avg_search_time_ms", 0),
-                "avgOracleTimeMs": metrics.get("avg_oracle_time_ms", 0),
-                "avgSimilarityScore": metrics.get("avg_similarity_score", 0),
-            }
+            stats = await metrics_service.get_performance_stats(hours=24)
+            return MetricsDashboard(
+                total_searches=stats.total_searches,
+                avg_search_time_ms=stats.avg_search_time_ms,
+                avg_oracle_time_ms=stats.avg_oracle_time_ms,
+                avg_similarity_score=stats.avg_similarity_score,
+            )
         except (ValueError, TypeError):
-            return {"totalSearches": 0, "avgSearchTimeMs": 0, "avgOracleTimeMs": 0, "avgSimilarityScore": 0}
+            return MetricsDashboard(
+                total_searches=0,
+                avg_search_time_ms=0.0,
+                avg_oracle_time_ms=0.0,
+                avg_similarity_score=0.0,
+            )
 
     @get(path="/api/metrics/summary", name="metrics.summary")
     async def get_metrics_summary(
         self,
         metrics_service: Inject[MetricsService],
         cache_service: Inject[CacheService],
-    ) -> schemas.MetricsSummary:
-        """Get summary metrics for UI cards."""
+    ) -> MetricsSummary:
+        """Cards for explore-page Panel 3 (consumed via ``ls-for``)."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
         prev_stats = await metrics_service.get_performance_stats(hours=2)
@@ -55,45 +54,34 @@ class MetricsController(Controller):
             change = ((current - previous) / previous) * 100
             return ("up" if change > 0 else "down", abs(change))
 
-        total_trend, total_change = calculate_trend(perf_stats["total_searches"], prev_stats["total_searches"])
+        total_trend, total_change = calculate_trend(perf_stats.total_searches, prev_stats.total_searches)
 
-        return schemas.MetricsSummary(
-            total_searches=schemas.MetricCard(
-                label="Total Searches",
-                value=f"{perf_stats['total_searches']:,}",
-                trend=total_trend,
-                trend_value=f"{total_change:.1f}%",
-            ),
-            avg_response_time=schemas.MetricCard(
-                label="Avg Response Time",
-                value=f"{perf_stats['avg_search_time_ms']:.0f}ms",
-                trend="down" if perf_stats["avg_search_time_ms"] < 50 else "up",  # noqa: PLR2004
-                trend_value=None,
-            ),
-            avg_oracle_time=schemas.MetricCard(
-                label="Oracle Vector Time",
-                value=f"{perf_stats['avg_oracle_time_ms']:.0f}ms",
-                trend="neutral",
-                trend_value=None,
-            ),
-            cache_hit_rate=schemas.MetricCard(
-                label="Cache Hit Rate",
-                value=f"{cache_stats['cache_hit_rate']:.1f}%",
-                trend="up" if cache_stats["cache_hit_rate"] > 80 else "down",  # noqa: PLR2004
-                trend_value=None,
-            ),
+        return MetricsSummary(
+            cards=[
+                MetricCard(
+                    label="Total Searches",
+                    value=f"{perf_stats.total_searches:,}",
+                    trend=total_trend,
+                    trend_value=f"{total_change:.1f}%",
+                ),
+                MetricCard(
+                    label="Avg Response Time",
+                    value=f"{perf_stats.avg_search_time_ms:.0f}ms",
+                    trend="down" if perf_stats.avg_search_time_ms < 50 else "up",  # noqa: PLR2004
+                ),
+                MetricCard(
+                    label="Oracle Vector Time",
+                    value=f"{perf_stats.avg_oracle_time_ms:.0f}ms",
+                ),
+                MetricCard(
+                    label="Cache Hit Rate",
+                    value=f"{cache_stats.cache_hit_rate:.1f}%",
+                    trend="up" if cache_stats.cache_hit_rate > 80 else "down",  # noqa: PLR2004
+                ),
+            ],
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
-    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.MetricsChart:
-        """Get chart data for dashboard visualizations."""
-        return schemas.MetricsChart(
-            time_series=schemas.TimeSeries(
-                labels=[],
-                total_latency=[],
-                oracle_latency=[],
-                vertex_latency=[],
-            ),
-            scatter_data=[],
-            breakdown_data={},
-        )
+    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> MetricsTimeSeries:
+        """Per-minute latency tracks for the explore-page chart (last hour)."""
+        return await metrics_service.get_time_series(hours=1)
