@@ -382,8 +382,8 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 
 ### Phase 3: New frontend scaffold (`oracledb-vertexai-4d6.4.11`)
 
-- [ ] **3.1** `package.json` at repo root. Dependencies: `htmx.org@2.0.10`, `alpinejs@^3.15`, `apexcharts@^5.10`. devDependencies: `vite@8.x`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `typescript@5.x` (vite needs it even though we're not writing TS in this chapter). Scripts: `"dev": "vite"`, `"build": "vite build"`, `"preview": "vite preview"`. **No biome, no bun-specific scripts.**
-- [ ] **3.2** `vite.config.ts` at repo root. Copy verbatim from `~/code/litestar/litestar-vite/examples/jinja-htmx/vite.config.ts`, then change:
+- [x] **3.1** `package.json` at repo root. Dependencies: `htmx.org@2.0.10`, `alpinejs@^3.15`, `apexcharts@^5.10`. devDependencies: `vite@8.x`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `typescript@5.x` (vite needs it even though we're not writing TS in this chapter). Scripts: `"dev": "vite"`, `"build": "vite build"`, `"preview": "vite preview"`. **No biome, no bun-specific scripts.** [12156d7]
+- [x] **3.2** `vite.config.ts` at repo root. Copy verbatim from `~/code/litestar/litestar-vite/examples/jinja-htmx/vite.config.ts`, then change:
     ```ts
     plugins: [
       tailwindcss(),
@@ -397,11 +397,11 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
     ],
     server: { host: "0.0.0.0", port: 5173, strictPort: true, cors: true },
     ```
-    Keep the `bundlerKey` switch for vite 8 / rolldown compatibility.
-- [ ] **3.3** `src/resources/styles.css` — content per the *styles.css* block in this spec (Tailwind import, `@source "../templates"`, `@theme` tokens carried over from the React `index.css`). Failing test: `src/tests/unit/test_styles_source.py` asserts the file contains `@import "tailwindcss"` and `@source "../templates"`.
-- [ ] **3.4** `src/resources/main.js` — content per the *main.js* block in this spec. Verify Phase 2.4's skipped test now passes (favicon resolves through `src/resources/public/favicon.ico`).
-- [ ] **3.5** `tsconfig.json` at repo root — minimal: `{ "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler", "strict": true, "skipLibCheck": true } }`. (No code is TS in this chapter, but vite + the litestar plugin expect a tsconfig to exist.)
-- [ ] **3.6** Failing test: `src/tests/unit/test_repo_layout.py` asserts `Path("vite.config.ts").exists() and Path("package.json").exists() and not Path("src/js").exists()`. Run `npm install` and assert `package-lock.json` exists. Run `npm run build` and assert `src/app/domain/web/static/dist/manifest.json` exists.
+    Keep the `bundlerKey` switch for vite 8 / rolldown compatibility. [12156d7]
+- [x] **3.3** `src/resources/styles.css` — content per the *styles.css* block in this spec (Tailwind import, `@source "../app/domain/web/templates"`, `@theme` tokens carried over from the React `index.css`). Failing test: `src/tests/unit/test_styles_source.py` asserts the file contains `@import "tailwindcss"` and `@source "../app/domain/web/templates"`. [12156d7]
+- [x] **3.4** `src/resources/main.js` — content per the *main.js* block in this spec. (Favicon HTTP-route un-skip deferred to Phase 4 wiring; the file-path on disk is correct now via Phase 2.2 `git mv`.) [12156d7]
+- [x] **3.5** `tsconfig.json` at repo root — minimal: `{ "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "bundler", "strict": true, "skipLibCheck": true } }`. (No code is TS in this chapter, but vite + the litestar plugin expect a tsconfig to exist.) [12156d7]
+- [x] **3.6** Failing test: `src/tests/unit/test_repo_layout.py` asserts `Path("vite.config.ts").exists() and Path("package.json").exists() and not Path("src/js").exists()`. Run `npm install` and assert `package-lock.json` exists. Run `npm run build` and assert `src/app/domain/web/static/dist/manifest.json` exists. [12156d7]
 
 ### Phase 4: Python wiring + chat templates (`oracledb-vertexai-4d6.4.1`, rewritten)
 
