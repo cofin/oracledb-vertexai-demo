@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@source "../app/domain/web/templates";
+
+@theme {
+  --color-canvas: #111113;
+  --color-deep: #09090b;
+  --color-surface: #18181b;
+  --color-surface-strong: #27272a;
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-strong: #ffffff;
+  --color-base: #e4e4e7;
+  --color-muted: #a1a1aa;
+  --color-accent: #a16207;
+  --color-accent-strong: #ca8a04;
+  --color-accent-soft: rgba(161, 98, 7, 0.15);
+  --color-success: #4ade80;
+  --color-danger: #f87171;
+  --font-sans: "Inter", "Space Grotesk", "Sora", system-ui, sans-serif;
+}
