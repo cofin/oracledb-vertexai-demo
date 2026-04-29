@@ -23,7 +23,7 @@ from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.products.schemas import Product, Store
+from app.domain.products.schemas import Product, ProductMatch, Store
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
@@ -69,12 +69,15 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
         rowcount = getattr(result, "rowcount", None)
         return bool(rowcount) if rowcount is not None else True
 
-    async def search_by_vector(self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5) -> list[dict[str, Any]]:
+    async def search_by_vector(
+        self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5
+    ) -> list[ProductMatch]:
         return await self.driver.select(
             db_manager.get_sql("vector-search-products"),
             query_vector=query_embedding,
             threshold=similarity_threshold,
             limit=limit,
+            schema_type=ProductMatch,
         )
 
 # --- Store Service ---
@@ -161,7 +164,9 @@ class OracleVectorSearchService:
         self.vertex_ai_service = vertex_ai_service
         self.product_service = product_service
 
-    async def similarity_search(self, query: str, k: int = 5, threshold: float = 0.5) -> tuple[list[dict[str, Any]], bool, dict[str, float]]:
+    async def similarity_search(
+        self, query: str, k: int = 5, threshold: float = 0.5
+    ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         start_time = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query, task_type="RETRIEVAL_QUERY", return_cache_status=True
@@ -171,8 +176,5 @@ class OracleVectorSearchService:
         oracle_start = time.time()
         results = await self.product_service.search_by_vector(embedding, similarity_threshold=threshold, limit=k)
         oracle_ms = (time.time() - oracle_start) * 1000
-
-        for r in results:
-            r["distance"] = 1 - r["similarity_score"]
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}

@@ -58,10 +58,15 @@ class VectorDemoRequest(CamelizedBaseStruct, omit_defaults=True):
     query: str
 
 
-class VectorDemoResult(CamelizedBaseStruct, omit_defaults=True):
-    """Vector search demo result."""
+class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
+    """A product row returned by vector similarity search.
 
-    product_name: str
+    Slim projection of `product` (no embedding, no metadata) plus the
+    `similarity_score` derived in SQL via `1 - VECTOR_DISTANCE(...)`.
+    """
+
+    id: int
+    name: str
     description: str
+    price: float
     similarity_score: float
-    search_time_ms: float

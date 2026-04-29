@@ -70,7 +70,7 @@ class VectorController(Controller):
                 search_time_ms=(time.time() - full_request_start) * 1000,
                 embedding_time_ms=vector_timings["embedding_ms"],
                 oracle_time_ms=vector_timings["oracle_ms"],
-                similarity_score=1 - results[0]["distance"] if results else 0,
+                similarity_score=results[0].similarity_score if results else 0,
                 result_count=len(results),
             )
         )
@@ -78,10 +78,10 @@ class VectorController(Controller):
 
         demo_results = [
             {
-                "name": r["name"],
-                "description": r["description"],
-                "similarity": round((1 - r["distance"]) * 100, 1),
-                "distance": r["distance"],
+                "name": r.name,
+                "description": r.description,
+                "price": r.price,
+                "similarity": round(r.similarity_score * 100, 1),
             }
             for r in results
         ]
