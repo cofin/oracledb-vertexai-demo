@@ -145,18 +145,12 @@ source = { editable = "." }
 dependencies = [
     { name = "dishka" },
     { name = "google-adk" },
-    { name = "google-cloud-aiplatform" },
-    { name = "google-genai" },
     { name = "litestar", extra = ["cryptography", "jinja", "jwt", "structlog"] },
     { name = "litestar-granian", extra = ["uvloop"] },
     { name = "litestar-mcp" },
     { name = "litestar-vite" },
-    { name = "msgspec" },
     { name = "numpy" },
-    { name = "oracledb" },
     { name = "python-dotenv" },
-    { name = "rich-click" },
-    { name = "sqlglot" },
     { name = "sqlspec", extra = ["adk", "mypyc", "oracledb", "performance"] },
 ]
 
@@ -216,18 +210,12 @@ test = [
 requires-dist = [
     { name = "dishka", specifier = ">=1.4.2" },
     { name = "google-adk", specifier = ">=2.0.0b1" },
-    { name = "google-cloud-aiplatform" },
-    { name = "google-genai", specifier = ">=1.73" },
     { name = "litestar", extras = ["jinja", "jwt", "cryptography", "structlog"] },
     { name = "litestar-granian", extras = ["uvloop"] },
     { name = "litestar-mcp" },
     { name = "litestar-vite", specifier = ">=0.18.2" },
-    { name = "msgspec" },
     { name = "numpy", specifier = ">=2.3.3" },
-    { name = "oracledb", specifier = ">=3.4" },
     { name = "python-dotenv" },
-    { name = "rich-click" },
-    { name = "sqlglot", specifier = ">=27.29.0" },
     { name = "sqlspec", extras = ["adk", "mypyc", "oracledb", "performance"], specifier = ">=0.46" },
 ]
 

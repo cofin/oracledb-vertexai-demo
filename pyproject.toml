@@ -19,16 +19,10 @@ dependencies = [
     "litestar-mcp",
     "sqlspec[adk,mypyc,oracledb,performance]>=0.46",
     "python-dotenv",
-    "google-cloud-aiplatform",
-    "google-genai>=1.73",
     "google-adk>=2.0.0b1",
-    "oracledb>=3.4",
-    "msgspec",
-    "rich-click",
     "numpy>=2.3.3",
     "dishka>=1.4.2",
     "litestar-vite>=0.18.2",
-    "sqlglot>=27.29.0",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
@@ -57,7 +51,6 @@ ignore-vcs = true
 packages = ["src/py/app"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/py/app"]
 artifacts = [
     "**/*.j2",
     "**/*.sql",
@@ -71,6 +64,7 @@ artifacts = [
     "**/*.txt",
     "**/*.json",
 ]
+packages = ["src/py/app"]
 
 [dependency-groups]
 build = ["bump-my-version"]
@@ -133,7 +127,7 @@ ignore = [
     "E501",    # pydocstyle line too long, handled by black
     "PLW2901", # pylint - for loop variable overwritten by assignment target
     "RUF012",  # Ruff-specific rule - annotated with classvar
-    "ANN401", # Dynamically typed expressions (Any)
+    "ANN401",  # Dynamically typed expressions (Any)
     "FBT",     # Boolean trap
     "PLR0913", # too many arguments
     "PT",      # Pytest rules
@@ -166,9 +160,7 @@ convention = "google"
 max-complexity = 12
 
 [tool.ruff.lint.pep8-naming]
-classmethod-decorators = [
-    "classmethod",
-]
+classmethod-decorators = ["classmethod"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["tests", "app", "config"]
@@ -196,26 +188,23 @@ strict = true
 warn_unreachable = true
 
 
-
 [[tool.mypy.overrides]]
 ignore_errors = true
 module = ["app.db.migrations.*"]
 
 [tool.pytest.ini_options]
 addopts = ["-ra"]
-pythonpath = ["src/py"]
-markers = [
-    "slow: marks tests as slow (integration/runtime checks)",
-]
 filterwarnings = [
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",
 ]
+markers = ["slow: marks tests as slow (integration/runtime checks)"]
+pythonpath = ["src/py"]
 testpaths = ["src/py/tests"]
 
 [tool.pyright]
 exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
-include = ["src/py/app", "src/py/tests"]
 extraPaths = ["src/py"]
+include = ["src/py/app", "src/py/tests"]
 reportMissingImports = "information"
