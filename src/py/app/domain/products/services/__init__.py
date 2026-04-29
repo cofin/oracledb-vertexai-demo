@@ -47,6 +47,7 @@ class ProductsServiceProvider(Provider):
             client=client,
             model=settings.vertex_ai.CHAT_MODEL,
             embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
+            embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
             cache_service=cache_service,
         )
 

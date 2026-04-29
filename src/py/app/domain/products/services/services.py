@@ -18,6 +18,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import structlog
+from google.genai.types import EmbedContentConfig
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.domain.products.schemas import Product, Store
@@ -79,20 +80,39 @@ class StoreService(SQLSpecService[OracleAsyncDriver]):
 class VertexAIService:
     """Service for interacting with Google Vertex AI."""
 
-    def __init__(self, client: Client, model: str, embedding_model: str, cache_service: Any) -> None:
+    def __init__(
+        self,
+        client: Client,
+        model: str,
+        embedding_model: str,
+        embedding_dimensions: int,
+        cache_service: Any,
+    ) -> None:
         self.client = client
         self.model = model
         self.embedding_model = embedding_model
+        self.embedding_dimensions = embedding_dimensions
         self.cache_service = cache_service
 
-    async def get_text_embedding(self, text: str, return_cache_status: bool = False) -> Any:
-        # Check cache first
+    async def get_text_embedding(
+        self,
+        text: str,
+        *,
+        task_type: str = "RETRIEVAL_DOCUMENT",
+        return_cache_status: bool = False,
+    ) -> Any:
         cached = await self.cache_service.get_embedding(text, self.embedding_model)
         if cached:
             return (cached, True) if return_cache_status else cached
 
-        # Call Vertex AI
-        response = await self.client.aio.models.embed_content(model=self.embedding_model, contents=text)
+        response = await self.client.aio.models.embed_content(
+            model=self.embedding_model,
+            contents=text,
+            config=EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=self.embedding_dimensions,
+            ),
+        )
         embedding_list = response.embeddings
         if not embedding_list or not embedding_list[0].values:
             return None
@@ -109,7 +129,9 @@ class OracleVectorSearchService:
 
     async def similarity_search(self, query: str, k: int = 5, threshold: float = 0.5) -> tuple[list[dict[str, Any]], bool, dict[str, float]]:
         start_time = time.time()
-        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(query, return_cache_status=True)
+        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
+            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+        )
         embedding_ms = (time.time() - start_time) * 1000
 
         oracle_start = time.time()

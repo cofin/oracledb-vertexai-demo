@@ -141,6 +141,7 @@ def bulk_embed(batch_size: int, force: bool) -> None:
                 client=client,
                 model=settings.vertex_ai.CHAT_MODEL,
                 embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
+                embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
                 cache_service=cache_service,
             )
 
@@ -294,6 +295,7 @@ def model_info() -> None:
                 client=client,
                 model=settings.vertex_ai.CHAT_MODEL,
                 embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
+                embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
                 cache_service=cache_service,
             )
             console.print("[bold green]✓ Successfully initialized![/bold green]")
