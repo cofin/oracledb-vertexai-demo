@@ -1,65 +1,20 @@
+"""Console-script entry point for ``coffee``.
+
+Defined in ``pyproject.toml`` as ``coffee = "app.__main__:run_cli"``. We delegate
+to the hand-rolled ``app.cli.main:main`` so this module stays a thin shim. The
+old implementation called ``litestar_group()``; that's gone — Ch 4 Phase 1B
+replaced it with an explicit rich_click group to keep ``coffee --help`` from
+booting the Litestar app.
+"""
+
 from __future__ import annotations
-
-import os
-import sys
-from pathlib import Path
-from typing import Any
-
-
-def setup_environment() -> None:
-    """Configure the environment variables and path."""
-    current_path = Path(__file__).parent.parent.resolve()
-    sys.path.append(str(current_path))
-    from litestar.cli._utils import LitestarExtensionGroup
-
-    from app import config
-    from app.lib.settings import get_settings
-
-    _ = config.log.structlog_logging_config.configure()()
-    config.setup_logging()
-    settings = get_settings()
-    os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
-    os.environ.setdefault("LITESTAR_APP_NAME", settings.app.NAME)
-    os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
-    os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
-    original_format_help = LitestarExtensionGroup.format_help  # pyright: ignore
-
-    def fixed_format_help(self: Any, ctx: Any, formatter: Any) -> None:
-        """Ensure plugins are loaded before formatting help.
-
-        Args:
-            self: The LitestarExtensionGroup instance
-            ctx: The click Context
-            formatter: The help formatter
-
-        Returns:
-            None
-        """
-        self._prepare(ctx)  # Force plugin loading
-        return original_format_help(self, ctx, formatter)  # pyright: ignore
-
-    LitestarExtensionGroup.format_help = fixed_format_help  # type: ignore[method-assign]
 
 
 def run_cli() -> None:
-    """Application Entrypoint.
+    """Application entry point — delegates to ``app.cli.main:main``."""
+    from app.cli.main import main
 
-    This function sets up the environment and runs the Litestar CLI.
-    If there's an error loading the required libraries, it will exit with a status code of 1.
-    """
-    setup_environment()
-
-    try:
-        from litestar.cli.main import litestar_group
-
-        litestar_group()
-    except ImportError as exc:
-        print(  # noqa: T201
-            "Could not load required libraries. ",
-            "Please check your installation and make sure you activated any necessary virtual environment",
-        )
-        print(exc)  # noqa: T201
-        sys.exit(1)
+    main()
 
 
 if __name__ == "__main__":

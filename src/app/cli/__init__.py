@@ -1,17 +1,7 @@
-"""CLI commands for the application."""
+"""``coffee`` CLI package.
 
-from app.cli.commands import (
-    bulk_embed_cmd,
-    clear_cache_cmd,
-    export_fixtures_cmd,
-    load_fixtures_cmd,
-    model_info_cmd,
-)
-
-__all__ = (
-    "bulk_embed_cmd",
-    "clear_cache_cmd",
-    "export_fixtures_cmd",
-    "load_fixtures_cmd",
-    "model_info_cmd",
-)
+The CLI surface is built by importing ``app.cli.main`` (defines the ``cli``
+group) and ``app.cli.commands`` (side-effect registers every subcommand).
+This package intentionally exposes neither — callers should invoke
+``app.__main__:run_cli`` (the entry point) or ``app.cli.main:main`` directly.
+"""

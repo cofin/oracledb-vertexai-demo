@@ -1,4 +1,10 @@
-"""CLI commands for coffee shop demo application."""
+"""Database / data-ops commands for the ``coffee`` CLI.
+
+Imports ``cli`` from ``app.cli.main`` and registers each command with
+``@cli.command(...)``. Importing this module side-effects the registration,
+so ``app.cli.main:main()`` only needs ``import app.cli.commands`` to wire
+everything up.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,7 @@ import structlog
 from rich import get_console
 from rich.prompt import Prompt
 
+from app.cli.main import cli
 from app.cli.utils import async_inject
 
 # Service imports must be runtime (not TYPE_CHECKING) — async_inject calls
@@ -158,7 +165,7 @@ def _print_embedding_results(total_success: int, total_errors: int) -> None:
     console.print()
 
 
-@click.command(
+@cli.command(
     name="bulk-embed",
     help="Run bulk embedding job for products (and optionally intent exemplars) using Vertex AI.",
 )
@@ -232,7 +239,7 @@ async def bulk_embed_cmd(
     _print_embedding_results(exemplar_success, exemplar_errors)
 
 
-@click.command(name="clear-cache", help="Clear cache tables in the database.")
+@cli.command(name="clear-cache", help="Clear cache tables in the database.")
 @click.option(
     "--include-exemplars",
     is_flag=True,
@@ -283,7 +290,7 @@ async def clear_cache_cmd(include_exemplars: bool, force: bool, cache_service: C
     console.print()
 
 
-@click.command(name="model-info", help="Show information about currently configured AI models.")
+@cli.command(name="model-info", help="Show information about currently configured AI models.")
 @async_inject
 async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
     """Show information about currently configured AI models."""
@@ -307,7 +314,7 @@ async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
 
 
 # Database fixture commands
-@click.command(name="load-fixtures", help="Load application fixture data into the database.")
+@cli.command(name="load-fixtures", help="Load application fixture data into the database.")
 @click.option("--tables", "-t", help="Comma-separated list of specific tables to load (loads all if not specified)")
 @click.option("--list", "list_fixtures", is_flag=True, help="List available fixture files")
 def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
@@ -512,7 +519,7 @@ def _print_fixture_summary(total_upserted: int, total_failed: int, total_records
 
 
 # Export fixtures command
-@click.command(name="export-fixtures", help="Export database tables to fixture JSON files.")
+@cli.command(name="export-fixtures", help="Export database tables to fixture JSON files.")
 @click.option("--tables", "-t", help="Comma-separated list of specific tables to export (exports all if not specified)")
 @click.option("--output-dir", "-o", help="Custom output directory (defaults to configured fixtures directory)")
 @click.option("--no-compress", is_flag=True, help="Export uncompressed JSON (default is gzipped)")

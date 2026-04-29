@@ -111,7 +111,7 @@ for src_name, dst_name in _INFRA_RENAME.items():
 @click.pass_context
 def database_group(ctx: click.Context) -> None:
     """Database administration. Migration commands work against ``app.config.db``."""
-    from app import config as app_config
+    import app.config as app_config  # mypy needs explicit submodule import (not `from app import config`).
 
     ctx.ensure_object(dict)
     ctx.obj["configs"] = [app_config.db]

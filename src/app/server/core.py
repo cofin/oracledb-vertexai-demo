@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
+from litestar.plugins import InitPluginProtocol
 from litestar.plugins.problem_details import ProblemDetailsPlugin
 from litestar.plugins.structlog import StructlogPlugin
 from litestar_granian import GranianPlugin
@@ -34,21 +34,24 @@ if TYPE_CHECKING:
 
 
 class SQLSpecPlugin(_SQLSpecPlugin):
-    """SQLSpec plugin variant that does NOT auto-mount the `db` CLI group.
+    """SQLSpec plugin variant that does NOT auto-mount the ``db`` CLI group.
 
-    The application CLI exposes flat `upgrade`/`downgrade` shortcuts at the top level via
-    ``ApplicationCore.on_cli_init``. The full migration interface lives in
-    ``manage.py database`` (per ``[tool.sqlspec] config`` in pyproject.toml).
+    Migrations are reachable only via ``python manage.py database <cmd>`` per
+    ``[tool.sqlspec] config = "app.config.db"`` in pyproject.toml. The
+    ``coffee`` CLI is hand-rolled (see ``app.cli.main``) and never invokes
+    ``litestar_group()``, so suppressing the auto-mount here keeps the CLI
+    surfaces aligned even if a future caller does build a litestar CLI tree
+    against this plugin.
     """
 
     def on_cli_init(self, cli: Group) -> None:
         return None
 
 
-class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
+class ApplicationCore(InitPluginProtocol):
     """Application core configuration plugin.
 
-    This class is responsible for configuring the main Litestar application with our routes, guards, and various plugins
+    Configures the Litestar application with routes, guards, and plugins.
     """
 
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
@@ -121,48 +124,3 @@ class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
         )
 
         return app_config
-
-    def on_cli_init(self, cli: Group) -> None:
-        import rich_click as click
-        from sqlspec.extensions.litestar.cli import database_group, get_database_migration_plugin
-
-        from app.cli import (
-            bulk_embed_cmd,
-            clear_cache_cmd,
-            export_fixtures_cmd,
-            load_fixtures_cmd,
-            model_info_cmd,
-        )
-
-        def _lift(name: str) -> click.Command:
-            """Lift a sqlspec migration subcommand to the top-level Litestar CLI.
-
-            Replicates the parent group's context shim so the lifted command sees the same
-            ``ctx.obj = {"app": litestar_env, "configs": [...]}`` shape it would receive inside
-            the deep ``app db <name>`` group.
-            """
-            src = database_group.commands[name]
-
-            @click.pass_context
-            def _wrapped(ctx: click.Context, **kwargs: object) -> None:
-                ctx.obj = {"app": ctx.obj, "configs": get_database_migration_plugin(ctx.obj.app).config}
-                ctx.invoke(src, **kwargs)
-
-            return click.Command(
-                name=name,
-                callback=_wrapped,
-                params=list(src.params),
-                help=src.help,
-                short_help=src.short_help,
-            )
-
-        for name in ("upgrade", "downgrade"):
-            cli.add_command(_lift(name))
-        for command in (
-            load_fixtures_cmd,
-            export_fixtures_cmd,
-            bulk_embed_cmd,
-            clear_cache_cmd,
-            model_info_cmd,
-        ):
-            cli.add_command(command)
