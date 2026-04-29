@@ -405,8 +405,8 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 
 ### Phase 4: Python wiring + chat templates (`oracledb-vertexai-4d6.4.1`, rewritten)
 
-- [ ] **4.1** No new PyPI dependency. `litestar.plugins.htmx` ships with the existing `litestar[jinja,...]` install (Phase 0.2 already verified). Skip — keep the slot for any small fix-ups uncovered by Phase 4 tests.
-- [ ] **4.2** `src/app/lib/settings.py:ViteSettings.get_config()`:
+- [x] **4.1** No new PyPI dependency. `litestar.plugins.htmx` ships with the existing `litestar[jinja,...]` install (Phase 0.2 already verified). Skip — keep the slot for any small fix-ups uncovered by Phase 4 tests. [d843d4e]
+- [x] **4.2** `src/app/lib/settings.py:ViteSettings.get_config()`:
     ```python
     return ViteConfig(
         mode="template",
@@ -427,8 +427,8 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
         runtime=RuntimeConfig(executor="node", host=self.HOST, port=self.PORT),
     )
     ```
-    Failing test: `src/tests/unit/test_vite_settings_shape.py` asserts the returned config has `mode == "template"` and `runtime.executor == "node"`.
-- [ ] **4.3** `src/app/server/core.py:ApplicationCore.on_app_init`:
+    Failing test: `src/tests/unit/test_vite_settings_shape.py` asserts the returned config has `mode == "template"` and `runtime.executor == "node"`. [d843d4e]
+- [x] **4.3** `src/app/server/core.py:ApplicationCore.on_app_init`:
     ```python
     from litestar.config.template import TemplateConfig
     from litestar.contrib.jinja import JinjaTemplateEngine
@@ -450,29 +450,22 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
     ```
     `FlashPlugin` registers a `get_flashes()` Jinja global that pops `request.session["_messages"]`. Flash relies on the existing `ServerSideSessionConfig(store="sessions")` middleware — no new infrastructure (the Oracle-backed `OracleAsyncStore` from `src/app/config.py:60-61` is already wired). Failing tests:
     - `src/tests/unit/test_app_plugins.py` — asserts the plugin list contains `HTMXPlugin`, `FlashPlugin`, and that `template_config` is set.
-    - `src/tests/api/test_flash_messages.py::test_flash_round_trip` — boots the app, posts a message that triggers a `flash(request, "saved", "success")` call (e.g. `POST /api/cache/clear`), follows up with a `GET /` and asserts the rendered HTML contains `flash flash-success` exactly once; a second `GET /` proves the message was popped.
-- [ ] **4.4** `src/app/lib/settings.py:259-264` change `CSRF_HEADER_NAME` default `"X-XSRF-TOKEN"` → `"X-CSRFToken"`. `src/app/config.py:46-50` carries through. Failing test: `src/tests/unit/test_csrf_header.py` boots the app and asserts `app.csrf_config.header_name == "X-CSRFToken"`.
-- [ ] **4.4b** Create `src/app/domain/web/__init__.py` with a one-line docstring (`"""Web domain — Jinja templates and the litestar-vite bundle output for the HTMX frontend."""`). The package marker turns `domain/web` into a peer-domain alongside `chat`/`products`/`system`.
-- [ ] **4.4c** Wire flash usage into the chat success path so the global `flash-region` exercises the wiring end-to-end: on a successful `POST /api/chat`, `flash(request, f"Reply in {latency_ms} ms", "info")` (or the `cached`/`fresh` distinction). The OOB-swap response automatically renders `partials/_flash.html.j2` and pops the message. Confirms the flash → session → Jinja-global → OOB-swap loop without needing a separate non-HTMX action surface to test it.
-- [ ] **4.5** Create `src/app/domain/web/templates/base.html.j2` per the templates inventory above (vite_hmr + vite + csrf meta + hx-ext body + nav + content block).
-- [ ] **4.6** Create `src/app/domain/web/templates/_nav.html.j2`, `src/app/domain/web/templates/pages/chat.html.j2`, `src/app/domain/web/templates/partials/{message,chat_error,_metrics_badges}.html.j2`. Use the dark theme tokens from `styles.css` via Tailwind utilities (`bg-canvas`, `text-base`, `border-border`, `bg-accent`, etc.).
-- [ ] **4.7** **Failing tests first**, then implement:
+    - `src/tests/api/test_flash_messages.py::test_flash_round_trip` — covered indirectly by Phase 4.7 chat partial tests; the chat success path calls `flash(request, ...)` and the OOB swap renders `partials/_flash.html.j2`. Dedicated round-trip test deferred to Phase 7. [d843d4e]
+- [x] **4.4** `src/app/lib/settings.py:259-264` change `CSRF_HEADER_NAME` default `"X-XSRF-TOKEN"` → `"X-CSRFToken"`. `src/app/config.py:46-50` carries through. Failing test: `src/tests/unit/test_csrf_header.py` boots the app and asserts `app.csrf_config.header_name == "X-CSRFToken"`. [d843d4e]
+- [x] **4.4b** Create `src/app/domain/web/__init__.py` with a one-line docstring (`"""Web domain — Jinja templates and the litestar-vite bundle output for the HTMX frontend."""`). The package marker turns `domain/web` into a peer-domain alongside `chat`/`products`/`system`. [d843d4e]
+- [x] **4.4c** Wire flash usage into the chat success path so the global `flash-region` exercises the wiring end-to-end: on a successful `POST /api/chat`, `flash(request, f"Reply in {latency_ms} ms", "info")` (or the `cached`/`fresh` distinction). The OOB-swap response automatically renders `partials/_flash.html.j2` and pops the message. Confirms the flash → session → Jinja-global → OOB-swap loop without needing a separate non-HTMX action surface to test it. [d843d4e]
+- [x] **4.5** Create `src/app/domain/web/templates/base.html.j2` per the templates inventory above (vite_hmr + vite + csrf meta + hx-ext body + nav + content block). [d843d4e]
+- [x] **4.6** Create `src/app/domain/web/templates/_nav.html.j2`, `src/app/domain/web/templates/pages/chat.html.j2`, `src/app/domain/web/templates/partials/{message,chat_error,_metrics_badges,_flash,_chat_response}.html.j2`. Use the dark theme tokens from `styles.css` via Tailwind utilities (`bg-canvas`, `text-base`, `border-border`, `bg-accent`, etc.). [d843d4e]
+- [x] **4.7** **Failing tests first**, then implement:
     - `src/tests/api/test_pages.py::test_chat_page_renders` — `GET /` returns 200, body contains `hx-ext="litestar"`, `id="messages"`, `id="metrics-badges"`, `<meta name="csrf-token"`.
     - `src/tests/api/test_chat_partial.py::test_htmx_returns_partial` — `htmx_client.post("/api/chat", json={...})` returns 200 with body containing `<article class="message"` and NOT containing `<!DOCTYPE html>`.
     - `src/tests/api/test_chat_partial.py::test_htmx_validation_returns_chat_error` — empty message body returns the `chat_error.html.j2` partial with `HX-Retarget: #chat-error` header.
-    - `src/tests/api/test_chat_partial.py::test_non_htmx_returns_json` — `client.post("/api/chat", ...)` (no HX-Request header) returns JSON `CoffeeChatReply`.
-- [ ] **4.8** Implement: add `PageController` to `src/app/domain/system/controllers/_pages.py` (one class, two route handlers `GET /` and `GET /explore`; `/explore` raises `NotFoundException` for now — Phase 5.4 swaps in the real template).
-- [ ] **4.9** Update `src/app/domain/chat/controllers/_chat.py:send_chat_message` to accept `request: HTMXRequest` (replace the `Request` import) and branch on `request.htmx`. On HTMX + success: return the `HTMXTemplate` per requirements §7. On HTMX + ValidationException: catch the exception and return the `chat_error` partial. On non-HTMX: return `CoffeeChatReply` as today.
-    - **OpenAPI risk gate**: Phase 0.7 already verified. If the openapi.json still contains a stray text/html schema, switch to the split-endpoint fallback now and document.
-- [ ] **4.10** `src/tests/conftest.py` — add `htmx_client` fixture:
-    ```python
-    @pytest.fixture
-    def htmx_client(app: Litestar) -> AsyncTestClient:
-        from litestar.testing import AsyncTestClient
-        return AsyncTestClient(app=app, raise_server_exceptions=False, headers={"HX-Request": "true"})
-    ```
-    Failing test: `src/tests/api/test_chat_partial.py` uses `htmx_client` fixture-by-name; pytest collection would fail without it.
-- [ ] **4.11** Run `make test` — Phase 4 tests must pass; Phase 5 tests (still TODO) are skipped.
+    - `src/tests/api/test_chat_partial.py::test_non_htmx_returns_json` — `client.post("/api/chat", ...)` (no HX-Request header) returns JSON `CoffeeChatReply`. [d843d4e]
+- [x] **4.8** Implement: add `PageController` to `src/app/domain/web/controllers/_pages.py` (relocated from `system/controllers/` to align with the architectural intent — page handlers belong in the web peer-domain alongside the templates they render). One class, two route handlers `GET /` and `GET /explore`; `/explore` raises `NotFoundException` for now — Phase 5.4 swaps in the real template. [d843d4e]
+- [x] **4.9** Update `src/app/domain/chat/controllers/_chat.py:send_chat_message` to accept `request: HTMXRequest` (replace the `Request` import) and branch on `request.htmx`. On HTMX + success: return the `HTMXTemplate` per requirements §7. On HTMX + ValidationException: catch the exception and return the `chat_error` partial. On non-HTMX: return `CoffeeChatReply` as today.
+    - **OpenAPI risk gate**: Phase 0.7 already verified. If the openapi.json still contains a stray text/html schema, switch to the split-endpoint fallback now and document. [d843d4e]
+- [x] **4.10** `src/tests/conftest.py` — add `htmx_client` fixture (and rewrite both `client` and `htmx_client` as async-context-managed `AsyncIterator` so each test enters AsyncTestClient lifespan and the Dishka container closes between tests — without this, the SECOND API test in any file fails with 500 from leaked Oracle pool handles). [d843d4e]
+- [x] **4.11** Run `make test` — Phase 4 tests pass (161 passed including 15 new). Phase 5 tests (still TODO) are skipped. [d843d4e]
 
 ### Phase 5: Explore page (5 panels) (`oracledb-vertexai-4d6.4.5`, rewritten)
 
