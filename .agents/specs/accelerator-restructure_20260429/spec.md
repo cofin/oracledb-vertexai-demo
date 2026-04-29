@@ -94,15 +94,15 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 2: Named SQL extraction (`oracledb-vertexai-4d6.2.2`)
 
-- [ ] **2.1** Create `src/py/app/db/sql/products.sql`. Move every product-related inline SQL from `src/py/app/domain/products/services/services.py` and `src/py/app/domain/products/services/__init__.py`. Use `-- name: <key>` directives. Suggested keys: `get-product-by-id`, `list-products`, `vector-search-products`, `count-products-by-category`.
-- [ ] **2.2** Create `src/py/app/db/sql/system.sql`. Move every cache, metrics, and exemplar inline SQL from `src/py/app/domain/system/services/services.py`. Keys: `get-cached-response`, `set-cached-response`, `get-cached-embedding`, `set-cached-embedding`, `record-search-metric`, `summarize-metrics`, `list-exemplars`, `vector-search-exemplars`.
-- [ ] **2.3** Create `src/py/app/db/sql/chat.sql`. Move chat-related SQL out of `src/py/app/domain/chat/services/adk.py`. Keys: `get-recent-conversation`, etc. (Most chat session SQL is owned by `OracleAsyncADKStore` and stays there.)
-- [ ] **2.4** Create `src/py/app/db/sql/stores.sql` if any store SQL exists; otherwise omit.
-- [ ] **2.5** Confirm `src/py/app/config.py` calls `db_manager.load_sql_files(BASE_DIR / "db" / "sql")` *after* `add_config(db)`. Add it if missing.
-- [ ] **2.6a** Update each *products* service method (`src/py/app/domain/products/services/services.py`) to use `config.db_manager.get_sql("<key>")` (with optional `.where(...)` chains) instead of inline strings. Pass `schema_type=` for typed mapping. Verify the canonical call shape against `~/code/g/dma/src/py/dma/domain/accounts/services/_user.py` (`config.db_manager.get_sql("get-user-account").where(...)`).
-- [ ] **2.6b** Same migration for the *system* services in `src/py/app/domain/system/services/services.py` (cache, metrics, exemplar).
-- [ ] **2.6c** Same migration for any chat-side SQL in `src/py/app/domain/chat/services/adk.py` (most chat SQL is owned by `OracleAsyncADKStore` and stays there).
-- [ ] **2.7** Add `src/py/tests/integration/test_named_sql_loading.py` that asserts each `db_manager.get_sql(<key>)` key referenced in services exists in the `.sql` files (regex-scrape services for `get_sql("...")` and check the registry).
+- [x] **2.1** Create `src/py/app/db/sql/products.sql`. Final keys: `get-product` (no WHERE; callers chain `.where(...)` for id/name lookups), `list-products-for-embedding` (no WHERE; force flag controls `.where("embedding IS NULL")` chain), `vector-search-products`. Trivial UPDATE/INSERT/DELETE replaced with `sqlspec.sql.{update,insert,delete}` AST builder, so `count-products-by-category` and `update-product-embedding` are NOT separate named queries.
+- [x] **2.2** Create `src/py/app/db/sql/system.sql`. Final keys: `get-cached-response`, `get-cached-embedding`, `get-cache-stats`, `get-performance-stats`, `vector-search-exemplars`, `list-exemplars`. Cache/embedding mutations + `delete-*-all` + `record-search-metric` + `update-exemplar-embedding` use `sqlspec.sql.*` AST builder (no separate named queries needed).
+- [x] **2.3** Skipped — `domain/chat/services/adk.py` has zero own SQL; IntentService and AgentToolsService delegate to ProductService/ExemplarService/MetricsService. ADK session storage stays inside `OracleAsyncADKStore` (sqlspec extension). No `db/sql/chat.sql` file was needed.
+- [x] **2.4** Create `src/py/app/db/sql/stores.sql`. Single key `list-stores` (no WHERE); StoreService.{find_stores_by_city, find_stores_by_state, get_store_by_id} chain `.where(...)`.
+- [x] **2.5** `src/py/app/config.py:58` already calls `db_manager.load_sql_files(BASE_DIR / "db" / "sql")` after `add_config(db)`. Verified at runtime — 10 keys register on import.
+- [x] **2.6a** ProductService methods use `db_manager.get_sql("<key>").where(...)` with kwargs binds + `schema_type=Product`. `update_embedding` uses `sql.update("product").set(...).where_eq("id", ...)`.
+- [x] **2.6b** CacheService, MetricsService, ExemplarService migrated. `record_search` uses `sql.insert("search_metric").values(**msgspec.to_builtins(...))`. `bump-embedding-cache-hit` uses `sql.update("embedding_cache").set(hit_count=sql.raw("hit_count + 1"), ...)`. CLI's force-mode inline `SELECT id, name, description, embedding FROM product` eliminated by extending `ProductService.get_products_for_embedding(force=)` to mirror `ExemplarService.get_exemplars_without_embeddings`.
+- [x] **2.6c** No chat-side SQL to migrate.
+- [x] **2.7** Added `src/py/tests/unit/test_named_sql_loading.py` (kept as **unit** test — no DB needed; regex-scrapes services for `get_sql("...")`, checks each key resolves via `db_manager.has_sql_query(...)`, verifies no inline SQL keywords remain in domain services). Lives in `tests/unit/` per the no-dev-container-coupling rule. 15 tests, all green.
 
 ### Phase 3: Provider collapse (`oracledb-vertexai-4d6.2.3`)
 
