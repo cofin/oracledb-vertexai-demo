@@ -42,6 +42,14 @@ Automate the distribution of library and binary artifacts via GitHub Actions. Th
         - name: Set up Python
           run: uv python install 3.12
 
+        - name: Install project and frontend dependencies
+          run: |
+            uv sync --group build
+            uv run python manage.py assets install
+
+        - name: Build frontend assets
+          run: uv run python manage.py assets build
+
         - name: Build Wheel and SDist
           run: uv build
 
@@ -63,7 +71,13 @@ Automate the distribution of library and binary artifacts via GitHub Actions. Th
 - [ ] 1.2 Implement tag-triggered logic as shown in the template.
 
 ### Phase 2: Configuration Integration
-- [ ] 2.1 Configure `bump-my-version` in `pyproject.toml` to synchronize version strings across the entire stack.
+- [ ] 2.1 First collapse runtime version literals to the existing metadata module instead of bumping multiple source files:
+  - `src/app/__init__.py` re-exports `__version__` from `app.__metadata__`.
+  - `src/app/cli/main.py` imports `__version__` and passes it to `@click.version_option`.
+  - `src/app/server/core.py` imports `__version__` and passes it to `OpenAPIConfig(version=...)`.
+  - `manage.py` imports `__version__` after it adds `src/` to `sys.path` and passes it to `@click.version_option`.
+  - Smoke: `uv run coffee --version`, `uv run python manage.py --version`, and OpenAPI schema generation all report the same value.
+- [ ] 2.2 Configure `bump-my-version` in `pyproject.toml` to bump project metadata files only, not app-module literals. `pyproject.toml` is the Python package source of truth; `uv.lock` is refreshed by `uv lock`; root `package.json` is fine as a frontend metadata mirror. If `package.json` still lacks `"version"`, add `"version": "0.2.0"` before enabling this bump target.
   ```toml
   [tool.bumpversion]
   current_version = "0.2.0"
@@ -88,26 +102,13 @@ Automate the distribution of library and binary artifacts via GitHub Actions. Th
   replace = 'version = "{new_version}"'
 
   [[tool.bumpversion.files]]
-  filename = "src/py/app/__init__.py"
-  search = '__version__ = "{current_version}"'
-  replace = '__version__ = "{new_version}"'
-
-  [[tool.bumpversion.files]]
-  filename = "manage.py"
-  search = 'version="{current_version}"'
-  replace = 'version="{new_version}"'
-
-  [[tool.bumpversion.files]]
-  filename = "src/py/app/server/core.py"
-  search = 'version="{current_version}"'
-  replace = 'version="{new_version}"'
-
-  [[tool.bumpversion.files]]
-  filename = "src/js/package.json"
+  filename = "package.json"
   search = '"version": "{current_version}"'
   replace = '"version": "{new_version}"'
   ```
-- [ ] 2.2 Verify GITHUB_TOKEN permissions in the workflow (`contents: write`).
+- [ ] 2.3 Do **not** add `src/app/__init__.py`, `src/app/server/core.py`, `src/app/cli/main.py`, or `manage.py` to `bump-my-version`. Those files should import/re-export `app.__metadata__.__version__` instead.
+- [ ] 2.4 Run `uv lock` after version bumps so `uv.lock` reflects the new project metadata.
+- [ ] 2.5 Verify GITHUB_TOKEN permissions in the workflow (`contents: write`).
 
 ### Phase 3: Dry Run
 - [ ] 3.1 Verify the workflow syntax using `action-lint` or similar if available.

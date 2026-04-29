@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """``coffee`` CLI entry point.
 
 Hand-rolled rich_click group (mirrors ``dma/accelerator/src/py/dma/cli/main.py``)
@@ -16,6 +19,8 @@ import sys
 import rich_click as click
 import structlog
 from rich.console import Console
+
+from app.__metadata__ import __version__
 
 console = Console()
 logger = structlog.get_logger()
@@ -53,7 +58,7 @@ click.rich_click.ERRORS_SUGGESTION = "Try running the '--help' flag for more inf
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
 )
-@click.version_option(version="0.2.0", prog_name="coffee")
+@click.version_option(version=__version__, prog_name="coffee")
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """``coffee`` top-level entry point."""

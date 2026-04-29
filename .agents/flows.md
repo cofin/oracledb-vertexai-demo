@@ -57,3 +57,9 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   ### [ ] Ch 2: release-automation_20260429
   *Link: [./specs/release-automation_20260429/](./specs/release-automation_20260429/)*
   *Beads: oracledb-vertexai-7dh.2*
+
+---
+
+## [ ] PRD: vhs-demo-recordings_20260429
+*Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
+*Beads: not created - review gate before implementation*

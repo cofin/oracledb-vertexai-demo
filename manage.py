@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
@@ -49,6 +52,8 @@ from tools.oracle import (  # noqa: E402
     wallet_group as oracle_wallet_group,
 )
 
+from app.__metadata__ import __version__  # noqa: E402
+
 # rich-click config
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.SHOW_ARGUMENTS = True
@@ -67,7 +72,7 @@ console = Console()
     """,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
-@click.version_option(version="0.2.0", prog_name="manage")
+@click.version_option(version=__version__, prog_name="manage")
 def cli() -> None:
     """Top-level entry point."""
 

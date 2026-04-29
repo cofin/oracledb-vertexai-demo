@@ -5,15 +5,15 @@
 """Explore-page support endpoints (Ch 4 Phase 5).
 
 Currently exposes ``GET /api/classify-compare`` which serves the Ch 3
-``classify --compare`` CLI artifact for the explore-page Panel 5 chart.
+``classify-compare`` CLI artifact for the explore-page Panel 5 chart.
 The path is module-scoped so tests can redirect it at a tmp file.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from pathlib import Path
 
+from anyio import Path
 from litestar import Controller, get
 from litestar.exceptions import NotFoundException
 
@@ -21,7 +21,7 @@ from app.domain.system.schemas import ClassifyCompare, ClassifyCompareIntent
 from app.lib.settings import BASE_DIR
 from app.utils.serialization import from_json
 
-CLASSIFY_COMPARE_PATH: Path = BASE_DIR.parents[1] / "dist" / "classify-compare.json"
+CLASSIFY_COMPARE_PATH = BASE_DIR.parents[1] / "dist" / "classify-compare.json"
 
 
 def _summarize(rows: list[dict[str, str]]) -> list[ClassifyCompareIntent]:
@@ -29,6 +29,9 @@ def _summarize(rows: list[dict[str, str]]) -> list[ClassifyCompareIntent]:
 
     Precision and recall are computed against the gold labels for the
     *new* classifier — the legacy column is shown only as raw counts.
+
+    Returns:
+        Per-intent chart summaries.
     """
     intents = sorted({row["gold"] for row in rows} | {row["new"] for row in rows} | {row["legacy"] for row in rows})
     gold_counts = Counter(row["gold"] for row in rows)
@@ -67,12 +70,13 @@ class ExploreController(Controller):
         exclude_from_auth=True,
     )
     async def classify_compare(self) -> ClassifyCompare:
-        if not CLASSIFY_COMPARE_PATH.exists():
+        classify_path = Path(CLASSIFY_COMPARE_PATH)
+        if not await classify_path.exists():
             raise NotFoundException(
                 detail=(
                     "classify-compare.json not found — run "
-                    "`uv run coffee classify --compare` to generate it."
+                    "`uv run coffee classify-compare` to generate it."
                 )
             )
-        payload = from_json(CLASSIFY_COMPARE_PATH.read_bytes())
+        payload = from_json(await classify_path.read_bytes())
         return ClassifyCompare(intents=_summarize(payload.get("rows", [])))

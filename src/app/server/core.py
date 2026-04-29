@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ from litestar_vite import VitePlugin
 from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecPlugin
 
 from app import config
+from app.__metadata__ import __version__
 from app.lib.settings import get_settings
 from app.utils.domains import DomainPlugin, DomainPluginConfig
 
@@ -59,6 +60,9 @@ class ApplicationCore(InitPluginProtocol):
 
         Args:
             app_config: The :class:`AppConfig <.config.app.AppConfig>` instance.
+
+        Returns:
+            The updated application config.
         """
         from litestar.contrib.jinja import JinjaTemplateEngine
         from litestar.openapi import OpenAPIConfig
@@ -115,7 +119,7 @@ class ApplicationCore(InitPluginProtocol):
 
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
-            version="0.2.0",
+            version=__version__,
             use_handler_docstrings=True,
             render_plugins=[ScalarRenderPlugin(version="latest")],
         )

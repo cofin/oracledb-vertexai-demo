@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,6 @@
 
 from __future__ import annotations
 
-__all__ = ("__version__",)
+from app.__metadata__ import __version__
 
-__version__ = "0.2.0"
+__all__ = ("__version__",)

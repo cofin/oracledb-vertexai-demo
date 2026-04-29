@@ -74,7 +74,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **Green-field UI.** Delete React. Build a tasteful HTMX UI that's still visually rich.
 
 - Delete `src/js/` entirely (React, TanStack, generated OpenAPI client, all `.test.tsx` stubs).
-- New `src/js/` scaffolded by `litestar assets init` with `mode="template"`: Vite + Tailwind v4 + **Alpine.js** (lightweight reactivity) + **ApexCharts** (visualization).
+- New frontend inputs live at repo-root `vite.config.ts` / `package.json` plus `src/resources/{main.js,styles.css,public/}`. Vite runs in `mode="template"` via `litestar-vite`; bundle output lands in `src/app/domain/web/static/dist/`: Tailwind v4 + **Alpine.js** (lightweight reactivity) + **ApexCharts** (visualization).
 - Wire `HTMXPlugin()` + `hx-ext="litestar"` for client-side JSON rendering on chart data.
 - Two pages, one layout:
   - `chat.html.j2` — reactive HTMX chat (incremental partial swaps, persona switcher, session-id header pattern).
@@ -90,7 +90,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **Make it readable cold.** A new contributor should grok the entire app in 30 minutes.
 
 - Archive 23 timestamped knowledge files; keep `patterns.md` + exactly 3 guides: `architecture.md`, `oracle-vector-search.md`, `adk-patterns.md`.
-- CLI trim: keep `init`, `db upgrade`, `db load-fixtures`, `run`, `model-info`, `clear-cache`. Delete `bulk-embed` (folded into fixtures), `export-fixtures`.
+- CLI trim: keep `python manage.py init`, `python manage.py database upgrade`, `coffee load-fixtures`, `coffee run`, `coffee model-info`, `coffee clear-cache`, and Ch 3's `coffee classify-compare`. Delete `coffee bulk-embed` (folded into fixtures) and `coffee export-fixtures` from the canonical app CLI.
 - Remove dead frontend test stubs.
 - Rewrite root README as 5-minute quickstart.
 - `patterns.md` final pass: drop obsolete gotchas; document HNSW+INMEMORY recipe, parallel-classification trick, ADK 2.0 runner shape, named-SQL pattern, EXPLAIN-on-explore-page idiom.

@@ -71,7 +71,7 @@ The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 an
 ### Chapter 5 — API Reference & Final Polish
 **The reference.** Automated docs for the core domain.
 
-- Configure `autodoc` to scan `src/py/app/`.
+- Configure `autodoc` to scan `src/app/`.
 - Focus on `services`, `controllers`, and `adk` modules.
 - Add a "Developer Guide" section (installation, management CLI).
 - Final UI polish and navigation optimization.

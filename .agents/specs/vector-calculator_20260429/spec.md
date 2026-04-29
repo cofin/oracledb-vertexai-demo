@@ -13,7 +13,7 @@ Add a creative, highly interactive "Vector Storage Size Requirement Calculator" 
 
 ### Requirements
 
-1. **Integrated UI**: Add a **7th Panel** to `src/templates/pages/explore.html.j2`.
+1. **Integrated UI**: Add a **7th Panel** to `src/app/domain/web/templates/pages/explore.html.j2`.
 2. **Alpine.js Driven**: Zero server-side round-trips for the calculator logic.
 3. **Oracle 23ai Semantics**:
    - **Data Types**: Support FLOAT32, FLOAT64, INT8, and BINARY.
@@ -62,7 +62,7 @@ Add a creative, highly interactive "Vector Storage Size Requirement Calculator" 
 
 ### Phase 1: UI Scaffold (`oracledb-vertexai-4d6.7.1`)
 
-- [ ] **1.1** Add the 7th Panel container to `src/templates/pages/explore.html.j2`.
+- [ ] **1.1** Add the 7th Panel container to `src/app/domain/web/templates/pages/explore.html.j2`.
 - [ ] **1.2** Implement the Layout: Left column for inputs, Right column for visual results.
 - [ ] **1.3** Style with Tailwind v4 utilities to match the existing dark theme.
 

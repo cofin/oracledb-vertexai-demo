@@ -23,3 +23,9 @@ These were captured as Beads notes on the master epic `oracledb-vertexai-4d6` an
 7. **Provider-count contradictions are an executor footgun.** Ch 2's first draft had the Objective paragraph saying "1 + 1 + APP-singletons" while Acceptance said `== 3`. Always check the math.
 8. **Latent bug:** `request_container_var` (Ch 3 deletion target) is **never `.set()` anywhere** — verified via `grep -rn`. Every ADK tool call today builds a brand-new Dishka container. Closure-bound tools fix this incidentally.
 9. **Intent exemplar fixture is at 768 dims, 1019 rows, 7.0 MB gzipped** — verified 2026-04-29. Not anomalous; expected ~25–28 MB at 3072 dims. Ch 1 regenerates.
+
+## Revision pass after source flatten (2026-04-29)
+
+10. **Forward-looking specs must use the flattened layout:** Python code is `src/app`, tests are `src/tests`, Vite inputs are root `vite.config.ts` plus `src/resources`, templates live in `src/app/domain/web/templates`, and build output is `src/app/domain/web/static/dist`. `src/py` and `src/js` should appear only as historical completed-work evidence or explicit deletion targets.
+11. **CLI ownership is split:** `coffee` is the hand-rolled app CLI (`run`, `load-fixtures`, `clear-cache`, `model-info`, future `classify-compare`); migrations/assets/infrastructure stay on `python manage.py ...`. New plans should not route through `uv run app`, `coffee assets`, `coffee upgrade`, or `coffee_demo_group`.
+12. **Release versioning:** Python app modules should import/re-export `app.__metadata__.__version__`; `bump-my-version` should update package metadata (`pyproject.toml`, optional root `package.json`) rather than app source literals. `uv.lock` is regenerated after the bump.
