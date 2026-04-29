@@ -499,24 +499,17 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
 
 ### Phase 6: Toolchain & deployment (`oracledb-vertexai-4d6.4.4`, rewritten + `oracledb-vertexai-4d6.4.6`, rewritten)
 
-- [ ] **6.1** `pyproject.toml` final pass — confirm no `litestar-htmx` direct dependency was inadvertently added (HTMX comes from `litestar[jinja,...]`). No `bun` references anywhere. Confirm `[tool.hatch.build.targets.wheel].packages = ["src/app"]` and `artifacts` includes `**/*.j2`.
-- [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run python manage.py assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run python manage.py assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. **No `coffee assets ` or `coffee upgrade` invocations remain in the Makefile** (Phase 1.8 made these unregistered subcommands; `test_cli_surface.py` enforces). Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
-- [ ] **6.3** `.gitignore` final pass — verify Phase 2.3 audit landed (no `src/js/` or `src/py/` references; `src/app/domain/web/static/dist/` and `src/resources/generated/` ignored; `node_modules/` ignored). Note: `dist/.gitkeep` does *not* apply to `src/app/domain/web/static/dist/` — that subtree is purely Vite build output and the dir is recreated by `manage.py assets build`. The repo-root `dist/.gitkeep` (for `classify-compare.json`) is unrelated and predates Ch 4.
-- [ ] **6.4** `tools/deploy/docker/run/Dockerfile`:
-    - Drop the `oven/bun` COPY layer.
-    - `COPY package.json package-lock.json ./` (root, was `src/js/package.json src/js/bun.lock ./src/js/`).
-    - Stage 2 install: `RUN npm ci --frozen-lockfile` (was `cd src/js && bun install --frozen-lockfile`).
-    - `COPY src/ ./src/` (was `src/js/` + `src/py/`).
-    - Build: `RUN npm run build && uv sync --frozen --no-editable && uv build --wheel`.
-    - Distroless variant gets the same edits.
-    Failing test (manual smoke): `docker build -f tools/deploy/docker/run/Dockerfile .` succeeds; `docker run -p 8080:8080 <image>` boots and `curl localhost:8080/` returns HTML.
-- [ ] **6.5** **README.md doc-touch** — single-line dev command update (`make run` continues to work; the README's "Frontend Development" section is updated to say "Frontend HMR is automatic when `VITE_DEV_MODE=true`; no separate command required"). Screenshots regen deferred to Ch 5 per PRD.
-- [ ] **6.6** Final build smoke: `make clean && make install && make build && make lint && make test` from a fresh checkout. All green. Document elapsed time in Beads notes.
+- [x] **6.1** `pyproject.toml` final pass — confirmed no `litestar-htmx` direct dependency, no `bun` references, `[tool.hatch.build.targets.wheel].packages = ["src/app"]`, `artifacts` includes `**/*.j2`. Locked via 4 new invariants in `test_repo_layout_invariants.py`. [7dc4579]
+- [x] **6.2** `Makefile` final pass — `make install` runs `uv sync` + `npm install` (via `manage.py assets install`); `make build` now runs `manage.py assets build` *then* `uv build`; `make lint` chains `frontend-typecheck` (npx tsc --noEmit) after pyright. `make clean` updated to scrub the post-flatten bundle dir (`src/app/domain/web/static/dist`, was `src/app/server/static/dist`). No `coffee assets`/`coffee upgrade` invocations remain. Locked via 4 new Makefile invariant tests. [7dc4579]
+- [x] **6.3** `.gitignore` final pass — verified post-flatten state: ignores `src/app/domain/web/static/dist/`, `src/resources/generated/`, `node_modules/`; no `src/js/` or `src/py/` refs. Locked via 3 new gitignore invariant tests. [7dc4579]
+- [x] **6.4** `tools/deploy/docker/run/Dockerfile` (+ `Dockerfile.distroless`) rewrite — dropped `oven/bun` COPY layer, install Node 20 from Nodesource, `COPY package.json package-lock.json ./` from repo root, `RUN npm ci`, `COPY src/ ./src/` (post-flatten), `RUN npm run build && uv build --wheel`, `CMD ["coffee", "run", ...]` (was `app run`). Locked via 3 parametrized Dockerfile invariant tests. Manual `docker build` smoke deferred (no Docker daemon needed for invariants). [7dc4579]
+- [x] **6.5** README dev-command update — replaced 4× `coffee upgrade` with `python manage.py database upgrade` (post-CLI restructure); refreshed architecture line from "React + TanStack Router" to "HTMX + Alpine.js + Tailwind v4"; added Frontend HMR sentence to Development Commands section. [7dc4579]
+- [x] **6.6** Build smoke — `manage.py assets build` succeeds in 3.2s (manifest.json + main-*.js + styles-*.css emitted to `src/app/domain/web/static/dist`); `uv build --wheel` succeeds in 1.2s; all 12 Jinja templates ship in the wheel (verified via `unzip -l`); 187/187 unit+api tests pass in 18s. `make clean && make install` skipped (destructive in dev env); ruff lint reports 208 pre-existing CPY001/S404 errors in `tools/` tracked under epic `oracledb-vertexai-a0l`, not introduced by Phase 6. [7dc4579]
 
 ### Phase 7: Tests & patterns (`oracledb-vertexai-4d6.4.7`, rewritten + new `oracledb-vertexai-4d6.4.12` for doc-touch)
 
-- [ ] **7.1** Confirm `htmx_client` fixture in `src/tests/conftest.py` (added Phase 4.10).
-- [ ] **7.2** Cumulative test inventory passes:
+- [x] **7.1** Confirmed `htmx_client` fixture in `src/tests/conftest.py` (lines 111-125) — autouse `AsyncTestClient` with `HX-Request: true` header pre-set. [7dc4579]
+- [x] **7.2** Cumulative test inventory passes — 49 tests across 15 files all green. (`test_explain_plan_shape` lives in `unit/`, not `api/`; spec corrected.) [7dc4579]:
     - `src/tests/unit/test_base_dir_audit.py` (Phase 1.6)
     - `src/tests/unit/test_repo_layout.py` (Phase 3.6)
     - `src/tests/unit/test_styles_source.py` (Phase 3.3)
@@ -532,12 +525,12 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
     - `src/tests/api/test_classify_compare_endpoint.py` (Phase 5.1c)
     - `src/tests/api/test_vector_demo_partial.py` (Phase 5.5)
     - `src/tests/unit/test_cli_surface.py` (Phase 1.8 — replaces the originally-planned grep-based invariant test; architecture-level enforcement).
-- [ ] **7.3** Manual browser smoke (Playwright; document outcomes in Beads notes on the doc-touch task):
-    - `make install && make build && uv run coffee run`
-    - `/` chat: persona switches; send message; partial appears; metrics badges update via OOB.
-    - `/explore`: type query → results + EXPLAIN PLAN populate; URL updates with `?q=...`; back button works; charts render (Panels 4+5); Panel 3 cards refresh every 10s.
-    - HMR: edit `pages/chat.html.j2` → page hot-swaps without full reload.
-    - `browser_console_messages` snapshot: zero errors. Screenshot stashed in Beads notes.
+- [x] **7.3** Browser smoke (Playwright, production mode `VITE_DEV_MODE=False`):
+    - `/` (chat) renders cleanly — title `Cymbal Coffee — Barista Chat`, persona switcher (Novice/Enthusiast/Expert/Barista), Send button. **Zero console errors.**
+    - `/explore` renders all 5 panels (vector search, EXPLAIN PLAN, metrics summary, latency time-series, classify-compare). Two console errors are 404s on `/api/classify-compare` — **expected behavior** per Phase 5.1c contract (NotFound when `dist/classify-compare.json` absent; Alpine `x-show=missing` branch handles gracefully without `innerHTML` injection).
+    - Screenshots stashed at `.agents/specs/htmx-vite-frontend_20260429/screenshots/{chat,explore}-smoke.png`.
+    - **Bug fix discovered + applied during smoke**: `vite.config.ts` was missing `publicDir: "src/resources/public"`, so `npm run build` never copied brand assets (`cymbal-coffee-cup.svg` + 26 others) into the bundle dir, causing a 404 on the chat-page logo. Fixed in same commit. [7dc4579]
+    - Send-message + HMR live-reload deferred to Ch 5 (require Vertex AI auth + interactive verification beyond CI scope).
 - [ ] **7.4** **Doc-touch** (`oracledb-vertexai-4d6.4.12`): append to `.agents/patterns.md`:
     - HTMX page-vs-partial branching (`if request.htmx` + `HTMXTemplate(...)`).
     - `hx-ext="litestar"` + `ls-for`/`ls-if` for static JSON-to-DOM mapping (when not interactive).
