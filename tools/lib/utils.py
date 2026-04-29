@@ -204,7 +204,7 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
     """Check if a tool is installed and available in PATH.
 
     Args:
-        tool_name: Name of the executable to check (e.g., 'uv', 'sql', 'gemini')
+        tool_name: Name of the executable to check (e.g., 'uv', 'sql')
         version_flag: Flag to get version (default: '--version')
 
     Returns:
@@ -221,6 +221,7 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
         pass
 
     return False, ""
+
 
 def is_mcp_server_configured(server_name: str) -> bool:
     """Check if an MCP server is already configured in Gemini settings.
@@ -243,6 +244,7 @@ def is_mcp_server_configured(server_name: str) -> bool:
         return server_name in mcp_servers and mcp_servers[server_name] is not None
     except Exception:  # noqa: BLE001
         return False
+
 
 def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
     """Check if a SQLcl saved connection exists.
@@ -270,6 +272,7 @@ def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
     else:
         # Check if connection_name appears in the output
         return connection_name in result.stdout
+
 
 def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: PLR0911
     """Migrate old SQLcl connection name to new name.
@@ -331,6 +334,7 @@ def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal
         return False, f"Error migrating connection: {e}"
     else:
         return False, "Failed to create new connection"
+
 
 def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: C901, PLR0911
     """Configure SQLcl saved connection with password from .env.
@@ -418,6 +422,7 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
     else:
         return False, f"Failed to save connection: {error_msg}"
 
+
 def configure_gemini_mcp_sqlcl() -> bool:
     """Configure SQLcl as a Gemini MCP server.
 
@@ -472,89 +477,3 @@ def configure_gemini_mcp_sqlcl() -> bool:
         return False
     else:
         return True
-
-def configure_gemini_mcp_extensions(interactive: bool = True) -> dict[str, bool]:  # noqa: C901
-    """Configure popular Gemini MCP extensions.
-
-    Args:
-        interactive: If True, prompt user for each extension
-
-    Returns:
-        dict: Status of each extension configuration {extension_name: success}
-
-    Configures:
-    - sequential-thinking: Advanced reasoning capabilities
-    - context7: Documentation and code context from popular libraries
-    """
-    gemini_settings_path = Path.home() / ".gemini" / "settings.json"
-    results = {}
-
-    # Check if Gemini settings directory exists
-    if not gemini_settings_path.parent.exists():
-        try:
-            gemini_settings_path.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:  # noqa: BLE001
-            return {"error": False}
-
-    # Read existing settings or create new
-    settings: dict[str, Any] = {}
-    if gemini_settings_path.exists():
-        try:
-            with gemini_settings_path.open() as f:
-                settings = json.load(f)
-        except Exception:  # noqa: BLE001
-            return {"error": False}
-
-    # Ensure mcpServers key exists
-    if "mcpServers" not in settings:
-        settings["mcpServers"] = {}
-
-    # Define extensions
-    extensions = {
-        "sequential-thinking": {
-            "name": "Sequential Thinking",
-            "description": "Advanced reasoning with step-by-step problem solving",
-            "config": {
-                "type": "stdio",
-                "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-            },
-        },
-        "context7": {
-            "name": "Context7",
-            "description": "Documentation lookup for popular libraries and frameworks",
-            "config": {"command": "npx", "args": ["-y", "@upstash/context7-mcp"]},
-        },
-    }
-
-    # Configure each extension
-    for key, ext in extensions.items():
-        # Check if already configured (SKIP if exists)
-        if is_mcp_server_configured(key):
-            if interactive:
-                console.print(f"[dim]i {ext['name']} already configured (skipping)[/dim]")
-            results[key] = True  # Already configured = success
-            continue
-
-        # Interactive prompt for NEW extensions only
-        should_install = True
-        if interactive:
-            console.print()
-            console.print(f"[bold cyan]{ext['name']}[/bold cyan]")
-            console.print(f"[dim]{ext['description']}[/dim]")
-            should_install = Confirm.ask(f"Configure {ext['name']}?", default=True)
-
-        if should_install:
-            settings["mcpServers"][key] = ext["config"]
-            results[key] = True
-        else:
-            results[key] = False
-
-    # Write back to file
-    try:
-        with gemini_settings_path.open("w") as f:
-            json.dump(settings, f, indent=2)
-    except Exception:  # noqa: BLE001
-        return dict.fromkeys(extensions.keys(), False)
-    else:
-        return results

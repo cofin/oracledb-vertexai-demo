@@ -74,7 +74,7 @@ setup-env:                                          ## Configure local environme
 	@./tools/scripts/setup-env.sh
 
 .PHONY: install
-install: destroy clean setup-env ## Install the project, dependencies, and pre-commit
+install: destroy clean setup-env install-uv ## Install the project, dependencies, and pre-commit
 	@echo "${INFO} Starting fresh installation..."
 	@uv python pin 3.12 >/dev/null 2>&1
 	@uv venv >/dev/null 2>&1

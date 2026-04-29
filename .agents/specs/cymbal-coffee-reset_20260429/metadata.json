@@ -1,0 +1,11 @@
+{
+  "flow_id": "cymbal-coffee-reset_20260429",
+  "type": "prd",
+  "status": "planned",
+  "parent_prd": null,
+  "beads_epic_id": "oracledb-vertexai-4d6",
+  "created_at": "2026-04-29T00:50:39Z",
+  "updated_at": "2026-04-29T02:35:00Z",
+  "synced_at": "2026-04-29T02:35:00Z",
+  "description": "Modernize the demo onto ADK 2.0 + sqlspec 0.46 native vectors + HTMX/Vite, matching the published skill docs that already cite this repo as canonical."
+}

@@ -87,7 +87,7 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
                 console.print(f"[dim]  Location: {uv_path}[/dim]")
         else:
             console.print("[red]✗ UV not found[/red]")
-            console.print("[dim]  Run: python manage.py install uv[/dim]")
+            console.print("[dim]  Run: make install-uv[/dim]")
 
     # Mode-specific checks
     if not json_output:
@@ -166,7 +166,7 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
             if not checks["env_file"]:
                 console.print("  • Run [cyan]python manage.py init[/cyan]")
             if not checks["uv_installed"]:
-                console.print("  • Run [cyan]python manage.py install uv[/cyan]")
+                console.print("  • Run [cyan]make install-uv[/cyan]")
             mode_specific_dict = checks.get("mode_specific", {})
             if isinstance(mode_specific_dict, dict) and not all(mode_specific_dict.values()):
                 console.print("  • Check mode-specific requirements above")
