@@ -9,6 +9,14 @@ import structlog
 from rich import get_console
 from rich.prompt import Prompt
 
+from app.cli.utils import async_inject
+
+# Service imports must be runtime (not TYPE_CHECKING) — async_inject calls
+# get_type_hints() to resolve dependencies, which evaluates string annotations against
+# the module globals.
+from app.domain.products.services import ProductService, VertexAIService  # noqa: TC001
+from app.domain.system.services import CacheService, ExemplarService  # noqa: TC001
+
 logger = structlog.get_logger()
 
 
@@ -163,93 +171,67 @@ def _print_embedding_results(total_success: int, total_errors: int) -> None:
     is_flag=True,
     help="Also re-embed intent_exemplar phrases (required after dimension changes).",
 )
-def bulk_embed_cmd(batch_size: int, force: bool, include_exemplars: bool) -> None:
+@async_inject
+async def bulk_embed_cmd(
+    batch_size: int,
+    force: bool,
+    include_exemplars: bool,
+    product_service: ProductService,
+    exemplar_service: ExemplarService,
+    vertex_ai_service: VertexAIService,
+) -> None:
     """Run bulk embedding job for all products using Vertex AI."""
-    from sqlspec.utils.sync_tools import run_
-
     console = get_console()
     console.rule("[bold blue]Bulk Embedding", style="blue", align="left")
     console.print()
 
-    async def _bulk_embed() -> None:
-        from google.genai import Client
+    console.print("[bold]→ Products[/bold]")
+    products, message = await _fetch_products_to_embed(product_service, force)
+    console.print(message)
 
-        from app.config import db, db_manager
-        from app.domain.products.services import ProductService, VertexAIService
-        from app.domain.system.services import CacheService, ExemplarService
-        from app.lib.settings import get_settings
+    product_success = product_errors = 0
+    if products:
+        console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
+        product_success, product_errors = await _embed_in_batches(
+            products,
+            batch_size,
+            lambda batch, start_idx, total: _process_product_batch(
+                batch, product_service, vertex_ai_service, start_idx, total
+            ),
+        )
+    else:
+        console.print(
+            "[yellow]No products found in database[/yellow]"
+            if force
+            else "[green]✓ All products already have embeddings![/green]"
+        )
 
-        settings = get_settings()
+    _print_embedding_results(product_success, product_errors)
 
-        async with db_manager.provide_session(db) as session:
-            product_service = ProductService(session)
-            cache_service = CacheService(session)
-            exemplar_service = ExemplarService(session)
-            if settings.vertex_ai.PROJECT_ID:
-                client = Client(
-                    vertexai=True,
-                    project=settings.vertex_ai.PROJECT_ID,
-                    location=settings.vertex_ai.LOCATION,
-                )
-            else:
-                client = Client(
-                    api_key=settings.vertex_ai.API_KEY,
-                )
-            vertex_ai_service = VertexAIService(
-                client=client,
-                model=settings.vertex_ai.CHAT_MODEL,
-                embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
-                embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
-                cache_service=cache_service,
-            )
+    if not include_exemplars:
+        return
 
-            console.print("[bold]→ Products[/bold]")
-            products, message = await _fetch_products_to_embed(product_service, force)
-            console.print(message)
-
-            product_success = product_errors = 0
-            if products:
-                console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
-                product_success, product_errors = await _embed_in_batches(
-                    products,
-                    batch_size,
-                    lambda batch, start_idx, total: _process_product_batch(
-                        batch, product_service, vertex_ai_service, start_idx, total
-                    ),
-                )
-            else:
-                console.print(
-                    "[yellow]No products found in database[/yellow]"
-                    if force
-                    else "[green]✓ All products already have embeddings![/green]"
-                )
-
-            _print_embedding_results(product_success, product_errors)
-
-            if include_exemplars:
-                console.print()
-                console.print("[bold]→ Intent exemplars[/bold]")
-                exemplars, _total = await exemplar_service.get_exemplars_without_embeddings(force=force)
-                label = "ALL exemplars (force mode)" if force else "exemplars without embeddings"
-                console.print(f"[cyan]Processing {len(exemplars)} {label}[/cyan]")
-                if not exemplars:
-                    console.print(
-                        "[yellow]No exemplars found in database[/yellow]"
-                        if force
-                        else "[green]✓ All exemplars already have embeddings![/green]"
-                    )
-                    return
-                console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
-                exemplar_success, exemplar_errors = await _embed_in_batches(
-                    exemplars,
-                    batch_size,
-                    lambda batch, start_idx, total: _process_exemplar_batch(
-                        batch, exemplar_service, vertex_ai_service, start_idx, total
-                    ),
-                )
-                _print_embedding_results(exemplar_success, exemplar_errors)
-
-    run_(_bulk_embed)()
+    console.print()
+    console.print("[bold]→ Intent exemplars[/bold]")
+    exemplars, _total = await exemplar_service.get_exemplars_without_embeddings(force=force)
+    label = "ALL exemplars (force mode)" if force else "exemplars without embeddings"
+    console.print(f"[cyan]Processing {len(exemplars)} {label}[/cyan]")
+    if not exemplars:
+        console.print(
+            "[yellow]No exemplars found in database[/yellow]"
+            if force
+            else "[green]✓ All exemplars already have embeddings![/green]"
+        )
+        return
+    console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
+    exemplar_success, exemplar_errors = await _embed_in_batches(
+        exemplars,
+        batch_size,
+        lambda batch, start_idx, total: _process_exemplar_batch(
+            batch, exemplar_service, vertex_ai_service, start_idx, total
+        ),
+    )
+    _print_embedding_results(exemplar_success, exemplar_errors)
 
 
 @click.command(name="clear-cache", help="Clear cache tables in the database.")
@@ -264,22 +246,19 @@ def bulk_embed_cmd(batch_size: int, force: bool, include_exemplars: bool) -> Non
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def clear_cache_cmd(include_exemplars: bool, force: bool) -> None:
+@async_inject
+async def clear_cache_cmd(include_exemplars: bool, force: bool, cache_service: CacheService) -> None:
     """Clear application caches.
 
     By default, clears response_cache and embedding_cache only.
     Intent exemplar embeddings are preserved (expensive to regenerate).
     """
-    from sqlspec.utils.sync_tools import run_
-
     console = get_console()
 
-    # Determine what will be cleared
     tables_to_clear = ["response_cache", "embedding_cache"]
     if include_exemplars:
         tables_to_clear.append("intent_exemplar")
 
-    # Confirm operation unless forced
     if not force:
         console.print("[bold]Tables to clear:[/bold]")
         for table in tables_to_clear:
@@ -299,40 +278,23 @@ def clear_cache_cmd(include_exemplars: bool, force: bool) -> None:
             console.print("[yellow]Operation cancelled.[/yellow]")
             return
 
-    async def _clear_cache() -> None:
-        """Clear cache tables."""
-        from app.config import db, db_manager
-        from app.domain.system.services import CacheService
-
-        async with db_manager.provide_session(db) as session:
-            cache_service = CacheService(session)
-            console.rule("[bold blue]Clearing Caches", style="blue", align="left")
-            console.print()
-
-            # Clear caches using the service
-            deleted_count = await cache_service.invalidate_cache(cache_type=None, include_exemplars=include_exemplars)
-
-            console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
-            console.print()
-
-    run_(_clear_cache)()
+    console.rule("[bold blue]Clearing Caches", style="blue", align="left")
+    console.print()
+    deleted_count = await cache_service.invalidate_cache(cache_type=None, include_exemplars=include_exemplars)
+    console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
+    console.print()
 
 
 @click.command(name="model-info", help="Show information about currently configured AI models.")
-def model_info_cmd() -> None:
+@async_inject
+async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
     """Show information about currently configured AI models."""
-    from sqlspec.utils.sync_tools import run_
-
-    from app.config import db, db_manager
-    from app.domain.products.services import VertexAIService
-    from app.domain.system.services import CacheService
     from app.lib.settings import get_settings
 
     console = get_console()
     console.rule("[bold blue]AI Model Configuration", style="blue", align="left")
     console.print()
 
-    # Show settings
     settings = get_settings()
     console.print(f"[bold]Chat Model:[/bold] {settings.vertex_ai.CHAT_MODEL}")
     console.print(f"[bold]Embedding Model:[/bold] {settings.vertex_ai.EMBEDDING_MODEL}")
@@ -340,36 +302,11 @@ def model_info_cmd() -> None:
     console.print(f"[bold]Embedding Dimensions:[/bold] {settings.vertex_ai.EMBEDDING_DIMENSIONS}")
     console.print()
 
-    # Test model initialization
     console.print("[bold]🔍 Testing Model Initialization...[/bold]")
-
-    async def _check_vertex() -> None:
-        from google.genai import Client
-        async with db_manager.provide_session(db) as session:
-            cache_service = CacheService(session)
-            if settings.vertex_ai.PROJECT_ID:
-                client = Client(
-                    vertexai=True,
-                    project=settings.vertex_ai.PROJECT_ID,
-                    location=settings.vertex_ai.LOCATION,
-                )
-            else:
-                client = Client(
-                    api_key=settings.vertex_ai.API_KEY,
-                )
-            VertexAIService(
-                client=client,
-                model=settings.vertex_ai.CHAT_MODEL,
-                embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
-                embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
-                cache_service=cache_service,
-            )
-            console.print("[bold green]✓ Successfully initialized![/bold green]")
-
-    try:
-        run_(_check_vertex)()
-    except Exception as e:  # noqa: BLE001
-        console.print(f"[bold red]✗ Model initialization failed: {e}[/bold red]")
+    if vertex_ai_service.client is None:  # type: ignore[truthy-bool]
+        console.print("[bold red]✗ Vertex AI client not initialized[/bold red]")
+        return
+    console.print("[bold green]✓ Successfully initialized![/bold green]")
     console.print()
 
 
