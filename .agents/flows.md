@@ -36,9 +36,13 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
   *Beads: oracledb-vertexai-4d6.5*
 
-  ### [ ] Ch 6: documentation-setup_20260429
-  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
+  ### [ ] Ch 6: vector-calculator_20260429
+  *Link: [./specs/vector-calculator_20260429/](./specs/vector-calculator_20260429/)*
   *Beads: oracledb-vertexai-4d6.6*
+
+  ### [ ] Ch 7: documentation-setup_20260429
+  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
+  *Beads: oracledb-vertexai-4d6.7*
 
   ---
 

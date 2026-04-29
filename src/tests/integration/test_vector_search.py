@@ -16,13 +16,15 @@ contract: `price` is present (not `current_price`), `similarity_score` is in
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
 
 from app.domain.products.schemas import ProductMatch
 
 if TYPE_CHECKING:
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
+
     from app.domain.products.services import ProductService
 
 pytestmark = pytest.mark.anyio
@@ -35,7 +37,7 @@ def _seed_embedding() -> list[float]:
     return [0.5] * 3072
 
 
-async def _seed_product_with_embedding(driver: Any) -> int:
+async def _seed_product_with_embedding(driver: OracleAsyncDriver) -> int:
     """Update the bootstrap-seeded product to carry a known embedding. Returns its id."""
     embedding = _seed_embedding()
     result = await driver.select_one_or_none(
@@ -55,7 +57,7 @@ async def _seed_product_with_embedding(driver: Any) -> int:
 
 
 async def test_vector_search_returns_typed_product_matches_with_price(
-    driver: Any, product_service: ProductService,
+    driver: OracleAsyncDriver, product_service: ProductService,
 ) -> None:
     """search_by_vector must return ProductMatch instances with price>0 and similarity_score in [0,1]."""
     seed_id = await _seed_product_with_embedding(driver)
@@ -76,8 +78,10 @@ async def test_vector_search_returns_typed_product_matches_with_price(
             f"ProductMatch.price must be populated and >0 (got {match.price!r}); "
             "this guards against the legacy current_price/price column-name bug"
         )
-        assert 0 <= match.similarity_score <= 1, (
-            f"similarity_score must be in [0, 1], got {match.similarity_score!r}"
+        # Cosine similarity of FP32-stored vectors against an FP64 query can land
+        # a few ULPs above 1.0 for self-matches. Allow a small numerical fuzz.
+        assert -1e-6 <= match.similarity_score <= 1 + 1e-6, (
+            f"similarity_score must be in [0, 1] (±1e-6), got {match.similarity_score!r}"
         )
         assert not hasattr(match, "current_price"), (
             "ProductMatch must not expose 'current_price' — the column was renamed to 'price'"
@@ -94,7 +98,7 @@ async def test_vector_search_returns_typed_product_matches_with_price(
     )
 
 
-async def test_vector_search_named_query_runs_via_db_manager(driver: Any) -> None:
+async def test_vector_search_named_query_runs_via_db_manager(driver: OracleAsyncDriver) -> None:
     """Exercise the named query end-to-end and confirm the column shape Oracle returns."""
     await _seed_product_with_embedding(driver)
 

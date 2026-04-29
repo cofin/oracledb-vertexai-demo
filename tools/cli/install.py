@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
-import httpx
 import rich_click as click
 from rich.console import Console
 from rich.prompt import Confirm

@@ -95,6 +95,26 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 - Rewrite root README as 5-minute quickstart.
 - `patterns.md` final pass: drop obsolete gotchas; document HNSW+INMEMORY recipe, parallel-classification trick, ADK 2.0 runner shape, named-SQL pattern, EXPLAIN-on-explore-page idiom.
 
+### Chapter 6 — `documentation-setup_20260429`
+**The learning base.** Transform the repo into a premier learning resource with Sphinx.
+
+- Sphinx + Material theme + Mermaid diagrams.
+- Narrative deep dives into Oracle 23ai and Vertex AI.
+- Autodoc API reference.
+
+### Chapter 7 — `vector-calculator_20260429`
+**The utility.** Add a creative client-side widget to the Explore page for storage estimation.
+
+- 7th Panel on the Explore page: **Vector Storage Size Requirement Calculator**.
+- Pure client-side (Alpine.js) widget inside `explore.html.j2`.
+- Oracle 23ai specific semantics:
+  - Vector formats: FLOAT32 (4B), FLOAT64 (8B), INT8 (1B), BINARY (dims/8).
+  - Index overhead: HNSW adjacency lists (M * dims * 4 bytes per vector).
+  - SGA Pool estimation: Total raw + index size.
+- Presets: Gemini (768, 3072), OpenAI (1536), Cohere (1024, 4096).
+- Interactive sliders for N (rows) and d (dimensions).
+- Creative visualizations (comparing to physical media: Floppy, CD, DVD, Blu-ray).
+
 ---
 
 ## Global Constraints
@@ -142,11 +162,12 @@ These apply to **every** chapter. Reviewers should reject PRs that violate them.
 
 PRD is complete when:
 
-- All 5 chapters are merged.
+- All 6 chapters are merged.
 - `make install && make test && make lint` is green from a clean clone.
 - The 5-minute quickstart in README actually works for a new contributor.
 - Published skill citations to this repo (in `litestar:litestar-ai-serving` and `litestar:sqlspec`) match the file layout exactly.
 - `patterns.md` reflects the codebase as it actually is, not as it was.
+- **Vector Storage Calculator** is functional on the Explore page and accounts for Oracle 23ai formats.
 
 ---
 
@@ -158,3 +179,5 @@ PRD is complete when:
 - **Ch 3** `adk2-runner_20260429` → `oracledb-vertexai-4d6.3` (blocked by Ch 2)
 - **Ch 4** `htmx-vite-frontend_20260429` → `oracledb-vertexai-4d6.4` (blocked by Ch 2)
 - **Ch 5** `prune-and-document_20260429` → `oracledb-vertexai-4d6.5` (blocked by Ch 3 and Ch 4)
+- **Ch 6** `documentation-setup_20260429` → `oracledb-vertexai-4d6.6` (blocked by Ch 5)
+- **Ch 7** `vector-calculator_20260429` → `oracledb-vertexai-4d6.7` (blocked by Ch 4)

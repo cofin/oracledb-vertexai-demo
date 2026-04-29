@@ -33,10 +33,10 @@ from pathlib import Path
 import rich_click as click
 from rich.console import Console
 
-# Ensure tools/ and src/py/ are importable.
+# Ensure tools/ and src/ are importable.
 SCRIPT_DIR = Path(__file__).parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "src" / "py"))
+sys.path.insert(0, str(SCRIPT_DIR / "src"))
 
 from tools.cli import doctor_command, init_command, install_group  # noqa: E402
 from tools.oracle import (  # noqa: E402

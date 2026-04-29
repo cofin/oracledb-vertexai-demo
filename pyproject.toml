@@ -47,11 +47,11 @@ requires = ["hatchling", "nodeenv"]
 allow-direct-references = true
 
 [tool.hatch.build]
-dev-mode-dirs = ["src/py", "."]
+dev-mode-dirs = ["src", "."]
 ignore-vcs = true
 
 [tool.hatch.build.targets.sdist]
-packages = ["src/py/app"]
+packages = ["src/app"]
 
 [tool.hatch.build.targets.wheel]
 artifacts = [
@@ -67,7 +67,7 @@ artifacts = [
     "**/*.txt",
     "**/*.json",
 ]
-packages = ["src/py/app"]
+packages = ["src/app"]
 
 [dependency-groups]
 build = ["bump-my-version"]
@@ -107,7 +107,7 @@ test = [
 
 fix = true
 line-length = 120
-src = ["src/py", "tools"]
+src = ["src", "tools"]
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -171,8 +171,8 @@ known-first-party = ["tests", "app", "config"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
-"src/py/tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
-"src/py/tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"src/tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"src/tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
 "tools/*.py" = ["INP001", "ERA001", "N999"]
 "tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001", "S603", "S404", "PLR0915"]
 
@@ -180,7 +180,7 @@ known-first-party = ["tests", "app", "config"]
 strict-imports = false
 
 [tool.codespell]
-ignore-words-list = "alog, uv.lock, src/js/package-lock.json"
+ignore-words-list = "alog, uv.lock, package-lock.json"
 
 [tool.mypy]
 disallow_any_generics = false
@@ -204,11 +204,11 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 markers = ["slow: marks tests as slow (integration/runtime checks)"]
-pythonpath = ["src/py"]
-testpaths = ["src/py/tests"]
+pythonpath = ["src"]
+testpaths = ["src/tests"]
 
 [tool.pyright]
 exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
-extraPaths = ["src/py"]
-include = ["src/py/app", "src/py/tests"]
+extraPaths = ["src"]
+include = ["src/app", "src/tests"]
 reportMissingImports = "information"

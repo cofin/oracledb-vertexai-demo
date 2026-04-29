@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from litestar.testing import AsyncTestClient
@@ -10,9 +12,24 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from litestar import Litestar
+    from sqlspec.adapters.oracledb import OracleAsyncDriver
+
+    from app.domain.chat.services import IntentService
+    from app.domain.products.services import ProductService
+    from app.domain.system.services import CacheService
 
 
-async def _bootstrap_test_schema(session: Any) -> None:
+# Pin every integration test in this directory to a single xdist worker. The
+# Oracle connection pool + fixture-loaded data are shared mutable state; running
+# them across two workers causes pool-handle errors and TRUNCATE races.
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    del config  # unused
+    marker = pytest.mark.xdist_group(name="oracle_integration")
+    for item in items:
+        item.add_marker(marker)
+
+
+async def _bootstrap_test_schema(session: OracleAsyncDriver) -> None:
     """Ensure integration-test tables and seed data exist."""
     await session.execute(
         """
@@ -107,6 +124,15 @@ async def _bootstrap_test_schema(session: Any) -> None:
         END;
         """
     )
+    await session.commit()
+
+
+async def _seed_marker_product(session: OracleAsyncDriver) -> None:
+    """Insert the deterministic marker product used by integration tests.
+
+    Runs after fixture loading + truncation so the marker survives the reset.
+    Tests reference it via ``WHERE sku = 'SEED-SKU-001'``.
+    """
     await session.execute(
         """
         MERGE INTO product p
@@ -140,30 +166,75 @@ def app() -> Litestar:
     return create_app()
 
 
+async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
+    """Wipe fixture-managed tables so each test session starts from a known state.
+
+    Mirrors the accelerator pattern: schema is durable, data is ephemeral. This
+    purges any zero-vector pollution left by prior ``coffee load-fixtures`` runs
+    against the dev container so vector-search assertions stay deterministic.
+    """
+    for table in ("intent_exemplar", "product", "store"):
+        with contextlib.suppress(Exception):
+            await session.execute(f"TRUNCATE TABLE {table}")
+    await session.commit()
+
+
+async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
+    """Load the canonical .json.gz fixtures into the test database.
+
+    Uses the same loader the ``coffee load-fixtures`` CLI uses, so the test DB
+    matches the production-app data shape (122 products with valid 3072-dim
+    embeddings, intent exemplars, etc.). The fixture files are checked into
+    ``src/app/db/fixtures/`` and updated by Ch 1.5's exemplar regen plumbing.
+    """
+    from app.db.utils import COFFEE_SHOP_TABLES
+    from app.lib.settings import get_settings
+    from app.utils.fixtures import FixtureLoader
+
+    settings = get_settings()
+    fixtures_dir = Path(settings.db.FIXTURE_PATH)
+    if not await asyncio.to_thread(fixtures_dir.exists):
+        return
+    loader = FixtureLoader(
+        fixtures_dir=fixtures_dir,
+        driver=session,
+        table_order=COFFEE_SHOP_TABLES,
+        expected_vector_dim=settings.vertex_ai.EMBEDDING_DIMENSIONS,
+    )
+    await loader.load_all_fixtures()
+
+
 @pytest.fixture
-async def driver() -> AsyncGenerator[Any, None]:
-    """Provide SQLSpec driver for tests."""
+async def driver() -> AsyncGenerator[OracleAsyncDriver, None]:
+    """Provide SQLSpec driver for tests against a freshly-seeded DB.
+
+    The integration setup pipeline:
+        1. Bootstrap schema (idempotent CREATE TABLE)
+        2. Truncate fixture-owned tables (purge cross-test pollution)
+        3. Load .json.gz fixtures (122 products + exemplars + stores)
+        4. Insert the SEED-SKU-001 marker the older tests rely on
+    """
     from app.config import db, db_manager
 
     with contextlib.suppress(Exception):
-        if db.pool_instance is not None:
-            await db.close_pool()
-            db.pool_instance = None
+        await db.close_pool()
 
     try:
         async with db_manager.provide_session(db) as session:
             await _bootstrap_test_schema(session)
+            await _truncate_fixture_tables(session)
+            await _load_app_fixtures(session)
+            await _seed_marker_product(session)
             yield session
     finally:
         # pytest-anyio creates a fresh event loop per test by default.
         # Closing the shared pool avoids loop-bound pool reuse across tests.
         with contextlib.suppress(Exception):
             await db.close_pool()
-        db.pool_instance = None
 
 
 @pytest.fixture
-async def product_service(driver: Any) -> Any:
+async def product_service(driver: OracleAsyncDriver) -> ProductService:
     """Provide ProductService for testing."""
     from app.domain.products.services import ProductService
 
@@ -171,7 +242,7 @@ async def product_service(driver: Any) -> Any:
 
 
 @pytest.fixture
-async def cache_service(driver: Any) -> Any:
+async def cache_service(driver: OracleAsyncDriver) -> CacheService:
     """Provide CacheService for testing."""
     from app.domain.system.services import CacheService
 
@@ -179,15 +250,13 @@ async def cache_service(driver: Any) -> Any:
 
 
 @pytest.fixture
-async def intent_service(driver: Any) -> Any:
+async def intent_service(driver: OracleAsyncDriver) -> IntentService:
     """Provide IntentService for testing."""
     from unittest.mock import MagicMock
 
     from app.domain.chat.services import IntentService
 
-    # Create mock services
     mock_vertex = MagicMock()
     mock_exemplar = MagicMock()
 
-    # Service with optional cache
     return IntentService(driver=driver, vertex_ai_service=mock_vertex, exemplar_service=mock_exemplar)

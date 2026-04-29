@@ -405,7 +405,7 @@ class ViteSettings:
             dev_mode=self.DEV_MODE,
             types=TypeGenConfig(output=Path("src/lib/generated")),
             paths=PathConfig(
-                root=BASE_DIR.parents[2] / "src" / "js",
+                root=BASE_DIR.parents[1] / "src" / "js",
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
