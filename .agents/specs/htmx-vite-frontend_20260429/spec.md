@@ -14,7 +14,7 @@ Bundle two transformations into one chapter, in this order:
 1. **Source-tree flatten** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend resources from `src/js/src/` into `src/resources/`. Move Jinja templates to `src/templates/`. After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root.
 2. **Frontend rewrite** — replace the React + TanStack SPA (`mode="spa"`) with a tasteful **HTMX 2.x + Tailwind v4 + Alpine.js + ApexCharts** UI served via `litestar-vite` in `mode="template"` with `HTMXPlugin()` + `hx-ext="litestar"`. No bun, no biome, no TanStack. Two pages, one shared layout, five panels on the explore page (heatmap dropped). The runtime executor is `node` (npm), not `bun`.
 
-End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run coffee assets build`, alias `litestar assets build`). Visual polish bar **at least the React version** per PRD global constraint #10.
+End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run python manage.py assets build`). **All asset-pipeline commands route through `manage.py assets *` (install, build, serve, generate-types) — same `vite_group` filter as `dma/accelerator/manage.py:401-405`.** `coffee assets *` continues to exist (auto-registered by `VitePlugin.on_cli_init`) but is **not** referenced by Makefile, scripts, CI, or docs. Visual polish bar **at least the React version** per PRD global constraint #10.
 
 ### Code Analysis Summary (verified 2026-04-29)
 
@@ -86,7 +86,10 @@ End state: a clean monorepo where the JS/Python boundary is a directory, not a t
 - `OracleVectorSearchService.similarity_search` returns `(results, cache_hit, timings)` per Ch 2 (`services.py:110-123`). Each row has `id, name, description, price, similarity_score, distance`.
 - `litestar[jinja]` is in `pyproject.toml:17`, so JinjaTemplateEngine is import-ready.
 - No `TemplateConfig` exists yet; Phase 4.4 adds it.
-- The `coffee assets ...` CLI subcommands (`install`, `build`, `serve`, `init`, `status`, `generate-types`) are already wired by `VitePlugin.on_cli_init`. `make assets-build` already calls `uv run coffee assets build`.
+- Two CLI surfaces expose the same `vite_group` subcommands:
+  - `coffee assets ...` — auto-registered by `VitePlugin.on_cli_init` on the Litestar CLI (`coffee` = `app.__main__:run_cli`). Cannot be unregistered without disabling the plugin; must simply not be invoked from Makefile/CI/docs.
+  - `python manage.py assets ...` — explicit subset (`install`, `build`, `serve`, `generate-types`) mounted in `manage.py:152-154` via the accelerator pattern (`dma/accelerator/manage.py:401-405`). **This is the canonical invocation going forward.**
+- A Phase 7 invariant test grep-rejects `coffee assets ` in `Makefile`, `tools/`, `.github/workflows/`, `README.md`, `tools/deploy/docker/` to prevent drift.
 
 **Visual seed (carry-over from React):**
 
@@ -247,7 +250,8 @@ Notes:
 - `find src/templates -name "*.html.j2" | wc -l` returns **≥ 8** (the inventory above).
 - `grep -rn "BASE_DIR.parents\[2\]" src/app` returns **zero** matches; `grep -rn "BASE_DIR.parents\[1\]" src/app` returns **2** (settings.py + _system.py).
 - `make install` from a clean checkout succeeds (`uv sync` + `npm ci`).
-- `make build` succeeds (`uv build` + `npm run build` via `coffee assets build`).
+- `make build` succeeds (`uv build` + `npm run build` via `python manage.py assets build`).
+- No `coffee assets ` invocations in `Makefile`, `tools/`, `.github/workflows/`, `README.md`, or `tools/deploy/docker/` (Phase 7 invariant test).
 - `make lint` green (ruff + mypy + pyright + Tailwind/Vite TS check via `tsc --noEmit`; biome removed).
 - `make test` green; new tests:
   - `src/tests/api/test_pages.py` — `/`, `/explore` render with expected anchors.
@@ -304,7 +308,16 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
   - `[tool.hatch.build.targets.sdist] packages = ["src/app"]` (was `["src/py/app"]`).
   - `[tool.hatch.build.targets.wheel] packages = ["src/app"]`.
   - `[tool.hatch.build] dev-mode-dirs = ["src", "."]` (was `["src/py", "."]`).
-- [ ] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths. Specifically: `clean` target (`src/js/dist`, `src/js/node_modules` → `dist/`, `node_modules/`); `test` target (`src/py/tests` → `src/tests`); `lint` target (`src/py/app` → `src/app`, drop `cd src/js && bun run fix`); `mypy`/`pyright` (`src/py/app` → `src/app`); `lock` (drop `src/js && bun install`); `install` (drop `install-bun` + `coffee assets generate-types`); `destroy` (drop `src/js/node_modules src/js/dist`). Delete the `js-*` targets entirely; delete the `assets-generate-types` target. Keep `assets-build`.
+- [ ] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths AND route every `coffee assets *` invocation through `python manage.py assets *`. Specifically:
+  - `clean` target (`src/js/dist`, `src/js/node_modules` → `dist/`, `node_modules/`).
+  - `test` target (`src/py/tests` → `src/tests`).
+  - `lint` target (`src/py/app` → `src/app`, drop `cd src/js && bun run fix`).
+  - `mypy`/`pyright` (`src/py/app` → `src/app`).
+  - `lock` (drop `src/js && bun install`).
+  - `install` target: drop `install-bun`; drop `@uv run coffee assets generate-types >/dev/null 2>&1` line entirely; rewrite `@uv run coffee assets install` → `@uv run python manage.py assets install`.
+  - `destroy` (drop `src/js/node_modules src/js/dist`).
+  - `assets-build` target: rewrite `@uv run coffee assets build` → `@uv run python manage.py assets build`.
+  - Delete the `js-*` targets entirely; delete the `assets-generate-types` target (use `python manage.py assets generate-types` directly when needed).
 - [ ] **1.4** Test fixture path `src/py/tests` → `src/tests` in `pytest.ini`/`pyproject.toml` `[tool.pytest.ini_options]` (`testpaths`).
 - [ ] **1.5** `manage.py:39` — `sys.path.insert(0, str(SCRIPT_DIR / "src" / "py"))` → `sys.path.insert(0, str(SCRIPT_DIR / "src"))`. Failing test: `python manage.py --help` prints commands without ImportError.
 - [ ] **1.6** **`BASE_DIR.parents[*]` audit.** Edit `src/app/lib/settings.py:408` from `BASE_DIR.parents[2] / "src" / "js"` to `BASE_DIR.parents[1]` (root will be the repo, `resource_dir` carries `src/resources`). Edit `src/app/domain/system/controllers/_system.py:28` from `BASE_DIR.parents[2] / "src" / "js" / "public" / "favicon.ico"` to `BASE_DIR.parents[1] / "src" / "resources" / "public" / "favicon.ico"` (Phase 3.4 will populate this directory; the favicon handler temporarily 500s between Phase 1 and Phase 3.4). **Failing test that must pass after Phase 3.4 lands: `src/tests/unit/test_base_dir_audit.py` asserts `BASE_DIR.parents[1].name == <repo-name>` and the favicon path resolves.**
@@ -421,7 +434,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
 ### Phase 6: Toolchain & deployment (`oracledb-vertexai-4d6.4.4`, rewritten + `oracledb-vertexai-4d6.4.6`, rewritten)
 
 - [ ] **6.1** `pyproject.toml` final pass — confirm no `litestar-htmx` direct dependency was inadvertently added (HTMX comes from `litestar[jinja,...]`). No `bun` references anywhere. Confirm `[tool.hatch.build.targets.wheel].packages = ["src/app"]` and `artifacts` includes `**/*.j2`.
-- [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run coffee assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run coffee assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
+- [ ] **6.2** `Makefile` final pass — Phase 1.3 did most of this. Confirm: `make install` runs `uv sync` + `npm install` (via `uv run python manage.py assets install` which delegates to `NodeExecutor.install`); `make build` runs `uv build` + `npm run build` (via `uv run python manage.py assets build`); `make lint` runs ruff + mypy + pyright + `npx tsc --noEmit`. **No `coffee assets ` invocations remain in the Makefile** (verified by Phase 7.x invariant test). Add a small `frontend-typecheck` target wrapping `npx tsc --noEmit` so CI can target it.
 - [ ] **6.3** `.gitignore` final pass — add `node_modules/`, `dist/` (with `!dist/.gitkeep` to keep the directory for classify-compare output), `src/app/server/static/dist/` (Vite output). Remove all `src/js/`-specific entries. Add `src/resources/generated/` to gitignore (TypeGen output, even though we have all flags off — defense in depth).
 - [ ] **6.4** `tools/deploy/docker/run/Dockerfile`:
     - Drop the `oven/bun` COPY layer.
@@ -452,6 +465,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
     - `src/tests/api/test_explain_plan.py` (Phase 5.1b)
     - `src/tests/api/test_classify_compare_endpoint.py` (Phase 5.1c)
     - `src/tests/api/test_vector_demo_partial.py` (Phase 5.5)
+- [ ] **7.2a** **Asset-CLI invariant test** — new `src/tests/unit/test_asset_cli_invariant.py`. Greps `Makefile`, `tools/deploy/docker/run/Dockerfile`, `tools/deploy/docker/run/Dockerfile.distroless`, `.github/workflows/*.yml`, `README.md` for the literal string `coffee assets ` and asserts zero matches. Rationale: prevents drift back to the litestar-CLI surface; project policy is `python manage.py assets *` everywhere. Comments / spec docs are exempt (test scopes to executable files only). Failing-test demo: temporarily inject `coffee assets build` into the Makefile → test RED → revert → test GREEN.
 - [ ] **7.3** Manual browser smoke (Playwright; document outcomes in Beads notes on the doc-touch task):
     - `make install && make build && uv run coffee run`
     - `/` chat: persona switches; send message; partial appears; metrics badges update via OOB.
@@ -467,6 +481,7 @@ Target end state: `src/app/`, `src/tests/`. Atomic with the `BASE_DIR.parents[*]
     - `OOB` swap idiom for multi-region updates from one POST.
     - CSRF: `<meta name="csrf-token">` + `registerHtmxExtension()` ⇒ `X-CSRFToken` header.
     - Tailwind v4 `@source` directive for Jinja template scanning.
+    - **Asset-pipeline invocation: always `python manage.py assets *`, never `coffee assets *`** (mirrors `dma/accelerator/manage.py`; protected by `test_asset_cli_invariant.py`).
 
 ---
 
