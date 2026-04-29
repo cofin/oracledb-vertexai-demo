@@ -159,33 +159,16 @@ src/js/tsconfig.node.tsbuildinfo
 src/js/vite.config.js
 src/js/vite.config.d.ts
 src/js/src/lib/generated/
-install-pdm.py
-.messages.db
-.memory.db
-.agent
 demo.py
-CLAUDE.md
 .tmp
 todo
 
 # Wallet files and environment-specific configs
 .envs/
-
-# Multi-AI agent system
-# AI-specific invocation layers (gitignored, created locally)
-.claude/
-.codex/
-/specs/
-.gemini/
-.agent/
-.agents/archive/
-.agents/beads.json
 !tools/lib
-.beads
-.gemini
 !src/py/app/lib
-
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
 .beads-credential-key
+.beads
