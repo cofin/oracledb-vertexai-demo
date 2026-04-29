@@ -12,11 +12,6 @@ from rich.prompt import Prompt
 logger = structlog.get_logger()
 
 
-# Coffee demo group for application-specific operations
-@click.group(name="coffee", invoke_without_command=False, help="Coffee shop demo and AI operations.")
-@click.pass_context
-def coffee_demo_group(_: click.Context) -> None:
-    """Coffee shop demo and AI operations."""
 
 
 async def _fetch_products_to_embed(product_service: Any, force: bool) -> tuple[list[dict[str, Any]], str]:
@@ -157,7 +152,7 @@ def _print_embedding_results(total_success: int, total_errors: int) -> None:
     console.print()
 
 
-@coffee_demo_group.command(
+@click.command(
     name="bulk-embed",
     help="Run bulk embedding job for products (and optionally intent exemplars) using Vertex AI.",
 )
@@ -168,7 +163,7 @@ def _print_embedding_results(total_success: int, total_errors: int) -> None:
     is_flag=True,
     help="Also re-embed intent_exemplar phrases (required after dimension changes).",
 )
-def bulk_embed(batch_size: int, force: bool, include_exemplars: bool) -> None:
+def bulk_embed_cmd(batch_size: int, force: bool, include_exemplars: bool) -> None:
     """Run bulk embedding job for all products using Vertex AI."""
     from sqlspec.utils.sync_tools import run_
 
@@ -257,7 +252,7 @@ def bulk_embed(batch_size: int, force: bool, include_exemplars: bool) -> None:
     run_(_bulk_embed)()
 
 
-@coffee_demo_group.command(name="clear-cache", help="Clear cache tables in the database.")
+@click.command(name="clear-cache", help="Clear cache tables in the database.")
 @click.option(
     "--include-exemplars",
     is_flag=True,
@@ -269,7 +264,7 @@ def bulk_embed(batch_size: int, force: bool, include_exemplars: bool) -> None:
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def clear_cache(include_exemplars: bool, force: bool) -> None:
+def clear_cache_cmd(include_exemplars: bool, force: bool) -> None:
     """Clear application caches.
 
     By default, clears response_cache and embedding_cache only.
@@ -323,8 +318,8 @@ def clear_cache(include_exemplars: bool, force: bool) -> None:
     run_(_clear_cache)()
 
 
-@coffee_demo_group.command(name="model-info", help="Show information about currently configured AI models.")
-def model_info() -> None:
+@click.command(name="model-info", help="Show information about currently configured AI models.")
+def model_info_cmd() -> None:
     """Show information about currently configured AI models."""
     from sqlspec.utils.sync_tools import run_
 
