@@ -115,6 +115,7 @@ fixable = ["ALL"]
 ignore = [
     "A003",    # flake8-builtins - class attribute {name} is shadowing a python builtin
     "A005",    # flake8-builtins - module {name} shadows a Python standard-library module
+    "B008",    # flake8-bugbear - do not perform function call in argument defaults (Litestar's Dependency/Parameter idiom)
     "B010",    # flake8-bugbear - do not call setattr with a constant attribute value
     "D100",    # pydocstyle - missing docstring in public module
     "D101",    # pydocstyle - missing docstring in public class

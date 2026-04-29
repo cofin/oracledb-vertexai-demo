@@ -24,7 +24,7 @@ from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
 from app.domain.products.schemas import Product, Store
-from app.lib.service import SQLSpecAsyncService
+from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
@@ -35,6 +35,9 @@ logger = structlog.get_logger()
 
 class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for products using SQLSpec patterns."""
+
+    async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
+        return await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product)
 
     async def get_by_id(self, product_id: int) -> Product | None:
         return await self.driver.select_one_or_none(
@@ -78,6 +81,9 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
 
 class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing store locations."""
+
+    async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Store]:
+        return await self.paginate(db_manager.get_sql("list-stores"), *filters, schema_type=Store)
 
     async def get_all_stores(self) -> list[Store]:
         return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)

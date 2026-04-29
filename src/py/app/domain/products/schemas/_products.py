@@ -14,12 +14,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime  # noqa: TC003 — used in handler-visible schema; Litestar OpenAPI needs runtime ref
+from typing import Any
 
 from app.lib.schema import CamelizedBaseStruct
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class Product(CamelizedBaseStruct, omit_defaults=True):

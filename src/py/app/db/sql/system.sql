@@ -33,6 +33,11 @@ ORDER BY similarity DESC
 FETCH FIRST :limit ROWS ONLY;
 
 -- name: list-exemplars
-SELECT id, intent, phrase
-FROM intent_exemplar
-ORDER BY id;
+SELECT id,
+       intent,
+       phrase,
+       confidence_threshold,
+       usage_count,
+       created_at,
+       updated_at
+FROM intent_exemplar;

@@ -24,8 +24,8 @@ from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.system.schemas import ResponseCache, SearchMetricsCreate
-from app.lib.service import SQLSpecAsyncService
+from app.domain.system.schemas import IntentExemplar, ResponseCache, SearchMetricsCreate
+from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -241,6 +241,9 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
 
 class ExemplarService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing intent exemplars and vector-based intent classification."""
+
+    async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[IntentExemplar]:
+        return await self.paginate(db_manager.get_sql("list-exemplars"), *filters, schema_type=IntentExemplar)
 
     async def search_similar_intents(self, query_embedding: list[float], limit: int = 5) -> list[dict[str, Any]]:
         return await self.driver.select(

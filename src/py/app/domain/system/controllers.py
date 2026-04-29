@@ -15,12 +15,45 @@
 from typing import Any
 
 from litestar import Controller, get
+from litestar.params import Dependency
 from litestar.response import File
 
 from app.domain.system import schemas
-from app.domain.system.services import CacheService, MetricsService
+from app.domain.system.schemas import IntentExemplar
+from app.domain.system.services import CacheService, ExemplarService, MetricsService
 from app.lib.di import Inject
+from app.lib.service import FilterTypes, OffsetPagination, create_filter_dependencies
 from app.lib.settings import BASE_DIR
+
+
+class ExemplarController(Controller):
+    """Intent-classification exemplar endpoints (powers the explore page).
+
+    Ch 4 wires the live-vs-ground-truth panel onto this listing — Ch 2 ships the
+    plumbing only.
+    """
+
+    path = "/api/exemplars"
+    tags = ["Exemplars"]
+    dependencies = create_filter_dependencies({
+        "pagination_type": "limit_offset",
+        "sort_field": "id",
+        "sort_order": "asc",
+        "id_filter": int,
+        "id_field": "id",
+        "search": ["intent", "phrase"],
+        "search_ignore_case": True,
+        "created_at": True,
+    })
+
+    @get("/", operation_id="ListExemplars", name="exemplars:list", summary="List Intent Exemplars")
+    async def list_exemplars(
+        self,
+        exemplars_service: Inject[ExemplarService],
+        filters: list[FilterTypes] = Dependency(skip_validation=True),
+    ) -> OffsetPagination[IntentExemplar]:
+        """List intent exemplars with pagination, search, and filtering."""
+        return await exemplars_service.list_with_count(*filters)
 
 
 class SystemController(Controller):

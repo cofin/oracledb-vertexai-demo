@@ -12,6 +12,19 @@ SELECT id,
        updated_at
 FROM product;
 
+-- name: list-products
+SELECT id,
+       name,
+       description,
+       price,
+       category,
+       sku,
+       in_stock,
+       metadata,
+       created_at,
+       updated_at
+FROM product;
+
 -- name: list-products-for-embedding
 SELECT id, name, description
 FROM product

@@ -15,6 +15,7 @@
 """System domain schemas package."""
 
 from ._cache import EmbeddingCache, ResponseCache
+from ._exemplar import IntentExemplar
 from ._metrics import (
     ChartDataResponse,
     MetricCard,
@@ -28,6 +29,7 @@ __all__ = (
     "ChartDataResponse",
     "EmbeddingCache",
     "HistoryMeta",
+    "IntentExemplar",
     "MetricCard",
     "MetricsSummaryResponse",
     "ResponseCache",
