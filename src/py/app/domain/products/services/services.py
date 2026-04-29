@@ -19,8 +19,10 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 from google.genai.types import EmbedContentConfig
+from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
+from app.config import db_manager
 from app.domain.products.schemas import Product, Store
 from app.lib.service import SQLSpecAsyncService
 
@@ -35,38 +37,42 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def get_by_id(self, product_id: int) -> Product | None:
-        sql = "SELECT * FROM product WHERE id = :id"
-        row = await self.driver.select_one_or_none(sql, {"id": product_id})
-        return Product(**row) if row else None
+        return await self.driver.select_one_or_none(
+            db_manager.get_sql("get-product").where("id = :id"),
+            id=product_id,
+            schema_type=Product,
+        )
 
     async def get_by_name(self, name: str) -> Product | None:
-        sql = "SELECT * FROM product WHERE name = :name"
-        row = await self.driver.select_one_or_none(sql, {"name": name})
-        return Product(**row) if row else None
-
-    async def get_products_without_embeddings(self) -> tuple[list[dict[str, Any]], int]:
-        """Return (products_missing_embedding, total_product_count)."""
-        rows = await self.driver.select(
-            "SELECT id, name, description FROM product WHERE embedding IS NULL ORDER BY id",
+        return await self.driver.select_one_or_none(
+            db_manager.get_sql("get-product").where("name = :name"),
+            name=name,
+            schema_type=Product,
         )
-        total_row = await self.driver.select_one_or_none("SELECT COUNT(*) AS total FROM product")
-        total = int(total_row["total"]) if total_row else len(rows)
-        return rows, total
+
+    async def get_products_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
+        """Return (products_to_embed, total_count). force=True returns every product."""
+        query = db_manager.get_sql("list-products-for-embedding")
+        if not force:
+            query = query.where("embedding IS NULL")
+        page = await self.paginate(query)
+        return list(page.items), page.total
 
     async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
         result = await self.driver.execute(
-            "UPDATE product SET embedding = :embedding WHERE id = :id",
-            {"embedding": embedding, "id": product_id},
+            sql.update("product").set(embedding=embedding).where_eq("id", product_id),
         )
         await self.driver.commit()
         rowcount = getattr(result, "rowcount", None)
         return bool(rowcount) if rowcount is not None else True
 
     async def search_by_vector(self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5) -> list[dict[str, Any]]:
-        sql = """SELECT id, name, description, price, 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity_score
-                 FROM product WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
-                 ORDER BY similarity_score DESC FETCH FIRST :limit ROWS ONLY"""
-        return await self.driver.select(sql, {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit})
+        return await self.driver.select(
+            db_manager.get_sql("vector-search-products"),
+            query_vector=query_embedding,
+            threshold=similarity_threshold,
+            limit=limit,
+        )
 
 # --- Store Service ---
 
@@ -74,24 +80,28 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing store locations."""
 
     async def get_all_stores(self) -> list[Store]:
-        sql = "SELECT * FROM store"
-        rows = await self.driver.select(sql)
-        return [Store(**row) for row in rows]
+        return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
 
     async def find_stores_by_city(self, city: str) -> list[Store]:
-        sql = "SELECT * FROM store WHERE city = :city"
-        rows = await self.driver.select(sql, {"city": city})
-        return [Store(**row) for row in rows]
+        return await self.driver.select(
+            db_manager.get_sql("list-stores").where("city = :city"),
+            city=city,
+            schema_type=Store,
+        )
 
     async def find_stores_by_state(self, state: str) -> list[Store]:
-        sql = "SELECT * FROM store WHERE state = :state"
-        rows = await self.driver.select(sql, {"state": state})
-        return [Store(**row) for row in rows]
+        return await self.driver.select(
+            db_manager.get_sql("list-stores").where("state = :state"),
+            state=state,
+            schema_type=Store,
+        )
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
-        sql = "SELECT * FROM store WHERE id = :id"
-        row = await self.driver.select_one_or_none(sql, {"id": store_id})
-        return Store(**row) if row else None
+        return await self.driver.select_one_or_none(
+            db_manager.get_sql("list-stores").where("id = :id"),
+            id=store_id,
+            schema_type=Store,
+        )
 
 # --- Vertex AI Service ---
 

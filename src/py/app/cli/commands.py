@@ -25,16 +25,10 @@ async def _fetch_products_to_embed(product_service: Any, force: bool) -> tuple[l
 
     console = get_console()
     with console.status("[bold yellow]Finding products to process...", spinner="dots"):
-        if force:
-            products = await product_service.driver.select(
-                "SELECT id, name, description, embedding FROM product ORDER BY id",
-            )
-            message = f"[cyan]Processing ALL {len(products)} products (force mode)[/cyan]"
-        else:
-            products, total = await product_service.get_products_without_embeddings()
-            message = f"[cyan]Processing {len(products)} products without embeddings from a total of {total}[/cyan]"
+        products, _total = await product_service.get_products_for_embedding(force=force)
 
-    return products, message
+    label = "ALL products (force mode)" if force else "products without embeddings"
+    return products, f"[cyan]Processing {len(products)} {label}[/cyan]"
 
 
 async def _process_product_batch(
@@ -240,10 +234,9 @@ def bulk_embed(batch_size: int, force: bool, include_exemplars: bool) -> None:
             if include_exemplars:
                 console.print()
                 console.print("[bold]→ Intent exemplars[/bold]")
-                exemplars, total = await exemplar_service.get_exemplars_without_embeddings(force=force)
-                console.print(
-                    f"[cyan]Processing {len(exemplars)} exemplars without embeddings from a total of {total}[/cyan]"
-                )
+                exemplars, _total = await exemplar_service.get_exemplars_without_embeddings(force=force)
+                label = "ALL exemplars (force mode)" if force else "exemplars without embeddings"
+                console.print(f"[cyan]Processing {len(exemplars)} {label}[/cyan]")
                 if not exemplars:
                     console.print(
                         "[yellow]No exemplars found in database[/yellow]"
