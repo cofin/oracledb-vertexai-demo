@@ -76,7 +76,7 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 1: Service base + facade (`oracledb-vertexai-4d6.2.1`)
 
-- [ ] **1.1** Rewrite `src/py/app/lib/service.py` as the accelerator-style re-export facade:
+- [x] **1.1** Rewrite `src/py/app/lib/service.py` as the accelerator-style re-export facade:
   ```python
   from sqlspec.service import SQLSpecAsyncService, SQLSpecSyncService
   from sqlspec.core.filters import (
@@ -89,8 +89,8 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
   __all__ = [...]
   ```
   Delete the local `SQLSpecService` Generic wrapper.
-- [ ] **1.2** `grep -rln "from app.lib.service import SQLSpecService" src/py/app/ | xargs sed -i 's/SQLSpecService/SQLSpecAsyncService/g'`. Manually audit each file: ensure no `__init__` overrides, no Generic[AsyncDriverT] usage that's now dead.
-- [ ] **1.3** Add a unit test `src/py/tests/unit/test_service_base.py` that imports each domain service and asserts `issubclass(Cls, SQLSpecAsyncService)`.
+- [x] **1.2** `grep -rln "from app.lib.service import SQLSpecService" src/py/app/ | xargs sed -i 's/SQLSpecService/SQLSpecAsyncService/g'`. Manually audit each file: ensure no `__init__` overrides, no Generic[AsyncDriverT] usage that's now dead.
+- [x] **1.3** Add a unit test `src/py/tests/unit/test_service_base.py` that imports each domain service and asserts `issubclass(Cls, SQLSpecAsyncService)`.
 
 ### Phase 2: Named SQL extraction (`oracledb-vertexai-4d6.2.2`)
 
