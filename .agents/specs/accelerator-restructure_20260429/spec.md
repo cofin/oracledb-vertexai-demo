@@ -106,19 +106,11 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 3: Provider collapse (`oracledb-vertexai-4d6.2.3`)
 
-- [ ] **3.1** In `src/py/app/ioc.py`, define **three** providers:
-  - `LitestarPersistenceProvider(Provider)` — `provide_config` @ APP returning `OracleAsyncConfig`; `provide_driver` @ REQUEST returning `AsyncIterator[OracleAsyncDriver]` (uses `async with config.provide_session() as driver: yield driver`).
-  - `IntegrationsProvider(Provider)` — APP-scoped: `provide_genai_client` → `genai.Client(...)`, `provide_vertex_ai_service` → `VertexAIService(...)`, `provide_adk_store` → `OracleAsyncADKStore(config)`, `provide_session_service` → `SQLSpecSessionService(store)`, `provide_intent_classifier` → `FlashLiteIntentClassifier(genai_client)` (Ch 3 implements the class; this provider slot is reserved here so Ch 3 can wire it without re-touching `ioc.py`), `provide_adk_runner` → `ADKRunner(session_service, classifier, persona_manager)`.
-  - `DomainServiceProvider(Provider)` — REQUEST-scoped: every `@provide` method for `ProductService`, `StoreService`, `OracleVectorSearchService`, `CacheService`, `MetricsService`, `ExemplarService`, `ChatService`, `IntentService`, `AgentToolsService`, `PersonaManager`. Each method: `def provide_<x>(self, driver: OracleAsyncDriver, vertex: VertexAIService, ...) -> XService: return XService(driver, ...)`.
-- [ ] **3.2** Define `make_litestar_container() -> AsyncContainer` returning `make_async_container(LitestarProvider(), LitestarPersistenceProvider(), IntegrationsProvider(), DomainServiceProvider())`.
-- [ ] **3.3** Delete the old `services/__init__.py` providers in `domain/system/`, `domain/chat/`, `domain/products/`. Each `__init__.py` keeps only domain re-exports (the service classes, schemas).
-- [ ] **3.4** Update `src/py/app/server/asgi.py`:
-  ```python
-  from dishka.integrations.litestar import setup_dishka
-  app = Litestar(plugins=[ApplicationCore()])
-  setup_dishka(make_litestar_container(), app)
-  ```
-- [ ] **3.5** Add a unit test `src/py/tests/unit/test_container_shape.py` that constructs the container and asserts: 3 user providers + LitestarProvider; APP-scoped resolutions for `OracleAsyncConfig`, `VertexAIService`, `ADKRunner`; REQUEST-scoped resolutions for `OracleAsyncDriver`, `ProductService`.
+- [x] **3.1** Three providers landed in `src/py/app/ioc.py`. Refinement vs original spec: `VertexAIService` and `OracleVectorSearchService` stay REQUEST-scoped under `DomainServiceProvider` (VertexAIService captures CacheService, which is REQUEST-scoped — making it APP would pin a stale per-request reference). `provide_intent_classifier` slot deferred to Ch 3 per YAGNI (class doesn't exist yet); `ADKRunner(session_service)` signature unchanged because PersonaManager is a static class today.
+- [x] **3.2** `make_litestar_container()` composes `LitestarProvider() + *(P() for P in PROVIDERS)`; `PROVIDERS` tuple exposed for introspection.
+- [x] **3.3** Per-domain `services/__init__.py` files now re-export service classes only — Provider classes deleted.
+- [x] **3.4** `src/py/app/server/asgi.py` was already calling `setup_dishka(make_litestar_container(), app)`; no change needed.
+- [x] **3.5** `src/py/tests/unit/test_container_shape.py` — 8 tests asserting tuple shape, registry chain, factory scopes, no `from __future__ import annotations`. `test_chat_di.py` rewritten to monkeypatch `IntegrationsProvider` instead of the now-gone `ChatServiceProvider`.
 
 ### Phase 4: Filter dependencies + paginated handlers (`oracledb-vertexai-4d6.2.4`)
 
