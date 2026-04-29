@@ -50,10 +50,12 @@ Default setup writes `.agents/beads.json` with `syncPolicy.autoExport: false`, `
 
 Use the active backend's session-start commands. Prefer `bd prime --mcp` when host hooks inject MCP-aware context; otherwise use `bd prime`.
 
-**Session End:**
+### Session End:
 
 For local-only ignores, prefer `.git/info/exclude` before `.gitignore`.
 Do not run `bd dolt push` unless the user explicitly asks or `.agents/beads.json` opts in with `syncPolicy.allowDoltPush`.
+Use `prek` for manual hook runs: `prek run --all-files`.
+
 
 > If no supported Beads backend is available, workflow degrades gracefully to git-only tracking.
 

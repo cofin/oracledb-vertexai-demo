@@ -42,6 +42,7 @@ logger = structlog.get_logger()
 
 # --- Intent Service ---
 
+
 class IntentService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for vector-based intent classification."""
 
@@ -61,6 +62,7 @@ class IntentService(SQLSpecAsyncService[OracleAsyncDriver]):
         return Intent(intent=res["intent"], confidence=res["similarity"], exemplar_phrase=res["phrase"], embedding_cache_hit=cache_hit, fallback_used=False)
 
 # --- Agent Tools Service ---
+
 
 class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Business logic for ADK tools."""
@@ -101,11 +103,13 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
 
 # --- ADK Runner & Tools ---
 
+
 async def search_products_by_vector(query: str, limit: int = 5, similarity_threshold: float = 0.7) -> dict[str, Any]:
     from app.lib.di import request_container_var
     async with _resolve_request_container(request_container_var.get()) as container:
         service = await container.get(AgentToolsService)
         return cast("dict[str, Any]", await service.search_products_by_vector(query, limit, similarity_threshold))
+
 
 async def get_product_details(product_id: str) -> dict[str, Any]:
     from app.lib.di import request_container_var
@@ -113,11 +117,13 @@ async def get_product_details(product_id: str) -> dict[str, Any]:
         service = await container.get(AgentToolsService)
         return cast("dict[str, Any]", await service.get_product_details(product_id))
 
+
 async def classify_intent(query: str) -> dict[str, Any]:
     from app.lib.di import request_container_var
     async with _resolve_request_container(request_container_var.get()) as container:
         service = await container.get(AgentToolsService)
         return cast("dict[str, Any]", await service.classify_intent(query))
+
 
 @asynccontextmanager
 async def _resolve_request_container(current: Any) -> AsyncGenerator[Any, None]:
@@ -130,7 +136,9 @@ async def _resolve_request_container(current: Any) -> AsyncGenerator[Any, None]:
         async with container(scope=Scope.REQUEST) as scoped:
             yield scoped
 
+
 ALL_TOOLS: list[Any] = [search_products_by_vector, get_product_details, classify_intent]
+
 
 class ADKRunner:
     """Runner for ADK agent system."""

@@ -294,5 +294,3 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         else:
             console.print("[yellow]⚠ Could not auto-configure Gemini MCP[/yellow]")
             console.print("[dim]  You can manually add SQLcl to ~/.gemini/settings.json[/dim]")
-
-

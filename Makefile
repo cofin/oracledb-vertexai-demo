@@ -64,7 +64,7 @@ setup-env:                                          ## Configure local environme
 	@./tools/scripts/setup-env.sh
 
 .PHONY: install
-install: destroy clean setup-env install-uv ## Install the project, dependencies, and pre-commit
+install: destroy clean setup-env install-uv ## Install the project and its dependencies (pre-commit / prek hooks are NOT auto-installed — run `uvx prek install` manually if you want commit-time checks).
 	@echo "${INFO} Starting fresh installation..."
 	@uv python pin 3.12 >/dev/null 2>&1
 	@uv venv >/dev/null 2>&1
@@ -72,13 +72,14 @@ install: destroy clean setup-env install-uv ## Install the project, dependencies
 	@echo "${INFO} Installing frontend packages... 📦"
 	@uv run python manage.py assets install >/dev/null 2>&1
 	@echo "${OK} Installation complete! 🎉"
+	@echo "${INFO} Tip: run \`uvx prek install\` if you want pre-commit hooks active on git commit (not required — \`make lint\` runs the full check on demand)."
 
 .PHONY: destroy
 # Remove venv and node_modules
 
 destroy:
 	@echo "${INFO} Destroying virtual environment... 🗑️"
-	@uv run pre-commit clean >/dev/null 2>&1 || true
+	@uvx prek clean >/dev/null 2>&1 || true
 	@rm -rf .venv
 	@rm -rf node_modules
 	@echo "${OK} Virtual environment destroyed 🗑️"
@@ -91,8 +92,8 @@ upgrade: setup-env ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
 	@uv lock --upgrade
 	@echo "${OK} Dependencies updated 🔄"
-	@uv run pre-commit autoupdate
-	@echo "${OK} Updated Pre-commit hooks 🔄"
+	@uvx prek autoupdate
+	@echo "${OK} Updated prek hooks 🔄"
 
 .PHONY: lock
 lock: ## Rebuild lockfiles from scratch
@@ -146,9 +147,9 @@ coverage: ## Run tests with coverage report
 
 .PHONY: lint
 lint: ## Run all linting and type checking
-	@echo "${INFO} Running pre-commit checks... 🔎"
-	@uv run pre-commit run --color=always --all-files
-	@echo "${OK} Pre-commit checks passed ✨"
+	@echo "${INFO} Running prek (pre-commit) checks... 🔎"
+	@uvx prek run --color=always --all-files
+	@echo "${OK} prek checks passed ✨"
 	@echo "${INFO} Running type checkers... 🔍"
 	@uv run mypy src/app tools manage.py
 	@uv run pyright src/app tools manage.py
@@ -252,3 +253,4 @@ wipe-infra: ## Remove local container info
 infra-logs: ## Tail development infrastructure logs
 	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
 	@uv run python manage.py database oracle local-container-logs --follow
+ntainer-logs --follow

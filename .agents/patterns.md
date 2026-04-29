@@ -6,6 +6,10 @@
 <!-- truth: start -->
 ## Code Conventions
 
+- **Licensing & Copyright:** Use concise SPDX identifiers at the top of every source file.
+  - **Python/Shell/SQL:** Use `# SPDX-FileCopyrightText: 2024 Google LLC` and `# SPDX-License-Identifier: Apache-2.0`.
+  - **JS/TS:** Use `// SPDX-FileCopyrightText: 2024 Google LLC` and `// SPDX-License-Identifier: Apache-2.0`.
+  - **Mandatory:** Full license blocks are deprecated in favor of SPDX identifiers. All new files MUST include these headers.
 - Use `app/domain/chat/services/_adk/runner.py` as the canonical ADK runner location in DDD projects.
 - Preserve ADK runner context fields (`intent_details`, `search_details`, `store_details`, `products_found`, `stores_found`) through controller response payloads and UI rendering.
 - Keep migration README updated with concrete baseline tables and type usage after schema modernization.
@@ -16,7 +20,7 @@
 - **Litestar App Composition:** Keep app setup thin. Compose routes, plugins, dependencies, and middleware strictly from domain modules. Use async I/O universally.
 - **Dishka DI:** Prefer centralized Dishka setup (`setup_dishka`) with `DomainPlugin(use_dishka_router=True)` and handler-level `Inject[T]` over route-level `@inject`.
 - Dishka router integration (`Inject[ADKRunner]` on handlers, no route decorators) keeps DI explicit and framework-native.
-- **SQLSpec Data Access:** 
+- **SQLSpec Data Access:**
   - Always use typed adapters and context managers (`async with config.create_driver() as db:`).
   - Use `schema_type` to map typed results instead of raw dictionaries.
   - Prefer the query builder (`sql.select().to_statement()`) or `SQLFileLoader` over raw string concatenation.

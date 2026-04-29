@@ -33,6 +33,7 @@ logger = structlog.get_logger()
 
 # --- Product Service ---
 
+
 class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for products using SQLSpec patterns."""
 
@@ -82,6 +83,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
 
 # --- Store Service ---
 
+
 class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing store locations."""
 
@@ -113,6 +115,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         )
 
 # --- Vertex AI Service ---
+
 
 class VertexAIService:
     """Service for interacting with Google Vertex AI."""
@@ -156,6 +159,7 @@ class VertexAIService:
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
+
 
 class OracleVectorSearchService:
     """Orchestrator for Oracle + Vertex AI vector search operations."""

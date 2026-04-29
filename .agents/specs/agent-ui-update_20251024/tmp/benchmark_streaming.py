@@ -100,7 +100,7 @@ def print_benchmark_results(results):
             print(f"  Min:    {min(times):7.1f}ms")
             print(f"  Max:    {max(times):7.1f}ms")
             print(f"  Mean:   {mean(times):7.1f}ms")
-            print(f"  Median: {sorted(times)[len(times)//2]:7.1f}ms")
+            print(f"  Median: {sorted(times)[len(times) // 2]:7.1f}ms")
             if len(times) > 1:
                 print(f"  StdDev: {stdev(times):7.1f}ms")
 

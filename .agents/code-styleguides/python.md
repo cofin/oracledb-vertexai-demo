@@ -4,6 +4,18 @@ Modern Python development standards with async-first patterns.
 
 ## Core Rules
 
+### License and Copyright Headers
+
+All Python files MUST start with concise SPDX headers. Traditional license blocks are deprecated.
+
+```python
+# SPDX-FileCopyrightText: 2024 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+...
+```
+
 ### Type Annotations
 
 ```python

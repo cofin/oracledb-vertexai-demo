@@ -150,4 +150,3 @@ A GitHub Actions workflow (`.github/workflows/docs.yml`) will automate the docum
 - **Ch 3** `agentic-visuals` — Mermaid mapping of ADK 2.0.
 - **Ch 4** `oracle-internals` — Vector search and execution plan visuals.
 - **Ch 5** `api-reference` — Autodoc and final polish.
-

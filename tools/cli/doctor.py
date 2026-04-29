@@ -141,8 +141,8 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
 
     checks["mode_specific"] = mode_specific
     # Overall status - ensure we have bool values
-    env_file_check = bool(checks.get("env_file", False))
-    uv_check = bool(checks.get("uv_installed", False))
+    env_file_check = bool(checks.get("env_file"))
+    uv_check = bool(checks.get("uv_installed"))
     mode_checks = all(mode_specific.values()) if mode_specific else True
     checks["overall"] = env_file_check and uv_check and mode_checks
 

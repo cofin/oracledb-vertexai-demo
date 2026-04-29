@@ -5,7 +5,7 @@ An intelligent coffee recommendation system showcasing Oracle 23ai vector search
 <!-- truth: start -->
 ## Core Product Definition
 
-This project is a reference application demonstrating a fictitious company named **Cymbal Coffee**. 
+This project is a reference application demonstrating a fictitious company named **Cymbal Coffee**.
 
 Its primary purpose is to showcase the features, functionality, and best practices of building AI-powered applications using:
 - **Oracle Database 26AI** (Vector Search, RAG, Graph RAG)

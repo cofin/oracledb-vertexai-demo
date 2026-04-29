@@ -342,7 +342,6 @@ class WalletConfigurator:
             validation_errors=errors or None,
         )
 
-
     def parse_tnsnames(self, wallet_dir: Path) -> list[str]:
         """Parse tnsnames.ora for service names.
 

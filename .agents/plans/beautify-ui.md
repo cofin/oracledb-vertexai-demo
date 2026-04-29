@@ -16,7 +16,7 @@
 ## Implementation Steps
 
 ### 1. Static Asset Variants
-- Copy the newly generated vector-traced SVGs to create explicit `-light.svg` (black text `#000000`) and `-dark.svg` (white text `#FFFFFF`) versions in `src/js/public/`. 
+- Copy the newly generated vector-traced SVGs to create explicit `-light.svg` (black text `#000000`) and `-dark.svg` (white text `#FFFFFF`) versions in `src/js/public/`.
 
 ### 2. React Components for Logos
 - Create `src/js/src/components/CymbalLogo.tsx` containing an inline version of the SVG with `fill="currentColor"` for the text path. This allows it to adapt to the light/dark theme seamlessly.

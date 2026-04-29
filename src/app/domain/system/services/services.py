@@ -132,6 +132,7 @@ class PersonaManager:
 
 # --- Cache Service ---
 
+
 class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for response and embedding cache."""
 
@@ -226,6 +227,7 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
 
 # --- Metrics Service ---
 
+
 class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles performance metrics and search logging."""
 
@@ -238,6 +240,7 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
         return {k: v or 0 for k, v in row.items()} if row else {}
 
 # --- Exemplar Service ---
+
 
 class ExemplarService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Service for managing intent exemplars and vector-based intent classification."""
