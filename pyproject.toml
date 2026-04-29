@@ -17,17 +17,18 @@ dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp",
-    "sqlspec[adk,mypyc,oracledb,performance]==0.28.1",
+    "sqlspec[adk,mypyc,oracledb,performance]>=0.46",
     "python-dotenv",
     "google-cloud-aiplatform",
-    "google-genai",
-    "google-adk",
+    "google-genai>=1.73",
+    "google-adk>=2.0.0b1",
+    "oracledb>=3.4",
     "msgspec",
     "rich-click",
     "numpy>=2.3.3",
     "dishka>=1.4.2",
     "litestar-vite>=0.18.2",
-    "sqlglot==27.29.0",
+    "sqlglot>=27.29.0",
 ]
 description = "Reference application for Oracle 23AI and VertexAI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
