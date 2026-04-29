@@ -114,36 +114,16 @@ Reshape `src/py/app/` to mirror the structural patterns proven in `~/code/g/dma/
 
 ### Phase 4: Filter dependencies + paginated handlers (`oracledb-vertexai-4d6.2.4`)
 
-- [ ] **4.1** `src/py/app/domain/products/controllers/_product.py`:
-  ```python
-  class ProductController(Controller):
-      path = "/api/products"
-      dependencies = create_filter_dependencies({
-          "pagination_type": "limit_offset",
-          "sort_field": "name",
-          "sort_order": "asc",
-          "id_filter": int,
-          "id_field": "id",
-          "search": ["name", "description"],
-          "search_ignore_case": True,
-          "created_at": True,
-      })
+- [x] **4.1** `ProductController` landed in `src/py/app/domain/products/controllers.py` (still flat — Phase 5 normalizes to package layout). Wires `create_filter_dependencies({...})` exactly as spec'd; handler signature uses `Inject[ProductService]` + `filters: list[FilterTypes] = Dependency(skip_validation=True)`. Refinement: domain layout conversion deferred to Phase 5 to keep this chapter focused on the filter-dep pattern. `[4167a45]`
+- [x] **4.2** `ProductService.list_with_count(*filters)` calls `self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product)`. New named query `list-products` projects every column **except** `embedding` (3072-dim vector is too heavy for a list endpoint). `[4167a45]`
+- [x] **4.3** `StoreController` (`/api/stores`) and `ExemplarController` (`/api/exemplars`) landed with the same filter-dep pattern. `IntentExemplar` schema added (`src/py/app/domain/system/schemas/_exemplar.py`); `list-exemplars` projection widened to all rows minus embedding. `[4167a45]`
+- [x] **4.4** No-op confirmation: `grep` over `src/py/app/domain/` and `src/py/app/server/` finds **zero** hand-rolled `limit`/`offset`/`page_size` query-param parsing. `[4167a45]`
 
-      @get("/", operation_id="ListProducts")
-      async def list_products(
-          self,
-          products_service: Inject[ProductService],
-          filters: list[FilterTypes] = Dependency(skip_validation=True),
-      ) -> OffsetPagination[Product]:
-          return await products_service.list_with_count(*filters)
-  ```
-- [ ] **4.2** Add `list_with_count` to `ProductService`:
-  ```python
-  async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
-      return await self.paginate(config.db_manager.get_sql("list-products"), *filters, schema_type=Product)
-  ```
-- [ ] **4.3** Apply the same pattern to `StoreController`. Create `ExemplarController` (path `/api/exemplars`) with at minimum a `list_exemplars` handler — Ch 4's explore page needs the filter-dependency-driven endpoint for the comparison panel. Stub the route now; full UI integration is Ch 4.
-- [ ] **4.4** Remove any hand-rolled `?limit=&offset=` query-param parsing from existing handlers.
+#### Ch 2.4 implementation notes (refinements vs spec)
+
+- The dep-keys emitted by `create_filter_dependencies` are `{filters, limit_offset_filter, search_filter, id_filter, order_by_filter, created_filter}`. Tests assert against the actual emitted keys, not the renamed-for-prose versions in earlier spec drafts. Per user direction (2026-04-29), no rename shims were introduced.
+- Lint pivot: `B008` ignored globally in `pyproject.toml` (matches accelerator). The Litestar idiom `field = Dependency(...)` / `field = Parameter(...)` is a function call in a default-value slot and trips the rule, so the global ignore is the correct tool.
+- Schema gotcha: handler-visible msgspec structs with `from __future__ import annotations` AND `if TYPE_CHECKING: from datetime import datetime` break Litestar's OpenAPI generator (`get_type_hints()` evaluates string annotations at runtime). Fix: import `datetime` at runtime (`# noqa: TC003`). Same family of gotcha as the `ioc.py` PEP 563 trap.
 
 ### Phase 5: ApplicationCore plugin + domain layout normalization (`oracledb-vertexai-4d6.2.5`)
 
