@@ -1,10 +1,10 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Filter-dependency wiring tests for Ch 2.4.
+"""Filter-dependency wiring tests.
 
-Verifies every list endpoint adopts ``create_filter_dependencies`` and every
-list service exposes ``list_with_count(*filters) -> OffsetPagination[T]``.
+Every list endpoint adopts ``create_filter_dependencies`` and every list
+service exposes ``list_with_count(*filters) -> OffsetPagination[T]``.
 The tests rely on declarative shape (class attrs, signatures) — no live
 database connection required.
 """
@@ -85,7 +85,7 @@ def test_service_exposes_list_with_count(service_path: str, schema_path: str) ->
 
 
 def test_exemplar_controller_path_is_api_exemplars() -> None:
-    """Ch 4 explore page expects /api/exemplars to exist."""
+    """The explore page consumes ``/api/exemplars``; the path must stay stable."""
     from app.domain.system.controllers import ExemplarController
 
     assert ExemplarController.path == "/api/exemplars"

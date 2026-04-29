@@ -183,13 +183,7 @@ async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
 
 
 async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
-    """Load the canonical .json.gz fixtures into the test database.
-
-    Uses the same loader the ``coffee load-fixtures`` CLI uses, so the test DB
-    matches the production-app data shape (122 products with valid 3072-dim
-    embeddings, intent exemplars, etc.). The fixture files are checked into
-    ``src/app/db/fixtures/`` and updated by Ch 1.5's exemplar regen plumbing.
-    """
+    """Load the checked-in ``.json.gz`` fixtures into the test database via ``FixtureLoader``."""
     from app.db.utils import COFFEE_SHOP_TABLES
     from app.lib.settings import get_settings
     from app.utils.fixtures import FixtureLoader
@@ -198,12 +192,7 @@ async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
     fixtures_dir = Path(settings.db.FIXTURE_PATH)
     if not await asyncio.to_thread(fixtures_dir.exists):
         return
-    loader = FixtureLoader(
-        fixtures_dir=fixtures_dir,
-        driver=session,
-        table_order=COFFEE_SHOP_TABLES,
-        expected_vector_dim=settings.vertex_ai.EMBEDDING_DIMENSIONS,
-    )
+    loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=session, table_order=COFFEE_SHOP_TABLES)
     await loader.load_all_fixtures()
 
 

@@ -192,7 +192,7 @@ def _reset() -> None:
     """Discard cached configuration so the next access re-initializes from env."""
     global _initialized  # noqa: PLW0603
 
-    from app.lib.settings import get_settings
+    from app.lib.settings import Settings
 
     lazy_names = (
         "_settings",
@@ -211,7 +211,7 @@ def _reset() -> None:
     for name in lazy_names:
         g.pop(name, None)
 
-    get_settings.cache_clear()
+    Settings.from_env.cache_clear()
     _initialized = False
 
     from app.server import plugins

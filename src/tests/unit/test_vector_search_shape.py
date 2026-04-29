@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Vector search response-shape tests (Ch 2.6).
+"""Vector-search response-shape regression tests.
 
 These guard against three regressions that have bitten this repo before:
 

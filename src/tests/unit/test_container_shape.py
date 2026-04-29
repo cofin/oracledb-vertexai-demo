@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Container shape tests for the 3-provider Dishka collapse (Ch 2.3)."""
+"""Architectural tests for the Dishka container shape."""
 
 from __future__ import annotations
 
@@ -124,7 +124,7 @@ def test_old_per_domain_provider_classes_are_gone() -> None:
     ):
         attr = getattr(module, name, None)
         assert attr is None, (
-            f"{module.__name__}.{name} still exists — Ch 2.3 must collapse it into ioc.py providers."
+            f"{module.__name__}.{name} must not exist — domain providers belong in ``app.ioc``."
         )
 
 

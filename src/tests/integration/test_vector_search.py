@@ -1,12 +1,11 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Integration test for vector_search response shape (Ch 2.6).
+"""Vector-search response-shape integration test against a real Oracle container.
 
-Exercises the real `vector-search-products` named query against a live Oracle
-container provisioned by pytest-databases. Asserts the typed `ProductMatch`
-contract: `price` is present (not `current_price`), `similarity_score` is in
-[0, 1], and no synthetic `distance` field has crept back in.
+Exercises the ``vector-search-products`` named query and asserts the
+``ProductMatch`` contract: ``price`` is populated, ``similarity_score`` is in
+``[0, 1]``, and no synthetic ``distance`` field is exposed.
 """
 
 from __future__ import annotations
@@ -71,7 +70,7 @@ async def test_vector_search_returns_typed_product_matches_with_price(
         )
         assert match.price > 0, (
             f"ProductMatch.price must be populated and >0 (got {match.price!r}); "
-            "this guards against the legacy current_price/price column-name bug"
+            "guards against the current_price/price column-name regression"
         )
         # Cosine similarity of FP32-stored vectors against an FP64 query can land
         # a few ULPs above 1.0 for self-matches. Allow a small numerical fuzz.

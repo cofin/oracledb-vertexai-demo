@@ -1,15 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Static-asset HTTP regression tests for Ch 4 Phase 2/3.
-
-Phase 2 rescues 23 brand assets from ``src/js/public/`` to
-``src/resources/public/``. Phase 3.4 wires a ``/favicon.ico`` route via the
-litestar-vite static-asset router so the browser's default favicon request
-resolves through the bundled output. This file pins the eventual contract
-ahead of time per the chapter's TDD discipline; the test stays skipped until
-Phase 3.4 lands the route.
-"""
+"""HTTP regression tests for the static-asset and ``/favicon.ico`` routes."""
 
 from __future__ import annotations
 

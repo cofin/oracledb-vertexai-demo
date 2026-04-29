@@ -1,18 +1,16 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Phase 5.1b contract: ``GET /api/explain-plan`` returns
-``{plan_lines: list[str], plan_summary: str}`` so the explore-page
-EXPLAIN PLAN viewer (Panel 2) can render them via Jinja partial.
+"""``GET /api/explain-plan`` returns ``{plan_lines: list[str], plan_summary: str}``.
 
-Two driver round-trips power this endpoint:
-* ``EXPLAIN PLAN FOR <vector-search-products>`` — Oracle stages the plan
-  for the vector-search SQL with a representative bind set.
-* ``SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY())`` — pulls
-  the plan back as one row per textual line.
+Two driver round-trips power the endpoint:
+* ``EXPLAIN PLAN FOR <vector-search-products>`` stages the plan with
+  representative bind values.
+* ``SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY())`` returns
+  the plan one textual line per row.
 
-The integration variant (real Oracle) is exercised separately; this test
-keeps the controller-level wiring honest with a fully mocked service.
+This unit test mocks the service to keep controller-level wiring honest;
+the real-Oracle path is covered separately.
 """
 
 from __future__ import annotations

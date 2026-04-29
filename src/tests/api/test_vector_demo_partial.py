@@ -1,14 +1,10 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Phase 5.5 contract: ``POST /api/vector-demo`` returns the
-``partials/search_result_list.html.j2`` fragment for HTMX clients
-(wrapped in ``PushUrl`` so the explore page URL captures ``?q=...``)
-and the existing JSON dict for SPA clients.
+"""``POST /api/vector-demo`` returns a Jinja partial for HTMX clients and JSON for SPA clients.
 
-Like the chat partial tests this exercises the controller via ``.fn``
-to avoid booting the full Dishka container — the wiring being asserted
-is the HTMX vs JSON branch, not the DI graph.
+The controller is invoked via ``.fn`` so the Dishka container is not booted;
+the focus here is the HTMX/JSON response branch.
 """
 
 from __future__ import annotations

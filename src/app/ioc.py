@@ -88,6 +88,7 @@ class DomainServiceProvider(Provider):
 
     @provide
     def provide_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
+        settings = get_settings()
         return VertexAIService(
             client=client,
             model=settings.vertex_ai.CHAT_MODEL,

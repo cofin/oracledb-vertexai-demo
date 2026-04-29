@@ -1,13 +1,10 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Phase 4.7/4.9 contract: ``POST /api/chat`` returns Jinja partial HTML for
-HTMX clients (``HX-Request: true``) and ``CoffeeChatReply`` JSON for SPA
-clients.
+"""``POST /api/chat`` returns Jinja partial HTML for HTMX clients and JSON for SPA clients.
 
-These tests stub ``ADKRunner`` end-to-end (constructor + ``process_request``)
-so the test process does NOT need a live Oracle session backend or a Vertex
-AI agent — those paths are exercised in ``src/tests/integration``.
+``ADKRunner`` is stubbed end-to-end so the test process does not need a live
+Oracle session backend or a Vertex AI agent.
 """
 
 from __future__ import annotations

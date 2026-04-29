@@ -101,9 +101,6 @@ async def client(app: Litestar) -> AsyncIterator[AsyncTestClient]:
 async def htmx_client(app: Litestar) -> AsyncIterator[AsyncTestClient]:
     """Test client that masquerades as HTMX (sends ``HX-Request: true``).
 
-    Phase 4 chat partials and Phase 5 explore partials branch on
-    ``request.htmx``; this fixture exercises that branch end-to-end.
-
     Yields:
         AsyncTestClient that always sends ``HX-Request: true``.
     """

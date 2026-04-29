@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for IntegrationsProvider's ADK wiring (Ch 2.3)."""
+"""Unit tests for ``IntegrationsProvider``'s ADK wiring."""
 
 from __future__ import annotations
 

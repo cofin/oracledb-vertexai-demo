@@ -1,13 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Phase 5.1a contract: ``GET /api/metrics/charts`` returns
-``MetricsTimeSeries`` with a ``labels`` array and ``series`` substruct.
-
-Panel 4 of the explore page (Alpine + ApexCharts time-series) is the
-single consumer; the schema is intentionally tiny — no scatter, no
-breakdowns, no per-row debug numbers.
-"""
+"""``GET /api/metrics/charts`` returns ``MetricsTimeSeries`` (labels + series substruct)."""
 
 from __future__ import annotations
 

@@ -37,18 +37,9 @@ async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str
         settings = get_settings()
         fixtures_dir = Path(settings.db.FIXTURE_PATH)
 
-        loader = FixtureLoader(
-            fixtures_dir=fixtures_dir,
-            driver=driver,
-            table_order=COFFEE_SHOP_TABLES,
-            expected_vector_dim=settings.vertex_ai.EMBEDDING_DIMENSIONS,
-        )
-
+        loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
         results = await loader.load_all_fixtures(specific_tables=tables)
-
-        # Reset sequences for Oracle tables to avoid duplicate key issues
         await _reset_sequences(driver)
-
         return results
 
 
