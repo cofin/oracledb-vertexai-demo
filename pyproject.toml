@@ -34,7 +34,10 @@ requires-python = ">=3.11,<3.13"
 version = "0.2.0"
 
 [project.scripts]
-app = "app.__main__:run_cli"
+coffee = "app.__main__:run_cli"
+
+[tool.sqlspec]
+config = "app.config.db"
 
 [build-system]
 build-backend = "hatchling.build"

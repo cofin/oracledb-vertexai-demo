@@ -22,13 +22,13 @@ uv run manage.py doctor
 uv run manage.py database oracle start-local-container
 
 # Run database migrations
-uv run app db upgrade
+uv run coffee upgrade
 
 # Load sample data
-uv run app db load-fixtures
+uv run coffee load-fixtures
 
 # Start the application
-uv run app run
+uv run coffee run
 ```
 
 Visit [http://localhost:5006](http://localhost:5006) to try the demo!
@@ -74,13 +74,13 @@ uv run manage.py init
 make start-infra
 
 # Step 5: Run database migrations
-uv run app db upgrade
+uv run coffee upgrade
 
 # Step 6: Load sample data
-uv run app db load-fixtures
+uv run coffee load-fixtures
 
 # Step 7: Start the application
-uv run app run
+uv run coffee run
 ```
 
 **Reset Database (Clean Slate):**
@@ -91,11 +91,11 @@ To completely reset your local Oracle installation with no tables deployed:
 make wipe-infra
 # Then start fresh:
 make start-infra
-uv run app db upgrade
-uv run app db load-fixtures
+uv run coffee upgrade
+uv run coffee load-fixtures
 ```
 
-**Note:** Embeddings are included in the gzipped fixtures. To regenerate embeddings, use `uv run app coffee bulk-embed`.
+**Note:** Embeddings are included in the gzipped fixtures. To regenerate embeddings, use `uv run coffee bulk-embed`.
 
 ## 🖼️ Screenshots
 
@@ -144,15 +144,15 @@ This demo combines:
 
 ```bash
 # Database operations (works with both managed and external modes)
-uv run app db upgrade                # Run database migrations
-uv run app db load-fixtures          # Load sample data
-uv run app db export-fixtures        # Export database tables to JSON
-uv run app coffee bulk-embed         # Generate embeddings for all products
-uv run app coffee clear-cache        # Clear response cache
-uv run app coffee model-info         # Show AI model configuration
+uv run coffee upgrade                # Run database migrations
+uv run coffee load-fixtures          # Load sample data
+uv run coffee export-fixtures        # Export database tables to JSON
+uv run coffee bulk-embed         # Generate embeddings for all products
+uv run coffee clear-cache        # Clear response cache
+uv run coffee model-info         # Show AI model configuration
 
 # Development
-uv run app run                       # Start the application
+uv run coffee run                       # Start the application
 uv run pytest                        # Run tests
 make lint                            # Code quality checks
 

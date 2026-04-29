@@ -83,8 +83,8 @@ install: destroy clean setup-env install-uv ## Install the project, dependencies
 		$(MAKE) install-bun; \
 	fi
 	@echo "${INFO} Installing frontend packages and generating types... 📦"
-	@uv run app assets install >/dev/null 2>&1
-	@uv run app assets generate-types >/dev/null 2>&1
+	@uv run coffee assets install >/dev/null 2>&1
+	@uv run coffee assets generate-types >/dev/null 2>&1
 	@echo "${OK} Installation complete! 🎉"
 
 .PHONY: destroy
@@ -236,13 +236,13 @@ js-format: ## Run frontend formatting
 .PHONY: assets-build
 assets-build: ## Build assets via Litestar assets CLI
 	@echo "${INFO} Building assets via app assets... 📦"
-	@uv run app assets build
+	@uv run coffee assets build
 	@echo "${OK} Assets build complete ✨"
 
 .PHONY: assets-generate-types
 assets-generate-types: ## Generate OpenAPI/routes TypeScript artifacts
 	@echo "${INFO} Generating frontend API and route types... 🧬"
-	@uv run app assets generate-types
+	@uv run coffee assets generate-types
 	@echo "${OK} Asset type generation complete ✨"
 
 # =============================================================================
@@ -263,19 +263,19 @@ doctor: ## Verify local prerequisites and project health
 .PHONY: migrate
 migrate: ## Run database migrations
 	@echo "${INFO} Running database migrations..."
-	@uv run app db upgrade
+	@uv run coffee upgrade
 	@echo "${OK} Migrations complete"
 
 .PHONY: load-fixtures
 load-fixtures: ## Load sample fixture data
 	@echo "${INFO} Loading sample fixtures..."
-	@uv run app db load-fixtures
+	@uv run coffee load-fixtures
 	@echo "${OK} Fixtures loaded"
 
 .PHONY: run
 run: ## Start the application server
 	@echo "${INFO} Starting application..."
-	@uv run app run
+	@uv run coffee run
 
 .PHONY: bootstrap
 bootstrap: install init doctor start-infra migrate load-fixtures ## One-shot local bootstrap (except app run)
