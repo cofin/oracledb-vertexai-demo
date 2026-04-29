@@ -17,24 +17,24 @@
 from ._cache import EmbeddingCache, ResponseCache
 from ._exemplar import IntentExemplar
 from ._metrics import (
-    ChartDataResponse,
+    ChartData,
     MetricCard,
-    MetricsSummaryResponse,
+    MetricsSummary,
     SearchMetricsCreate,
-    TimeSeriesData,
+    TimeSeries,
 )
-from ._session import HistoryMeta, UserSessionCreate, UserSessionRead
+from ._session import HistoryMeta, UserSession, UserSessionCreate
 
 __all__ = (
-    "ChartDataResponse",
+    "ChartData",
     "EmbeddingCache",
     "HistoryMeta",
     "IntentExemplar",
     "MetricCard",
-    "MetricsSummaryResponse",
+    "MetricsSummary",
     "ResponseCache",
     "SearchMetricsCreate",
-    "TimeSeriesData",
+    "TimeSeries",
+    "UserSession",
     "UserSessionCreate",
-    "UserSessionRead",
 )

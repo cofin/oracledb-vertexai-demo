@@ -26,7 +26,7 @@ from sqlspec.adapters.oracledb import OracleAsyncDriver
 from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import settings
-from app.domain.chat.schemas import IntentResult
+from app.domain.chat.schemas import Intent
 from app.domain.products.services import ProductService, StoreService, VertexAIService
 from app.domain.system.services import (
     BASE_SYSTEM_INSTRUCTION,
@@ -50,15 +50,15 @@ class IntentService(SQLSpecAsyncService[OracleAsyncDriver]):
         self.exemplar_service = exemplar_service
         self.vertex_ai_service = vertex_ai_service
 
-    async def classify_intent(self, query: str) -> IntentResult:
+    async def classify_intent(self, query: str) -> Intent:
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(query, return_cache_status=True)
         results = await self.exemplar_service.search_similar_intents(embedding, limit=1)
 
         if not results:
-            return IntentResult(intent="GENERAL_CONVERSATION", confidence=0.5, exemplar_phrase="", embedding_cache_hit=cache_hit, fallback_used=True)
+            return Intent(intent="GENERAL_CONVERSATION", confidence=0.5, exemplar_phrase="", embedding_cache_hit=cache_hit, fallback_used=True)
 
         res = results[0]
-        return IntentResult(intent=res["intent"], confidence=res["similarity"], exemplar_phrase=res["phrase"], embedding_cache_hit=cache_hit, fallback_used=False)
+        return Intent(intent=res["intent"], confidence=res["similarity"], exemplar_phrase=res["phrase"], embedding_cache_hit=cache_hit, fallback_used=False)
 
 # --- Agent Tools Service ---
 

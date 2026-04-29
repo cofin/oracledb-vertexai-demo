@@ -24,14 +24,14 @@ if TYPE_CHECKING:
 
 
 class UserSessionCreate(CamelizedBaseStruct, omit_defaults=True):
-    """Session creation payload."""
+    """Session row to persist."""
 
     user_id: str
     data: dict = {}
 
 
-class UserSessionRead(CamelizedBaseStruct, omit_defaults=True):
-    """Session response payload."""
+class UserSession(CamelizedBaseStruct, omit_defaults=True):
+    """A persisted session row."""
 
     id: UUID
     session_id: str
@@ -42,7 +42,7 @@ class UserSessionRead(CamelizedBaseStruct, omit_defaults=True):
 
 
 class HistoryMeta(CamelizedBaseStruct, omit_defaults=True):
-    """History metadata."""
+    """Conversation-history metadata for a user."""
 
     conversation_id: str
     user_id: str

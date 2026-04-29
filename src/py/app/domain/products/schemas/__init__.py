@@ -14,11 +14,11 @@
 
 """Product domain schemas package."""
 
-from ._products import Product, ProductMatch, Store, VectorDemoRequest
+from ._products import Product, ProductMatch, Store, VectorQuery
 
 __all__ = (
     "Product",
     "ProductMatch",
     "Store",
-    "VectorDemoRequest",
+    "VectorQuery",
 )

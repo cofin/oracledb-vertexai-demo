@@ -150,7 +150,7 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
     controller = object.__new__(VectorController)
     response: dict[str, Any] = await VectorController.vector_search_demo.fn(
         controller,
-        data=product_schemas.VectorDemoRequest(query="dark roast"),
+        data=product_schemas.VectorQuery(query="dark roast"),
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
     )

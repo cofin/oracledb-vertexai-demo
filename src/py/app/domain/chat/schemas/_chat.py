@@ -28,8 +28,8 @@ class SimilarIntent(CamelizedBaseStruct, omit_defaults=True):
     confidence_threshold: float
 
 
-class IntentResult(CamelizedBaseStruct, omit_defaults=True):
-    """Result of intent classification."""
+class Intent(CamelizedBaseStruct, omit_defaults=True):
+    """A classified intent for an incoming chat query."""
 
     intent: str
     confidence: float
@@ -39,14 +39,14 @@ class IntentResult(CamelizedBaseStruct, omit_defaults=True):
 
 
 class CoffeeChatMessage(CamelizedBaseStruct):
-    """Chat message input DTO."""
+    """Inbound user message for the barista chat."""
 
     message: str
     persona: str = "enthusiast"
 
 
 class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
-    """Conversation creation payload."""
+    """Conversation row to persist."""
 
     session_id: UUID
     user_id: str
@@ -55,8 +55,8 @@ class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
     message_metadata: dict = {}
 
 
-class ChatConversationRead(CamelizedBaseStruct, omit_defaults=True):
-    """Conversation response payload."""
+class ChatConversation(CamelizedBaseStruct, omit_defaults=True):
+    """A persisted conversation row."""
 
     id: UUID
     user_id: str

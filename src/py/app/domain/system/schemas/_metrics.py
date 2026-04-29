@@ -20,7 +20,7 @@ from app.lib.schema import CamelizedBaseStruct
 
 
 class SearchMetricsCreate(CamelizedBaseStruct, omit_defaults=True, kw_only=True):
-    """Metrics creation payload."""
+    """Search-metrics row to persist."""
 
     query_id: str
     user_id: str | None = None
@@ -42,8 +42,8 @@ class MetricCard(CamelizedBaseStruct, omit_defaults=True):
     trend_value: str | float | None = None
 
 
-class MetricsSummaryResponse(CamelizedBaseStruct, omit_defaults=True):
-    """Metrics summary response."""
+class MetricsSummary(CamelizedBaseStruct, omit_defaults=True):
+    """Aggregated metric cards for the dashboard summary panel."""
 
     total_searches: MetricCard
     avg_response_time: MetricCard
@@ -51,8 +51,8 @@ class MetricsSummaryResponse(CamelizedBaseStruct, omit_defaults=True):
     cache_hit_rate: MetricCard
 
 
-class TimeSeriesData(CamelizedBaseStruct, omit_defaults=True):
-    """Time series data for charts."""
+class TimeSeries(CamelizedBaseStruct, omit_defaults=True):
+    """Latency time-series points across the dashboard window."""
 
     labels: list[str]
     total_latency: list[float]
@@ -60,9 +60,9 @@ class TimeSeriesData(CamelizedBaseStruct, omit_defaults=True):
     vertex_latency: list[float]
 
 
-class ChartDataResponse(CamelizedBaseStruct, omit_defaults=True):
-    """Chart data response."""
+class ChartData(CamelizedBaseStruct, omit_defaults=True):
+    """Combined chart payload for the dashboard."""
 
-    time_series: TimeSeriesData
+    time_series: TimeSeries
     scatter_data: list[dict[str, float]]
     breakdown_data: dict[str, Any]

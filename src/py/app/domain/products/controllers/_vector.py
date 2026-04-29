@@ -47,7 +47,7 @@ class VectorController(Controller):
     @post(path="/api/vector-demo", name="vector.demo")
     async def vector_search_demo(
         self,
-        data: product_schemas.VectorDemoRequest,
+        data: product_schemas.VectorQuery,
         vector_search_service: Inject[OracleVectorSearchService],
         metrics_service: Inject[MetricsService],
     ) -> dict[str, Any]:

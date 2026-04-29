@@ -52,8 +52,8 @@ class Store(CamelizedBaseStruct, omit_defaults=True):
     metadata: dict[str, Any] | None = None
 
 
-class VectorDemoRequest(CamelizedBaseStruct, omit_defaults=True):
-    """Vector search demo request."""
+class VectorQuery(CamelizedBaseStruct, omit_defaults=True):
+    """A user-supplied vector-search query string."""
 
     query: str
 

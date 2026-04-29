@@ -15,21 +15,21 @@
 """Chat domain schemas package."""
 
 from ._chat import (
+    ChatConversation,
     ChatConversationCreate,
-    ChatConversationRead,
     ChatMessage,
     CoffeeChatMessage,
     CoffeeChatReply,
-    IntentResult,
+    Intent,
     SimilarIntent,
 )
 
 __all__ = (
+    "ChatConversation",
     "ChatConversationCreate",
-    "ChatConversationRead",
     "ChatMessage",
     "CoffeeChatMessage",
     "CoffeeChatReply",
-    "IntentResult",
+    "Intent",
     "SimilarIntent",
 )

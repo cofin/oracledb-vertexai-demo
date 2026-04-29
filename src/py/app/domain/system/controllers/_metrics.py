@@ -43,7 +43,7 @@ class MetricsController(Controller):
         self,
         metrics_service: Inject[MetricsService],
         cache_service: Inject[CacheService],
-    ) -> schemas.MetricsSummaryResponse:
+    ) -> schemas.MetricsSummary:
         """Get summary metrics for UI cards."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
@@ -57,7 +57,7 @@ class MetricsController(Controller):
 
         total_trend, total_change = calculate_trend(perf_stats["total_searches"], prev_stats["total_searches"])
 
-        return schemas.MetricsSummaryResponse(
+        return schemas.MetricsSummary(
             total_searches=schemas.MetricCard(
                 label="Total Searches",
                 value=f"{perf_stats['total_searches']:,}",
@@ -85,10 +85,10 @@ class MetricsController(Controller):
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
-    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartDataResponse:
+    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartData:
         """Get chart data for dashboard visualizations."""
-        return schemas.ChartDataResponse(
-            time_series=schemas.TimeSeriesData(
+        return schemas.ChartData(
+            time_series=schemas.TimeSeries(
                 labels=[],
                 total_latency=[],
                 oracle_latency=[],
