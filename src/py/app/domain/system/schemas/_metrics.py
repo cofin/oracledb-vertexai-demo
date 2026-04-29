@@ -60,7 +60,7 @@ class TimeSeries(CamelizedBaseStruct, omit_defaults=True):
     vertex_latency: list[float]
 
 
-class ChartData(CamelizedBaseStruct, omit_defaults=True):
+class MetricsChart(CamelizedBaseStruct, omit_defaults=True):
     """Combined chart payload for the dashboard."""
 
     time_series: TimeSeries

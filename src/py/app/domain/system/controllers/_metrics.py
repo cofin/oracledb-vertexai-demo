@@ -85,9 +85,9 @@ class MetricsController(Controller):
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
-    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.ChartData:
+    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> schemas.MetricsChart:
         """Get chart data for dashboard visualizations."""
-        return schemas.ChartData(
+        return schemas.MetricsChart(
             time_series=schemas.TimeSeries(
                 labels=[],
                 total_latency=[],
