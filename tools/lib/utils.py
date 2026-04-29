@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Shared utility functions for CLI tools."""
 
 from __future__ import annotations

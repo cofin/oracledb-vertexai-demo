@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Dishka container configuration for Litestar.
 
 Three providers, accelerator-style:
@@ -17,7 +20,7 @@ from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db, db_manager, settings
+from app.config import db, db_manager
 from app.domain.chat.services.adk import ADKRunner, AgentToolsService, IntentService
 from app.domain.products.services.services import (
     OracleVectorSearchService,
@@ -27,6 +30,7 @@ from app.domain.products.services.services import (
 )
 from app.domain.system.services.services import CacheService, ExemplarService, MetricsService
 from app.lib.di import LitestarProvider, QueryContext, query_id_var
+from app.lib.settings import get_settings
 
 
 class LitestarPersistenceProvider(Provider):
@@ -43,14 +47,11 @@ class LitestarPersistenceProvider(Provider):
 
 
 class IntegrationsProvider(Provider):
-    """APP-scoped singletons for external integrations.
-
-    Slot reserved for `provide_intent_classifier` — Ch 3 wires `FlashLiteIntentClassifier`
-    here without re-touching this module.
-    """
+    """APP-scoped singletons for external integrations."""
 
     @provide(scope=Scope.APP)
     def provide_genai_client(self) -> Client:
+        settings = get_settings()
         if settings.vertex_ai.PROJECT_ID:
             return Client(
                 vertexai=True,

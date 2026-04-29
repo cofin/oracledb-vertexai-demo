@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Phase 5.1b contract: ``GET /api/explain-plan`` returns
 ``{plan_lines: list[str], plan_summary: str}`` so the explore-page
 EXPLAIN PLAN viewer (Panel 2) can render them via Jinja partial.

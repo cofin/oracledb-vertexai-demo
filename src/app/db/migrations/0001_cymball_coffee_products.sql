@@ -1,3 +1,6 @@
+-- Copyright 2026 Google LLC
+-- SPDX-License-Identifier: Apache-2.0
+
 -- SQLSpec Migration
 -- Version: 0001
 -- Description: Cymball Coffee Products

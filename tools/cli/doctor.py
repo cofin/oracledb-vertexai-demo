@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Health check and diagnostics CLI command."""
 
 from __future__ import annotations

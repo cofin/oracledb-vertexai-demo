@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Connection tester for Oracle databases.
 
 This module tests database connectivity across all deployment modes:

@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Wallet configurator for Oracle Autonomous Database.
 
 This module handles wallet extraction, validation, and configuration

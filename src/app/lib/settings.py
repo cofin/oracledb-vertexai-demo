@@ -1,16 +1,5 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -259,12 +248,7 @@ class AppSettings:
     CSRF_COOKIE_NAME: str = field(default_factory=lambda: "XSRF-TOKEN")
     """CSRF Cookie Name"""
     CSRF_HEADER_NAME: str = field(default_factory=lambda: "X-CSRFToken")
-    """CSRF Header Name (matches ``litestar-vite-plugin/helpers`` default).
-
-    ``registerHtmxExtension()`` forwards this header on every HTMX request, so
-    the Litestar default and the JS helper default must agree. Renamed from
-    ``X-XSRF-TOKEN`` in Ch 4 Phase 4.4.
-    """
+    """CSRF header name forwarded by HTMX requests; must match the JS helper default."""
     CSRF_COOKIE_SECURE: bool = field(default_factory=lambda: False)
     """CSRF Secure Cookie"""
 
@@ -405,16 +389,10 @@ class ViteSettings:
         return self.ASSET_URL.startswith("/")
 
     def get_config(self) -> ViteConfig:
-        """Create Vite configuration for Litestar.
-
-        Phase 4 flips this from SPA mode (Bun + React) to template mode (Node +
-        HTMX + Jinja). Inputs live at ``src/resources/{main.js,styles.css}``;
-        output lands in ``src/app/domain/web/static/dist/`` (the gitignored
-        bundle dir matching the JS-side ``vite.config.ts``).
+        """Build the Vite plugin configuration.
 
         Returns:
-            ``ViteConfig`` wired for ``mode="template"`` with the coupled
-            paths that match the repo-root ``vite.config.ts``.
+            A ``ViteConfig`` whose paths match the repo-root ``vite.config.ts``.
         """
         from litestar_vite import PathConfig, RuntimeConfig, TypeGenConfig, ViteConfig
 

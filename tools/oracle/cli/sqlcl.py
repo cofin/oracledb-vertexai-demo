@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """SQLcl installation and management CLI commands."""
 
 from __future__ import annotations

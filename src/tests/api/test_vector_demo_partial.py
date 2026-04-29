@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Phase 5.5 contract: ``POST /api/vector-demo`` returns the
 ``partials/search_result_list.html.j2`` fragment for HTMX clients
 (wrapped in ``PushUrl`` so the explore page URL captures ``?q=...``)

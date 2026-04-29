@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Test fixtures for integration tests."""
 
 from collections.abc import AsyncGenerator

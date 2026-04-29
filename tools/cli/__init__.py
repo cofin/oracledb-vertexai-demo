@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Click CLI commands for project management.
 
 This module provides Click command groups for non-Oracle project management tasks:

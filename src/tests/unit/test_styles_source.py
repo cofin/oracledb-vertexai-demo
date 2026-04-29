@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Phase 3.3 contract: the Tailwind v4 styles source must declare its template
 scan path or the build silently emits a CSS bundle missing utility classes
 referenced from ``.html.j2`` files.

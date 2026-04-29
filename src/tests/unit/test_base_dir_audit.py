@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """BASE_DIR.parents audit — proves the Ch 4 source-tree flatten kept parents[N] sane.
 
 Ch 4 Phase 1.1 collapsed `src/py/app/` to `src/app/`, which shifts every

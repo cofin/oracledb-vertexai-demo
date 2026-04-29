@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Repo-root layout invariants for Ch 4 Phase 3.
 
 Phase 3 (`oracledb-vertexai-4d6.4.11`) places ``package.json``,

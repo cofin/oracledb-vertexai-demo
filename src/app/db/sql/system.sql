@@ -1,3 +1,6 @@
+-- Copyright 2026 Google LLC
+-- SPDX-License-Identifier: Apache-2.0
+
 -- name: get-cached-response
 SELECT id, cache_key, response_data, created_at, expires_at
 FROM response_cache

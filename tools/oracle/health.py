@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Health checker for Oracle deployment components.
 
 This module checks the health and status of all Oracle deployment

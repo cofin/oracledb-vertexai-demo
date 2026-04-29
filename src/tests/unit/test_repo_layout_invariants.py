@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Repo-layout invariants enforced by Ch 4 Phase 1A (source-tree flatten).
 
 Phase 1.1 collapsed ``src/py/{app,tests}`` to ``src/{app,tests}`` and removed

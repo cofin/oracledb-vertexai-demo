@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Phase 4.3 contract: ``ApplicationCore.on_app_init`` registers
 ``HTMXPlugin``, ``FlashPlugin``, and a ``TemplateConfig`` pointing at
 ``src/app/domain/web/templates``.

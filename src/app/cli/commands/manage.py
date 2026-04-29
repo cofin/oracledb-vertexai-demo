@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Database / data-ops commands for the ``coffee`` CLI.
 
 Imports ``cli`` from ``app.cli.main`` and registers each command with
@@ -445,8 +448,13 @@ def _display_fixture_results(results: dict) -> None:
     _print_fixture_summary(total_upserted, total_failed, total_records)
 
 
-def _process_fixture_result(table_name: str, result: dict | int | str) -> dict:
-    """Process individual fixture result for display."""
+def _process_fixture_result(table_name: str, result: dict[str, Any] | str) -> dict[str, Any]:
+    """Format a single fixture result row for the summary table.
+
+    Returns:
+        A mapping with the ``row`` payload for the rich table plus the
+        ``upserted``/``failed``/``total`` counts used for the summary tally.
+    """
     if isinstance(result, dict):
         upserted = result.get("upserted", 0)
         failed = result.get("failed", 0)
@@ -467,16 +475,6 @@ def _process_fixture_result(table_name: str, result: dict | int | str) -> dict:
             "failed": failed,
             "total": total,
         }
-    if isinstance(result, int):
-        # Legacy format
-        status = "[green]✓ Success[/green]" if result > 0 else "[yellow]⚠ No new records[/yellow]"
-        return {
-            "row": [table_name, str(result), "[dim]0[/dim]", "[dim]-[/dim]", status],
-            "upserted": result,
-            "failed": 0,
-            "total": 0,
-        }
-    # Error case
     status = f"[red]✗ {result}[/red]"
     return {
         "row": [table_name, "[dim]0[/dim]", "[dim]0[/dim]", "[dim]0[/dim]", status],
@@ -487,7 +485,11 @@ def _process_fixture_result(table_name: str, result: dict | int | str) -> dict:
 
 
 def _get_fixture_status(upserted: int, failed: int, error: str | None) -> str:
-    """Get status text for fixture result."""
+    """Render the colored status cell for a fixture-result row.
+
+    Returns:
+        A rich-markup string describing the upsert/failure outcome.
+    """
     max_error_length = 500
 
     if upserted > 0 and failed == 0:

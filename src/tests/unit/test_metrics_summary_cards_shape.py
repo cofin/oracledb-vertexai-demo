@@ -1,11 +1,7 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-"""Phase 5.1d contract: ``GET /api/metrics/summary`` returns
-``MetricsSummary(cards=[...])`` so the explore page Panel 3 can iterate
-client-side via ``<template ls-for="card in $data.cards">``.
-"""
+# SPDX-License-Identifier: Apache-2.0
+
+"""``GET /api/metrics/summary`` returns ``MetricsSummary(cards=[...])`` so the page can iterate via ``<template ls-for>``."""
 
 from __future__ import annotations
 

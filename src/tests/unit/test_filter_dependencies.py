@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Filter-dependency wiring tests for Ch 2.4.
 
 Verifies every list endpoint adopts ``create_filter_dependencies`` and every

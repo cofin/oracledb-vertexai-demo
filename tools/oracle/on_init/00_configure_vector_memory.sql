@@ -1,3 +1,6 @@
+-- Copyright 2026 Google LLC
+-- SPDX-License-Identifier: Apache-2.0
+
 -- Configure Oracle 23ai vector memory pool for HNSW INMEMORY indexes.
 --
 -- vector_memory_size is a STATIC parameter (SCOPE=SPFILE only), so the pool

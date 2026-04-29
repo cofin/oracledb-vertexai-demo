@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Dependency injection utilities and request context.
 
 This module provides a clean interface to the underlying DI framework
@@ -57,10 +60,13 @@ class QueryContext:
 
 @asynccontextmanager
 async def worker_scope() -> AsyncIterator[AsyncContainer]:
-    """Enter a temporary REQUEST scope using the worker container.
+    """Enter a short-lived REQUEST scope from the worker container.
 
-    Use this in background jobs to create short-lived database sessions
-    instead of holding a session open for the entire job duration.
+    Yields:
+        A request-scoped container suitable for one unit of background work.
+
+    Raises:
+        RuntimeError: If no worker container is bound to the current context.
     """
     container = worker_container_var.get()
     if not container:
@@ -72,10 +78,11 @@ async def worker_scope() -> AsyncIterator[AsyncContainer]:
 
 
 def job_inject(func: Callable) -> Callable:
-    """Decorator to inject dependencies into background jobs.
+    """Inject dependencies into background-job functions.
 
-    Uses request_container_var to resolve dependencies from the active
-    REQUEST scope managed by the Worker.
+    Returns:
+        A wrapper that resolves ``Inject[T]`` parameters from the active
+        REQUEST-scoped container before delegating to ``func``.
     """
 
     @wraps(func)
@@ -94,11 +101,9 @@ def job_inject(func: Callable) -> Callable:
 
             is_dependency = False
 
-            # Unwrap Annotated (Inject[T] is Annotated[T, FromDishka()])
             dependency_type = param.annotation
             if get_origin(param.annotation) is Annotated:
                 args_origin = get_args(param.annotation)
-                # Check for Inject (legacy) or FromComponent (new Inject[T])
                 if args_origin and any(isinstance(a, (Inject, _FromComponentType)) for a in args_origin[1:]):  # type: ignore[arg-type]
                     dependency_type = args_origin[0]
                     is_dependency = True

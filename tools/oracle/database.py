@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Oracle database container lifecycle management.
 
 This module manages Oracle 23 Free container deployment and operations,

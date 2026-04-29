@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI surface architectural tests for Ch 4 Phase 1B (CLI restructure).
 
 The whole point of Phase 1B is to make ``coffee --help`` enumerate ONLY the

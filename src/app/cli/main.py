@@ -1,15 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""``coffee`` CLI entry point.
-
-Hand-rolled rich_click group (mirrors ``dma/accelerator/src/py/dma/cli/main.py``)
-so we never call ``litestar_group()``. That avoids booting the full Litestar
-app at ``coffee --help`` time, which would materialize ``app.config.db`` and
-mount asset/migration/database subcommands as a side effect of plugin
-registration. Migrations and assets live exclusively on ``manage.py`` per the
-Ch 4 CLI split.
-"""
+"""``coffee`` CLI entry point."""
 
 from __future__ import annotations
 

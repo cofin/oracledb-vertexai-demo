@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 ARG BUILDER_IMAGE=python:3.12-slim-bookworm
 # =============================================================================
 # Stage 1: Python Base

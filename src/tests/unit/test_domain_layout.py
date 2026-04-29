@@ -1,23 +1,12 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-"""Domain layout normalization tests for Ch 2.5.
+"""Domain layout normalization tests.
 
-Verifies each domain (`chat`, `products`, `system`) ships ``controllers``
-as a *package* (not a flat module), exports the canonical
-``controllers: list[type[Controller]]`` contract, and re-exports the
-expected controller classes via ``__all__``.
+Each domain (``chat``, ``products``, ``system``) must ship ``controllers``
+as a package (not a flat module), expose the canonical
+``controllers: list[type[Controller]]`` contract, and re-export every
+controller class via ``__all__``.
 """
 
 from __future__ import annotations
@@ -36,7 +25,7 @@ DOMAIN_PACKAGES: tuple[tuple[str, frozenset[str]], ...] = (
     ),
     (
         "app.domain.system.controllers",
-        frozenset({"ExemplarController", "ExploreController", "MetricsController", "SystemController"}),
+        frozenset({"ExemplarController", "MetricsController", "SystemController"}),
     ),
 )
 
@@ -47,7 +36,7 @@ def test_controllers_module_is_package(module_path: str, expected_classes: froze
     del expected_classes
     module = importlib.import_module(module_path)
     assert hasattr(module, "__path__"), (
-        f"{module_path} must be a package (have __path__); flat controllers.py files are removed in Ch 2.5"
+        f"{module_path} must be a package (have __path__); flat controllers.py files are not allowed"
     )
 
 
@@ -84,20 +73,18 @@ def test_controllers_package_reexports_classes(module_path: str, expected_classe
 
 
 @pytest.mark.parametrize("module_path", [pkg for pkg, _ in DOMAIN_PACKAGES])
-def test_legacy_flat_controllers_module_removed(module_path: str) -> None:
-    """The flat ``domain/X/controllers.py`` file MUST be deleted in favor of the package layout."""
+def test_no_flat_controllers_module(module_path: str) -> None:
+    """Each domain must resolve ``controllers`` as a package, not a flat module."""
     module = importlib.import_module(module_path)
     package_init = Path(module.__file__) if module.__file__ else None
     assert package_init is not None, f"{module_path} has no __file__"
     assert package_init.name == "__init__.py", (
-        f"{module_path} resolves to {package_init} — expected controllers/__init__.py (the flat file must be removed)"
+        f"{module_path} resolves to {package_init} — expected controllers/__init__.py"
     )
 
     domain_dir = package_init.parent.parent
     flat_file = domain_dir / "controllers.py"
-    assert not flat_file.exists(), (
-        f"Stale flat module remains at {flat_file}; delete after migrating contents into controllers/"
-    )
+    assert not flat_file.exists(), f"Flat module exists at {flat_file}; only the package layout is supported"
 
 
 def test_application_core_discovers_all_expected_controllers() -> None:

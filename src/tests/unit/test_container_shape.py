@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Container shape tests for the 3-provider Dishka collapse (Ch 2.3)."""
 
 from __future__ import annotations

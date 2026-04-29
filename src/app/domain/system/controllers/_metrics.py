@@ -1,41 +1,15 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
 from litestar import Controller, get
 
-from app.domain.system.schemas import (
-    MetricCard,
-    MetricsDashboard,
-    MetricsSummary,
-    MetricsTimeSeries,
-)
+from app.domain.system.schemas import MetricCard, MetricsSummary, MetricsTimeSeries
 from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
 
 
 class MetricsController(Controller):
-    """Metrics endpoints feeding the explore-page panels and ops dashboard."""
-
-    @get(path="/metrics", name="metrics")
-    async def get_metrics(self, metrics_service: Inject[MetricsService]) -> MetricsDashboard:
-        """24-hour rollup for the legacy operations dashboard."""
-        try:
-            stats = await metrics_service.get_performance_stats(hours=24)
-            return MetricsDashboard(
-                total_searches=stats.total_searches,
-                avg_search_time_ms=stats.avg_search_time_ms,
-                avg_oracle_time_ms=stats.avg_oracle_time_ms,
-                avg_similarity_score=stats.avg_similarity_score,
-            )
-        except (ValueError, TypeError):
-            return MetricsDashboard(
-                total_searches=0,
-                avg_search_time_ms=0.0,
-                avg_oracle_time_ms=0.0,
-                avg_similarity_score=0.0,
-            )
+    """Endpoints feeding the explore-page metrics panels."""
 
     @get(path="/api/metrics/summary", name="metrics.summary")
     async def get_metrics_summary(
@@ -43,7 +17,7 @@ class MetricsController(Controller):
         metrics_service: Inject[MetricsService],
         cache_service: Inject[CacheService],
     ) -> MetricsSummary:
-        """Cards for explore-page Panel 3 (consumed via ``ls-for``)."""
+        """Return summary cards for the metrics summary panel."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
         prev_stats = await metrics_service.get_performance_stats(hours=2)
@@ -83,5 +57,5 @@ class MetricsController(Controller):
 
     @get(path="/api/metrics/charts", name="metrics.charts")
     async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> MetricsTimeSeries:
-        """Per-minute latency tracks for the explore-page chart (last hour)."""
+        """Return per-minute latency tracks for the latency chart."""
         return await metrics_service.get_time_series(hours=1)

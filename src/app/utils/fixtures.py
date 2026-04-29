@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Generic fixture management utilities for database operations.
 
 This module provides a clean, generic approach to loading and exporting fixtures

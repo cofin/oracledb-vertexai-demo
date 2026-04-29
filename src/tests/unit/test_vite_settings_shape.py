@@ -1,7 +1,6 @@
 # Copyright 2026 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
+# SPDX-License-Identifier: Apache-2.0
+
 """Phase 4.2 contract: ``ViteSettings.get_config()`` must return a template-mode
 config that uses Node executor and points at the new ``src/resources`` /
 ``domain/web/static/dist`` paths.

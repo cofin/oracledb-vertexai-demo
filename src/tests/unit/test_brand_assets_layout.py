@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Brand-asset preservation invariants for Ch 4 Phase 2.
 
 Phase 2 of the htmx-vite-frontend chapter (`oracledb-vertexai-4d6.4.10`)

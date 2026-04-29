@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Integration tests for SQLSpec database connection and configuration."""
 
 from typing import Any

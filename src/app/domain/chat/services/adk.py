@@ -1,16 +1,5 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
 import time
 import uuid
@@ -25,8 +14,8 @@ from google.genai import types
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import settings
 from app.domain.chat.schemas import Intent
+from app.lib.settings import get_settings
 from app.domain.products.services import ProductService, StoreService, VertexAIService
 from app.domain.system.services import (
     BASE_SYSTEM_INSTRUCTION,
@@ -145,7 +134,12 @@ class ADKRunner:
 
     def __init__(self, session_service: SQLSpecSessionService) -> None:
         self.session_service = session_service
-        agent = LlmAgent(name="CoffeeAssistant", instruction=BASE_SYSTEM_INSTRUCTION, model=settings.vertex_ai.CHAT_MODEL, tools=ALL_TOOLS)
+        agent = LlmAgent(
+            name="CoffeeAssistant",
+            instruction=BASE_SYSTEM_INSTRUCTION,
+            model=get_settings().vertex_ai.CHAT_MODEL,
+            tools=ALL_TOOLS,
+        )
         self._runner = Runner(agent=agent, app_name="coffee_assistant", session_service=session_service)
 
     async def process_request(self, query: str, user_id: str = "default", session_id: str | None = None, persona: str = "enthusiast", cache_service: CacheService | None = None) -> dict[str, Any]:

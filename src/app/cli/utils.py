@@ -1,3 +1,6 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI utilities — async injection adapted from dma/cli/utils.py."""
 
 from __future__ import annotations

@@ -1,3 +1,6 @@
+-- Copyright 2026 Google LLC
+-- SPDX-License-Identifier: Apache-2.0
+
 -- Verify Oracle 23ai vector memory pool is allocated on every container start.
 -- A non-zero "Vector Memory" row in V$SGAINFO confirms HNSW INMEMORY indexes
 -- can be built. Zero indicates the SPFILE setting was not applied (e.g. the
