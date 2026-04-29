@@ -531,16 +531,11 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
     - Screenshots stashed at `.agents/specs/htmx-vite-frontend_20260429/screenshots/{chat,explore}-smoke.png`.
     - **Bug fix discovered + applied during smoke**: `vite.config.ts` was missing `publicDir: "src/resources/public"`, so `npm run build` never copied brand assets (`cymbal-coffee-cup.svg` + 26 others) into the bundle dir, causing a 404 on the chat-page logo. Fixed in same commit. [7dc4579]
     - Send-message + HMR live-reload deferred to Ch 5 (require Vertex AI auth + interactive verification beyond CI scope).
-- [ ] **7.4** **Doc-touch** (`oracledb-vertexai-4d6.4.12`): append to `.agents/patterns.md`:
-    - HTMX page-vs-partial branching (`if request.htmx` + `HTMXTemplate(...)`).
-    - `hx-ext="litestar"` + `ls-for`/`ls-if` for static JSON-to-DOM mapping (when not interactive).
-    - Alpine + ApexCharts for chart panels.
-    - EXPLAIN PLAN viewer pattern (two driver calls; bind variable risk).
-    - `PushUrl` for shareable search URLs.
-    - `OOB` swap idiom for multi-region updates from one POST.
-    - CSRF: `<meta name="csrf-token">` + `registerHtmxExtension()` ⇒ `X-CSRFToken` header.
-    - Tailwind v4 `@source` directive for Jinja template scanning.
-    - **CLI split** — `coffee` for production app commands (run / bulk-embed / clear-cache / model-info / load-fixtures / export-fixtures), `manage.py` for infra + db + assets. Mirrors `dma/accelerator`'s `dma`-vs-`manage.py` split. Hand-rolled `rich_click` group; do **not** call `litestar_group()` from `coffee`. Protected by `test_cli_surface.py`.
+- [x] **7.4** **Doc-touch** (`oracledb-vertexai-4d6.4.12`) — Ch 4 patterns appended to `.agents/patterns.md` under two new sections:
+    - **HTMX + Vite Frontend Patterns (Ch 4)** — 14 entries covering page-vs-partial branching, `HTMXTemplate(push_url=, re_target=, re_swap=)` header semantics, `hx-ext="litestar"` + `ls-for`/`ls-if`, Alpine + ApexCharts factories, EXPLAIN PLAN viewer (two driver calls + bind-variable risk), OOB swap idiom, CSRF wiring, Tailwind v4 `@source`, `vite.config.ts` `publicDir` gotcha, `litestar.plugins.htmx` built-in vs PyPI, `litestar-vite` mode='template', CLI split (`coffee` vs `manage.py`), module-scoped path constants, and toolchain invariants in tests.
+    - **Engineering Conventions (Ch 4 mid-phase corrections)** — 6 rules surfaced during Phase 5 review (typed Structs at API boundaries, direct schema imports, `from_json` over `json.loads`, `schema_type=` everywhere, `COALESCE` in SQL, inline single-use locals).
+    - **Testing Patterns** appended with 3 new entries (`htmx_client` fixture, autouse mocks for `Inject[T]` chains, empty 404 body under `raise_server_exceptions=False`).
+    - Knowledge entry created at `.agents/knowledge/htmx-vite-frontend_20260429.md` with full key-files inventory + per-phase verbatim learnings; registered in `.agents/knowledge/index.md` with 10 topic-index entries.
 
 ---
 
