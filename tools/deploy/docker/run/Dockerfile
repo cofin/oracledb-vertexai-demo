@@ -7,7 +7,9 @@ FROM ${BUILDER_IMAGE} AS python-base
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
-        build-essential git tini libaio1 unzip curl \
+        build-essential git tini libaio1 unzip curl ca-certificates gnupg \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /var/log/* /tmp/* \
     && mkdir -p /app
 
@@ -17,9 +19,8 @@ RUN /tmp/install_oracle_client.sh
 ARG LD_LIBRARY_PATH=""
 ENV LD_LIBRARY_PATH=/opt/oracle/instantclient:${LD_LIBRARY_PATH}
 
-# Install uv and bun
+# Install uv (Python package manager)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-COPY --from=oven/bun:latest /usr/local/bin/bun /usr/local/bin/bun
 
 # =============================================================================
 # Stage 2: Builder
@@ -45,27 +46,24 @@ WORKDIR /app
 
 # Copy dependency files first (better layer caching)
 COPY pyproject.toml uv.lock README.md ./
-COPY src/js/package.json src/js/bun.lock ./src/js/
+COPY package.json package-lock.json ./
 
-# Install JS dependencies
-WORKDIR /app/src/js
-RUN bun install --frozen-lockfile
-
-WORKDIR /app
+# Install JS dependencies (root-level package.json post Ch 4 flatten)
+RUN npm ci
 
 # Create venv and install Python dependencies
 RUN uv venv \
     && uv sync ${UV_INSTALL_ARGS} --frozen --no-install-project --no-editable \
     && uv export ${UV_INSTALL_ARGS} --frozen --no-hashes --no-emit-project --output-file=requirements.txt
 
-# Copy application source
+# Copy application source (post-flatten src/ holds app/ + resources/ + templates/ + tests/)
 COPY tools ./tools/
-COPY src/js/ ./src/js/
-COPY src/py/ ./src/py/
+COPY manage.py ./manage.py
+COPY vite.config.ts tsconfig.json ./
+COPY src/ ./src/
 
-# Build frontend and create wheel
-RUN cd src/js && bun run build \
-    && cd /app \
+# Build frontend bundles via Vite, then build the Python wheel
+RUN npm run build \
     && uv sync ${UV_INSTALL_ARGS} --frozen --no-editable \
     && uv build --wheel
 
@@ -105,5 +103,5 @@ STOPSIGNAL SIGINT
 EXPOSE 8080
 
 ENTRYPOINT ["tini", "--"]
-CMD ["app", "run", "--port", "8080", "--host", "0.0.0.0"]
+CMD ["coffee", "run", "--port", "8080", "--host", "0.0.0.0"]
 VOLUME /app

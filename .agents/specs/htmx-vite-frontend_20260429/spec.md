@@ -528,7 +528,7 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
     - `src/tests/api/test_static_assets.py` (Phase 2.4 / 3.4)
     - `src/tests/api/test_pages.py` (Phase 4.7, 5.4)
     - `src/tests/api/test_chat_partial.py` (Phase 4.7)
-    - `src/tests/api/test_explain_plan.py` (Phase 5.1b)
+    - `src/tests/unit/test_explain_plan_shape.py` (Phase 5.1b — controller-level shape test, not a real-Oracle integration test)
     - `src/tests/api/test_classify_compare_endpoint.py` (Phase 5.1c)
     - `src/tests/api/test_vector_demo_partial.py` (Phase 5.5)
     - `src/tests/unit/test_cli_surface.py` (Phase 1.8 — replaces the originally-planned grep-based invariant test; architecture-level enforcement).

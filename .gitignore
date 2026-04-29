@@ -171,3 +171,4 @@ todo
 *.db
 .beads-credential-key
 .beads
+.playwright-mcp

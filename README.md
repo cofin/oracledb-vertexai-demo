@@ -22,7 +22,7 @@ uv run manage.py doctor
 uv run manage.py database oracle start-local-container
 
 # Run database migrations
-uv run coffee upgrade
+uv run python manage.py database upgrade
 
 # Load sample data
 uv run coffee load-fixtures
@@ -74,7 +74,7 @@ uv run manage.py init
 make start-infra
 
 # Step 5: Run database migrations
-uv run coffee upgrade
+uv run python manage.py database upgrade
 
 # Step 6: Load sample data
 uv run coffee load-fixtures
@@ -91,7 +91,7 @@ To completely reset your local Oracle installation with no tables deployed:
 make wipe-infra
 # Then start fresh:
 make start-infra
-uv run coffee upgrade
+uv run python manage.py database upgrade
 uv run coffee load-fixtures
 ```
 
@@ -128,7 +128,7 @@ This demo combines:
 - **Google Vertex AI** - Embeddings (gemini-embedding-001, 768 dims) and chat (`gemini-3-flash-preview`)
 - **SQLSpec** - Type-safe database operations with async connection pooling
 - **Litestar** - High-performance async Python web framework
-- **React + TanStack Router** - Modern SPA UI for chat and dashboard routes
+- **HTMX + Alpine.js + Tailwind v4** - Server-rendered hypermedia UI with Vite-bundled assets
 
 ## 🎯 Key Features
 
@@ -144,17 +144,22 @@ This demo combines:
 
 ```bash
 # Database operations (works with both managed and external modes)
-uv run coffee upgrade                # Run database migrations
-uv run coffee load-fixtures          # Load sample data
-uv run coffee export-fixtures        # Export database tables to JSON
-uv run coffee bulk-embed         # Generate embeddings for all products
-uv run coffee clear-cache        # Clear response cache
-uv run coffee model-info         # Show AI model configuration
+uv run python manage.py database upgrade   # Run database migrations
+uv run coffee load-fixtures                # Load sample data
+uv run coffee export-fixtures              # Export database tables to JSON
+uv run coffee bulk-embed                   # Generate embeddings for all products
+uv run coffee clear-cache                  # Clear response cache
+uv run coffee model-info                   # Show AI model configuration
 
 # Development
-uv run coffee run                       # Start the application
-uv run pytest                        # Run tests
-make lint                            # Code quality checks
+uv run coffee run                          # Start the application
+uv run pytest                              # Run tests
+make lint                                  # Code quality checks
+
+# Frontend
+# Frontend HMR is automatic when VITE_DEV_MODE=true (default in `coffee run`);
+# no separate `vite dev` command is required. Production assets are emitted by
+# `uv run python manage.py assets build` into src/app/domain/web/static/dist/.
 
 # Infrastructure management (local containers)
 make start-infra                     # Start Oracle 23ai container

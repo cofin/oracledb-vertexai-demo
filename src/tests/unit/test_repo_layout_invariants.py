@@ -156,3 +156,131 @@ def test_pyproject_has_no_src_js_references_after_phase_2() -> None:
     """Belt-and-braces — pyproject.toml must remain free of src/js paths."""
     raw = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert "src/js" not in raw, "pyproject.toml still references src/js"
+
+
+# ---------------------------------------------------------------------------
+# Ch 4 Phase 6 — toolchain finalize invariants
+# ---------------------------------------------------------------------------
+
+
+def test_pyproject_has_no_litestar_htmx_direct_dep() -> None:
+    """HTMX support comes from ``litestar.plugins.htmx`` (built-in 2.x), not a separate dep."""
+    pyproject = _read_pyproject()
+    deps = pyproject["project"]["dependencies"]
+    for entry in deps:
+        assert not entry.startswith("litestar-htmx"), (
+            f"litestar-htmx is a separate package and must not be a direct dep: {entry}"
+        )
+
+
+def test_pyproject_has_no_bun_references() -> None:
+    raw = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "bun" not in raw.lower(), "pyproject.toml still references bun"
+
+
+def test_pyproject_wheel_artifacts_include_j2_templates() -> None:
+    """Hatch wheel build must bundle Jinja2 templates so HTMX partials ship in the wheel."""
+    pyproject = _read_pyproject()
+    artifacts = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["artifacts"]
+    assert "**/*.j2" in artifacts, f"wheel artifacts missing **/*.j2: {artifacts}"
+
+
+def test_pyproject_wheel_packages_pin_src_app() -> None:
+    pyproject = _read_pyproject()
+    wheel_pkgs = pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["packages"]
+    assert wheel_pkgs == ["src/app"], f"wheel packages must be ['src/app']: {wheel_pkgs}"
+
+
+def test_makefile_has_no_coffee_assets_or_upgrade_invocations() -> None:
+    """Phase 1.8 made `coffee assets` and `coffee upgrade` unregistered subcommands.
+
+    Architecture-enforced via ``test_cli_surface.py``; this guards the Makefile
+    surface so a future commit cannot accidentally re-introduce the forbidden
+    invocations.
+    """
+    body = _read_makefile()
+    for needle in ("coffee assets", "coffee upgrade"):
+        assert needle not in body, f"Makefile still invokes forbidden CLI: {needle!r}"
+
+
+def test_makefile_clean_targets_new_bundle_dir() -> None:
+    """Phase 6.2: ``make clean`` must scrub the new ``src/app/domain/web/static/dist``
+    bundle dir, not the pre-flatten ``src/app/server/static/dist`` path.
+    """
+    body = _read_makefile()
+    assert "src/app/server/static" not in body, (
+        "Makefile still references legacy src/app/server/static — bundle dir is now src/app/domain/web/static"
+    )
+
+
+def test_makefile_lint_runs_frontend_typecheck() -> None:
+    """Phase 6.2: ``make lint`` must invoke the frontend type-checker so CI catches TS regressions."""
+    body = _read_makefile()
+    lint_block = body.split(".PHONY: lint", 1)[1].split(".PHONY:", 1)[0]
+    assert "tsc" in lint_block or "frontend-typecheck" in lint_block, (
+        "make lint must run npx tsc --noEmit (directly or via frontend-typecheck)"
+    )
+
+
+def test_makefile_build_runs_frontend_assets_build() -> None:
+    """Phase 6.2: ``make build`` must rebuild frontend assets alongside the wheel."""
+    body = _read_makefile()
+    build_block = body.split(".PHONY: build\nbuild:", 1)[1].split(".PHONY:", 1)[0]
+    assert "assets build" in build_block or "npm run build" in build_block, (
+        "make build must build frontend assets (via `manage.py assets build` or `npm run build`)"
+    )
+
+
+def test_gitignore_ignores_new_bundle_dir() -> None:
+    """Phase 6.3: the Vite bundle dir lives under the web domain after the flatten."""
+    body = _read_gitignore()
+    assert "src/app/domain/web/static/dist" in body, (
+        ".gitignore must ignore src/app/domain/web/static/dist (post-flatten bundle dir)"
+    )
+
+
+def test_gitignore_ignores_resources_generated() -> None:
+    """Phase 6.3: type-gen output is ephemeral and rebuilt by `manage.py assets generate-types`."""
+    body = _read_gitignore()
+    assert "src/resources/generated" in body, ".gitignore must ignore src/resources/generated"
+
+
+def test_gitignore_ignores_node_modules() -> None:
+    body = _read_gitignore()
+    assert "node_modules" in body, ".gitignore must ignore node_modules"
+
+
+# ---------------------------------------------------------------------------
+# Ch 4 Phase 6.4 — Dockerfile invariants
+# ---------------------------------------------------------------------------
+
+DOCKERFILES: tuple[str, ...] = (
+    "tools/deploy/docker/run/Dockerfile",
+    "tools/deploy/docker/run/Dockerfile.distroless",
+)
+
+
+@pytest.mark.parametrize("path", DOCKERFILES)
+def test_dockerfile_has_no_bun_references(path: str) -> None:
+    """Phase 6.4: Dockerfiles must not COPY oven/bun or run `bun install`/`bun run`."""
+    body = (REPO_ROOT / path).read_text(encoding="utf-8")
+    for needle in ("oven/bun", "bun install", "bun run", "bun.lock"):
+        assert needle not in body, f"{path} still references bun: {needle!r}"
+
+
+@pytest.mark.parametrize("path", DOCKERFILES)
+def test_dockerfile_has_no_legacy_src_paths(path: str) -> None:
+    """Phase 6.4: Dockerfiles must use ``src/`` (post-flatten), not ``src/py`` or ``src/js``."""
+    body = (REPO_ROOT / path).read_text(encoding="utf-8")
+    for needle in ("src/py/", "src/js/"):
+        assert needle not in body, f"{path} still references pre-flatten path: {needle!r}"
+
+
+@pytest.mark.parametrize("path", DOCKERFILES)
+def test_dockerfile_uses_npm_ci(path: str) -> None:
+    """Phase 6.4: Dockerfiles install JS deps via ``npm ci`` against root package-lock.json."""
+    body = (REPO_ROOT / path).read_text(encoding="utf-8")
+    assert "npm ci" in body, f"{path} must run `npm ci`"
+    assert "package.json package-lock.json" in body or "package-lock.json" in body, (
+        f"{path} must COPY root package-lock.json"
+    )

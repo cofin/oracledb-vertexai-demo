@@ -106,8 +106,10 @@ lock: ## Rebuild lockfiles from scratch
 # Build and Release
 # =============================================================================
 .PHONY: build
-build: ## Build the package
-	@echo "${INFO} Building package... 📦"
+build: ## Build the package (Python wheel + frontend assets)
+	@echo "${INFO} Building frontend assets... 📦"
+	@uv run python manage.py assets build >/dev/null 2>&1
+	@echo "${INFO} Building Python package... 📦"
 	@uv build >/dev/null 2>&1
 	@echo "${OK} Package build complete"
 
@@ -118,7 +120,7 @@ build: ## Build the package
 clean: ## Cleanup temporary build artifacts
 	@echo "${INFO} Cleaning working directory... 🧹"
 	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache src/tests/.pytest_cache src/tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
-	@rm -rf src/app/server/static/dist src/app/server/static/dist/hot node_modules/.vite tsconfig.tsbuildinfo >/dev/null 2>&1
+	@rm -rf src/app/domain/web/static/dist src/app/domain/web/static/dist/hot node_modules/.vite tsconfig.tsbuildinfo >/dev/null 2>&1
 	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
 	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
 	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
@@ -146,13 +148,14 @@ coverage: ## Run tests with coverage report
 	@echo "${OK} Coverage report generated ✨"
 
 .PHONY: lint
-lint: ## Run all linting and type checking
+lint: ## Run all linting and type checking (Python + frontend)
 	@echo "${INFO} Running prek (pre-commit) checks... 🔎"
 	@uvx prek run --color=always --all-files
 	@echo "${OK} prek checks passed ✨"
 	@echo "${INFO} Running type checkers... 🔍"
 	@uv run mypy src/app tools manage.py
 	@uv run pyright src/app tools manage.py
+	@$(MAKE) frontend-typecheck
 	@echo "${OK} All linting and type checks complete ✨"
 
 .PHONY: format
@@ -253,4 +256,3 @@ wipe-infra: ## Remove local container info
 infra-logs: ## Tail development infrastructure logs
 	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
 	@uv run python manage.py database oracle local-container-logs --follow
-ntainer-logs --follow

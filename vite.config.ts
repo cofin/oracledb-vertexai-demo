@@ -5,6 +5,9 @@ import { defineConfig, version } from "vite"
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 
 export default defineConfig({
+  // Vite copies project-root publicDir into bundleDir at build time. Brand assets
+  // live alongside the JS/CSS sources under src/resources/public/, so point Vite there.
+  publicDir: "src/resources/public",
   plugins: [
     tailwindcss(),
     litestar({
