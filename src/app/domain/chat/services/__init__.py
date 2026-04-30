@@ -6,6 +6,7 @@ from sqlspec.extensions.adk import SQLSpecSessionService
 
 from .adk import ADKRunner, AgentToolsService
 from .classifier import INTENT_VALUES, FlashLiteIntentClassifier, IntentLabel
+from .workflow import make_coffee_node, make_intent_node, make_workflow
 
 __all__ = (
     "INTENT_VALUES",
@@ -15,4 +16,7 @@ __all__ = (
     "IntentLabel",
     "OracleAsyncADKStore",
     "SQLSpecSessionService",
+    "make_coffee_node",
+    "make_intent_node",
+    "make_workflow",
 )
