@@ -17,12 +17,12 @@ Modernize license and copyright management by enabling Ruff's `CPY001` rule and 
 
 ### Phase 1: Configuration
 - [x] Uninstall traditional `pre-commit` and install `prek` (`uv tool install prek && prek install`).
-- [ ] Codify SPDX license mandate in `.agents/patterns.md` and styleguides.
-- [ ] Enable `preview = true` in `pyproject.toml`.
-- [ ] Remove `CPY001` from the `ignore` list in `pyproject.toml`.
-- [ ] Configure `[tool.ruff.lint.flake8-copyright]` with `author = "Google LLC"`.
-- [ ] Define `notice-rgx` to support both traditional and SPDX formats.
-- [ ] Verify that running `uv run ruff check` now flags missing/incorrect headers.
+- [x] Codify SPDX license mandate in `.agents/patterns.md` and styleguides.
+- [x] Enable `preview = true` in `pyproject.toml`.
+- [x] Remove `CPY001` from the `ignore` list in `pyproject.toml`.
+- [x] Configure `[tool.ruff.lint.flake8-copyright]` with `author = "Google LLC"`.
+- [x] Define `notice-rgx` to support both traditional and SPDX formats. [bb41489]
+- [x] Verify that running `uv run ruff check` now flags missing/incorrect headers. [bb41489]
 
 ### Phase 2: Core Migration
 - [ ] Update Python headers in `src/app/` to SPDX format (`SPDX-FileCopyrightText`).
@@ -46,10 +46,10 @@ Modernize license and copyright management by enabling Ruff's `CPY001` rule and 
 ## 5.0 Beads Tasks
 - [x] task: Replace pre-commit with prek
 - [x] task: Codify SPDX license mandate in project patterns and styleguides
-- [ ] task: Configure Ruff for CPY001 and SPDX support
+- [x] task: Configure Ruff for CPY001 and SPDX support [bb41489]
 - [ ] task: Migrate Python headers (src + tools) to SPDX format
 - [ ] task: Add SQL copyright comments to tools/oracle/
-- [ ] task: Migrate src/js/ headers to SPDX format
+- [-] task: Migrate src/js/ headers to SPDX format (obsolete — src/js deleted in Ch 4)
 - [ ] task: Research/Implement Biome GritQL plugin for JS/TS header checks
 - [ ] task: Integrate pre-commit automation for multi-language license headers
 - [ ] task: Update Python styleguide with license requirements
