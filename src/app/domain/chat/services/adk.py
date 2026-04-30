@@ -1,35 +1,53 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""ADK 2.0 chat runner with closure-bound tools and parallel intent classification."""
+
+from __future__ import annotations
+
 import time
 import uuid
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 from google.adk import Runner
 from google.adk.agents import LlmAgent
+from google.genai import errors as genai_errors
 from google.genai import types
 from sqlspec.adapters.oracledb import OracleAsyncDriver
-from sqlspec.extensions.adk import SQLSpecSessionService
 
+from app.domain.chat.exceptions import AIServiceUnconfigured
+from app.domain.chat.services.workflow import make_workflow
 from app.domain.products.services import ProductService, StoreService, VertexAIService
-from app.domain.system.services import (
-    BASE_SYSTEM_INSTRUCTION,
-    CacheService,
-    MetricsService,
-    PersonaManager,
-)
+from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, MetricsService, PersonaManager
 from app.lib.service import SQLSpecAsyncService
 from app.lib.settings import get_settings
 from app.utils.serialization import sanitize_for_json
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from google.adk.agents.callback_context import CallbackContext
+    from sqlspec.extensions.adk import SQLSpecSessionService
+
+    from app.domain.chat.services.classifier import FlashLiteIntentClassifier
+
 logger = structlog.get_logger()
+
+_APP_NAME = "coffee-assistant"
+_CHAT_RESULT_KEYS: tuple[str, ...] = (
+    "answer",
+    "session_id",
+    "response_time_ms",
+    "intent_detected",
+    "search_metrics",
+    "from_cache",
+    "embedding_cache_hit",
+)
 
 
 class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
-    """Business logic for ADK tools."""
+    """Business logic invoked by closure-bound ADK tools."""
 
     def __init__(
         self,
@@ -48,7 +66,9 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     async def search_products_by_vector(
         self, query: str, limit: int = 5, similarity_threshold: float = 0.7
     ) -> dict[str, Any]:
-        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(query, return_cache_status=True)
+        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
+            query, return_cache_status=True
+        )
         products = await self.product_service.search_by_vector(embedding, similarity_threshold, limit)
         return {"products": products, "embedding_cache_hit": cache_hit, "results_count": len(products)}
 
@@ -88,92 +108,136 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         return cast("list[dict[str, Any]]", sanitize_for_json(stores))
 
 
-async def search_products_by_vector(
-    query: str, limit: int = 5, similarity_threshold: float = 0.7
-) -> dict[str, Any]:
-    from app.lib.di import request_container_var
-
-    async with _resolve_request_container(request_container_var.get()) as container:
-        service = await container.get(AgentToolsService)
-        return cast("dict[str, Any]", await service.search_products_by_vector(query, limit, similarity_threshold))
-
-
-async def get_product_details(product_id: str) -> dict[str, Any]:
-    from app.lib.di import request_container_var
-
-    async with _resolve_request_container(request_container_var.get()) as container:
-        service = await container.get(AgentToolsService)
-        return cast("dict[str, Any]", await service.get_product_details(product_id))
+def credential_guard_callback(callback_context: CallbackContext) -> types.Content | None:
+    """Short-circuit the agent with a 503 message when credentials are missing."""
+    del callback_context
+    settings = get_settings()
+    if settings.vertex_ai.PROJECT_ID or settings.vertex_ai.API_KEY:
+        return None
+    return types.Content(
+        role="model",
+        parts=[
+            types.Part(
+                text="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+            )
+        ],
+    )
 
 
-@asynccontextmanager
-async def _resolve_request_container(current: Any) -> AsyncGenerator[Any, None]:
-    if current:
-        yield current
-    else:
-        from dishka import Scope
-
-        from app.ioc import make_litestar_container
-
-        container = make_litestar_container()
-        async with container(scope=Scope.REQUEST) as scoped:
-            yield scoped
-
-
-ALL_TOOLS: list[Any] = [search_products_by_vector, get_product_details]
+def _is_credential_error(exc: BaseException) -> bool:
+    if isinstance(exc, genai_errors.ClientError):
+        return True
+    text = str(exc).lower()
+    return "api key" in text or "credentials" in text
 
 
 class ADKRunner:
-    """Runner for the ADK agent."""
+    """Per-request ADK 2.0 workflow with closure-bound tools."""
 
-    def __init__(self, session_service: SQLSpecSessionService) -> None:
-        self.session_service = session_service
+    def __init__(
+        self,
+        session_service: SQLSpecSessionService,
+        classifier: FlashLiteIntentClassifier,
+        persona_manager: PersonaManager,
+    ) -> None:
+        self._session_service = session_service
+        self._classifier = classifier
+        self._persona_manager = persona_manager
+
+    def _make_tool_factories(
+        self, tools_service: AgentToolsService, metric_state: dict[str, Any]
+    ) -> list[Callable[..., Any]]:
+        async def search_products_by_vector(
+            query: str, limit: int = 5, similarity_threshold: float = 0.7
+        ) -> dict[str, Any]:
+            result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
+            metric_state["embedding_cache_hit"] = bool(result.get("embedding_cache_hit", False))
+            metric_state.setdefault("search_metrics", {})["results_count"] = result.get("results_count", 0)
+            return result
+
+        async def get_product_details(product_id: str) -> dict[str, Any]:
+            return await tools_service.get_product_details(product_id)
+
+        return [search_products_by_vector, get_product_details]
+
+    def _build_workflow(
+        self, instruction: str, temperature: float, tools: list[Callable[..., Any]]
+    ) -> Any:
         agent = LlmAgent(
             name="CoffeeAssistant",
-            instruction=BASE_SYSTEM_INSTRUCTION,
             model=get_settings().vertex_ai.CHAT_MODEL,
-            tools=ALL_TOOLS,
+            instruction=instruction,
+            tools=tools,
+            generate_content_config=types.GenerateContentConfig(temperature=temperature),
+            before_agent_callback=credential_guard_callback,
         )
-        self._runner = Runner(agent=agent, app_name="coffee_assistant", session_service=session_service)
+        return make_workflow(self._classifier, agent)
 
     async def process_request(
         self,
         query: str,
-        user_id: str = "default",
-        session_id: str | None = None,
-        persona: str = "enthusiast",
-        cache_service: CacheService | None = None,
+        user_id: str,
+        session_id: str | None,
+        persona: str,
+        tools_service: AgentToolsService,
     ) -> dict[str, Any]:
-        start_time = time.time()
+        start = time.time()
+
         session = (
-            await self.session_service.get_session(
-                app_name="coffee_assistant", user_id=user_id, session_id=session_id
+            await self._session_service.get_session(
+                app_name=_APP_NAME, user_id=user_id, session_id=session_id
             )
             if session_id
             else None
         )
         if not session:
-            session = await self.session_service.create_session(
-                app_name="coffee_assistant", user_id=user_id, session_id=session_id
+            session = await self._session_service.create_session(
+                app_name=_APP_NAME, user_id=user_id, session_id=session_id
             )
 
-        persona_instruction = PersonaManager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
-        content = types.Content(
-            role="user",
-            parts=[types.Part(text=f"[System Context: {persona_instruction}]\n\nUser Query: {query}")],
-        )
+        instruction = self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
+        temperature = self._persona_manager.get_temperature(persona)
 
-        events = self._runner.run_async(user_id=user_id, session_id=session.id, new_message=content)
+        metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False}
+        tools = self._make_tool_factories(tools_service, metric_state)
+        workflow = self._build_workflow(instruction, temperature, tools)
 
-        all_text = []
-        async for event in events:
-            if event.content and event.content.parts:
-                all_text.extend(
-                    [str(p.text) for p in event.content.parts if hasattr(p, "text") and p.text is not None]
-                )
+        runner = Runner(node=workflow, app_name=_APP_NAME, session_service=self._session_service)
+        content = types.Content(role="user", parts=[types.Part(text=query)])
+        events = runner.run_async(user_id=user_id, session_id=session.id, new_message=content)
+
+        answer_parts: list[str] = []
+        try:
+            async for event in events:
+                if event.content and event.content.parts:
+                    answer_parts.extend(
+                        str(p.text) for p in event.content.parts if getattr(p, "text", None)
+                    )
+        except (genai_errors.ClientError, ValueError) as exc:
+            if _is_credential_error(exc):
+                raise AIServiceUnconfigured(
+                    "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+                ) from exc
+            raise
+
+        intent_detected = "GENERAL_CONVERSATION"
+        state = getattr(session, "state", None) or {}
+        if isinstance(state, dict):
+            intent_detected = str(state.get("intent", intent_detected))
 
         return {
-            "answer": "".join(all_text),
+            "answer": "".join(answer_parts),
             "session_id": session.id,
-            "response_time_ms": (time.time() - start_time) * 1000,
+            "response_time_ms": (time.time() - start) * 1000,
+            "intent_detected": intent_detected,
+            "search_metrics": metric_state.get("search_metrics", {}),
+            "from_cache": False,
+            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
         }
+
+
+__all__ = (
+    "ADKRunner",
+    "AgentToolsService",
+    "credential_guard_callback",
+)

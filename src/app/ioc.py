@@ -29,7 +29,7 @@ from app.domain.products.services.services import (
     StoreService,
     VertexAIService,
 )
-from app.domain.system.services.services import CacheService, MetricsService
+from app.domain.system.services.services import CacheService, MetricsService, PersonaManager
 from app.lib.di import LitestarProvider, QueryContext, query_id_var
 from app.lib.settings import get_settings
 
@@ -74,8 +74,21 @@ class IntegrationsProvider(Provider):
         return FlashLiteIntentClassifier(client, model=get_settings().vertex_ai.INTENT_MODEL)
 
     @provide(scope=Scope.APP)
-    def provide_adk_runner(self, session_service: SQLSpecSessionService) -> ADKRunner:
-        return ADKRunner(session_service=session_service)
+    def provide_persona_manager(self) -> PersonaManager:
+        return PersonaManager()
+
+    @provide(scope=Scope.APP)
+    def provide_adk_runner(
+        self,
+        session_service: SQLSpecSessionService,
+        classifier: FlashLiteIntentClassifier,
+        persona_manager: PersonaManager,
+    ) -> ADKRunner:
+        return ADKRunner(
+            session_service=session_service,
+            classifier=classifier,
+            persona_manager=persona_manager,
+        )
 
 
 class DomainServiceProvider(Provider):

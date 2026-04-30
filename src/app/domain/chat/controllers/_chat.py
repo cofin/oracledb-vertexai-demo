@@ -12,8 +12,8 @@ from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 
 from app.domain.chat import schemas
-from app.domain.chat.services import ADKRunner
-from app.domain.system.services import CacheService
+from app.domain.chat.exceptions import AIServiceUnconfigured
+from app.domain.chat.services import ADKRunner, AgentToolsService
 from app.lib.di import Inject
 
 logger = structlog.get_logger()
@@ -60,7 +60,7 @@ class CoffeeChatController(Controller):
         self,
         data: schemas.CoffeeChatMessage,
         adk_runner: Inject[ADKRunner],
-        cache_service: Inject[CacheService],
+        tools_service: Inject[AgentToolsService],
         request: HTMXRequest,
     ) -> Response:
         """Handle chat submission. HTMX clients get partial HTML; SPA clients get JSON."""
@@ -85,16 +85,14 @@ class CoffeeChatController(Controller):
                 user_id="web_user",
                 session_id=session_id,
                 persona=validated_persona,
-                cache_service=cache_service,
+                tools_service=tools_service,
             )
-        except ValueError as exc:
-            if "API key" in str(exc) or "credentials" in str(exc).lower():
-                await logger.awarning("AI service not configured", detail=str(exc))
-                raise HTTPException(
-                    status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file.",
-                ) from exc
-            raise
+        except AIServiceUnconfigured as exc:
+            await logger.awarning("AI service not configured", detail=str(exc))
+            raise HTTPException(
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
 
         answer = result.get("answer", "")
         intent = result.get("intent_detected", "GENERAL_CONVERSATION")

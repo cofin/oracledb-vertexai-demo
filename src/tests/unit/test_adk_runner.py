@@ -1,0 +1,265 @@
+# Copyright 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Phase 4 surface for ADKRunner: 3-arg constructor, closure-bound tools, per-request workflow."""
+
+from __future__ import annotations
+
+import inspect
+from typing import TYPE_CHECKING, Any
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+pytestmark = pytest.mark.anyio
+
+
+def test_runner_constructor_takes_session_service_classifier_persona_manager() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    params = inspect.signature(ADKRunner.__init__).parameters
+    assert "session_service" in params
+    assert "classifier" in params
+    assert "persona_manager" in params
+
+
+def test_runner_stashes_dependencies_on_private_attrs() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    session_service = object()
+    classifier = object()
+    persona_manager = object()
+    runner = ADKRunner(
+        session_service=session_service,  # type: ignore[arg-type]
+        classifier=classifier,  # type: ignore[arg-type]
+        persona_manager=persona_manager,  # type: ignore[arg-type]
+    )
+
+    assert runner._session_service is session_service
+    assert runner._classifier is classifier
+    assert runner._persona_manager is persona_manager
+
+
+def test_make_tool_factories_returns_two_async_callables() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    tools_service = MagicMock()
+    metric_state: dict[str, Any] = {}
+    runner = ADKRunner(
+        session_service=MagicMock(),
+        classifier=MagicMock(),
+        persona_manager=MagicMock(),
+    )
+    tools = runner._make_tool_factories(tools_service, metric_state)
+
+    assert len(tools) == 2
+    names = {fn.__name__ for fn in tools}
+    assert names == {"search_products_by_vector", "get_product_details"}
+    for fn in tools:
+        assert inspect.iscoroutinefunction(fn)
+
+
+async def test_search_products_closure_delegates_to_tools_service() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    tools_service = MagicMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={"products": [{"id": 1}], "embedding_cache_hit": True, "results_count": 1}
+    )
+    metric_state: dict[str, Any] = {}
+    runner = ADKRunner(
+        session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock()
+    )
+    tools: list[Callable[..., Any]] = runner._make_tool_factories(tools_service, metric_state)
+    search = next(fn for fn in tools if fn.__name__ == "search_products_by_vector")
+
+    result = await search("dark roast", limit=3, similarity_threshold=0.5)
+
+    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5)
+    assert result["products"] == [{"id": 1}]
+    assert metric_state["embedding_cache_hit"] is True
+
+
+async def test_get_product_details_closure_delegates_to_tools_service() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    tools_service = MagicMock()
+    tools_service.get_product_details = AsyncMock(return_value={"id": 5, "name": "Espresso"})
+    runner = ADKRunner(
+        session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock()
+    )
+    tools = runner._make_tool_factories(tools_service, {})
+    details = next(fn for fn in tools if fn.__name__ == "get_product_details")
+
+    result = await details("5")
+
+    tools_service.get_product_details.assert_awaited_once_with("5")
+    assert result == {"id": 5, "name": "Espresso"}
+
+
+def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    captured_agent_kwargs: dict[str, Any] = {}
+    captured_make_workflow: dict[str, Any] = {}
+
+    class FakeLlmAgent:
+        def __init__(self, **kwargs: Any) -> None:
+            captured_agent_kwargs.update(kwargs)
+
+    def fake_make_workflow(classifier: Any, agent: Any) -> object:
+        captured_make_workflow["classifier"] = classifier
+        captured_make_workflow["agent"] = agent
+        return "WORKFLOW"
+
+    monkeypatch.setattr(adk_module, "LlmAgent", FakeLlmAgent)
+    monkeypatch.setattr(adk_module, "make_workflow", fake_make_workflow)
+
+    classifier = MagicMock()
+    runner = ADKRunner(
+        session_service=MagicMock(), classifier=classifier, persona_manager=MagicMock()
+    )
+
+    async def fake_tool() -> None: ...
+
+    workflow = runner._build_workflow(
+        instruction="be helpful", temperature=0.5, tools=[fake_tool]
+    )
+
+    assert workflow == "WORKFLOW"
+    assert captured_agent_kwargs["name"] == "CoffeeAssistant"
+    assert captured_agent_kwargs["instruction"] == "be helpful"
+    assert captured_agent_kwargs["tools"] == [fake_tool]
+    assert captured_agent_kwargs["generate_content_config"].temperature == 0.5
+    assert callable(captured_agent_kwargs["before_agent_callback"])
+    assert captured_make_workflow["classifier"] is classifier
+
+
+async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-42"
+    fake_session.state = {"intent": "PRODUCT_RAG"}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    classifier = MagicMock()
+
+    async def fake_events() -> Any:
+        event = MagicMock()
+        part = MagicMock()
+        part.text = "Try our Yirgacheffe."
+        event.content.parts = [part]
+        yield event
+
+    fake_runner = MagicMock()
+    fake_runner.run_async = MagicMock(return_value=fake_events())
+
+    monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
+    monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+
+    runner = ADKRunner(
+        session_service=session_service, classifier=classifier, persona_manager=persona_manager
+    )
+
+    result = await runner.process_request(
+        query="recommend something",
+        user_id="u1",
+        session_id="sess-42",
+        persona="enthusiast",
+        tools_service=MagicMock(),
+    )
+
+    expected_keys = {
+        "answer",
+        "session_id",
+        "response_time_ms",
+        "intent_detected",
+        "search_metrics",
+        "from_cache",
+        "embedding_cache_hit",
+    }
+    assert set(result.keys()) == expected_keys
+    assert result["answer"] == "Try our Yirgacheffe."
+    assert result["session_id"] == "sess-42"
+    assert result["intent_detected"] == "PRODUCT_RAG"
+    assert isinstance(result["response_time_ms"], float)
+
+
+async def test_process_request_raises_ai_service_unconfigured_on_credential_error(
+    monkeypatch: Any,
+) -> None:
+    from google.genai import errors as genai_errors
+
+    from app.domain.chat.exceptions import AIServiceUnconfigured
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "s"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="x")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    def boom_runner(**_kw: Any) -> Any:
+        class _Runner:
+            def run_async(self, **__: Any) -> Any:
+                async def _gen() -> Any:
+                    raise genai_errors.ClientError(
+                        code=401,
+                        response_json={"error": {"message": "API key not valid"}},
+                    )
+                    yield  # pragma: no cover
+
+                return _gen()
+
+        return _Runner()
+
+    monkeypatch.setattr(adk_module, "Runner", boom_runner)
+    monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+
+    runner = ADKRunner(
+        session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager
+    )
+
+    with pytest.raises(AIServiceUnconfigured):
+        await runner.process_request(
+            query="x",
+            user_id="u",
+            session_id="s",
+            persona="enthusiast",
+            tools_service=MagicMock(),
+        )
+
+
+def test_module_level_tool_functions_are_deleted() -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    assert not hasattr(adk_module, "search_products_by_vector"), (
+        "module-level search_products_by_vector must be removed"
+    )
+    assert not hasattr(adk_module, "get_product_details"), (
+        "module-level get_product_details must be removed"
+    )
+    assert not hasattr(adk_module, "ALL_TOOLS"), "ALL_TOOLS constant must be removed"
+    assert not hasattr(adk_module, "_resolve_request_container"), (
+        "_resolve_request_container helper must be removed"
+    )

@@ -110,6 +110,10 @@ class PersonaManager:
         persona = cls.PERSONAS.get(persona_key, cls.PERSONAS["enthusiast"])
         return f"{base_prompt}\n\n## Persona Context: {persona.name}\n{persona.system_prompt_addon}"
 
+    @classmethod
+    def get_temperature(cls, persona_key: str) -> float:
+        return cls.PERSONAS.get(persona_key, cls.PERSONAS["enthusiast"]).temperature
+
 # --- Cache Service ---
 
 

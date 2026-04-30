@@ -75,8 +75,16 @@ def test_integrations_provider_scopes() -> None:
 
     from app.domain.chat.services.adk import ADKRunner
     from app.domain.chat.services.classifier import FlashLiteIntentClassifier
+    from app.domain.system.services import PersonaManager
 
-    for cls in (Client, OracleAsyncADKStore, SQLSpecSessionService, ADKRunner, FlashLiteIntentClassifier):
+    for cls in (
+        Client,
+        OracleAsyncADKStore,
+        SQLSpecSessionService,
+        ADKRunner,
+        FlashLiteIntentClassifier,
+        PersonaManager,
+    ):
         assert cls in factories, f"{cls.__name__} factory missing from IntegrationsProvider"
         assert factories[cls].scope == Scope.APP, f"{cls.__name__} must be APP-scoped"
 

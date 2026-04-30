@@ -44,20 +44,42 @@ def test_integrations_provider_builds_sqlspec_session_service_from_store(monkeyp
     assert captured["store"] is sentinel_store
 
 
-def test_integrations_provider_builds_runner_from_injected_session_service(monkeypatch: Any) -> None:
+def test_integrations_provider_builds_runner_from_injected_dependencies(monkeypatch: Any) -> None:
     provider = ioc_module.IntegrationsProvider()
     sentinel_session_service = object()
+    sentinel_classifier = object()
+    sentinel_persona_manager = object()
+    captured: dict[str, object] = {}
 
     class FakeRunner:
-        def __init__(self, session_service: object) -> None:
-            self.session_service = session_service
+        def __init__(
+            self, session_service: object, classifier: object, persona_manager: object
+        ) -> None:
+            captured["session_service"] = session_service
+            captured["classifier"] = classifier
+            captured["persona_manager"] = persona_manager
 
     monkeypatch.setattr(ioc_module, "ADKRunner", FakeRunner)
 
-    runner = provider.provide_adk_runner(sentinel_session_service)  # type: ignore[arg-type]
+    runner = provider.provide_adk_runner(
+        sentinel_session_service,  # type: ignore[arg-type]
+        sentinel_classifier,  # type: ignore[arg-type]
+        sentinel_persona_manager,  # type: ignore[arg-type]
+    )
 
     assert isinstance(runner, FakeRunner)
-    assert runner.session_service is sentinel_session_service
+    assert captured["session_service"] is sentinel_session_service
+    assert captured["classifier"] is sentinel_classifier
+    assert captured["persona_manager"] is sentinel_persona_manager
+
+
+def test_integrations_provider_builds_persona_manager() -> None:
+    from app.domain.system.services import PersonaManager
+
+    provider = ioc_module.IntegrationsProvider()
+    persona_manager = provider.provide_persona_manager()
+
+    assert isinstance(persona_manager, PersonaManager)
 
 
 def test_integrations_provider_builds_intent_classifier_from_injected_client(monkeypatch: Any) -> None:
