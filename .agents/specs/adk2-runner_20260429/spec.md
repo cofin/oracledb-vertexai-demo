@@ -116,7 +116,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 2: Flash-Lite enum classifier (`oracledb-vertexai-4d6.3.2`)
 
-- [ ] **2.1** Create `src/app/domain/chat/services/classifier.py`:
+- [x] **2.1** Create `src/app/domain/chat/services/classifier.py`: [e48d80e]
   ```python
   from google import genai
   from google.genai import types
@@ -146,9 +146,9 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
           )
           return IntentLabel(response.text)
   ```
-- [ ] **2.2** Add `INTENT_MODEL: str = "gemini-2.5-flash-lite"` to `settings.vertex_ai`.
-- [ ] **2.3** Wire `FlashLiteIntentClassifier` into the APP-scoped `provide_intent_classifier` slot **already reserved** by Ch 2 in `IntegrationsProvider` (`src/app/ioc.py`). The provider depends on `genai.Client` from the same provider; signature: `def provide_intent_classifier(self, client: genai.Client) -> FlashLiteIntentClassifier: return FlashLiteIntentClassifier(client, model=settings.vertex_ai.INTENT_MODEL)`.
-- [ ] **2.4** Unit test `src/tests/unit/test_classifier.py` — mock `client.aio.models.generate_content` to return `MagicMock(text="PRODUCT_RAG")`; assert classifier returns the enum.
+- [x] **2.2** Add `INTENT_MODEL: str = "gemini-2.5-flash-lite"` to `settings.vertex_ai`. [e48d80e]
+- [x] **2.3** Wire `FlashLiteIntentClassifier` into the APP-scoped `provide_intent_classifier` slot **already reserved** by Ch 2 in `IntegrationsProvider` (`src/app/ioc.py`). The provider depends on `genai.Client` from the same provider; signature: `def provide_intent_classifier(self, client: genai.Client) -> FlashLiteIntentClassifier: return FlashLiteIntentClassifier(client, model=settings.vertex_ai.INTENT_MODEL)`. [e48d80e]
+- [x] **2.4** Unit test `src/tests/unit/test_classifier.py` — mock `client.aio.models.generate_content` to return `MagicMock(text="PRODUCT_RAG")`; assert classifier returns the enum. [e48d80e]
 
 ### Phase 3: Workflow + parallel fan-out (`oracledb-vertexai-4d6.3.3`)
 
