@@ -152,7 +152,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 3: Workflow + parallel fan-out (`oracledb-vertexai-4d6.3.3`)
 
-- [ ] **3.1** Create `src/app/domain/chat/services/workflow.py`:
+- [x] **3.1** Create `src/app/domain/chat/services/workflow.py`: [a5f6da6]
   ```python
   import asyncio
   from google.adk import Context, Workflow
@@ -186,7 +186,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
       return Workflow(name="coffee_workflow", edges=[("START", classify_and_respond)])
   ```
-- [ ] **3.2** Unit test `src/tests/unit/test_workflow_factory.py` — mock classifier + agent, run the workflow, assert dict shape.
+- [x] **3.2** Unit test `src/tests/unit/test_workflow_factory.py` — mock classifier + agent, run the workflow, assert dict shape. [a5f6da6]
 
 ### Phase 4: ADKRunner rewrite (`oracledb-vertexai-4d6.3.4`)
 
