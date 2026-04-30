@@ -16,11 +16,11 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 *Link: [./specs/cymbal-coffee-reset_20260429/](./specs/cymbal-coffee-reset_20260429/)*
 *Beads: oracledb-vertexai-4d6*
 
-  ### [ ] Ch 1: foundation-bump_20260429
+  ### [x] Ch 1: foundation-bump_20260429
   *Link: [./specs/foundation-bump_20260429/](./specs/foundation-bump_20260429/)*
   *Beads: oracledb-vertexai-4d6.1*
 
-  ### [ ] Ch 2: accelerator-restructure_20260429
+  ### [x] Ch 2: accelerator-restructure_20260429
   *Link: [./specs/accelerator-restructure_20260429/](./specs/accelerator-restructure_20260429/)*
   *Beads: oracledb-vertexai-4d6.2*
 
@@ -28,7 +28,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/adk2-runner_20260429/](./specs/adk2-runner_20260429/)*
   *Beads: oracledb-vertexai-4d6.3*
 
-  ### [ ] Ch 4: htmx-vite-frontend_20260429
+  ### [x] Ch 4: htmx-vite-frontend_20260429
   *Link: [./specs/htmx-vite-frontend_20260429/](./specs/htmx-vite-frontend_20260429/)*
   *Beads: oracledb-vertexai-4d6.4*
 
