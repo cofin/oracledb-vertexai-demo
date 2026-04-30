@@ -21,10 +21,12 @@ logger = structlog.get_logger()
 def _setup_environment() -> None:
     """Configure environment variables shared by every ``coffee`` invocation."""
     from app import config
+    from app.lib.log import set_cli_mode
     from app.lib.settings import get_settings
 
     _ = config.log.structlog_logging_config.configure()()
     config.setup_logging()
+    set_cli_mode(True)
     settings = get_settings()
     os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
     os.environ.setdefault("LITESTAR_APP_NAME", settings.app.NAME)

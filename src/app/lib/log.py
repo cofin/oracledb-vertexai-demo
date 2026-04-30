@@ -8,9 +8,10 @@ from __future__ import annotations
 import logging
 import re
 import sys
+from contextvars import ContextVar
 from functools import lru_cache
 from inspect import isawaitable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 import structlog
 from litestar.data_extractors import ConnectionDataExtractor, ResponseDataExtractor
@@ -26,7 +27,6 @@ from app.utils.serialization import to_json
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import Any, Literal
 
     from litestar.connection import Request
     from litestar.types.asgi_types import ASGIApp, Message, Receive, Scope, Send
@@ -34,6 +34,45 @@ if TYPE_CHECKING:
     from structlog.typing import Processor
 
 LOGGER = structlog.getLogger()
+
+_cli_mode: ContextVar[bool] = ContextVar("cli_mode", default=False)
+
+
+@lru_cache
+def is_tty() -> bool:
+    return bool(sys.stderr.isatty() or sys.stdout.isatty())
+
+
+def set_cli_mode(enabled: bool = True) -> None:
+    """Set CLI mode to suppress structlog output in favor of rich console."""
+    _cli_mode.set(enabled)
+
+
+def is_cli_mode() -> bool:
+    """Check if CLI mode is enabled.
+
+    Returns:
+        bool: True if CLI mode is enabled, False otherwise.
+    """
+    return _cli_mode.get()
+
+
+async def log_info(message: str, *, use_logger: bool = True, **kwargs: Any) -> None:
+    """Log an info message, respecting CLI mode."""
+    if use_logger and not is_cli_mode():
+        await LOGGER.ainfo(message, **kwargs)
+
+
+async def log_warning(message: str, *, use_logger: bool = True, **kwargs: Any) -> None:
+    """Log a warning message, respecting CLI mode."""
+    if use_logger and not is_cli_mode():
+        await LOGGER.awarning(message, **kwargs)
+
+
+async def log_error(message: str, *, use_logger: bool = True, **kwargs: Any) -> None:
+    """Log an error message, respecting CLI mode."""
+    if use_logger and not is_cli_mode():
+        await LOGGER.aerror(message, **kwargs)
 
 
 class SuppressADKWarningsFilter(logging.Filter):
@@ -59,10 +98,15 @@ class SuppressAsyncioTaskExceptionFilter(logging.Filter):
 class SuppressGranianExcInfoFilter(logging.Filter):
     """Filter duplicate traceback logging from Granian lifespan/error paths."""
 
+    _HANDLED_ERRORS = ('relation "job" does not exist', "SystemExit: 1")
+
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
 
         if "Traceback (most recent call last)" in msg:
+            if any(err in msg for err in self._HANDLED_ERRORS):
+                return False
+
             record.exc_info = None
             record.exc_text = None
             return True
@@ -79,11 +123,6 @@ HTTP_RESPONSE_BODY: Literal["http.response.body"] = "http.response.body"
 REQUEST_BODY_FIELD: Literal["body"] = "body"
 
 settings = get_settings()
-
-
-@lru_cache
-def is_tty() -> bool:
-    return bool(sys.stderr.isatty() or sys.stdout.isatty())
 
 
 def structlog_json_serializer(value: EventDict, **_: Any) -> bytes:

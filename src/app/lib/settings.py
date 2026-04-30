@@ -316,7 +316,7 @@ class VertexAISettings:
     """Vertex AI embedding model."""
     EMBEDDING_DIMENSIONS: int = 3072
     """Embedding vector dimensions (gemini-embedding-001 native output)."""
-    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3-flash-latest"))
+    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
     """Vertex AI chat model."""
     INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))
     """Vertex AI model for single-call intent classification with text/x.enum."""
