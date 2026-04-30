@@ -190,9 +190,9 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 4: ADKRunner rewrite (`oracledb-vertexai-4d6.3.4`)
 
-- [ ] **4.1a** Replace the constructor in `src/app/domain/chat/services/adk.py:ADKRunner.__init__`: `def __init__(self, session_service: SQLSpecSessionService, classifier: FlashLiteIntentClassifier, persona_manager: PersonaManager)`. Store all three on `self._...`. Delete any old construction-time `LlmAgent` / `Runner` setup (now per-request).
-- [ ] **4.1b** Add a private helper `_make_tool_factories(tools_service: AgentToolsService) -> list[Callable]` that returns closure-bound `search_products_by_vector` and `get_product_details` async functions. No module-level tool functions remain.
-- [ ] **4.1c** Add a private helper `_build_workflow(self, instruction: str, temperature: float, tools: list[Callable]) -> Workflow`:
+- [x] **4.1a** Replace the constructor in `src/app/domain/chat/services/adk.py:ADKRunner.__init__`: `def __init__(self, session_service: SQLSpecSessionService, classifier: FlashLiteIntentClassifier, persona_manager: PersonaManager)`. Store all three on `self._...`. Delete any old construction-time `LlmAgent` / `Runner` setup (now per-request). [d35d3e4]
+- [x] **4.1b** Add a private helper `_make_tool_factories(tools_service: AgentToolsService) -> list[Callable]` that returns closure-bound `search_products_by_vector` and `get_product_details` async functions. No module-level tool functions remain. [d35d3e4]
+- [x] **4.1c** Add a private helper `_build_workflow(self, instruction: str, temperature: float, tools: list[Callable]) -> Workflow`: [d35d3e4]
   ```python
   agent = LlmAgent(
       name="CoffeeAssistant",
@@ -205,10 +205,10 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
   return make_workflow(self._classifier, agent)
   ```
   Confirmed by Phase 0.2: `Runner` accepts a `Workflow` root as `node=workflow`, **not** `agent=workflow` (`Workflow` extends `BaseNode`, not `BaseAgent`).
-- [ ] **4.1d** Rewrite `process_request(query, user_id, session_id, persona, tools_service)` to: resolve persona+temperature, build tools via 4.1b, build workflow via 4.1c, instantiate `Runner(node=workflow, app_name="coffee-assistant", session_service=self._session_service)`, call `run_async(user_id, session.id, new_message=Content(role="user", parts=[Part(text=query)]))`, aggregate events, and return the populated `ChatResult` dict (all 7 keys).
-- [ ] **4.2** Add `credential_guard_callback(callback_context: CallbackContext) -> Optional[types.Content]` as a **defense-in-depth** that returns the 503-text `Content` when invoked with an unconfigured client — short-circuits the agent. **The primary path is controller pre-flight:** wrap the `runner.process_request` call in `controllers.py` with a try that catches `genai.errors.ClientError`/`ValueError` from `genai.Client(...)` resolution and raises `AIServiceUnconfigured`. The callback is the safety net if pre-flight slips through.
-- [ ] **4.3** Define `class AIServiceUnconfigured(Exception)` in `src/app/domain/chat/exceptions.py`. Update `src/app/domain/chat/controllers/_chat.py` to catch this typed exception and return `HTTPException(status_code=503, detail="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file.")`. Delete the string-match block.
-- [ ] **4.4** Update `IntegrationsProvider.provide_adk_runner` (Ch 2 created the slot): now depends on `(session_service, classifier, persona_manager)` — no code change here if Ch 2 already wired it; sanity-check.
+- [x] **4.1d** Rewrite `process_request(query, user_id, session_id, persona, tools_service)` to: resolve persona+temperature, build tools via 4.1b, build workflow via 4.1c, instantiate `Runner(node=workflow, app_name="coffee-assistant", session_service=self._session_service)`, call `run_async(user_id, session.id, new_message=Content(role="user", parts=[Part(text=query)]))`, aggregate events, and return the populated `ChatResult` dict (all 7 keys). [d35d3e4]
+- [x] **4.2** Add `credential_guard_callback(callback_context: CallbackContext) -> Optional[types.Content]` as a **defense-in-depth** that returns the 503-text `Content` when invoked with an unconfigured client — short-circuits the agent. **The primary path is controller pre-flight:** wrap the `runner.process_request` call in `controllers.py` with a try that catches `genai.errors.ClientError`/`ValueError` from `genai.Client(...)` resolution and raises `AIServiceUnconfigured`. The callback is the safety net if pre-flight slips through. [d35d3e4]
+- [x] **4.3** Define `class AIServiceUnconfigured(Exception)` in `src/app/domain/chat/exceptions.py`. Update `src/app/domain/chat/controllers/_chat.py` to catch this typed exception and return `HTTPException(status_code=503, detail="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file.")`. Delete the string-match block. [d35d3e4]
+- [x] **4.4** Update `IntegrationsProvider.provide_adk_runner` (Ch 2 created the slot): now depends on `(session_service, classifier, persona_manager)` — no code change here if Ch 2 already wired it; sanity-check. [d35d3e4]
 
 ### Phase 5: Cleanup of pre-2.0 workarounds (`oracledb-vertexai-4d6.3.5`)
 
