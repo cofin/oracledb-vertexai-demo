@@ -21,8 +21,19 @@
 - Dishka router integration (`Inject[ADKRunner]` on handlers, no route decorators) keeps DI explicit and framework-native.
 - **SQLSpec Data Access:**
   - Always use typed adapters and context managers (`async with config.create_driver() as db:`).
-  - Use `schema_type` to map typed results instead of raw dictionaries.
-  - Prefer the query builder (`sql.select().to_statement()`) or `SQLFileLoader` over raw string concatenation.
+  - Use `schema_type` on every `select` / `select_one_or_none` to map rows directly into Structs at the driver layer.
+  - All SQL lives in `db/sql/*.sql` as `-- name: …` named queries; load once at startup via `db_manager.load_sql_files()`, fetch by name via `db_manager.get_sql("query-name")`. Inline SQL strings in service methods are forbidden — enforced by `test_named_sql_loading.py::test_no_inline_sql_strings_in_domain_services`.
+
+## Service & DI Layout (Ch 2)
+
+- **Single service base — `SQLSpecAsyncService`:** `app/lib/service.py` re-exports `sqlspec.service.SQLSpecAsyncService` plus filter and pagination types so domain services have one import surface. Domain services subclass `SQLSpecAsyncService` directly; there is no local `SQLSpecService` wrapper. Pinned by `test_service_base.py`.
+- **Three Dishka providers in `app/ioc.py`** (no per-domain providers):
+  - `LitestarPersistenceProvider` — APP-scoped `OracleAsyncConfig`, REQUEST-scoped `OracleAsyncDriver`.
+  - `IntegrationsProvider` — APP-scoped singletons for external integrations (`google.genai.Client`, `OracleAsyncADKStore`, `SQLSpecSessionService`, `ADKRunner`).
+  - `DomainServiceProvider` — REQUEST-scoped per-request services (`ProductService`, `StoreService`, `CacheService`, `MetricsService`, `AgentToolsService`, `VertexAIService`, `OracleVectorSearchService`). Container shape locked by `test_container_shape.py`. **Do not add `from __future__ import annotations` to `ioc.py`** — Dishka introspects `@provide` method annotations at runtime; PEP 563 deferred evaluation breaks scope resolution.
+- **List endpoints use `create_filter_dependencies` + `list_with_count`:** controllers declare `dependencies = create_filter_dependencies({...})` (re-exported from `app.lib.service`); handlers accept `filters: Annotated[list[FilterTypes], Dependency(...)]` and return `await svc.list_with_count(*filters) -> OffsetPagination[Schema]`. Wire-shape pinned by `test_filter_dependencies.py`.
+- **Handler-level `Inject[T]` over `@inject` decorators:** with `setup_dishka` + `DomainPlugin(use_dishka_router=True)`, handler parameters take the form `service: Inject[ProductService]` directly. No route-level decorators, no manual provider lookups.
+- **Domain package layout:** every domain follows the same shape — `domain/<name>/controllers/`, `domain/<name>/services/`, and `domain/<name>/schemas/` sub-packages with `__init__.py` re-exporting public symbols. Cross-domain imports go through the package, never the inner module. Layout assertions in `test_domain_layout.py`.
 
 ## Gotchas & Warnings
 
