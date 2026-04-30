@@ -105,6 +105,7 @@ test = [
 
 [tool.ruff]
 
+extend-exclude = [".agents"]
 fix = true
 line-length = 120
 preview = true
@@ -159,6 +160,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.flake8-copyright]
 author = "Google LLC"
+notice-rgx = '(?i)(?:Copyright|SPDX-FileCopyrightText:)\s+(?:Copyright\s+)?(?:\(C\)\s+)?\d{4}([-,]\s*\d{4})*'
 
 [tool.ruff.lint.pydocstyle]
 
