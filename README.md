@@ -19,7 +19,7 @@ uv run manage.py init --run-install
 uv run manage.py doctor
 
 # Start Oracle 23ai (managed mode - local container)
-uv run manage.py database oracle start-local-container
+uv run manage.py infra start
 
 # Run database migrations
 uv run python manage.py database upgrade
@@ -42,15 +42,15 @@ uv run manage.py install all                                   # Install all pre
 uv run manage.py doctor                                        # Verify setup and prerequisites
 
 # Database management (managed mode - local container)
-uv run manage.py database oracle start-local-container         # Start Oracle container
-uv run manage.py database oracle stop-local-container          # Stop Oracle container
-uv run manage.py database oracle restart-local-container       # Restart Oracle container
-uv run manage.py database oracle local-container-logs          # View container logs
-uv run manage.py database oracle wipe-local-container          # Remove container (clean slate)
+uv run manage.py infra start                                   # Start Oracle container
+uv run manage.py infra stop                                    # Stop Oracle container
+uv run manage.py infra restart                                 # Restart Oracle container
+uv run manage.py infra logs                                    # View container logs
+uv run manage.py infra wipe                                    # Remove container (clean slate)
 
 # Database management (external mode - Autonomous DB)
-uv run manage.py database oracle wallet extract Wallet_*.zip  # Extract wallet
-uv run manage.py database oracle connect test                 # Test database connection
+uv run manage.py database wallet extract Wallet_*.zip         # Extract wallet
+uv run manage.py database connect test                        # Test database connection
 
 # Help
 uv run manage.py --help                                        # Show all available commands

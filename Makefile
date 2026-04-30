@@ -240,22 +240,22 @@ bootstrap: install init doctor start-infra migrate load-fixtures ## One-shot loc
 .PHONY: start-infra
 start-infra: ## Start local containers
 	@echo "${INFO} Starting local Oracle 23AI instance..."
-	@uv run python manage.py database oracle start-local-container --recreate
+	@uv run python manage.py infra start --recreate
 	@echo "${OK} Infrastructure started"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
 	@echo "${INFO} Stopping local Oracle 23AI instance..."
-	@uv run python manage.py database oracle stop-local-container
+	@uv run python manage.py infra stop
 	@echo "${OK} Infrastructure stopped"
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
 	@echo "${INFO} Wiping local Oracle 23AI instance..."
-	@uv run python manage.py database oracle wipe-local-container --volumes --force --yes
+	@uv run python manage.py infra wipe --volumes --force --yes
 	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
 	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
-	@uv run python manage.py database oracle local-container-logs --follow
+	@uv run python manage.py infra logs --follow
