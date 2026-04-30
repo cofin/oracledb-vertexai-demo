@@ -295,6 +295,8 @@ class VertexAISettings:
     """Embedding vector dimensions (gemini-embedding-001 native output)."""
     CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3-flash-latest"))
     """Vertex AI chat model."""
+    INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))
+    """Vertex AI model for single-call intent classification with text/x.enum."""
 
     def __post_init__(self) -> None:
         """Handle environment variable synchronization and conflict resolution."""

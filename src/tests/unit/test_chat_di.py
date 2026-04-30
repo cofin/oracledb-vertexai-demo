@@ -58,3 +58,22 @@ def test_integrations_provider_builds_runner_from_injected_session_service(monke
 
     assert isinstance(runner, FakeRunner)
     assert runner.session_service is sentinel_session_service
+
+
+def test_integrations_provider_builds_intent_classifier_from_injected_client(monkeypatch: Any) -> None:
+    provider = ioc_module.IntegrationsProvider()
+    sentinel_client = object()
+    captured: dict[str, object] = {}
+
+    class FakeClassifier:
+        def __init__(self, client: object, model: str) -> None:
+            captured["client"] = client
+            captured["model"] = model
+
+    monkeypatch.setattr(ioc_module, "FlashLiteIntentClassifier", FakeClassifier)
+
+    classifier = provider.provide_intent_classifier(sentinel_client)  # type: ignore[arg-type]
+
+    assert isinstance(classifier, FakeClassifier)
+    assert captured["client"] is sentinel_client
+    assert captured["model"] == "gemini-2.5-flash-lite"

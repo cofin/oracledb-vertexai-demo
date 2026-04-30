@@ -74,8 +74,9 @@ def test_integrations_provider_scopes() -> None:
     from sqlspec.extensions.adk import SQLSpecSessionService
 
     from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import FlashLiteIntentClassifier
 
-    for cls in (Client, OracleAsyncADKStore, SQLSpecSessionService, ADKRunner):
+    for cls in (Client, OracleAsyncADKStore, SQLSpecSessionService, ADKRunner, FlashLiteIntentClassifier):
         assert cls in factories, f"{cls.__name__} factory missing from IntegrationsProvider"
         assert factories[cls].scope == Scope.APP, f"{cls.__name__} must be APP-scoped"
 

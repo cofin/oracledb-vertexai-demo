@@ -22,6 +22,7 @@ from sqlspec.extensions.adk import SQLSpecSessionService
 
 from app.config import db, db_manager
 from app.domain.chat.services.adk import ADKRunner, AgentToolsService
+from app.domain.chat.services.classifier import FlashLiteIntentClassifier
 from app.domain.products.services.services import (
     OracleVectorSearchService,
     ProductService,
@@ -67,6 +68,10 @@ class IntegrationsProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_session_service(self, store: OracleAsyncADKStore) -> SQLSpecSessionService:
         return SQLSpecSessionService(store)
+
+    @provide(scope=Scope.APP)
+    def provide_intent_classifier(self, client: Client) -> FlashLiteIntentClassifier:
+        return FlashLiteIntentClassifier(client, model=get_settings().vertex_ai.INTENT_MODEL)
 
     @provide(scope=Scope.APP)
     def provide_adk_runner(self, session_service: SQLSpecSessionService) -> ADKRunner:
