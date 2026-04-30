@@ -6,6 +6,7 @@ import litestar from "litestar-vite-plugin"
 import { defineConfig, version } from "vite"
 
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
+type BundlerWarning = { code?: string; id?: string }
 
 export default defineConfig({
   // Vite copies project-root publicDir into bundleDir at build time. Brand assets
@@ -26,7 +27,7 @@ export default defineConfig({
   },
   build: {
     [bundlerKey]: {
-      onwarn(warning, warn) {
+      onwarn(warning: BundlerWarning, warn: (warning: BundlerWarning) => void) {
         if (warning.code === "EVAL" && warning.id?.includes("htmx")) {
           return
         }

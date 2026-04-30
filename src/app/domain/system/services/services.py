@@ -37,9 +37,13 @@ BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Co
 **Tools available:**
 - `search_products_by_vector(query, limit, similarity_threshold)`: semantic search across the coffee menu.
 - `get_product_details(product_id)`: full details for a specific product (id or name).
+- `get_all_store_locations()`: Cymbal Coffee cafe locations and addresses.
 
 **Behavior:**
-- When the user describes a flavor, mood, or occasion, call `search_products_by_vector` and recommend 2-3 results with names and prices.
+- Call `search_products_by_vector` before answering any menu, catalog, product, price, roast, caffeine, preparation, availability, or recommendation question.
+- Treat idioms and vague requests like "something bold", "wake me up", "surprise me", "what's good today", and "what should I get" as product-search requests.
+- When the user names a product, call `get_product_details` if you need exact details.
+- For location, address, hours, nearest cafe, or pickup-location questions, call `get_all_store_locations`.
 - For chitchat, respond conversationally without invoking a tool.
 - Talk naturally — never mention tools, AI, or internal mechanics.
 - Keep responses short (1-3 sentences).
@@ -114,6 +118,7 @@ class PersonaManager:
     def get_temperature(cls, persona_key: str) -> float:
         return cls.PERSONAS.get(persona_key, cls.PERSONAS["enthusiast"]).temperature
 
+
 # --- Cache Service ---
 
 
@@ -127,11 +132,14 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
 
         if row.get("expires_at") and row["expires_at"] < datetime.now(UTC):
             await self.driver.execute(sql.delete().from_("response_cache").where_eq("id", row["id"]))
+            await self.driver.commit()
             return None
 
         return ResponseCache(**row)
 
-    async def set_cached_response(self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60) -> ResponseCache | None:
+    async def set_cached_response(
+        self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60
+    ) -> ResponseCache | None:
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
 
         existing = await self.driver.select_value_or_none(
@@ -140,7 +148,8 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
 
         if existing is not None:
             await self.driver.execute(
-                sql.update("response_cache")
+                sql
+                .update("response_cache")
                 .set(response_data=response_data, expires_at=expires_at)
                 .where_eq("cache_key", cache_key),
             )
@@ -152,6 +161,7 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
                     expires_at=expires_at,
                 ),
             )
+        await self.driver.commit()
 
         return await self.driver.select_one_or_none(
             db_manager.get_sql("get-cached-response"),
@@ -168,10 +178,12 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
         )
         if row:
             await self.driver.execute(
-                sql.update("embedding_cache")
+                sql
+                .update("embedding_cache")
                 .set(hit_count=sql.raw("hit_count + 1"), last_accessed=sql.raw("CURRENT_TIMESTAMP"))
                 .where_eq("text_hash", text_hash),
             )
+            await self.driver.commit()
             return list(row["embedding"]) if isinstance(row["embedding"], list) else None
         return None
 
@@ -188,11 +200,10 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
                     model=model,
                 ),
             )
+            await self.driver.commit()
 
     async def get_cache_stats(self) -> CacheStats:
-        row = await self.driver.select_one_or_none(
-            db_manager.get_sql("get-cache-stats"), schema_type=CacheStatsRow
-        )
+        row = await self.driver.select_one_or_none(db_manager.get_sql("get-cache-stats"), schema_type=CacheStatsRow)
         total_hits = row.total_hits if row else 0
         return CacheStats(
             total_hits=total_hits,
@@ -213,7 +224,9 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
         if cache_type in {None, "embedding"}:
             res = await self.driver.execute(sql.delete().from_("embedding_cache"))
             total_deleted += res.rows_affected
+        await self.driver.commit()
         return total_deleted
+
 
 # --- Metrics Service ---
 

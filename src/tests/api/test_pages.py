@@ -22,6 +22,8 @@ async def test_chat_page_renders(client: AsyncTestClient) -> None:
     assert 'hx-ext="litestar"' in body
     assert 'id="messages"' in body
     assert 'id="metrics-badges"' in body
+    assert 'data-chat-form="true"' in body
+    assert "Barista chat" in body
     assert '<meta name="csrf-token"' in body
 
 

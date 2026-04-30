@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from google.genai import types
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from google.genai import Client
 
 
-class IntentLabel(str, Enum):
+class IntentLabel(StrEnum):
     """Coffee-domain intent labels."""
 
     PRODUCT_RAG = "PRODUCT_RAG"
@@ -25,7 +25,15 @@ class IntentLabel(str, Enum):
 
 INTENT_VALUES: list[str] = [m.value for m in IntentLabel]
 
-_SYSTEM_INSTRUCTION = "Classify the user's coffee-related intent. Return exactly one label."
+_SYSTEM_INSTRUCTION = """Classify the user's coffee-related intent. Return exactly one label.
+
+Labels:
+- PRODUCT_RAG: menu, catalog, product, price, roast, caffeine, preparation, availability, substitution, or recommendation questions. Choose this for idioms and vague preference requests such as "something bold", "wake me up", "surprise me", "what's good today", "what should I get", "do you have decaf", or "what is on the menu".
+- STORE_LOCATION: store locations, hours, addresses, nearest cafe, pickup location, or directions.
+- ORDER_STATUS: order status, delivery status, pickup status, refunds, or changes to an existing order.
+- GENERAL_CONVERSATION: greetings, thanks, small talk, or non-menu conversation.
+
+When a coffee or menu request is ambiguous, choose PRODUCT_RAG."""
 
 
 class FlashLiteIntentClassifier:
@@ -44,9 +52,10 @@ class FlashLiteIntentClassifier:
                 response_mime_type="text/x.enum",
                 response_schema={"type": "STRING", "enum": INTENT_VALUES},
                 system_instruction=_SYSTEM_INSTRUCTION,
+                temperature=0,
             ),
         )
-        return IntentLabel(response.text)
+        return IntentLabel(str(response.text).strip())
 
 
 __all__ = ("INTENT_VALUES", "FlashLiteIntentClassifier", "IntentLabel")

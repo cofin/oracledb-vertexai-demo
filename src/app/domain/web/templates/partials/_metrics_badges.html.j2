@@ -5,17 +5,17 @@
 
 <div id="metrics-badges" hx-swap-oob="true" class="flex flex-wrap items-center gap-2 text-xs">
   {% if metrics_badges.total_ms is not none %}
-    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+    <span class="rounded-full border border-border bg-surface-strong/60 px-2 py-0.5 text-muted">
       total <span class="font-semibold text-strong">{{ metrics_badges.total_ms }} ms</span>
     </span>
   {% endif %}
   {% if metrics_badges.oracle_ms is not none %}
-    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+    <span class="rounded-full border border-border bg-surface-strong/60 px-2 py-0.5 text-muted">
       oracle <span class="font-semibold text-strong">{{ metrics_badges.oracle_ms }} ms</span>
     </span>
   {% endif %}
   {% if metrics_badges.embedding_ms is not none %}
-    <span class="rounded-full border border-border bg-surface px-2 py-0.5 text-muted">
+    <span class="rounded-full border border-border bg-surface-strong/60 px-2 py-0.5 text-muted">
       embed <span class="font-semibold text-strong">{{ metrics_badges.embedding_ms }} ms</span>
     </span>
   {% endif %}

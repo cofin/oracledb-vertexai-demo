@@ -14,10 +14,10 @@
     {{ vite_hmr() | safe }}
     {{ vite('src/resources/main.js') | safe }}
   </head>
-  <body hx-ext="litestar" class="min-h-screen bg-canvas text-base font-sans antialiased">
+  <body hx-ext="litestar" class="min-h-screen bg-canvas font-sans text-strong antialiased">
     {% include "_nav.html.j2" %}
     {% include "partials/_flash.html.j2" %}
-    <main class="mx-auto max-w-5xl px-4 py-6">
+    <main class="mx-auto max-w-6xl px-4 py-5">
       {% block content %}{% endblock %}
     </main>
   </body>

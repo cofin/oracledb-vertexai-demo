@@ -43,7 +43,7 @@ def test_runner_stashes_dependencies_on_private_attrs() -> None:
     assert runner._persona_manager is persona_manager
 
 
-def test_make_tool_factories_returns_two_async_callables() -> None:
+def test_make_tool_factories_returns_three_async_callables() -> None:
     from app.domain.chat.services.adk import ADKRunner
 
     tools_service = MagicMock()
@@ -55,11 +55,12 @@ def test_make_tool_factories_returns_two_async_callables() -> None:
     )
     tools = runner._make_tool_factories(tools_service, metric_state)
 
-    assert len(tools) == 2
+    assert len(tools) == 3
     names = {fn.__name__ for fn in tools}
-    assert names == {"search_products_by_vector", "get_product_details"}
+    assert names == {"search_products_by_vector", "get_product_details", "get_all_store_locations"}
     for fn in tools:
         assert inspect.iscoroutinefunction(fn)
+        assert inspect.getdoc(fn)
 
 
 async def test_search_products_closure_delegates_to_tools_service() -> None:
@@ -70,9 +71,7 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
         return_value={"products": [{"id": 1}], "embedding_cache_hit": True, "results_count": 1}
     )
     metric_state: dict[str, Any] = {}
-    runner = ADKRunner(
-        session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock()
-    )
+    runner = ADKRunner(session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock())
     tools: list[Callable[..., Any]] = runner._make_tool_factories(tools_service, metric_state)
     search = next(fn for fn in tools if fn.__name__ == "search_products_by_vector")
 
@@ -88,9 +87,7 @@ async def test_get_product_details_closure_delegates_to_tools_service() -> None:
 
     tools_service = MagicMock()
     tools_service.get_product_details = AsyncMock(return_value={"id": 5, "name": "Espresso"})
-    runner = ADKRunner(
-        session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock()
-    )
+    runner = ADKRunner(session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock())
     tools = runner._make_tool_factories(tools_service, {})
     details = next(fn for fn in tools if fn.__name__ == "get_product_details")
 
@@ -98,6 +95,21 @@ async def test_get_product_details_closure_delegates_to_tools_service() -> None:
 
     tools_service.get_product_details.assert_awaited_once_with("5")
     assert result == {"id": 5, "name": "Espresso"}
+
+
+async def test_get_all_store_locations_closure_delegates_to_tools_service() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    tools_service = MagicMock()
+    tools_service.get_all_store_locations = AsyncMock(return_value=[{"city": "Austin"}])
+    runner = ADKRunner(session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock())
+    tools = runner._make_tool_factories(tools_service, {})
+    locations = next(fn for fn in tools if fn.__name__ == "get_all_store_locations")
+
+    result = await locations()
+
+    tools_service.get_all_store_locations.assert_awaited_once_with()
+    assert result == [{"city": "Austin"}]
 
 
 def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch: Any) -> None:
@@ -120,15 +132,11 @@ def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch:
     monkeypatch.setattr(adk_module, "make_workflow", fake_make_workflow)
 
     classifier = MagicMock()
-    runner = ADKRunner(
-        session_service=MagicMock(), classifier=classifier, persona_manager=MagicMock()
-    )
+    runner = ADKRunner(session_service=MagicMock(), classifier=classifier, persona_manager=MagicMock())
 
     async def fake_tool() -> None: ...
 
-    workflow = runner._build_workflow(
-        instruction="be helpful", temperature=0.5, tools=[fake_tool]
-    )
+    workflow = runner._build_workflow(instruction="be helpful", temperature=0.5, tools=[fake_tool])
 
     assert workflow == "WORKFLOW"
     assert captured_agent_kwargs["name"] == "CoffeeAssistant"
@@ -161,25 +169,29 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
         part = MagicMock()
         part.text = "Try our Yirgacheffe."
         event.content.parts = [part]
+        event.output = None
+        event.partial = False
         yield event
 
     fake_runner = MagicMock()
     fake_runner.run_async = MagicMock(return_value=fake_events())
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
 
     monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
     monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
 
-    runner = ADKRunner(
-        session_service=session_service, classifier=classifier, persona_manager=persona_manager
-    )
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
 
     result = await runner.process_request(
         query="recommend something",
         user_id="u1",
         session_id="sess-42",
         persona="enthusiast",
-        tools_service=MagicMock(),
+        tools_service=tools_service,
     )
 
     expected_keys = {
@@ -196,6 +208,100 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     assert result["session_id"] == "sess-42"
     assert result["intent_detected"] == "PRODUCT_RAG"
     assert isinstance(result["response_time_ms"], float)
+    run_kwargs = fake_runner.run_async.call_args.kwargs
+    assert run_kwargs["run_config"].streaming_mode.value == "sse"
+    tools_service.set_cached_chat_response.assert_awaited_once()
+
+
+async def test_process_request_prefers_workflow_output_intent(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-output"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    async def fake_events() -> Any:
+        event = MagicMock()
+        event.output = {"answer": "The boldest option is Dark Roast.", "intent": "PRODUCT_RAG"}
+        event.content = None
+        event.partial = False
+        yield event
+
+    fake_runner = MagicMock()
+    fake_runner.run_async = MagicMock(return_value=fake_events())
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+
+    monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
+    monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
+
+    result = await runner.process_request(
+        query="something bold",
+        user_id="u1",
+        session_id="sess-output",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert result["answer"] == "The boldest option is Dark Roast."
+    assert result["intent_detected"] == "PRODUCT_RAG"
+
+
+async def test_process_request_returns_cached_response_without_model(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-cache"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    persona_manager = MagicMock()
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(
+        return_value={
+            "answer": "Cached answer",
+            "intent_detected": "PRODUCT_RAG",
+            "search_metrics": {"results_count": 2},
+            "embedding_cache_hit": True,
+        }
+    )
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("Runner should not be constructed on cache hit")
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
+
+    result = await runner.process_request(
+        query="something bold",
+        user_id="u1",
+        session_id="sess-cache",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert result["answer"] == "Cached answer"
+    assert result["from_cache"] is True
+    assert result["embedding_cache_hit"] is True
+    assert result["search_metrics"]["results_count"] == 2
 
 
 async def test_process_request_raises_ai_service_unconfigured_on_credential_error(
@@ -213,6 +319,10 @@ async def test_process_request_raises_ai_service_unconfigured_on_credential_erro
     session_service = MagicMock()
     session_service.get_session = AsyncMock(return_value=fake_session)
     session_service.create_session = AsyncMock(return_value=fake_session)
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
 
     persona_manager = MagicMock()
     persona_manager.get_system_prompt = MagicMock(return_value="x")
@@ -236,9 +346,7 @@ async def test_process_request_raises_ai_service_unconfigured_on_credential_erro
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
     monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
 
-    runner = ADKRunner(
-        session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager
-    )
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
 
     with pytest.raises(AIServiceUnconfigured):
         await runner.process_request(
@@ -246,7 +354,7 @@ async def test_process_request_raises_ai_service_unconfigured_on_credential_erro
             user_id="u",
             session_id="s",
             persona="enthusiast",
-            tools_service=MagicMock(),
+            tools_service=tools_service,
         )
 
 
@@ -256,10 +364,6 @@ def test_module_level_tool_functions_are_deleted() -> None:
     assert not hasattr(adk_module, "search_products_by_vector"), (
         "module-level search_products_by_vector must be removed"
     )
-    assert not hasattr(adk_module, "get_product_details"), (
-        "module-level get_product_details must be removed"
-    )
+    assert not hasattr(adk_module, "get_product_details"), "module-level get_product_details must be removed"
     assert not hasattr(adk_module, "ALL_TOOLS"), "ALL_TOOLS constant must be removed"
-    assert not hasattr(adk_module, "_resolve_request_container"), (
-        "_resolve_request_container helper must be removed"
-    )
+    assert not hasattr(adk_module, "_resolve_request_container"), "_resolve_request_container helper must be removed"

@@ -25,7 +25,7 @@ def test_intent_label_values_match_text_x_enum_pin() -> None:
         "STORE_LOCATION",
         "ORDER_STATUS",
     }
-    assert INTENT_VALUES == [m.value for m in IntentLabel]
+    assert [m.value for m in IntentLabel] == INTENT_VALUES
 
 
 @pytest.mark.asyncio
@@ -65,6 +65,10 @@ async def test_classifier_passes_text_x_enum_config() -> None:
     cfg = captured["config"]
     assert cfg.response_mime_type == "text/x.enum"
     assert cfg.response_schema == {"type": "STRING", "enum": INTENT_VALUES}
+    assert cfg.temperature == 0
+    assert "what is on the menu" in cfg.system_instruction
+    assert "something bold" in cfg.system_instruction
+    assert "When a coffee or menu request is ambiguous, choose PRODUCT_RAG" in cfg.system_instruction
 
 
 @pytest.mark.asyncio

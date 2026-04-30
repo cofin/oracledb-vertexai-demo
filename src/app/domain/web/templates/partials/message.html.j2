@@ -3,9 +3,9 @@
  SPDX-License-Identifier: Apache-2.0
 #}
 
-<article class="message message-{{ message.source }} rounded-xl border border-border bg-surface px-4 py-3 shadow-sm">
-  <header class="flex items-center justify-between text-xs uppercase tracking-wider">
-    <span class="text-muted">{{ "You" if message.source == "human" else "Barista" }}</span>
+<article class="message message-{{ message.source }} rounded-lg border border-border px-4 py-3 shadow-sm">
+  <header class="flex items-center justify-between gap-3 text-xs">
+    <span class="font-medium text-muted">{{ "You" if message.source == "human" else "Barista" }}</span>
     {% if message.source == "ai" and intent_detected %}
       <span class="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] text-accent-strong">{{ intent_detected }}</span>
     {% endif %}

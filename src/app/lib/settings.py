@@ -76,6 +76,14 @@ class DatabaseSettings:
     """Pool recycle time in seconds."""
     ECHO: bool = field(default_factory=lambda: os.getenv("DATABASE_ECHO", "False") in TRUE_VALUES)
     """Echo SQL statements to log output."""
+    ADK_IN_MEMORY: bool = field(default_factory=lambda: os.getenv("ORACLE_ADK_IN_MEMORY", "False") in TRUE_VALUES)
+    """Enable Oracle INMEMORY for ADK session/event tables when licensed."""
+    ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: os.getenv("ADK_ENABLE_MEMORY", "True") in TRUE_VALUES)
+    """Include SQLSpec ADK memory table migrations."""
+    LITESTAR_SESSION_IN_MEMORY: bool = field(
+        default_factory=lambda: os.getenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "False") in TRUE_VALUES
+    )
+    """Enable Oracle INMEMORY for the Litestar server-side session table when licensed."""
     MIGRATION_PATH: str = field(
         default_factory=lambda: os.getenv("DATABASE_MIGRATION_PATH", str(BASE_DIR / "db" / "migrations"))
     )
@@ -89,7 +97,11 @@ class DatabaseSettings:
         return self.URL is not None and self.WALLET_PASSWORD is not None
 
     def get_connection_params(self) -> dict[str, Any]:
-        """Extract connection parameters based on connection mode (autonomous vs local)."""
+        """Extract connection parameters based on connection mode (autonomous vs local).
+
+        Returns:
+            Oracle connection parameters for the configured deployment mode.
+        """
         if self.is_autonomous:
             from urllib.parse import urlparse
 
@@ -107,7 +119,14 @@ class DatabaseSettings:
         }
 
     def create_config(self) -> OracleAsyncConfig:
-        """Create Oracle database configuration based on connection mode (autonomous vs local)."""
+        """Create Oracle database configuration based on connection mode (autonomous vs local).
+
+        Returns:
+            SQLSpec Oracle async configuration for the app.
+
+        Raises:
+            ValueError: If Autonomous Database is enabled without a wallet location.
+        """
         conn_params = self.get_connection_params()
 
         if self.is_autonomous:
@@ -149,9 +168,14 @@ class DatabaseSettings:
                 "adk": {
                     "session_table": "adk_sessions",
                     "events_table": "adk_events",
+                    "memory_table": "adk_memory_entries",
+                    "enable_memory": self.ADK_ENABLE_MEMORY,
+                    "include_memory_migration": self.ADK_ENABLE_MEMORY,
+                    "in_memory": self.ADK_IN_MEMORY,
                 },
                 "litestar": {
                     "session_table": "app_session",
+                    "in_memory": self.LITESTAR_SESSION_IN_MEMORY,
                 },
             },
         )
@@ -273,21 +297,20 @@ class AppSettings:
 class VertexAISettings:
     """Vertex AI configuration settings."""
 
-    PROJECT_ID: str = field(default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or "")
+    PROJECT_ID: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
+    )
     """Google Cloud Project ID for Vertex AI."""
     LOCATION: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_LOCATION")
-        or os.getenv("GOOGLE_CLOUD_LOCATION")
-        or os.getenv("GOOGLE_LOCATION")
-        or "us-central1"
-    )
-    """Vertex AI location/region."""
-    API_KEY: str | None = field(
         default_factory=lambda: (
-            os.getenv("VERTEX_AI_API_KEY")
-            or os.getenv("GOOGLE_API_KEY")
+            os.getenv("VERTEX_AI_LOCATION")
+            or os.getenv("GOOGLE_CLOUD_LOCATION")
+            or os.getenv("GOOGLE_LOCATION")
+            or "us-central1"
         )
     )
+    """Vertex AI location/region."""
+    API_KEY: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
     EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001"))
     """Vertex AI embedding model."""

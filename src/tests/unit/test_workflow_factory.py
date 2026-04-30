@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from google.adk import Workflow
+from google.adk.workflow import JoinNode
 from google.adk.workflow._function_node import FunctionNode
 
 from app.domain.chat.services.classifier import IntentLabel
@@ -19,36 +20,49 @@ from app.domain.chat.services.workflow import (
 )
 
 
+def _coffee_node(node_input: str) -> str:
+    return f"answer:{node_input}"
+
+
 def test_make_intent_node_binds_node_input_with_classifier() -> None:
     classifier = MagicMock()
     intent = make_intent_node(classifier)
 
     assert isinstance(intent, FunctionNode)
     assert intent.name == "intent"
-    assert intent.parameter_binding == "node_input"
+    assert intent.parameter_binding == "state"
 
 
 def test_make_coffee_node_binds_node_input_with_agent() -> None:
+    copied = MagicMock()
+    copied.name = "coffee_turn"
     agent = MagicMock()
+    agent.model_copy.return_value = copied
     coffee = make_coffee_node(agent)
 
-    assert isinstance(coffee, FunctionNode)
     assert coffee.name == "coffee_turn"
-    assert coffee.parameter_binding == "node_input"
+    agent.model_copy.assert_called_once_with(update={"name": "coffee_turn"})
 
 
-def test_make_workflow_returns_named_workflow_with_single_start_edge() -> None:
+def test_make_workflow_returns_named_workflow_with_joined_parallel_edges() -> None:
     classifier = MagicMock()
     agent = MagicMock()
+    agent.model_copy.return_value = FunctionNode(func=_coffee_node, name="coffee_turn")
     workflow = make_workflow(classifier, agent)
 
     assert isinstance(workflow, Workflow)
     assert workflow.name == "coffee_workflow"
-    assert len(workflow.edges) == 1
-    src, dst = workflow.edges[0]
-    assert src == "START"
-    assert isinstance(dst, FunctionNode)
-    assert dst.name == "classify_and_respond"
+    assert workflow.max_concurrency == 2
+    assert len(workflow.edges) == 3
+    assert workflow.edges[0][0] == "START"
+    assert isinstance(workflow.edges[0][1], FunctionNode)
+    assert isinstance(workflow.edges[0][2], JoinNode)
+    assert workflow.edges[1][0] == "START"
+    assert workflow.edges[1][1].name == "coffee_turn"
+    assert isinstance(workflow.edges[1][2], JoinNode)
+    assert isinstance(workflow.edges[2][0], JoinNode)
+    assert isinstance(workflow.edges[2][1], FunctionNode)
+    assert workflow.edges[2][1].name == "classify_and_respond"
 
 
 @pytest.mark.asyncio
@@ -57,42 +71,25 @@ async def test_intent_node_func_returns_classifier_label_value() -> None:
     classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
     intent = make_intent_node(classifier)
 
-    result = await intent._func(ctx=MagicMock(), user_query="dark roast")
+    result = await intent._func(ctx=MagicMock(), node_input="dark roast")
 
     classifier.classify.assert_awaited_once_with("dark roast")
     assert result == "PRODUCT_RAG"
 
 
-@pytest.mark.asyncio
-async def test_coffee_node_func_delegates_to_ctx_run_node_with_agent() -> None:
-    agent = MagicMock()
-    coffee = make_coffee_node(agent)
-    ctx = MagicMock()
-    ctx.run_node = AsyncMock(return_value="brewed answer")
-
-    result = await coffee._func(ctx=ctx, user_query="best beans")
-
-    ctx.run_node.assert_awaited_once_with(agent, "best beans")
-    assert result == "brewed answer"
-
-
-@pytest.mark.asyncio
-async def test_classify_and_respond_func_runs_intent_and_coffee_in_parallel() -> None:
+def test_classify_and_respond_func_merges_join_outputs() -> None:
     classifier = MagicMock()
     agent = MagicMock()
+    agent.model_copy.return_value = FunctionNode(func=_coffee_node, name="coffee_turn")
     workflow = make_workflow(classifier, agent)
-    classify_and_respond = workflow.edges[0][1]
-
+    classify_and_respond = workflow.edges[2][1]
     ctx = MagicMock()
+    ctx.state = {}
 
-    async def _stub_run(passed_node, value):
-        if passed_node.name == "intent":
-            return "PRODUCT_RAG"
-        return f"answer-for:{value}"
-
-    ctx.run_node = AsyncMock(side_effect=_stub_run)
-
-    result = await classify_and_respond._func(ctx=ctx, user_query="latte")
+    result = classify_and_respond._func(
+        ctx=ctx,
+        node_input={"intent": "PRODUCT_RAG", "coffee_turn": "answer-for:latte"},
+    )
 
     assert result == {"intent": "PRODUCT_RAG", "answer": "answer-for:latte"}
-    assert ctx.run_node.await_count == 2
+    assert ctx.state["intent"] == "PRODUCT_RAG"
