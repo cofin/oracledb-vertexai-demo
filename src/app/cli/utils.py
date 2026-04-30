@@ -1,19 +1,19 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""CLI utilities — async injection adapted from dma/cli/utils.py."""
+"""Async dependency injection for click commands."""
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable  # noqa: TC003 — needed at runtime by @wraps
 from functools import wraps
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, get_type_hints
 
+from dishka import Scope
 from sqlspec.utils.sync_tools import run_
 
-from app.lib.di import Scope, request_container_var, worker_container_var
-
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from dishka import AsyncContainer
 
 P = ParamSpec("P")
@@ -21,13 +21,10 @@ R = TypeVar("R")
 
 
 def async_inject(func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
-    """Run an async click command with Dishka injection.
+    """Wrap an async click command so its annotated dependencies are injected.
 
-    Inspects the wrapped function's type hints, builds a fresh CLI-scoped
-    Dishka container (REQUEST scope), and resolves any annotated dependencies
-    from it. Sets ``worker_container_var`` and ``request_container_var`` so the
-    code under the command can use ``worker_scope()`` and ``@job_inject``
-    against the same scope.
+    Returns:
+        A sync wrapper that runs ``func`` inside a Dishka REQUEST scope.
     """
 
     @wraps(func)
@@ -37,17 +34,9 @@ def async_inject(func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
 
             container = make_litestar_container()
             try:
-                worker_token = worker_container_var.set(container)
-                try:
-                    async with container(scope=Scope.REQUEST) as request_container:
-                        request_token = request_container_var.set(request_container)
-                        try:
-                            injected = await _resolve_dependencies(func, request_container, kwargs)
-                            return await func(*args, **{**kwargs, **injected})
-                        finally:
-                            request_container_var.reset(request_token)
-                finally:
-                    worker_container_var.reset(worker_token)
+                async with container(scope=Scope.REQUEST) as request_container:
+                    injected = await _resolve_dependencies(func, request_container, kwargs)
+                    return await func(*args, **{**kwargs, **injected})
             finally:
                 await container.close()
 
@@ -65,6 +54,6 @@ async def _resolve_dependencies(
             continue
         try:
             injected[name] = await container.get(type_hint)
-        except Exception:  # noqa: BLE001, S112 — params with no provider are click-only kwargs
+        except Exception:  # noqa: BLE001, S112
             continue
     return injected
