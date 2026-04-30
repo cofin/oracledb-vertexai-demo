@@ -108,9 +108,11 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 1: ADK store + startup hooks (`oracledb-vertexai-4d6.3.1`)
 
-- [ ] **1.1** `src/app/lib/settings.py`: extend `OracleAsyncConfig` with `extension_config={"adk": {"session_table": "adk_sessions", "events_table": "adk_events", "memory_table": "adk_memory_entries"}}` if the current sqlspec ADK store expects a memory table.
-- [ ] **1.2** `src/app/server/asgi.py` (or `core.py`): add a Litestar startup hook that resolves `OracleAsyncADKStore` from the container and calls `await store.ensure_tables()`. Log success/failure at INFO.
-- [ ] **1.3** Inspect `src/app/db/migrations/` for any `*adk*.sql` file. If present (`ls src/app/db/migrations/*adk* 2>/dev/null`): delete it — `ensure_tables()` at startup is now the canonical bootstrap. If absent: no-op; document in Beads notes that the bootstrap is purely runtime.
+**Closed as no-op 2026-04-30**: bootstrap topology was misread in the original spec. ADK tables are created by sqlspec's auto-injected extension migration (`ext_adk_0001`, surfaced by `coffee upgrade`) when `extension_config["adk"]` is set and `"adk"` is in `migration_config["include_extensions"]`. Both already present in `src/app/lib/settings.py:140-156`. There is no project-owned `*adk*.sql` to delete; sqlspec materializes the migration at runtime from the configured store DDL. Migration remains the single bootstrap path — no startup `ensure_tables()` hook needed.
+
+- [x] **1.1** ~~Extend `extension_config["adk"]`~~ Already present (`session_table`, `events_table`).
+- [x] **1.2** ~~Add `ensure_tables()` startup hook~~ Skipped — redundant with extension migration; would be a second bootstrap mechanism for a demo app that already runs `coffee upgrade`.
+- [x] **1.3** ~~Delete redundant adk migration~~ No project file to delete; the auto-injected `ext_adk_0001` is the canonical migration.
 
 ### Phase 2: Flash-Lite enum classifier (`oracledb-vertexai-4d6.3.2`)
 
