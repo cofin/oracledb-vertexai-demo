@@ -38,6 +38,10 @@ click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
 click.rich_click.STYLE_ERRORS_SUGGESTION = "yellow italic"
 click.rich_click.ERRORS_SUGGESTION = "Try running the '--help' flag for more information."
+click.rich_click.STYLE_COMMANDS_PANEL_BOX = "BLANK"
+click.rich_click.STYLE_OPTIONS_PANEL_BOX = "BLANK"
+click.rich_click.STYLE_COMMANDS_PANEL_BORDER = "none"
+click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
 
 
 @click.group(

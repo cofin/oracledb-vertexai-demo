@@ -17,9 +17,12 @@ import rich_click as click
 import structlog
 from rich import get_console
 from rich.prompt import Prompt
+from sqlspec.migrations.commands import create_migration_commands
 
+import app.config as app_config
 from app.cli.main import cli
 from app.cli.utils import async_inject
+from app.db.utils import load_fixtures
 
 # Service imports must be runtime (not TYPE_CHECKING) — async_inject calls
 # get_type_hints() to resolve dependencies, which evaluates string annotations against
@@ -224,6 +227,57 @@ async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # noqa: R
     console.print("[bold]🔍 Testing Model Initialization...[/bold]")
     _ = vertex_ai_service.client  # touching the attribute confirms the wiring resolved
     console.print("[bold green]✓ Successfully initialized![/bold green]")
+    console.print()
+
+
+@cli.command(name="upgrade", help="Upgrade database schema and load fixture data.")
+@click.option("--revision", "-r", default="head", show_default=True, help="Target revision")
+@click.option("--no-fixtures", is_flag=True, help="Skip fixture loading after migration")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+@async_inject
+async def upgrade_cmd(
+    revision: str,
+    no_fixtures: bool,
+    dry_run: bool,
+) -> None:
+    """Upgrade database to a specific revision and optionally load fixtures."""
+
+    console = get_console()
+    console.rule("[bold blue]Database Upgrade", style="blue", align="left")
+    console.print()
+
+    migration_commands = create_migration_commands(config=app_config.db)
+    await migration_commands.upgrade(revision=revision, dry_run=dry_run)
+
+    if dry_run:
+        console.print("[yellow]i[/yellow]  Dry run — skipping fixture load")
+        return
+    if no_fixtures:
+        console.print("[yellow]i[/yellow]  Skipping fixture load (--no-fixtures)")
+        return
+
+    with console.status("[bold yellow]Loading fixtures...", spinner="dots"):
+        results = await load_fixtures(None)
+        if not results:
+            console.print("[yellow]No fixture files found to load[/yellow]")
+        else:
+            _display_fixture_results(results)
+    console.print()
+
+
+@cli.command(name="downgrade", help="Downgrade database to a specific revision.")
+@click.option("--revision", "-r", required=True, help="Target revision to downgrade to")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+@async_inject
+async def downgrade_cmd(revision: str, dry_run: bool) -> None:
+    """Downgrade database to a specific revision (no fixture handling)."""
+
+    console = get_console()
+    console.rule("[bold blue]Database Downgrade", style="blue", align="left")
+    console.print()
+
+    migration_commands = create_migration_commands(config=app_config.db)
+    await migration_commands.downgrade(revision=revision, dry_run=dry_run)
     console.print()
 
 
