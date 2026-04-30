@@ -214,12 +214,12 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 > Sub-tasks 5.5 and 5.7 already landed in the pre-Ch3 cleanup commit. The remainder happens once Phase 4 switches to closure-bound tools.
 
-- [ ] **5.1** Delete `request_container_var` from `src/app/lib/di.py` (keep `worker_container_var`).
-- [ ] **5.2** Delete `_resolve_request_container` from `src/app/domain/chat/services/adk.py`.
-- [ ] **5.3** Delete module-level `search_products_by_vector`, `get_product_details` from `adk.py`.
-- [ ] **5.4** Delete `ALL_TOOLS` constant from `adk.py`.
+- [x] **5.1** Delete `request_container_var` from `src/app/lib/di.py` (keep `worker_container_var`). [59c760d]
+- [x] **5.2** Delete `_resolve_request_container` from `src/app/domain/chat/services/adk.py`. [d35d3e4]
+- [x] **5.3** Delete module-level `search_products_by_vector`, `get_product_details` from `adk.py`. [d35d3e4]
+- [x] **5.4** Delete `ALL_TOOLS` constant from `adk.py`. [d35d3e4]
 - [x] **5.5** ~~`IntentService`, `ExemplarService`, `ExemplarController`, `IntentExemplar` schema, `vector-search-exemplars` / `list-exemplars` named queries deleted.~~
-- [ ] **5.6** `grep -rn "from app.lib.di import" src/app/` — confirm only `worker_container_var` references remain.
+- [x] **5.6** `grep -rn "from app.lib.di import" src/app/` — confirm only `worker_container_var` references remain. [59c760d]
 - [x] **5.7** ~~`BASE_SYSTEM_INSTRUCTION` stripped of the classify-first workflow.~~
 
 ### Phase 6: Integration test + verification (`oracledb-vertexai-4d6.3.7`)
