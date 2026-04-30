@@ -40,7 +40,7 @@
       hx-post="/api/chat"
       hx-target="#messages"
       hx-swap="beforeend"
-      hx-headers='js:{ "X-Session-Id": sessionId }'
+      hx-headers='js:{ "X-Session-Id": localStorage.getItem("cc-sid") }'
       hx-include="[name=persona]"
       hx-on::after-request="if (event.detail.successful) this.reset()"
       class="flex items-stretch gap-2 rounded-xl border border-border bg-surface p-2"

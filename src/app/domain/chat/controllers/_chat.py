@@ -3,13 +3,23 @@
 
 import re
 import uuid
+from dataclasses import dataclass
+from typing import Annotated
 
 import structlog
 from litestar import Controller, Response, post
+from litestar.enums import RequestEncodingType
 from litestar.exceptions import HTTPException, ValidationException
+from litestar.params import Body
 from litestar.plugins.flash import flash
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
+
+
+@dataclass
+class CoffeeChatForm:
+    message: str
+    persona: str = "enthusiast"
 
 from app.domain.chat import schemas
 from app.domain.chat.exceptions import AIServiceUnconfigured
@@ -58,7 +68,7 @@ class CoffeeChatController(Controller):
     @post(path="/api/chat", name="chat.api.send")
     async def send_chat_message(
         self,
-        data: schemas.CoffeeChatMessage,
+        data: Annotated[CoffeeChatForm, Body(media_type=RequestEncodingType.URL_ENCODED)],
         adk_runner: Inject[ADKRunner],
         tools_service: Inject[AgentToolsService],
         request: HTMXRequest,

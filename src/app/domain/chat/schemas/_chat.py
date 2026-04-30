@@ -26,13 +26,6 @@ class Intent(CamelizedBaseStruct, omit_defaults=True):
     fallback_used: bool
 
 
-class CoffeeChatMessage(CamelizedBaseStruct):
-    """Inbound user message for the barista chat."""
-
-    message: str
-    persona: str = "enthusiast"
-
-
 class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
     """Conversation row to persist."""
 

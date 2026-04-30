@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-_APP_NAME = "coffee-assistant"
+_APP_NAME = "coffee_assistant"
 _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "answer",
     "session_id",

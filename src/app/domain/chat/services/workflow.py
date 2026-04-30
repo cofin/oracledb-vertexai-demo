@@ -18,22 +18,22 @@ if TYPE_CHECKING:
 
 
 def make_intent_node(classifier: FlashLiteIntentClassifier) -> FunctionNode:
-    """Build a node that classifies ``user_query`` to an intent label string."""
+    """Build a node that classifies the input string to an intent label."""
 
-    async def intent_node(ctx: Context, user_query: str) -> str:
-        label = await classifier.classify(user_query)
+    async def intent_node(ctx: Context, node_input: str) -> str:
+        label = await classifier.classify(node_input)
         return label.value
 
-    return FunctionNode(func=intent_node, name="intent", parameter_binding="node_input")
+    return FunctionNode(func=intent_node, name="intent")
 
 
 def make_coffee_node(agent: LlmAgent) -> FunctionNode:
-    """Build a node that runs ``agent`` against ``user_query`` via the workflow context."""
+    """Build a node that runs ``agent`` against the input string via the workflow context."""
 
-    async def coffee_turn(ctx: Context, user_query: str) -> str:
-        return await ctx.run_node(agent, user_query)
+    async def coffee_turn(ctx: Context, node_input: str) -> str:
+        return await ctx.run_node(agent, node_input)
 
-    return FunctionNode(func=coffee_turn, name="coffee_turn", parameter_binding="node_input")
+    return FunctionNode(func=coffee_turn, name="coffee_turn", rerun_on_resume=True)
 
 
 def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Workflow:
@@ -41,15 +41,15 @@ def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Wor
     intent = make_intent_node(classifier)
     coffee = make_coffee_node(agent)
 
-    async def classify_and_respond(ctx: Context, user_query: str) -> dict[str, Any]:
+    async def classify_and_respond(ctx: Context, node_input: str) -> dict[str, Any]:
         intent_label, answer = await asyncio.gather(
-            ctx.run_node(intent, user_query),
-            ctx.run_node(coffee, user_query),
+            ctx.run_node(intent, node_input),
+            ctx.run_node(coffee, node_input),
         )
         return {"answer": answer, "intent": intent_label}
 
     fan_out = FunctionNode(
-        func=classify_and_respond, name="classify_and_respond", parameter_binding="node_input"
+        func=classify_and_respond, name="classify_and_respond", rerun_on_resume=True
     )
     return Workflow(name="coffee_workflow", edges=[("START", fan_out)])
 
