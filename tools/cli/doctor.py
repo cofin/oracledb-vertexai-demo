@@ -35,7 +35,7 @@ console = Console()
     is_flag=True,
     help="Show detailed diagnostic information",
 )
-def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None:  # noqa: C901
+def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None:  # noqa: C901, PLR0914
     """Verify all prerequisites and configuration.
 
     Checks:

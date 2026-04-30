@@ -8,8 +8,6 @@ from ._chat import (
     ChatConversationCreate,
     ChatMessage,
     CoffeeChatReply,
-    Intent,
-    SimilarIntent,
 )
 
 __all__ = (
@@ -17,6 +15,4 @@ __all__ = (
     "ChatConversationCreate",
     "ChatMessage",
     "CoffeeChatReply",
-    "Intent",
-    "SimilarIntent",
 )

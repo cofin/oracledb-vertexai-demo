@@ -1,652 +1,237 @@
-# Architecture Overview
+# Cymbal Coffee Architecture
 
-Comprehensive system architecture for the Cymbal Coffee AI-powered search application using Oracle Database 23ai, Vertex AI, and Google ADK.
+Current as of the ADK 2.0 reset branch.
 
-## Table of Contents
+## System Shape
 
-- [System Overview](#system-overview)
-- [Architecture Diagram](#architecture-diagram)
-- [Technology Stack](#technology-stack)
-- [Component Architecture](#component-architecture)
-- [Data Flow](#data-flow)
-- [Deployment Architecture](#deployment-architecture)
-- [Security Architecture](#security-architecture)
-- [Scalability Patterns](#scalability-patterns)
-- [Monitoring and Observability](#monitoring-and-observability)
+Cymbal Coffee is a two-page Litestar application:
 
-## System Overview
+- `/` is the streamed coffee chat.
+- `/explore` is the vector search and EXPLAIN PLAN explorer.
+- `/api/chat/stream` streams Server-Sent Events from the ADK workflow.
+- `/api/vector-demo` returns either HTMX partials or JSON vector-search results.
+- `/api/explain-plan` returns Oracle `DBMS_XPLAN.DISPLAY()` output for the vector query.
 
-**Cymbal Coffee** is an AI-powered product search and recommendation system that combines:
+The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 23ai,
+Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
+Jinja/HTMX with Vite, Tailwind v4, Alpine, and a small `src/resources/main.js`
+streaming client.
 
-- **Oracle Database 23ai**: Native vector search, JSON storage, ACID transactions
-- **Vertex AI**: text-embedding-005 for embeddings, Gemini 2.5 for generation
-- **Google ADK**: LlmAgent orchestration for agentic interactions
-- **Litestar**: High-performance async web framework
-- **HTMX**: Server-driven UI with partial page updates
-
-**Core Capabilities**:
-
-1. **Semantic Search**: Natural language product search with vector similarity
-2. **AI Chat**: Conversational product recommendations with Gemini
-3. **RAG (Retrieval-Augmented Generation)**: Context-aware responses with product data
-4. **Performance Monitoring**: Real-time metrics and dashboard
-5. **Caching**: Two-level cache (embeddings + responses) for performance
-
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          User Browser                            │
-│                        (HTMX Client)                             │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ HTTP/HTMX
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      Litestar Web Server                         │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │            Controllers (Routing)                         │  │
-│  │  • CoffeeChatController  • DashboardController           │  │
-│  └───────────┬──────────────────────────┬───────────────────┘  │
-│              │                           │                       │
-│  ┌───────────▼──────────┐   ┌───────────▼──────────┐          │
-│  │ Dependency Injection │   │   HTMX Plugin        │          │
-│  │ (provide_* functions)│   │  (HTMXRequest/       │          │
-│  └───────────┬──────────┘   │   HTMXTemplate)      │          │
-│              │               └──────────────────────┘          │
-│              ▼                                                   │
-│  ┌────────────────────────────────────────────────────────┐   │
-│  │                SQLSpec Plugin                          │   │
-│  │  (Session Management + Connection Pooling)             │   │
-│  └────────────┬───────────────────────────────────────────┘   │
-└───────────────┼─────────────────────────────────────────────────┘
-                │
-                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       Service Layer                              │
-│  ┌─────────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ ProductService  │  │ ChatService  │  │ MetricsService   │  │
-│  │ (SQLSpecService)│  │              │  │                  │  │
-│  └────────┬────────┘  └──────┬───────┘  └────────┬─────────┘  │
-│           │                   │                    │             │
-│  ┌────────▼────────┐  ┌──────▼───────┐  ┌────────▼─────────┐  │
-│  │VertexAIService  │  │ EmbeddingCache│  │ ResponseCache    │  │
-│  │ (Embeddings +   │  │ (Oracle-backed)│  │ (Oracle-backed)  │  │
-│  │  Generation)    │  └────────────────┘  └──────────────────┘  │
-│  └────────┬────────┘                                             │
-│           │                                                       │
-│  ┌────────▼────────────────────────────────────────────────┐   │
-│  │        OracleVectorSearchService                        │   │
-│  │  (Vector Similarity Search + RAG)                       │   │
-│  └────────┬────────────────────────────────────────────────┘   │
-└───────────┼─────────────────────────────────────────────────────┘
-            │
-            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Oracle Database 23ai                          │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                    product table                         │  │
-│  │  • id, name, description, price                          │  │
-│  │  • embedding VECTOR(768, FLOAT32)                        │  │
-│  │  • metadata JSON                                         │  │
-│  │  • Indexes: HNSW on embedding                            │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              embedding_cache table                       │  │
-│  │  • cache_key, text, embedding_vector                     │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │             response_cache table                         │  │
-│  │  • cache_key, user_id, response_data                     │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │              search_metrics table                        │  │
-│  │  • query_id, user_id, search_time_ms, result_count       │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-            │
-            │ python-oracledb
-            │ (async connection pool)
-            │
-┌───────────▼─────────────────────────────────────────────────────┐
-│                     Google Vertex AI                             │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  text-embedding-005 (768 dimensions)                     │  │
-│  │  • RETRIEVAL_QUERY for search queries                    │  │
-│  │  • RETRIEVAL_DOCUMENT for product descriptions           │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Gemini 2.5 Flash (Content Generation)                   │  │
-│  │  • Fast responses for product recommendations            │  │
-│  │  • Conversational AI for chat                            │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+```text
+browser
+  -> Litestar controllers
+  -> Dishka request scope
+  -> domain services
+  -> SQLSpec Oracle driver and Google GenAI client
+  -> Oracle 23ai, Vertex AI, ADK session store
 ```
 
-## Technology Stack
+## Source Layout
 
-### Backend
+```text
+src/app/
+  cli/                  # coffee CLI and manage.py command modules
+  db/
+    migrations/         # SQLSpec migrations
+    sql/                # named SQL files loaded by db_manager
+    fixtures/           # committed gzipped demo data
+  domain/
+    chat/
+      controllers/      # chat JSON, HTMX, and SSE endpoints
+      schemas/          # msgspec API schemas
+      services/         # ADK runner, Workflow factory, intent classifier
+    products/
+      controllers/      # product, store, vector/explain endpoints
+      schemas/
+      services/         # ProductService, StoreService, VertexAIService
+    system/
+      controllers/      # health, metrics
+      schemas/
+      services/         # cache, metrics, persona manager
+    web/
+      controllers/      # page routes
+      templates/        # Jinja pages and partials
+  ioc.py                # Dishka providers
+  config.py             # lazy Litestar, SQLSpec, session, log config
+  server/               # app factory and plugins
+```
 
-| Component             | Technology           | Version | Purpose                              |
-| --------------------- | -------------------- | ------- | ------------------------------------ |
-| **Language**          | Python               | 3.12+   | Async/await, type hints              |
-| **Web Framework**     | Litestar             | 2.0+    | ASGI, routing, DI                    |
-| **Database**          | Oracle Database      | 23ai    | Vector search, JSON, ACID            |
-| **DB Driver**         | python-oracledb      | 2.x     | Async driver, connection pooling     |
-| **DB Abstraction**    | SQLSpec              | Latest  | Type-safe queries, parameter binding |
-| **AI Platform**       | Google Vertex AI     | Latest  | Embeddings, generation               |
-| **AI SDK**            | Vertex AI Python SDK | 1.101+  | text-embedding-005, Gemini 2.5       |
-| **Agent Framework**   | Google ADK           | 1.0+    | LlmAgent orchestration               |
-| **Schema Validation** | msgspec              | Latest  | Fast serialization, validation       |
-| **Logging**           | structlog            | Latest  | Structured logging                   |
+## Dependency Injection
 
-### Frontend
+`src/app/ioc.py` uses three application providers plus `LitestarProvider`:
 
-| Component         | Technology   | Purpose                       |
-| ----------------- | ------------ | ----------------------------- |
-| **Templating**    | Jinja2       | HTML template rendering       |
-| **Interactivity** | HTMX         | Server-driven partial updates |
-| **Styling**       | Tailwind CSS | Utility-first CSS             |
-| **Icons**         | Heroicons    | SVG icons                     |
+- `LitestarPersistenceProvider`
+  - APP: `OracleAsyncConfig`
+  - REQUEST: `OracleAsyncDriver` from `db_manager.provide_session(db)`
+- `IntegrationsProvider`
+  - APP: Google GenAI `Client`
+  - APP: `OracleAsyncADKStore`
+  - APP: `SQLSpecSessionService`
+  - APP: `FlashLiteIntentClassifier`, `PersonaManager`, `ADKRunner`
+- `DomainServiceProvider`
+  - REQUEST: product, store, cache, metrics, ADK tool services
+  - REQUEST: `VertexAIService` and `OracleVectorSearchService`
 
-### Infrastructure
+Keep `from __future__ import annotations` out of provider modules where Dishka
+needs runtime annotations. Normal consumer modules can use postponed annotations.
 
-| Component             | Technology     | Purpose                      |
-| --------------------- | -------------- | ---------------------------- |
-| **Container Runtime** | Docker         | Application containerization |
-| **Orchestration**     | Docker Compose | Local development            |
-| **Process Manager**   | uv             | Python package management    |
-| **ASGI Server**       | Uvicorn        | Production ASGI server       |
-
-## Component Architecture
-
-### Web Layer (Litestar)
-
-**Controllers**: Handle HTTP requests, route to services
+Handlers request dependencies with `Inject[T]` from `app.lib.di`:
 
 ```python
-CoffeeChatController
-├─ show_homepage() → HTMXTemplate
-├─ handle_chat() → HTMXTemplate (partial)
-└─ performance_dashboard() → HTMXTemplate
+async def vector_search_demo(
+    vector_search_service: Inject[OracleVectorSearchService],
+) -> Response:
+    ...
 ```
 
-**Dependency Injection**: Provide services per-request
+## SQLSpec And Oracle
+
+`app.config` creates one `SQLSpec` manager, adds the Oracle config, and loads
+named SQL from `src/app/db/sql`. Domain services call `db_manager.get_sql(...)`
+instead of embedding long static SQL strings in Python.
+
+Important patterns:
+
+- Use `schema_type=` for typed results.
+- Use `db_manager.get_sql("name")` for static queries.
+- Use SQLSpec's builder only for small dynamic additions.
+- Pass Python `list[float]` vectors directly; do not wrap them in `array.array`.
+- Keep Oracle binds named with `:name`.
+
+Example:
 
 ```python
-provide_product_service() → ProductService
-provide_vertex_ai_service() → VertexAIService
-provide_chat_service() → ChatService
-provide_metrics_service() → MetricsService
+return await self.driver.select(
+    db_manager.get_sql("vector-search-products"),
+    query_vector=query_embedding,
+    threshold=similarity_threshold,
+    limit=limit,
+    schema_type=ProductMatch,
+)
 ```
 
-**Plugins**:
+The SQLSpec Oracle config also owns extension migrations and storage tables:
 
-- `SQLSpecPlugin`: Database session management
-- `HTMXPlugin`: HTMX request/response handling
-
-### Service Layer
-
-**ProductService** (SQLSpecService):
-
-- CRUD operations for products
-- Vector similarity search
-- Hybrid search (vector + filters)
-- Bulk operations
-
-**VertexAIService**:
-
-- Create embeddings (query vs document)
-- Generate content (Gemini)
-- Stream responses
-- RAG pattern (search + generate)
-
-**OracleVectorSearchService**:
-
-- Coordinate embedding + search
-- Track timing metrics
-- Cache integration
-
-**CacheService** (Embedding + Response):
-
-- Embedding cache: Reduce API calls
-- Response cache: Improve latency
-- TTL management
-- Cache hit/miss tracking
-
-**MetricsService**:
-
-- Record search metrics
-- Dashboard aggregations
-- Performance tracking
-
-### Data Layer
-
-**Oracle Database 23ai**:
-
-**product table**:
-
-```sql
-CREATE TABLE product (
-    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    name VARCHAR2(255) NOT NULL,
-    description CLOB,
-    price NUMBER(10, 2) NOT NULL,
-    category VARCHAR2(100),
-    in_stock BOOLEAN DEFAULT true,
-    embedding VECTOR(768, FLOAT32),
-    metadata JSON,
-    created_at TIMESTAMP DEFAULT SYSTIMESTAMP,
-    updated_at TIMESTAMP DEFAULT SYSTIMESTAMP
-);
-
-CREATE INDEX idx_product_embedding_hnsw
-ON product (embedding)
-INDEXTYPE IS HNSW
-PARAMETERS ('DISTANCE COSINE, M 16, EF_CONSTRUCTION 64');
-```
-
-**embedding_cache table**:
-
-```sql
-CREATE TABLE embedding_cache (
-    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    cache_key VARCHAR2(64) UNIQUE NOT NULL,
-    text VARCHAR2(500),
-    embedding_vector VECTOR(768, FLOAT32) NOT NULL,
-    created_at TIMESTAMP DEFAULT SYSTIMESTAMP,
-    accessed_at TIMESTAMP DEFAULT SYSTIMESTAMP
-);
-```
-
-**response_cache table**:
-
-```sql
-CREATE TABLE response_cache (
-    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    cache_key VARCHAR2(255) NOT NULL,
-    user_id VARCHAR2(100) NOT NULL,
-    response_data CLOB NOT NULL,
-    created_at TIMESTAMP DEFAULT SYSTIMESTAMP,
-    CONSTRAINT uk_cache_user UNIQUE (cache_key, user_id)
-);
-```
-
-**search_metrics table**:
-
-```sql
-CREATE TABLE search_metrics (
-    id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    query_id VARCHAR2(100) UNIQUE NOT NULL,
-    user_id VARCHAR2(100),
-    query_text VARCHAR2(500),
-    search_time_ms NUMBER(10, 2),
-    embedding_time_ms NUMBER(10, 2),
-    oracle_time_ms NUMBER(10, 2),
-    result_count INTEGER,
-    created_at TIMESTAMP DEFAULT SYSTIMESTAMP
-);
-```
-
-## Data Flow
-
-### 1. Search Query Flow
-
-```
-User types query "light roast coffee"
-    ↓
-Browser sends HTMX POST /api/chat
-    ↓
-Litestar routes to CoffeeChatController.handle_chat()
-    ↓
-Dependencies injected (product_service, vertex_ai_service)
-    ↓
-OracleVectorSearchService.similarity_search(query)
-    ├─ Check embedding_cache for query
-    │  ├─ Cache HIT → Use cached embedding
-    │  └─ Cache MISS → Call Vertex AI text-embedding-005
-    │      └─ Task type: RETRIEVAL_QUERY
-    │      └─ Store in embedding_cache
-    ↓
-    ├─ Convert embedding to array.array('f', vector)
-    └─ Execute Oracle SQL:
-        SELECT id, name, description,
-               1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) as similarity
-        FROM product
-        WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) >= 0.7
-        ORDER BY VECTOR_DISTANCE(embedding, :query_vector, COSINE)
-        FETCH FIRST 5 ROWS ONLY
-    ↓
-    └─ Returns list[Product] with similarity scores
-    ↓
-Build context from search results
-    ↓
-Generate response with Gemini 2.5 Flash
-    ├─ Check response_cache
-    │  ├─ Cache HIT → Return cached response
-    │  └─ Cache MISS → Call Vertex AI Gemini
-    │      └─ Prompt: system instruction + context + query
-    │      └─ Store in response_cache
-    ↓
-Record metrics (search_time_ms, result_count)
-    ↓
-Return HTMXTemplate (partials/chat_response.html)
-    ↓
-HTMX swaps content into page (no full reload)
-    ↓
-User sees AI response with product recommendations
-```
-
-### 2. Product Indexing Flow
-
-```
-Admin adds new product "Ethiopian Yirgacheffe"
-    ↓
-ProductService.create(data)
-    ↓
-Insert product into Oracle (without embedding)
-    ↓
-Background job: Generate embeddings for new products
-    ↓
-VertexAIService.create_document_embedding(description)
-    └─ Task type: RETRIEVAL_DOCUMENT (not RETRIEVAL_QUERY!)
-    └─ Returns 768-dim vector
-    ↓
-Convert to array.array('f', embedding)
-    ↓
-ProductService.update_embedding(product_id, vector)
-    └─ UPDATE product SET embedding = :vec WHERE id = :id
-    ↓
-HNSW index automatically updated by Oracle
-    ↓
-Product now searchable via vector similarity
-```
-
-## Deployment Architecture
-
-### Local Development
-
-```
-Docker Compose
-├─ oracle-db (Oracle Database 23ai Free)
-│  ├─ Port: 1521
-│  ├─ Volume: ./data/oracle
-│  └─ Init scripts: ./db/init/
-├─ app (Litestar + Uvicorn)
-│  ├─ Port: 8000
-│  ├─ Hot reload: enabled
-│  └─ Env: .env.local
-└─ Network: cymbal-network
-```
-
-**docker-compose.yml**:
-
-```yaml
-services:
-  oracle-db:
-    image: container-registry.oracle.com/database/free:23.5.0.0
-    ports:
-      - "1521:1521"
-    volumes:
-      - oracle-data:/opt/oracle/oradata
-      - ./db/init:/docker-entrypoint-initdb.d
-    environment:
-      ORACLE_PWD: ${ORACLE_PASSWORD}
-
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - oracle-db
-    environment:
-      DATABASE_URL: oracle://user:pass@oracle-db:1521/FREEPDB1
-      GOOGLE_PROJECT_ID: ${GOOGLE_PROJECT_ID}
-      GOOGLE_LOCATION: us-central1
-    command: uv run uvicorn app.server.app:app --host 0.0.0.0 --port 8000 --reload
-
-volumes:
-  oracle-data:
-```
-
-### Production Deployment
-
-**Google Cloud Platform**:
-
-```
-Cloud Run (Litestar app)
-    ↓ private VPC
-Oracle Database 23ai (Compute Engine or Bare Metal)
-    ↓
-Cloud SQL Proxy (optional, for Cloud SQL)
-    ↓
-Vertex AI (embeddings + generation)
-    ↓
-Cloud Logging (structured logs)
-    ↓
-Cloud Monitoring (metrics + alerts)
-```
-
-**Infrastructure as Code** (Terraform):
-
-```hcl
-resource "google_cloud_run_service" "app" {
-  name     = "cymbal-coffee"
-  location = "us-central1"
-
-  template {
-    spec {
-      containers {
-        image = "gcr.io/project/cymbal-coffee:latest"
-        env {
-          name  = "DATABASE_URL"
-          value = "oracle://..."
-        }
-        resources {
-          limits = {
-            cpu    = "2"
-            memory = "2Gi"
-          }
-        }
-      }
-    }
-  }
+```python
+extension_config={
+    "adk": {
+        "session_table": "adk_sessions",
+        "events_table": "adk_events",
+        "memory_table": "adk_memory_entries",
+        "enable_memory": settings.db.ADK_ENABLE_MEMORY,
+        "include_memory_migration": settings.db.ADK_ENABLE_MEMORY,
+        "in_memory": settings.db.ADK_IN_MEMORY,
+    },
+    "litestar": {
+        "session_table": "app_session",
+        "in_memory": settings.db.LITESTAR_SESSION_IN_MEMORY,
+    },
 }
 ```
 
-## Security Architecture
+The ADK session backend and the Litestar server-side session backend are related
+but separate. The chat controller stores `adk_session_id` and `adk_user_id` in
+the Litestar session, then passes those identifiers to ADK's SQLSpec session
+service.
 
-### Authentication and Authorization
+## Chat Flow
 
-**Application Authentication**:
-
-- Service account for Vertex AI
-- IAM roles for Google Cloud resources
-- Environment variables for sensitive config
-
-**Database Security**:
-
-- Connection pooling with credentials
-- Encrypted connections (TLS)
-- Parameter binding (SQL injection prevention)
-- Least privilege database users
-
-### Data Protection
-
-**Encryption**:
-
-- At rest: Oracle Transparent Data Encryption (TDE)
-- In transit: TLS 1.3 for all connections
-- Secrets: Google Secret Manager
-
-**SQL Injection Prevention**:
-
-```python
-# ✅ SAFE - Parameter binding
-await driver.select(
-    "SELECT * FROM product WHERE category = :cat",
-    cat=user_input
-)
-
-# ❌ UNSAFE - String interpolation
-sql = f"SELECT * FROM product WHERE category = '{user_input}'"
+```text
+POST /api/chat/stream
+  -> CoffeeChatController._adk_session_identity()
+  -> ADKRunner.stream_request()
+  -> SQLSpecSessionService get/create session
+  -> ADK Workflow:
+       START -> intent FunctionNode -> JoinNode
+       START -> LlmAgent coffee_turn -> JoinNode
+       JoinNode -> classify_and_respond FunctionNode
+  -> SSE delta events
+  -> final event with answer, intent, cache, timing, and session id
 ```
 
-### Network Security
+The LLM tools are closure-bound per request. The closures call
+`AgentToolsService`, which holds the request-scoped SQLSpec driver plus product,
+cache, metrics, store, and Vertex services. This keeps database sessions aligned
+with Litestar request scope while ADK owns only orchestration.
 
-**Firewall Rules**:
+## Vector Search Flow
 
-- Allow: Cloud Run → Oracle Database (private IP)
-- Allow: Application → Vertex AI (Google APIs)
-- Deny: Direct public access to database
-
-**VPC Configuration**:
-
-- Private subnet for Oracle Database
-- Serverless VPC connector for Cloud Run
-- Cloud NAT for outbound connections
-
-## Scalability Patterns
-
-### Horizontal Scaling
-
-**Litestar App** (Cloud Run):
-
-- Auto-scale: 0-100 instances
-- CPU utilization target: 70%
-- Request concurrency: 80 per instance
-
-**Oracle Database**:
-
-- RAC (Real Application Clusters) for horizontal scale
-- Read replicas for read-heavy workloads
-- Sharding for multi-tenant scenarios
-
-### Vertical Scaling
-
-**Oracle Database**:
-
-- Scale up: Increase CPU/memory
-- In-Memory column store for hot data
-- SPATIAL_VECTOR_ACCELERATION for SIMD
-
-### Caching Strategy
-
-**Two-Level Cache**:
-
-1. **Embedding Cache** (Oracle-backed)
-   - TTL: 7 days
-   - Hit rate target: >80%
-   - Reduces Vertex AI API calls
-
-2. **Response Cache** (Oracle-backed)
-   - TTL: 5 minutes
-   - Per-user cache keys
-   - Reduces generation latency
-
-### Connection Pooling
-
-**python-oracledb**:
-
-```python
-pool = oracledb.create_pool(
-    min=2,              # Warm connections
-    max=10,             # Per-instance limit
-    increment=1,        # Add gradually
-    timeout=3600,       # Recycle after 1h
-    wait_timeout=30000  # Wait 30s max
-)
+```text
+POST /api/vector-demo
+  -> VectorController.validate_message()
+  -> OracleVectorSearchService.similarity_search()
+  -> VertexAIService.get_text_embedding(task_type="RETRIEVAL_QUERY")
+  -> ProductService.search_by_vector()
+  -> src/app/db/sql/products.sql:vector-search-products
+  -> HTMX partial or JSON response
 ```
 
-**Guidelines**:
+Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
+by `gemini-embedding-001`. HNSW indexes use Oracle 23ai `ORGANIZATION INMEMORY
+NEIGHBOR GRAPH`.
 
-- `max = CPUs * 2-4` per instance
-- Monitor utilization (60-80% ideal)
-- Adjust based on query complexity
+## Frontend
 
-## Monitoring and Observability
+Templates live under `src/app/domain/web/templates`.
 
-### Structured Logging
+- `pages/chat.html.j2` posts to `/api/chat/stream`.
+- `pages/explore.html.j2` posts vector search requests and fetches plans.
+- `partials/_chat_response.html.j2` and `partials/search_result_list.html.j2`
+  are the HTMX swap targets.
+- `src/resources/main.js` reads SSE manually with `fetch()` and a stream reader.
 
-**structlog Configuration**:
+Do not reintroduce a React SPA. The Vite build exists for static assets and the
+small browser helper, not for client-side routing.
 
-```python
-import structlog
+## CLI Boundary
 
-logger = structlog.get_logger()
+Use `coffee` for demo operations:
 
-# Log structured events
-logger.info(
-    "vector_search_complete",
-    query_id=query_id,
-    result_count=len(results),
-    search_time_ms=search_time,
-    embedding_cache_hit=cache_hit
-)
+- `coffee run`
+- `coffee load-fixtures`
+- `coffee bulk-embed`
+- `coffee export-fixtures`
+- `coffee clear-cache`
+- `coffee model-info`
+
+Use `python manage.py database ...` for SQLSpec migrations and `python manage.py
+init --run-install` for bootstrap. The Litestar SQLSpec plugin intentionally
+does not auto-mount a `db` group onto `coffee`.
+
+## Test Database Lifecycle
+
+Oracle lifecycle belongs to the repo management commands:
+
+```bash
+make start-infra
+uv run python manage.py database upgrade --no-prompt
+uv run coffee load-fixtures
 ```
 
-### Metrics
+The pytest fixtures connect to that configured Oracle database. Integration
+setup then makes the test data deterministic:
 
-**Application Metrics**:
+1. `src/tests/conftest.py` patches app settings for the test DSN.
+2. `src/tests/integration/conftest.py` closes any stale SQLSpec pool.
+3. The integration `driver` fixture bootstraps required tables idempotently.
+4. Fixture-owned tables are truncated.
+5. Checked-in fixture data is loaded through the app fixture loader.
+6. A deterministic marker product is upserted for older integration assertions.
+7. The SQLSpec pool is closed after each test to avoid event-loop reuse issues.
 
-- Request latency (p50, p95, p99)
-- Error rate (5xx responses)
-- Cache hit rate (embedding + response)
-- Vector search time distribution
+If an integration test cannot connect, start the managed Oracle container and
+run the migration command above. Keep lifecycle ownership in `manage.py` and
+`make`; pytest should only prepare deterministic schema/data inside the already
+configured database.
 
-**Database Metrics**:
+## Operational Notes
 
-- Connection pool utilization
-- Query execution time
-- Index effectiveness
-- Buffer cache hit ratio
-
-### Tracing
-
-**OpenTelemetry Integration**:
-
-```python
-from opentelemetry import trace
-
-tracer = trace.get_tracer(__name__)
-
-@tracer.start_as_current_span("vector_search")
-async def vector_search(query: str):
-    with tracer.start_as_current_span("create_embedding"):
-        embedding = await create_embedding(query)
-
-    with tracer.start_as_current_span("oracle_query"):
-        results = await oracle_search(embedding)
-
-    return results
-```
-
-### Dashboards
-
-**Performance Dashboard** (Litestar endpoint):
-
-- Search latency trends
-- Cache performance
-- Error rates
-- Top queries
-
-**Oracle Enterprise Manager**:
-
-- Database performance
-- SQL tuning advisor
-- Vector index statistics
-- Memory utilization
-
-## See Also
-
-- [Vertex AI Integration](vertex-ai-integration.md) - AI components
-- [Oracle Vector Search](oracle-vector-search.md) - Vector operations
-- [Oracle Performance](oracle-performance.md) - Optimization
-- [Litestar Framework](litestar-framework.md) - Web layer
-- [SQLSpec Patterns](sqlspec-patterns.md) - Data layer
-
-## Resources
-
-- Oracle Database 23ai: https://www.oracle.com/database/23ai/
-- Google Vertex AI: https://cloud.google.com/vertex-ai
-- Google ADK: https://github.com/google/adk-python
-- Litestar: https://docs.litestar.dev/
+- Local Oracle startup configures `vector_memory_size` before HNSW INMEMORY
+  indexes are created.
+- `ORACLE_ADK_IN_MEMORY` and `ORACLE_LITESTAR_SESSION_IN_MEMORY` default to true
+  and control Oracle INMEMORY storage for SQLSpec extension tables.
+- Placeholder Vertex project IDs are rejected before ADK starts so expected
+  local misconfiguration returns a clean 503.
+- `google.adk`, `google.genai`, and warning loggers have filters in
+  `app.config.setup_logging()` to keep expected framework warnings out of the
+  useful app logs.

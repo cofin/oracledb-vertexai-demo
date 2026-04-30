@@ -110,3 +110,5 @@ Before claiming a task, phase, or flow is complete, verify:
 ## Project Nuances
 
 - Add short, durable project-specific reminders here as they are discovered.
+- Treat Flow sync/status as a Flow skill workflow backed by Beads state and
+  `.agents/` docs; do not assume a `flow sync` shell subcommand exists.

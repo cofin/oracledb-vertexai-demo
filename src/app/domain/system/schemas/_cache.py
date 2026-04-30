@@ -3,12 +3,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime  # noqa: TC003
+from typing import Any
 
 from app.lib.schema import CamelizedBaseStruct
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class ResponseCache(CamelizedBaseStruct, omit_defaults=True):

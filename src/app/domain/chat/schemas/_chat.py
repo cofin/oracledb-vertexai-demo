@@ -7,25 +7,6 @@ from uuid import UUID
 from app.lib.schema import CamelizedBaseStruct
 
 
-class SimilarIntent(CamelizedBaseStruct, omit_defaults=True):
-    """Represents a similar intent found by vector search."""
-
-    intent: str
-    phrase: str
-    similarity: float
-    confidence_threshold: float
-
-
-class Intent(CamelizedBaseStruct, omit_defaults=True):
-    """A classified intent for an incoming chat query."""
-
-    intent: str
-    confidence: float
-    exemplar_phrase: str
-    embedding_cache_hit: bool
-    fallback_used: bool
-
-
 class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
     """Conversation row to persist."""
 

@@ -29,13 +29,16 @@ from app.lib.settings import get_settings
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
+    from collections.abc import AsyncIterator
 
     from google.adk.agents.callback_context import CallbackContext
+    from google.adk.agents.llm_agent import ToolUnion
 
 logger = structlog.get_logger()
 
 _APP_NAME = "coffee_assistant"
+_UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+_PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
 _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "answer",
     "session_id",
@@ -133,21 +136,34 @@ def credential_guard_callback(callback_context: CallbackContext) -> types.Conten
         A model response when credentials are missing, otherwise ``None``.
     """
     del callback_context
-    settings = get_settings()
-    if settings.vertex_ai.PROJECT_ID or settings.vertex_ai.API_KEY:
+    if _has_vertex_ai_backend_config():
         return None
     return types.Content(
         role="model",
-        parts=[
-            types.Part(text="AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file.")
-        ],
+        parts=[types.Part(text=_UNCONFIGURED_MESSAGE)],
     )
 
 
+def _has_vertex_ai_backend_config() -> bool:
+    settings = get_settings()
+    project_id = settings.vertex_ai.PROJECT_ID.strip()
+    return bool(settings.vertex_ai.API_KEY or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
+
+
 def _is_credential_error(exc: BaseException) -> bool:
-    if isinstance(exc, genai_errors.ClientError):
-        return True
     text = str(exc).lower()
+    if isinstance(exc, genai_errors.ClientError):
+        return any(
+            marker in text
+            for marker in (
+                "api key",
+                "credentials",
+                "permission_denied",
+                "service_disabled",
+                "forbidden",
+                "unauthorized",
+            )
+        )
     return "api key" in text or "credentials" in text
 
 
@@ -175,9 +191,7 @@ class ADKRunner:
         self._classifier = classifier
         self._persona_manager = persona_manager
 
-    def _make_tool_factories(
-        self, tools_service: AgentToolsService, metric_state: dict[str, Any]
-    ) -> list[Callable[..., Any]]:
+    def _make_tool_factories(self, tools_service: AgentToolsService, metric_state: dict[str, Any]) -> list[ToolUnion]:
         async def search_products_by_vector(
             query: str, limit: int = 5, similarity_threshold: float = 0.7
         ) -> dict[str, Any]:
@@ -191,7 +205,10 @@ class ADKRunner:
             """
             result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
             metric_state["embedding_cache_hit"] = bool(result.get("embedding_cache_hit", False))
-            metric_state.setdefault("search_metrics", {})["results_count"] = result.get("results_count", 0)
+            products_found = int(result.get("results_count") or len(result.get("products") or []))
+            search_metrics = metric_state.setdefault("search_metrics", {})
+            search_metrics["results_count"] = products_found
+            search_metrics["products_found"] = products_found
             return result
 
         async def get_product_details(product_id: str) -> dict[str, Any]:
@@ -212,7 +229,7 @@ class ADKRunner:
 
         return [search_products_by_vector, get_product_details, get_all_store_locations]
 
-    def _build_workflow(self, instruction: str, temperature: float, tools: list[Callable[..., Any]]) -> Any:
+    def _build_workflow(self, instruction: str, temperature: float, tools: list[ToolUnion]) -> Any:
         agent = LlmAgent(
             name="CoffeeAssistant",
             model=get_settings().vertex_ai.CHAT_MODEL,
@@ -240,7 +257,7 @@ class ADKRunner:
             )
         return session
 
-    async def stream_request(  # noqa: PLR0914
+    async def stream_request(  # noqa: PLR0914, PLR0915
         self,
         query: str,
         user_id: str,
@@ -259,6 +276,8 @@ class ADKRunner:
             ValueError: If ADK raises a non-credential validation error.
         """
         start = time.time()
+        if not _has_vertex_ai_backend_config():
+            raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE)
 
         session = await self._get_or_create_session(user_id, session_id)
 
@@ -309,8 +328,7 @@ class ADKRunner:
                     answer_parts.append(text)
         except (genai_errors.ClientError, ValueError) as exc:
             if _is_credential_error(exc):
-                msg = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
-                raise AIServiceUnconfigured(msg) from exc
+                raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
             raise
 
         intent_detected = str(workflow_output.get("intent") or "GENERAL_CONVERSATION")

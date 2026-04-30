@@ -342,7 +342,7 @@ class DomainPlugin:
         _DiscoveryState.controllers_by_domain = by_domain
 
 
-async def _on_startup_log_discovery() -> None:
+async def _on_startup_log_discovery() -> None:  # noqa: RUF029
     """Lifespan startup hook to log discovery results after server header."""
     _DiscoveryState.log_discovery_results()
 

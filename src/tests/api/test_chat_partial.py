@@ -39,7 +39,7 @@ def _stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
         del args, kwargs
         self.session_service = None
 
-    async def _stream_request(self: Any, *args: Any, **kwargs: Any) -> Any:  # noqa: RUF029
+    async def _stream_request(self: Any, *args: Any, **kwargs: Any) -> Any:
         del self, args, kwargs
         yield {"type": "delta", "text": _FAKE_REPLY["answer"]}
         yield {"type": "final", **_FAKE_REPLY, "session_id": "stream-session", "response_time_ms": 42.0}
@@ -82,6 +82,23 @@ async def test_non_htmx_returns_json(client: AsyncTestClient) -> None:
     payload = response.json()
     assert payload["answer"] == _FAKE_REPLY["answer"]
     assert payload["intentDetected"] == "PRODUCT_RAG"
+
+
+async def test_non_htmx_ai_unconfigured_returns_503_without_exception_path(client: AsyncTestClient) -> None:
+    from app.domain.chat.exceptions import AIServiceUnconfigured
+    from app.domain.chat.services import ADKRunner
+
+    ADKRunner.process_request.side_effect = AIServiceUnconfigured("AI service is not configured")  # type: ignore[attr-defined]
+
+    response = await client.post(
+        "/api/chat",
+        json={"message": "recommend an ethiopian", "persona": "enthusiast"},
+    )
+
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["status"] == 503
+    assert payload["title"] == "AI service is not configured"
 
 
 async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:

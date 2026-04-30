@@ -1,0 +1,3 @@
+- ADKRunner already exposes rich context (`intent_details`, `search_details`, `store_details`, `products_found`, `stores_found`); the API/controller layer must preserve these fields to avoid UI regressions.
+- Keep `/api/chat` response backward compatible while extending `search_metrics` with richer context payloads.
+- UI verification is safer when tests assert rendered contextual fields (products/stores/results), not only final answer text.

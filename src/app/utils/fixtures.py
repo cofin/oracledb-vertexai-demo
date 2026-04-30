@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import structlog
+from anyio import Path as AsyncPath
 from sqlspec import sql
 from sqlspec.utils.fixtures import open_fixture_async, write_fixture_async
 
@@ -111,7 +112,8 @@ class FixtureLoader:
         update_columns = [col for col in columns if col != "id"]
 
         statement = (
-            sql.merge(dialect="oracle")
+            sql
+            .merge(dialect="oracle")
             .into(table_name, alias="t")
             .using(records, alias="src")
             .on("t.id = src.id")
@@ -144,7 +146,7 @@ class FixtureExporter:
             ``"Error: ..."`` / ``"No data found"`` otherwise.
         """
         target_dir = Path(output_dir or self.fixtures_dir)
-        target_dir.mkdir(parents=True, exist_ok=True)
+        await AsyncPath(target_dir).mkdir(parents=True, exist_ok=True)
 
         results: dict[str, str] = {}
         for table_name in tables or self.table_order:

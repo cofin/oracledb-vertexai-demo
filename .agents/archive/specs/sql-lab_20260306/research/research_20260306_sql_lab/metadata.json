@@ -1,0 +1,10 @@
+{
+  "research_id": "research_20260306_sql_lab",
+  "topic": "are there any simple, easy to use query pannels/sql execution tools? id' like to make the 4 icon on the button right link to a SQL Lab. It's a simple pacge that allows you to write and execute Oracle SQL against the database and see the results. using a pre-made comprehensie library would be ideal, but it must be simple, themable and fit with out exisitng app",
+  "type": "New Feature",
+  "status": "complete",
+  "created_at": "2026-03-06T12:00:00Z",
+  "libraries_researched": ["@uiw/react-textarea-code-editor", "@monaco-editor/react", "react-simple-code-editor"],
+  "files_analyzed": ["src/js/src/routes/__root.tsx", "src/js/src/routes/index.tsx"],
+  "linked_prd": null
+}

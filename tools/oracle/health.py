@@ -69,7 +69,7 @@ class SystemHealth:
     @property
     def unhealthy_components(self) -> list[ComponentHealth]:
         """Get list of unhealthy components."""
-        return [c for c in self.components if c.status in (HealthStatus.UNHEALTHY, HealthStatus.DEGRADED)]
+        return [c for c in self.components if c.status in {HealthStatus.UNHEALTHY, HealthStatus.DEGRADED}]
 
 
 class HealthChecker:
@@ -119,8 +119,7 @@ class HealthChecker:
 
         # Check runtime and container for MANAGED mode
         if deployment_mode == DeploymentMode.MANAGED:
-            components.append(self.check_runtime())
-            components.append(self.check_container())
+            components.extend([self.check_runtime(), self.check_container()])
 
         # Check SQLcl (optional for all modes)
         components.append(self.check_sqlcl())
@@ -141,7 +140,7 @@ class HealthChecker:
             overall_status = HealthStatus.UNHEALTHY
         elif degraded:
             overall_status = HealthStatus.DEGRADED
-        elif all(c.status in (HealthStatus.HEALTHY, HealthStatus.NOT_APPLICABLE) for c in components):
+        elif all(c.status in {HealthStatus.HEALTHY, HealthStatus.NOT_APPLICABLE} for c in components):
             overall_status = HealthStatus.HEALTHY
         else:
             overall_status = HealthStatus.UNKNOWN

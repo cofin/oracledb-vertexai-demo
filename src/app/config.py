@@ -216,7 +216,7 @@ def _reset() -> None:
 
     from app.server import plugins
 
-    plugins._reset()
+    plugins._reset()  # noqa: SLF001
 
 
 def __getattr__(name: str) -> object:

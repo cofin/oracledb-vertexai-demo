@@ -76,12 +76,12 @@ class DatabaseSettings:
     """Pool recycle time in seconds."""
     ECHO: bool = field(default_factory=lambda: os.getenv("DATABASE_ECHO", "False") in TRUE_VALUES)
     """Echo SQL statements to log output."""
-    ADK_IN_MEMORY: bool = field(default_factory=lambda: os.getenv("ORACLE_ADK_IN_MEMORY", "False") in TRUE_VALUES)
+    ADK_IN_MEMORY: bool = field(default_factory=lambda: os.getenv("ORACLE_ADK_IN_MEMORY", "True") in TRUE_VALUES)
     """Enable Oracle INMEMORY for ADK session/event tables when licensed."""
     ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: os.getenv("ADK_ENABLE_MEMORY", "True") in TRUE_VALUES)
     """Include SQLSpec ADK memory table migrations."""
     LITESTAR_SESSION_IN_MEMORY: bool = field(
-        default_factory=lambda: os.getenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "False") in TRUE_VALUES
+        default_factory=lambda: os.getenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "True") in TRUE_VALUES
     )
     """Enable Oracle INMEMORY for the Litestar server-side session table when licensed."""
     MIGRATION_PATH: str = field(

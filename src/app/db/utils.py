@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 COFFEE_SHOP_TABLES = [
     "store",
     "product",
-    "intent_exemplar",
 ]
 
 
@@ -58,7 +57,6 @@ async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
         "store",
         "response_cache",
         "embedding_cache",
-        "intent_exemplar",
         "search_metric",
     ]
 

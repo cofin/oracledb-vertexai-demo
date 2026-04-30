@@ -381,9 +381,6 @@ class BeforeSendHandler:
         Args:
             request: A request instance.
 
-        Raises:
-            RuntimeError:
-
         Returns:
             An OrderedDict.
         """

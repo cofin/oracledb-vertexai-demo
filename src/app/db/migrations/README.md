@@ -63,8 +63,8 @@ The initial Oracle 23ai schema in this project includes:
 
 - `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-001`.
 - `store` table for location data with `JSON`-encoded business hours.
-- `response_cache`, `embedding_cache`, `intent_exemplar`, and `search_metric` support tables.
-- HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product`, `intent_exemplar`, and `embedding_cache`.
+- `response_cache`, `embedding_cache`, and `search_metric` support tables.
+- HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product` and `embedding_cache`.
 
 ## Vector Memory Pool
 

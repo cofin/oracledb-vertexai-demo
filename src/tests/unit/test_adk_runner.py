@@ -17,6 +17,14 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.anyio
 
 
+def _allow_vertex_config(monkeypatch: Any, adk_module: Any) -> None:
+    settings = MagicMock()
+    settings.vertex_ai.PROJECT_ID = "test-project"
+    settings.vertex_ai.API_KEY = None
+    settings.vertex_ai.CHAT_MODEL = "gemini-2.5-flash-lite"
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+
 def test_runner_constructor_takes_session_service_classifier_persona_manager() -> None:
     from app.domain.chat.services.adk import ADKRunner
 
@@ -147,6 +155,46 @@ def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch:
     assert captured_make_workflow["classifier"] is classifier
 
 
+def test_credential_guard_treats_demo_project_as_unconfigured(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    settings = MagicMock()
+    settings.vertex_ai.PROJECT_ID = "demo-project"
+    settings.vertex_ai.API_KEY = None
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+    content = adk_module.credential_guard_callback(MagicMock())
+
+    assert content is not None
+    assert content.parts[0].text == "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+
+
+async def test_process_request_rejects_placeholder_project_before_adk_run(monkeypatch: Any) -> None:
+    from app.domain.chat.exceptions import AIServiceUnconfigured
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    settings = MagicMock()
+    settings.vertex_ai.PROJECT_ID = "demo-project"
+    settings.vertex_ai.API_KEY = None
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock()
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=MagicMock())
+
+    with pytest.raises(AIServiceUnconfigured):
+        await runner.process_request(
+            query="x",
+            user_id="u",
+            session_id="s",
+            persona="enthusiast",
+            tools_service=MagicMock(),
+        )
+
+    session_service.get_session.assert_not_called()
+
+
 async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     from app.domain.chat.services import adk as adk_module
     from app.domain.chat.services.adk import ADKRunner
@@ -183,6 +231,7 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
     monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+    _allow_vertex_config(monkeypatch, adk_module)
 
     runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
 
@@ -245,6 +294,7 @@ async def test_process_request_prefers_workflow_output_intent(monkeypatch: Any) 
     monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
     monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+    _allow_vertex_config(monkeypatch, adk_module)
 
     runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
 
@@ -287,6 +337,7 @@ async def test_process_request_returns_cached_response_without_model(monkeypatch
         raise AssertionError("Runner should not be constructed on cache hit")
 
     monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
 
     runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
 
@@ -345,6 +396,7 @@ async def test_process_request_raises_ai_service_unconfigured_on_credential_erro
     monkeypatch.setattr(adk_module, "Runner", boom_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
     monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+    _allow_vertex_config(monkeypatch, adk_module)
 
     runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
 

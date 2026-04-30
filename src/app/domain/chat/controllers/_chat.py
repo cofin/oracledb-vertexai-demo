@@ -10,7 +10,7 @@ from typing import Any
 
 import structlog
 from litestar import Controller, Response, post
-from litestar.exceptions import HTTPException, ValidationException
+from litestar.exceptions import ValidationException
 from litestar.plugins.flash import flash
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.response import ServerSentEvent
@@ -141,7 +141,6 @@ class CoffeeChatController(Controller):
             An HTMX template response or JSON chat reply.
 
         Raises:
-            HTTPException: If the AI service is not configured.
             ValidationException: If a non-HTMX request fails message validation.
         """
         data = await _chat_form_from_request(request)
@@ -170,10 +169,21 @@ class CoffeeChatController(Controller):
             )
         except AIServiceUnconfigured as exc:
             await logger.awarning("AI service not configured", detail=str(exc))
-            raise HTTPException(
+            if request.htmx:
+                return HTMXTemplate(
+                    template_name="partials/chat_error.html.j2",
+                    context={"error": str(exc)},
+                    re_target="#chat-error",
+                    re_swap="innerHTML",
+                )
+            return Response(
+                content={
+                    "status": HTTP_503_SERVICE_UNAVAILABLE,
+                    "title": str(exc),
+                    "detail": "Service Unavailable",
+                },
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                detail=str(exc),
-            ) from exc
+            )
 
         answer = result.get("answer", "")
         intent = result.get("intent_detected", "GENERAL_CONVERSATION")

@@ -48,7 +48,7 @@ def generate_secret_key() -> str:
     return secrets.token_hex(32)
 
 
-def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # noqa: C901
+def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # noqa: C901, PLR0914
     """Create .env file interactively based on deployment mode.
 
     Args:
@@ -177,7 +177,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
     env_content += "VITE_DEV_MODE=False\n"
 
     try:
-        env_path.write_text(env_content)
+        env_path.write_text(env_content, encoding="utf-8")
         console.print("[green]✓ Created .env file[/green]")
     except Exception as e:  # noqa: BLE001
         console.print(f"[red]✗ Failed to create .env: {e}[/red]")

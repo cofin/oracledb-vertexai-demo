@@ -3,13 +3,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime  # noqa: TC003
+from uuid import UUID  # noqa: TC003
 
 from app.lib.schema import CamelizedBaseStruct
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from uuid import UUID
 
 
 class UserSessionCreate(CamelizedBaseStruct, omit_defaults=True):

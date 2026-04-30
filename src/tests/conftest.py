@@ -20,10 +20,10 @@ if TYPE_CHECKING:
 
 
 pytestmark = pytest.mark.anyio
-pytest_plugins = [
-    "pytest_databases.docker",
-    "pytest_databases.docker.oracle",
-]
+
+# Tests connect to the repo-managed Oracle database. Start it with
+# `make start-infra` and apply migrations with
+# `uv run python manage.py database upgrade --no-prompt`; pytest owns per-test state only.
 
 
 @pytest.fixture(scope="session")

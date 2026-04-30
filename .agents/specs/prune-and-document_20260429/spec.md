@@ -58,15 +58,16 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 **CLI surface (`src/app/cli/commands/manage.py` plus `src/app/cli/commands/server.py`):**
 
 - KEEP (PRD must-survive):
-  - `python manage.py database upgrade` (SQLSpec migrations)
-  - `coffee load-fixtures` (`manage.py` command module; required for the 5-min quickstart)
-  - `coffee clear-cache`
-  - `coffee model-info`
-  - `coffee classify-compare` (added in Ch 3)
-  - `coffee run` (hand-rolled wrapper around Granian)
-- DELETE:
-  - `coffee bulk-embed` — fixtures are committed pre-generated; quickstart doesn't need regen. If a contributor needs to regenerate, move the implementation to `tools/dev/regen_embeddings.py` (out of canonical CLI).
-  - `coffee export-fixtures` — same logic; move to `tools/dev/export_fixtures.py` for maintainers.
+    - `python manage.py database upgrade --no-prompt` (SQLSpec migrations)
+    - `coffee load-fixtures` (`manage.py` command module; required for the 5-min quickstart)
+    - `coffee bulk-embed` (lifecycle command for regenerating committed product embeddings)
+    - `coffee export-fixtures` (lifecycle command for refreshing committed fixtures)
+    - `coffee clear-cache`
+    - `coffee model-info`
+    - `coffee run` (hand-rolled wrapper around Granian)
+- CLEAN UP:
+    - `coffee bulk-embed` — keep on `coffee`; make task type explicit and validate batch size.
+    - `coffee export-fixtures` — keep on `coffee`; remove nested async/run wrappers and improve help text.
 
 **Frontend test stubs deleted in Ch 4** — verify they're gone.
 
@@ -76,7 +77,8 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 - Duplicates between "Development Commands" and "Management CLI" sections.
 - 7 external resource links — keep only the 3 directly load-bearing (Oracle 23ai, Vertex AI, Litestar).
 - Architecture paragraph is fine; expand by 2 sentences to mention ADK 2.0 + HTMX.
-- New screenshot of the explore page (Ch 4) replaces old performance/vector-demo shots.
+- README removes stale screenshot links until current chat/explore screenshots
+  are captured during browser verification.
 
 **`CLAUDE.md` (root, 230+ lines):**
 
@@ -100,8 +102,11 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 1. `.agents/archive/specs/` exists; the 8 listed spec dirs are moved (not deleted) so historical context is preserved but out of the active surface.
 2. `.agents/archive/knowledge/` exists; the 8 listed knowledge files moved.
 3. `.agents/knowledge/guides/` contains exactly 3 files: `architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`. The merged content from `sqlspec-patterns.md`, `vertex-ai-integration.md`, `oracle-performance.md` is folded in; archived files moved to `.agents/archive/knowledge/guides/`.
-4. `coffee bulk-embed` and `coffee export-fixtures` removed from `src/app/cli/commands/manage.py` and from the hand-rolled `coffee` command surface. If maintainers still need them, equivalent scripts live in `tools/dev/`.
-5. `README.md` reduced to ≤120 lines. Sections (in order): Title + 1-line tagline; 5-Minute Quickstart (numbered); Architecture (2 paragraphs); Key Features (5 bullets max); Common Commands (5-row table); Docs (3 links + `manage.py --help`); Troubleshooting (3 items).
+4. `coffee bulk-embed` and `coffee export-fixtures` remain on the hand-rolled
+   `coffee` command surface. Clean them up in place: explicit embedding task
+   type, clearer help text, no local nested async/run wrappers, and coverage so
+   future cleanup does not remove them accidentally.
+5. `README.md` reduced to ≤120 lines. Sections (in order): Title + 1-line tagline; 5-Minute Quickstart; What's Inside; Architecture (2 paragraphs); Common Commands; Docs; Troubleshooting.
 6. `CLAUDE.md`:
    - Delete the `array.array('f', ...)` block.
    - Update DI example to the post-Ch 2 pattern.
@@ -110,7 +115,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
    - Update Project Structure tree to reflect post-Ch 2 domain layout (`controllers/`, `services/`, `schemas/` packages).
 7. `.agents/patterns.md` rewritten into 4 sections (Architecture / Code style / Testing / Operational gotchas) with **only the gotchas that are still real** post-Ch 4. ≤150 lines.
 8. `.agents/index.md` regenerated as a flat index.
-9. New screenshots: chat page, explore page (with EXPLAIN PLAN visible), classify-compare chart visible. Stored under `docs/screenshots/`.
+9. README no longer links stale screenshots. Current screenshots are captured during Phase 6 browser verification before being linked again.
 10. A new contributor running the README quickstart from a clean clone reaches a working chat reply at `localhost:5006/` within **5 minutes** (assuming Docker is already installed).
 
 ### Acceptance Criteria
@@ -119,11 +124,14 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 - `ls .agents/knowledge/guides/` returns exactly: `architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`.
 - `ls .agents/archive/specs/ | wc -l` ≥ 8.
 - `ls .agents/archive/knowledge/guides/ | wc -l` = 7.
-- `grep -E "bulk-embed|export-fixtures" src/app/cli/commands/manage.py src/app/cli/commands/__init__.py` returns **zero** matches.
+- `uv run coffee --help` lists `bulk-embed` and `export-fixtures`.
+- `src/app/cli/commands/manage.py` has no direct `sqlspec.utils.sync_tools.run_`
+  usage or local nested `_load_fixtures` / `_export_fixtures` async wrappers;
+  async commands use `@async_inject`.
 - `wc -l README.md` ≤ 120.
 - `grep -E "array\\.array|specs/AGENTS\\.md" CLAUDE.md` returns **zero** matches.
 - `wc -l .agents/patterns.md` ≤ 150.
-- A new contributor walkthrough (timed by a colleague running fresh): `git clone && make install-uv && make install && uv run python manage.py init --run-install && make start-infra && uv run python manage.py database upgrade && uv run coffee load-fixtures && uv run coffee run` produces a working chat reply within 5 minutes (excluding Docker-image pull time).
+- A new contributor walkthrough (timed by a colleague running fresh): `git clone && make install-uv && make install && uv run python manage.py init --run-install && make start-infra && uv run python manage.py database upgrade --no-prompt && uv run coffee load-fixtures && uv run coffee run` produces a working chat reply within 5 minutes (excluding Docker-image pull time).
 - `make lint && make test` green.
 
 ### Risks / Known Gotchas
@@ -131,7 +139,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 - **Don't delete archived files; move them.** History is valuable for future archaeologists. `git mv` keeps the diff clean.
 - **`manage.py` is not in the PRD's must-survive list** — but it bootstraps `init`, which IS. Confirm `manage.py init` still works after Ch 5; if it pulls a deleted command, fix it.
 - **Quickref files** under `.claude/skills/` are referenced by `CLAUDE.md` — keep them; they're load-bearing for future sessions. Verify their content still matches post-Ch 1–4.
-- **Screenshots** in the README must be regenerated after Ch 4; old screenshots referencing the React UI break the docs.
+- **Screenshots** must be current before they are linked from README; stale React-era screenshots are worse than no screenshot.
 - **Existing PR / commit messages** may reference deleted files; that's fine, those are immutable history.
 - **Archive directory is gitignored?** Verify `.gitignore` does NOT exclude `.agents/archive/` — the PRD wants archived flows preserved in the repo.
 
@@ -154,17 +162,25 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 - [ ] **2.3** Rewrite `.agents/knowledge/guides/adk-agent-patterns.md` (≤500 lines): ADK 2.0 Workflow/BaseNode, closure-bound tools, parallel fan-out, before_agent_callback credential guard, Flash-Lite enum classifier.
 - [ ] **2.4** `git mv` the 7 archive-bound guides into `.agents/archive/knowledge/guides/`.
 
-### Phase 3: CLI trim (`oracledb-vertexai-4d6.5.3`)
+### Phase 3: CLI cleanup (`oracledb-vertexai-4d6.5.3`)
 
-- [ ] **3.1** **Delete** `coffee bulk-embed` from `src/app/cli/commands/manage.py`. Add a one-paragraph "Regenerating embeddings" subsection to `.agents/knowledge/guides/oracle-vector-search.md` documenting the regen recipe (drop fixtures → boot Oracle → run a one-off `tools/dev/regen_embeddings.py` script).
-- [ ] **3.2** **Delete** `coffee export-fixtures` from `src/app/cli/commands/manage.py`. Move the body verbatim to `tools/dev/export_fixtures.py` so maintainers retain the path; document the move in the same guide subsection above.
-- [ ] **3.3** Delete or update references in `src/app/cli/commands/__init__.py` so imports no longer advertise removed commands.
-- [ ] **3.4** No `coffee_demo_group` exists after Ch 4. Keep `ApplicationCore.on_cli_init` out of this; the `coffee` CLI is registered by imports from `src/app/cli/commands/`.
-- [ ] **3.5** Smoke: `uv run coffee --help` lists exactly the curated app commands: `run`, `load-fixtures`, `clear-cache`, `model-info`, `classify-compare`. `uv run python manage.py database upgrade --help` exits 0.
+- [ ] **3.1** Keep `coffee bulk-embed`; make product-document embedding
+  semantics explicit (`RETRIEVAL_DOCUMENT`), validate batch size, and improve
+  command/help copy.
+- [ ] **3.2** Keep `coffee export-fixtures`; improve command/help copy and keep
+  it as the lifecycle path for refreshing committed demo fixtures.
+- [ ] **3.3** Convert `load-fixtures` and `export-fixtures` to `@async_inject`
+  async commands; remove local nested async functions and direct `run_` calls.
+- [ ] **3.4** Update `src/app/cli/commands/__init__.py` so command registration
+  docs advertise the retained lifecycle commands.
+- [ ] **3.5** Smoke: `uv run coffee --help`, `uv run coffee bulk-embed --help`,
+  and `uv run coffee export-fixtures --help` exit 0 and list the retained
+  commands.
 
 ### Phase 4: README rewrite (`oracledb-vertexai-4d6.5.4`)
 
 - [ ] **4.1** Replace `README.md` with the new ≤120-line quickstart structure. Skeleton:
+
   ```markdown
   # Cymbal Coffee — Oracle 23ai + Vertex AI + ADK Demo
   Reference app for AI-powered apps on Oracle Database with Google ADK 2.0 + Vertex AI.
@@ -174,7 +190,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
   2. `make install`
   3. `uv run python manage.py init --run-install`
   4. `make start-infra`
-  5. `uv run python manage.py database upgrade && uv run coffee load-fixtures`
+  5. `uv run python manage.py database upgrade --no-prompt && uv run coffee load-fixtures`
   6. `uv run coffee run` → http://localhost:5006
 
   ## What's Inside
@@ -193,7 +209,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
   | Command | Purpose |
   |---|---|
   | `uv run coffee run` | Start dev server (Granian) |
-  | `uv run python manage.py database upgrade` | Apply migrations |
+  | `uv run python manage.py database upgrade --no-prompt` | Apply migrations |
   | `uv run coffee load-fixtures` | Load sample coffee data |
   | `uv run coffee model-info` | Verify AI model wiring |
   | `uv run coffee clear-cache` | Reset response + embedding caches |
@@ -208,29 +224,32 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
   - **AI model errors:** `uv run coffee model-info`
   - **Tests failing:** check `make start-infra` is healthy
   ```
-- [ ] **4.2** Capture new screenshots of chat + explore (with EXPLAIN PLAN visible) under `docs/screenshots/`.
+
+- [ ] **4.2** Remove stale screenshot references from README. Capture current chat/explore screenshots during Phase 6 browser verification before linking them again.
 
 ### Phase 5: CLAUDE.md + patterns.md update (`oracledb-vertexai-4d6.5.5`)
 
 - [ ] **5.1** `CLAUDE.md` edits (apply as a single commit, **review the rendered diff before committing** — this file is loaded into every future Claude Code session, so a bad edit propagates broadly):
-  - Delete the `array.array('f', query_embedding)` example block (around line 143).
-  - Replace the DI example with the post-Ch 2 pattern (handler-arg `Inject[T]` from `app.lib.di`).
-  - Update the Testing block: prefer `@pytest.mark.anyio`.
-  - Fix the broken link `specs/AGENTS.md` → `.agents/index.md`.
-  - Update the Project Structure tree to reflect normalized domain packages (`controllers/`, `services/`, `schemas/`).
+    - Delete the `array.array('f', query_embedding)` example block (around line 143).
+    - Replace the DI example with the post-Ch 2 pattern (handler-arg `Inject[T]` from `app.lib.di`).
+    - Update the Testing block: prefer `@pytest.mark.anyio`.
+    - Fix the broken link `specs/AGENTS.md` → `.agents/index.md`.
+    - Update the Project Structure tree to reflect normalized domain packages (`controllers/`, `services/`, `schemas/`).
 - [ ] **5.1.5** Open the rendered `CLAUDE.md` in a viewer; confirm the Project Structure tree matches what `tree -L 4 src/app/` actually produces; confirm no stale references to React, `array.array`, or pre-Ch 2 DI.
 - [ ] **5.2** `.agents/patterns.md` rewrite (≤150 lines, 4 sections):
-  - **Architecture:** three-provider Dishka, named SQL, ADK 2.0 workflow shape, HTMX template mode, EXPLAIN PLAN viewer.
-  - **Code style:** PEP 604, no future annotations in Dishka providers, `Inject[T]` over `inject()` decorator, async I/O everywhere, `schema_type=` always.
-  - **Testing:** anyio fixtures, real-Oracle integration tests, pytest-databases container fixtures.
-  - **Operational gotchas:** `vector_memory_size >= 4G`, `text/x.enum` requires Flash-Lite, `hot_file` ↔ `vite.config.ts` coupled paths, `ensure_tables()` adds 30-100ms first boot.
+    - **Architecture:** three-provider Dishka, named SQL, ADK 2.0 workflow shape, HTMX template mode, EXPLAIN PLAN viewer.
+    - **Code style:** PEP 604, no future annotations in Dishka providers, `Inject[T]` over `inject()` decorator, async I/O everywhere, `schema_type=` always.
+    - **Testing:** anyio fixtures and real-Oracle integration tests against
+      the repo-managed Oracle lifecycle (`make start-infra`,
+      `uv run python manage.py database upgrade --no-prompt`).
+    - **Operational gotchas:** `vector_memory_size >= 4G`, `text/x.enum` requires Flash-Lite, `hot_file` ↔ `vite.config.ts` coupled paths, `ensure_tables()` adds 30-100ms first boot.
 - [ ] **5.3** Regenerate `.agents/index.md` as a flat index of surviving artifacts.
 
 ### Phase 6: Verification + walkthrough (`oracledb-vertexai-4d6.5.6`)
 
 - [ ] **6.1** `make lint && make test` — clean.
 - [ ] **6.2** `make install` from a fresh clone (or container): time the full quickstart sequence end-to-end. Document timing in Beads notes; if > 5 minutes excluding image pull, identify the bottleneck.
-- [ ] **6.3** Open `/` and `/explore` in a browser; verify the README screenshots match what's served.
+- [ ] **6.3** Open `/` and `/explore` in a browser; capture current screenshots before linking them from README again.
 - [ ] **6.4** Have a colleague read the new README cold and try the quickstart. Capture friction points; fix the README, not the colleague.
 - [ ] **6.5** Final `git status` audit: zero **untracked** files outside `dist/`, `node_modules/`, `.venv/`. Every change in `src/`, `.agents/`, `docs/`, `pyproject.toml`, `README.md`, `CLAUDE.md` is either a tracked modification or a `git mv` to archive. No surprise additions; no dropped tests.
 

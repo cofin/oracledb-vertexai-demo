@@ -216,7 +216,7 @@ doctor: ## Verify local prerequisites and project health
 .PHONY: migrate
 migrate: ## Run database migrations
 	@echo "${INFO} Running database migrations..."
-	@uv run python manage.py database upgrade
+	@uv run python manage.py database upgrade --no-prompt
 	@echo "${OK} Migrations complete"
 
 .PHONY: load-fixtures

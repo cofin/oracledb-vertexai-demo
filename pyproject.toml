@@ -97,7 +97,6 @@ test = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
-    "pytest-databases[valkey,oracle]",
     "pytest-mock",
     "pytest-sugar",
     "pytest-xdist",
@@ -130,9 +129,11 @@ ignore = [
     "D202",    # pydocstyle - no blank lines allowed after function docstring
     "D205",    # pydocstyle - 1 blank line required between summary line and description
     "D415",    # pydocstyle - first line should end with a period, question mark, or exclamation point
+    "DOC",     # pydoclint - docstring content policy is too noisy for this app gate
     "E501",    # pydocstyle line too long, handled by black
     "PLW2901", # pylint - for loop variable overwritten by assignment target
     "RUF012",  # Ruff-specific rule - annotated with classvar
+    "RUF067",  # Ruff-specific rule - __init__ module registry contracts are intentional
     "ANN401",  # Dynamically typed expressions (Any)
     "FBT",     # Boolean trap
     "PLR0913", # too many arguments
@@ -153,6 +154,7 @@ ignore = [
     "PLC2701", # Import private name
     "PLW3201", # Bad dunder method name
     "PLR6301", # No self use
+    "N818",    # Keep established exception names stable in this demo app
 ]
 select = ["ALL"]
 # Allow unused variables when underscore-prefixed.
@@ -177,8 +179,36 @@ known-first-party = ["tests", "app", "config"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
-"src/tests/*.py" = ["D103", "S101", "D104", "PLR2004"]
-"src/tests/**/*.py" = ["D103", "S101", "D104", "PLR2004"]
+"src/tests/*.py" = [
+    "ANN",
+    "ARG",
+    "D103",
+    "D104",
+    "EM",
+    "PLR2004",
+    "PLW1514",
+    "RUF029",
+    "RUF069",
+    "S101",
+    "S108",
+    "SLF001",
+    "TRY",
+]
+"src/tests/**/*.py" = [
+    "ANN",
+    "ARG",
+    "D103",
+    "D104",
+    "EM",
+    "PLR2004",
+    "PLW1514",
+    "RUF029",
+    "RUF069",
+    "S101",
+    "S108",
+    "SLF001",
+    "TRY",
+]
 "tools/*.py" = ["INP001", "ERA001", "N999"]
 "tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001", "S603", "S404", "PLR0915"]
 

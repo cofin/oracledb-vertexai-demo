@@ -5,33 +5,15 @@
 
 from __future__ import annotations
 
-import os
 import sys
 
 import rich_click as click
-import structlog
 from rich.console import Console
 
 from app.__metadata__ import __version__
+from app.cli._helpers.environment import setup_environment
 
 console = Console()
-logger = structlog.get_logger()
-
-
-def _setup_environment() -> None:
-    """Configure environment variables shared by every ``coffee`` invocation."""
-    from app import config
-    from app.lib.log import set_cli_mode
-    from app.lib.settings import get_settings
-
-    _ = config.log.structlog_logging_config.configure()()
-    config.setup_logging()
-    set_cli_mode(True)
-    settings = get_settings()
-    os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
-    os.environ.setdefault("LITESTAR_APP_NAME", settings.app.NAME)
-    os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
-    os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
 
 
 # rich-click presentation knobs.
@@ -72,7 +54,7 @@ def main() -> None:
     logged and re-raised as a non-zero exit so subprocess callers see the
     failure cleanly.
     """
-    _setup_environment()
+    setup_environment()
 
     # Side-effect: importing app.cli.commands registers every command on `cli`.
     from app.cli import commands as _commands  # noqa: F401

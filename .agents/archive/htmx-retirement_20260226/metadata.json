@@ -1,0 +1,11 @@
+{
+  "flow_id": "htmx-retirement_20260226",
+  "type": "feature",
+  "status": "completed",
+  "parent_prd": "dark-react-redesign_20260226",
+  "beads_epic_id": "bd-5oj.4",
+  "created_at": "2026-02-26T16:42:56Z",
+  "updated_at": "2026-02-26T16:58:49Z",
+  "description": "Retire HTMX routes/templates/plugin coupling from core product path and keep React-first architecture.",
+  "synced_at": "2026-02-26T16:58:49Z"
+}

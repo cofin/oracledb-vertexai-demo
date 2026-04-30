@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from google.adk import Context, Workflow
 from google.adk.workflow import JoinNode
@@ -39,7 +39,7 @@ def make_coffee_node(agent: LlmAgent) -> LlmAgent:
         A copied agent node named for join output collection.
     """
     if hasattr(agent, "model_copy"):
-        return cast("LlmAgent", agent.model_copy(update={"name": "coffee_turn"}))
+        return agent.model_copy(update={"name": "coffee_turn"})
     agent.name = "coffee_turn"
     return agent
 
