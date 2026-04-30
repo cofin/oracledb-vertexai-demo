@@ -111,7 +111,8 @@ class FixtureLoader:
         update_columns = [col for col in columns if col != "id"]
 
         statement = (
-            sql.merge(table_name, dialect="oracle")
+            sql.merge(dialect="oracle")
+            .into(table_name, alias="t")
             .using(records, alias="src")
             .on("t.id = src.id")
             .when_matched_then_update({col: f"src.{col}" for col in update_columns})
