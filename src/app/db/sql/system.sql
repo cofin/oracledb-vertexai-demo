@@ -4,7 +4,8 @@
 -- name: get-cached-response
 SELECT id, cache_key, response_data, created_at, expires_at
 FROM response_cache
-WHERE cache_key = :key;
+WHERE cache_key = :key
+  AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP);
 
 -- name: get-cached-embedding
 SELECT embedding

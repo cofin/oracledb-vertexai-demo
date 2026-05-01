@@ -126,16 +126,26 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for response and embedding cache."""
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
-        row = await self.driver.select_one_or_none(db_manager.get_sql("get-cached-response"), key=cache_key)
-        if not row:
-            return None
+        return await self.driver.select_one_or_none(
+            db_manager.get_sql("get-cached-response"),
+            key=cache_key,
+            schema_type=ResponseCache,
+        )
 
-        if row.get("expires_at") and row["expires_at"] < datetime.now(UTC):
-            await self.driver.execute(sql.delete().from_("response_cache").where_eq("id", row["id"]))
-            await self.driver.commit()
-            return None
+    async def delete_expired_responses(self) -> int:
+        """Delete expired response-cache rows.
 
-        return ResponseCache(**row)
+        Returns:
+            Number of expired response-cache rows deleted.
+        """
+        res = await self.driver.execute(
+            sql
+            .delete()
+            .from_("response_cache")
+            .where("expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP"),
+        )
+        await self.driver.commit()
+        return res.rows_affected
 
     async def set_cached_response(
         self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60

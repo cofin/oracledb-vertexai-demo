@@ -74,6 +74,11 @@
   that logs the real exception with `logger.aexception()` and yields a sanitized
   SSE `error` event; do not rely on Litestar exception middleware for
   post-start stream failures.
+- Response-cache lookup should stay a single typed `select_one_or_none()`
+  using `schema_type=ResponseCache`. Apply expiration filtering in SQL with
+  `CURRENT_TIMESTAMP`; expired-row deletion belongs in the explicit
+  `CacheService.delete_expired_responses()` maintenance operation, not in the
+  hot read path.
 - Remaining manual verification: destructive fresh-clone/start-infra timing,
   browser screenshot capture, and colleague cold readthrough.
 

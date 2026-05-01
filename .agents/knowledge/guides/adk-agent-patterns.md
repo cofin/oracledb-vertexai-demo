@@ -220,6 +220,12 @@ An exception escaped the SSE generator after headers were sent. Keep exception
 handling inside the generator, log the real exception there, and yield a
 sanitized `error` event for the browser.
 
+`can't compare offset-naive and offset-aware datetimes` during cache lookup:
+Do not compare cache expiry datetimes in Python during the read path. Filter
+fresh cache rows in SQL with `CURRENT_TIMESTAMP`, return the typed
+`ResponseCache` via `schema_type`, and keep expired-row deletion behind the
+explicit cache cleanup operation.
+
 Session state missing:
 Confirm `_adk_session_identity()` stores IDs in the Litestar session and that
 `SQLSpecSessionService` is backed by `OracleAsyncADKStore`, not an in-memory
