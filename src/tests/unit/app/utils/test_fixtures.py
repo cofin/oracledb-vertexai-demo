@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from app.utils.fixtures import FixtureLoader
+from app.utils.fixtures import FixtureLoader, _prepare_record
 
 
 class _CaptureDriver:
@@ -48,3 +48,10 @@ async def test_merge_renders_aliased_target() -> None:
     assert '"t"."id"' in rendered or "t.id" in rendered, (
         f"ON clause does not reference `t.id`: {rendered}"
     )
+
+
+def test_prepare_record_converts_boolean_for_oracle_json_table() -> None:
+    prepared = _prepare_record({"id": 1, "pickup_available": False, "in_stock": True})
+
+    assert prepared["pickup_available"] == 0
+    assert prepared["in_stock"] == 1

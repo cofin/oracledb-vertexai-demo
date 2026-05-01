@@ -200,6 +200,12 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
         metric_state.setdefault("sql_phases", []).extend(sql_phases)
 
 
+def _record_tool_sql_phases(metric_state: dict[str, Any], result: dict[str, Any]) -> None:
+    sql_phases = _coerce_sql_phases(result.get("sql_phases"))
+    if sql_phases:
+        metric_state.setdefault("sql_phases", []).extend(sql_phases)
+
+
 def _similarity_score(products: list[Any]) -> float | None:
     if not products:
         return None
@@ -352,6 +358,91 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         stores = await self.store_service.get_all_stores()
         return cast("list[dict[str, Any]]", sanitize_for_json(stores))
 
+    async def find_stores_by_location(
+        self,
+        *,
+        city: str | None = None,
+        state: str | None = None,
+        zip_code: str | None = None,
+    ) -> dict[str, Any]:
+        started = time.time()
+        stores = await self.store_service.find_stores_by_location(city=city, state=state, zip_code=zip_code)
+        return {
+            "stores": sanitize_for_json(stores),
+            "results_count": len(stores),
+            "sql_phases": [
+                _sql_phase(
+                    label="Store location lookup",
+                    sql_key="find-stores-by-location",
+                    binds={"city": city, "state": state, "zip_code": zip_code},
+                    row_count=len(stores),
+                    runtime_ms=(time.time() - started) * 1000,
+                    cache_status="miss",
+                )
+            ],
+        }
+
+    async def get_store_hours(self, store_id: int) -> dict[str, Any]:
+        started = time.time()
+        hours = await self.store_service.get_store_hours(store_id)
+        payload: dict[str, Any] = cast("dict[str, Any]", sanitize_for_json(hours)) if hours else {"error": "Store not found"}
+        payload["sql_phases"] = [
+            _sql_phase(
+                label="Store hours lookup",
+                sql_key="get-store-by-id",
+                binds={"id": store_id},
+                row_count=0 if hours is None else 1,
+                runtime_ms=(time.time() - started) * 1000,
+                cache_status="miss",
+            )
+        ]
+        return payload
+
+    async def find_nearest_stores(self, latitude: float, longitude: float, limit: int = 5) -> dict[str, Any]:
+        started = time.time()
+        stores = await self.store_service.find_nearest_stores(latitude, longitude, limit)
+        return {
+            "stores": sanitize_for_json(stores),
+            "results_count": len(stores),
+            "sql_phases": [
+                _sql_phase(
+                    label="Nearest store lookup",
+                    sql_key="list-stores",
+                    binds={"origin": "<REQUEST_COORDINATES>", "limit": limit},
+                    row_count=len(stores),
+                    runtime_ms=(time.time() - started) * 1000,
+                    cache_status="miss",
+                )
+            ],
+        }
+
+    async def find_stores_with_product(
+        self,
+        product_query: str,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> dict[str, Any]:
+        started = time.time()
+        coordinates = (latitude, longitude) if latitude is not None and longitude is not None else None
+        availability = await self.store_service.find_product_availability(product_query, coordinates=coordinates)
+        binds: dict[str, Any] = {"product_query": product_query}
+        if coordinates:
+            binds["origin"] = "<REQUEST_COORDINATES>"
+        return {
+            "availability": sanitize_for_json(availability),
+            "results_count": len(availability),
+            "sql_phases": [
+                _sql_phase(
+                    label="Product availability lookup",
+                    sql_key="find-product-availability-by-query",
+                    binds=binds,
+                    row_count=len(availability),
+                    runtime_ms=(time.time() - started) * 1000,
+                    cache_status="miss",
+                )
+            ],
+        }
+
     def make_response_cache_key(self, query: str, persona: str) -> str:
         normalized = " ".join(query.casefold().split())
         model = self.vertex_ai_service.model
@@ -464,7 +555,63 @@ class ADKRunner:
             """
             return await tools_service.get_all_store_locations()
 
-        return [search_products_by_vector, get_product_details, get_all_store_locations]
+        async def find_stores_by_location(
+            city: str | None = None,
+            state: str | None = None,
+            zip_code: str | None = None,
+        ) -> dict[str, Any]:
+            """Find Cymbal Coffee stores by city, state, or ZIP code.
+
+            Returns:
+                Matching store records and named-SQL telemetry.
+            """
+            result = await tools_service.find_stores_by_location(city=city, state=state, zip_code=zip_code)
+            _record_tool_sql_phases(metric_state, result)
+            return result
+
+        async def get_store_hours(store_id: int) -> dict[str, Any]:
+            """Get business hours for a Cymbal Coffee store.
+
+            Returns:
+                Store hours, timezone, and named-SQL telemetry.
+            """
+            result = await tools_service.get_store_hours(store_id)
+            _record_tool_sql_phases(metric_state, result)
+            return result
+
+        async def find_nearest_stores(latitude: float, longitude: float, limit: int = 5) -> dict[str, Any]:
+            """Find nearest Cymbal Coffee stores from request-scoped browser coordinates.
+
+            Returns:
+                Nearest local stores and named-SQL telemetry with coordinates masked.
+            """
+            result = await tools_service.find_nearest_stores(latitude, longitude, limit)
+            _record_tool_sql_phases(metric_state, result)
+            return result
+
+        async def find_stores_with_product(
+            product_query: str,
+            latitude: float | None = None,
+            longitude: float | None = None,
+        ) -> dict[str, Any]:
+            """Find stores with availability for a Cymbal Coffee product.
+
+            Returns:
+                Store-level availability and named-SQL telemetry.
+            """
+            result = await tools_service.find_stores_with_product(product_query, latitude, longitude)
+            _record_tool_sql_phases(metric_state, result)
+            return result
+
+        return [
+            search_products_by_vector,
+            get_product_details,
+            get_all_store_locations,
+            find_stores_by_location,
+            get_store_hours,
+            find_nearest_stores,
+            find_stores_with_product,
+        ]
 
     def _build_workflow(self, instruction: str, temperature: float, tools: list[ToolUnion]) -> Any:
         agent = LlmAgent(

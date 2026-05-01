@@ -35,6 +35,8 @@ def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
             continue
         if key == "price" and isinstance(value, str):
             prepared[key] = Decimal(value)
+        elif isinstance(value, bool):
+            prepared[key] = int(value)
         elif key in DATETIME_FIELDS and isinstance(value, str):
             prepared[key] = datetime.fromisoformat(value)
         else:

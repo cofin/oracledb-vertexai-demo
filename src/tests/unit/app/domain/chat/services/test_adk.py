@@ -51,7 +51,7 @@ def test_runner_stashes_dependencies_on_private_attrs() -> None:
     assert runner._persona_manager is persona_manager
 
 
-def test_make_tool_factories_returns_three_async_callables() -> None:
+def test_make_tool_factories_returns_store_query_async_callables() -> None:
     from app.domain.chat.services.adk import ADKRunner
 
     tools_service = MagicMock()
@@ -63,9 +63,17 @@ def test_make_tool_factories_returns_three_async_callables() -> None:
     )
     tools = runner._make_tool_factories(tools_service, metric_state)
 
-    assert len(tools) == 3
+    assert len(tools) == 7
     names = {fn.__name__ for fn in tools}
-    assert names == {"search_products_by_vector", "get_product_details", "get_all_store_locations"}
+    assert names == {
+        "search_products_by_vector",
+        "get_product_details",
+        "get_all_store_locations",
+        "find_stores_by_location",
+        "get_store_hours",
+        "find_nearest_stores",
+        "find_stores_with_product",
+    }
     for fn in tools:
         assert inspect.iscoroutinefunction(fn)
         assert inspect.getdoc(fn)
@@ -198,6 +206,69 @@ async def test_get_all_store_locations_closure_delegates_to_tools_service() -> N
 
     tools_service.get_all_store_locations.assert_awaited_once_with()
     assert result == [{"city": "Austin"}]
+
+
+async def test_store_query_closures_delegate_and_capture_sql_phases() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    tools_service = MagicMock()
+    tools_service.find_stores_by_location = AsyncMock(
+        return_value={"stores": [{"city": "Dallas"}], "sql_phases": [{"sql_key": "find-stores-by-location"}]}
+    )
+    tools_service.get_store_hours = AsyncMock(
+        return_value={"hours": {"monday": "6am-8pm"}, "sql_phases": [{"sql_key": "get-store-by-id"}]}
+    )
+    tools_service.find_nearest_stores = AsyncMock(
+        return_value={"stores": [{"city": "Dallas"}], "sql_phases": [{"sql_key": "list-stores"}]}
+    )
+    tools_service.find_stores_with_product = AsyncMock(
+        return_value={
+            "availability": [{"store_city": "Dallas"}],
+            "sql_phases": [{"sql_key": "find-product-availability-by-query"}],
+        }
+    )
+    metric_state: dict[str, Any] = {"sql_phases": []}
+    runner = ADKRunner(session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock())
+    tools = runner._make_tool_factories(tools_service, metric_state)
+    by_name = {fn.__name__: fn for fn in tools}
+
+    await by_name["find_stores_by_location"](city="Dallas", state="TX", zip_code="75201")
+    await by_name["get_store_hours"](16)
+    await by_name["find_nearest_stores"](32.78, -96.8)
+    await by_name["find_stores_with_product"]("Espresso Romano", latitude=32.78, longitude=-96.8)
+
+    tools_service.find_stores_by_location.assert_awaited_once_with(city="Dallas", state="TX", zip_code="75201")
+    tools_service.get_store_hours.assert_awaited_once_with(16)
+    tools_service.find_nearest_stores.assert_awaited_once_with(32.78, -96.8, 5)
+    tools_service.find_stores_with_product.assert_awaited_once_with("Espresso Romano", 32.78, -96.8)
+    assert [phase["sql_key"] for phase in metric_state["sql_phases"]] == [
+        "find-stores-by-location",
+        "get-store-by-id",
+        "list-stores",
+        "find-product-availability-by-query",
+    ]
+
+
+async def test_agent_tools_store_query_results_include_masked_sql_phases() -> None:
+    from app.domain.chat.services.adk import AgentToolsService
+
+    store_service = MagicMock()
+    store_service.find_nearest_stores = AsyncMock(return_value=[{"id": 16, "name": "Cymbal Coffee Dallas"}])
+    tools_service = AgentToolsService(
+        driver=MagicMock(),
+        product_service=MagicMock(),
+        metrics_service=MagicMock(),
+        vertex_ai_service=MagicMock(),
+        store_service=store_service,
+        cache_service=MagicMock(),
+    )
+
+    result = await tools_service.find_nearest_stores(32.78, -96.8)
+
+    store_service.find_nearest_stores.assert_awaited_once_with(32.78, -96.8, 5)
+    assert result["stores"] == [{"id": 16, "name": "Cymbal Coffee Dallas"}]
+    assert result["sql_phases"][0]["sql_key"] == "list-stores"
+    assert result["sql_phases"][0]["binds"] == {"origin": "<REQUEST_COORDINATES>", "limit": 5}
 
 
 def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch: Any) -> None:

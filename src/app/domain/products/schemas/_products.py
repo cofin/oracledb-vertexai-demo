@@ -49,10 +49,20 @@ class Store(CamelizedBaseStruct, omit_defaults=True):
     metadata: dict[str, Any] | None = None
 
 
+class StoreHours(CamelizedBaseStruct, omit_defaults=True):
+    """Store hours response contract."""
+
+    store_id: int
+    store_name: str
+    timezone: str | None = None
+    hours: dict[str, Any] = field(default_factory=dict)
+
+
 class StoreDistance(Store, omit_defaults=True):
     """Store row plus local coordinate ranking score."""
 
-    distance_score: float = 0.0
+    distance_miles: float = 0.0
+    distance_score: float | None = None
 
 
 class StoreProductInventory(CamelizedBaseStruct, omit_defaults=True):
@@ -74,6 +84,7 @@ class StoreInventoryItem(StoreProductInventory, omit_defaults=True):
     product_category: str | None = None
     product_sku: str | None = None
     product_price: float | None = None
+    distance_miles: float | None = None
 
 
 class ProductAvailability(StoreProductInventory, omit_defaults=True):
@@ -92,6 +103,7 @@ class ProductAvailability(StoreProductInventory, omit_defaults=True):
     product_category: str | None = None
     product_sku: str | None = None
     product_price: float | None = None
+    distance_miles: float | None = None
 
 
 class VectorQuery(CamelizedBaseStruct, omit_defaults=True):

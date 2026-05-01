@@ -5,21 +5,62 @@ from __future__ import annotations
 
 import re
 import time
+from math import asin, cos, radians, sin, sqrt
 from typing import TYPE_CHECKING, Any
 
 import structlog
 from google.genai.types import EmbedContentConfig
+from msgspec.structs import asdict
 from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.products.schemas import ExplainPlan, ExplainPlanRow, Product, ProductMatch, Store
+from app.domain.products.schemas import (
+    ExplainPlan,
+    ExplainPlanRow,
+    Product,
+    ProductAvailability,
+    ProductMatch,
+    Store,
+    StoreDistance,
+    StoreHours,
+    StoreInventoryItem,
+)
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
 
 logger = structlog.get_logger()
+
+
+def _haversine_miles(latitude: float, longitude: float, store: Store | ProductAvailability) -> float:
+    """Return local distance in miles without calling external Maps APIs."""
+    if store.latitude is None or store.longitude is None:
+        return float("inf")
+    earth_radius_miles = 3958.8
+    lat1 = radians(latitude)
+    lon1 = radians(longitude)
+    lat2 = radians(store.latitude)
+    lon2 = radians(store.longitude)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    return 2 * earth_radius_miles * asin(sqrt(a))
+
+
+def _location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
+    normalized = location_hint.casefold().strip()
+    if not normalized:
+        return True
+    fields = (
+        row.store_name,
+        row.store_address,
+        row.store_city,
+        row.store_state,
+        row.store_zip,
+    )
+    return any(normalized in str(field or "").casefold() for field in fields)
 
 # --- Product Service ---
 
@@ -85,24 +126,125 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
 
     async def find_stores_by_city(self, city: str) -> list[Store]:
         return await self.driver.select(
-            db_manager.get_sql("list-stores").where("city = :city"),
+            db_manager.get_sql("find-stores-by-city"),
             city=city,
             schema_type=Store,
         )
 
     async def find_stores_by_state(self, state: str) -> list[Store]:
         return await self.driver.select(
-            db_manager.get_sql("list-stores").where("state = :state"),
+            db_manager.get_sql("find-stores-by-state"),
             state=state,
+            schema_type=Store,
+        )
+
+    async def search_stores_by_zip(self, zip_code: str) -> list[Store]:
+        return await self.driver.select(
+            db_manager.get_sql("find-stores-by-zip"),
+            zip_code=zip_code,
+            schema_type=Store,
+        )
+
+    async def find_stores_by_location(
+        self,
+        *,
+        city: str | None = None,
+        state: str | None = None,
+        zip_code: str | None = None,
+    ) -> list[Store]:
+        return await self.driver.select(
+            db_manager.get_sql("find-stores-by-location"),
+            city=city,
+            state=state,
+            zip_code=zip_code,
             schema_type=Store,
         )
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("list-stores").where("id = :id"),
+            db_manager.get_sql("get-store-by-id"),
             id=store_id,
             schema_type=Store,
         )
+
+    async def get_store_hours(self, store_id: int) -> StoreHours | None:
+        store = await self.get_store_by_id(store_id)
+        if store is None:
+            return None
+        return StoreHours(
+            store_id=store.id,
+            store_name=store.name,
+            timezone=store.timezone,
+            hours=store.hours or {},
+        )
+
+    async def find_nearest_stores(self, latitude: float, longitude: float, limit: int = 5) -> list[StoreDistance]:
+        stores = await self.get_all_stores()
+        ranked = [
+            StoreDistance(
+                **asdict(store),
+                distance_miles=round(_haversine_miles(latitude, longitude, store), 2),
+            )
+            for store in stores
+            if store.latitude is not None and store.longitude is not None
+        ]
+        ranked.sort(key=lambda store: store.distance_miles)
+        return ranked[:limit]
+
+    async def get_store_inventory(self, store_id: int) -> list[StoreInventoryItem]:
+        return await self.driver.select(
+            db_manager.get_sql("list-store-inventory"),
+            store_id=store_id,
+            schema_type=StoreInventoryItem,
+        )
+
+    async def find_stores_with_product(
+        self,
+        product_id: int,
+        *,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ProductAvailability]:
+        rows = await self.driver.select(
+            db_manager.get_sql("find-stores-with-product-inventory"),
+            product_id=product_id,
+            schema_type=ProductAvailability,
+        )
+        return self._rank_availability(rows, latitude=latitude, longitude=longitude)
+
+    async def find_product_availability(
+        self,
+        query: str,
+        *,
+        location_hint: str | None = None,
+        coordinates: tuple[float, float] | None = None,
+    ) -> list[ProductAvailability]:
+        rows = await self.driver.select(
+            db_manager.get_sql("find-product-availability-by-query"),
+            product_query=query,
+            schema_type=ProductAvailability,
+        )
+        if location_hint:
+            rows = [row for row in rows if _location_hint_matches(row, location_hint)]
+        latitude, longitude = coordinates or (None, None)
+        return self._rank_availability(rows, latitude=latitude, longitude=longitude)
+
+    @staticmethod
+    def _rank_availability(
+        rows: list[ProductAvailability],
+        *,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> list[ProductAvailability]:
+        if latitude is None or longitude is None:
+            return rows
+        ranked: list[ProductAvailability] = []
+        for row in rows:
+            data = asdict(row)
+            data["distance_miles"] = round(_haversine_miles(latitude, longitude, row), 2)
+            ranked.append(ProductAvailability(**data))
+        ranked.sort(key=lambda row: row.distance_miles if row.distance_miles is not None else float("inf"))
+        return ranked
 
 # --- Vertex AI Service ---
 
