@@ -24,6 +24,7 @@ from app.lib.di import Inject
 logger = structlog.get_logger()
 _ADK_SESSION_KEY = "adk_session_id"
 _ADK_USER_KEY = "adk_user_id"
+_STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 
 
 @dataclass
@@ -261,6 +262,16 @@ class CoffeeChatController(Controller):
                 yield {
                     "event": "error",
                     "data": json.dumps({"type": "error", "message": str(getattr(exc, "detail", exc))}),
+                }
+            except Exception as exc:  # noqa: BLE001
+                await logger.aexception(
+                    "Chat stream failed after response started",
+                    error_type=type(exc).__name__,
+                    detail=str(exc),
+                )
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"type": "error", "message": _STREAM_ERROR_MESSAGE}),
                 }
 
         return ServerSentEvent(stream_events(), status_code=200)

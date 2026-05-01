@@ -68,6 +68,12 @@
   timings using `RETRIEVAL_QUERY`; streamed and HTMX-rendered assistant
   messages show intent, vector query, phase timings, embedding-cache hit, and
   response-cache hit indicators.
+- The Granian `Exception caught after response started` stream log was caused
+  by unhandled exceptions escaping the `/api/chat/stream` async generator after
+  SSE headers had been sent. Keep a broad generator-local exception boundary
+  that logs the real exception with `logger.aexception()` and yields a sanitized
+  SSE `error` event; do not rely on Litestar exception middleware for
+  post-start stream failures.
 - Remaining manual verification: destructive fresh-clone/start-infra timing,
   browser screenshot capture, and colleague cold readthrough.
 

@@ -215,6 +215,11 @@ preference examples.
 Look for exceptions or early returns while consuming ADK events. The expected
 path should drain the async event stream or return only after the final event.
 
+`Exception caught after response started` on `/api/chat/stream`:
+An exception escaped the SSE generator after headers were sent. Keep exception
+handling inside the generator, log the real exception there, and yield a
+sanitized `error` event for the browser.
+
 Session state missing:
 Confirm `_adk_session_identity()` stores IDs in the Litestar session and that
 `SQLSpecSessionService` is backed by `OracleAsyncADKStore`, not an in-memory
