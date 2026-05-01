@@ -50,7 +50,10 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
         assert f'id="{panel_id}"' in body, f"explore page must render panel {panel_id}"
     assert 'data-ui-panel="vector-search"' in body
     assert "data-metric-card" in body
-    assert 'data-chart-host="latency"' in body
+    assert 'data-chart-host="response-trends"' in body
+    assert 'data-chart-host="vector-performance"' in body
+    assert 'data-chart-host="system-breakdown"' in body
+    assert 'data-chart-host="classify-compare"' in body
     assert 'data-ui-popover-root="explore"' in body
 
 

@@ -3,7 +3,7 @@
 
 from litestar import Controller, get
 
-from app.domain.system.schemas import MetricCard, MetricsSummary, MetricsTimeSeries
+from app.domain.system.schemas import MetricCard, MetricsCharts, MetricsSummary
 from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
 
@@ -56,6 +56,6 @@ class MetricsController(Controller):
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")
-    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> MetricsTimeSeries:
-        """Return per-minute latency tracks for the latency chart."""
-        return await metrics_service.get_time_series(hours=1)
+    async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> MetricsCharts:
+        """Return the Explore dashboard chart payload."""
+        return await metrics_service.get_chart_data(hours=1)

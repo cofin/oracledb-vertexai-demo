@@ -21,3 +21,4 @@
 - All test paths in this PRD use the new `src/tests/unit/<module path>/...` and `src/tests/integration/<module path>/...` layout.
 - Current user-facing Oracle label is `Oracle 26ai`; do not restore older `Oracle 23ai` copy when recovering UI from screenshots.
 - Phase 3 restored the five-panel Explore contract, `/explore?q=...` query prefill, classify-compare present/missing endpoint behavior, and real HTMX form posting to `/api/vector-demo`.
+- Phase 4 restored the Explore analytics panel with ApexCharts for response trends, vector search performance, and system breakdown on a typed chart payload.

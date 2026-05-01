@@ -16,6 +16,10 @@ from app.config import db_manager
 from app.domain.system.schemas import (
     CacheStats,
     CacheStatsRow,
+    MetricsBreakdown,
+    MetricsBreakdownRow,
+    MetricsCharts,
+    MetricsScatterPoint,
     MetricsTimeSeries,
     MetricsTimeSeriesPoints,
     MetricsTimeSeriesRow,
@@ -281,5 +285,47 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
                 total_ms=[row.total_ms for row in rows],
                 oracle_ms=[row.oracle_ms for row in rows],
                 embedding_ms=[row.embedding_ms for row in rows],
+            ),
+        )
+
+    async def get_chart_data(self, hours: int = 1) -> MetricsCharts:
+        """Return all Explore dashboard chart projections for a shared time window."""
+        since = datetime.now(UTC) - timedelta(hours=hours)
+        time_series = await self.get_time_series(hours=hours)
+        scatter = await self.driver.select(
+            db_manager.get_sql("metrics-scatter-points"),
+            since=since,
+            schema_type=MetricsScatterPoint,
+        )
+        breakdown_row = await self.driver.select_one_or_none(
+            db_manager.get_sql("metrics-breakdown"),
+            since=since,
+            schema_type=MetricsBreakdownRow,
+        )
+        breakdown = breakdown_row or MetricsBreakdownRow(
+            embedding_ms=0.0,
+            oracle_ms=0.0,
+            ai_ms=0.0,
+            intent_ms=0.0,
+            other_ms=0.0,
+        )
+        return MetricsCharts(
+            time_series=time_series,
+            scatter=scatter,
+            breakdown=MetricsBreakdown(
+                labels=[
+                    "Vertex AI Embedding",
+                    "Oracle Vector Search",
+                    "AI Processing",
+                    "Intent Routing",
+                    "Application Logic",
+                ],
+                values=[
+                    breakdown.embedding_ms,
+                    breakdown.oracle_ms,
+                    breakdown.ai_ms,
+                    breakdown.intent_ms,
+                    breakdown.other_ms,
+                ],
             ),
         )

@@ -66,11 +66,29 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
-    {# Panel 4: latency time-series — Alpine + ApexCharts #}
-    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel p-4">
-      <h2 class="mb-2 text-sm font-semibold text-strong">4 · Latency time-series</h2>
-      <div data-chart-host="latency" x-data="latencyChart()" x-init="init()" x-ref="latencyHost"
-        class="chart-host h-64 w-full"></div>
+    {# Panel 4: dashboard charts — Alpine + ApexCharts #}
+    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel p-4 lg:col-span-2">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="mb-1 text-sm font-semibold text-strong">4 · Performance analytics</h2>
+          <p class="text-xs text-muted">Response trends, vector similarity, and component timing.</p>
+        </div>
+        <span class="telemetry-chip border-border bg-surface-strong/55 text-muted">auto refresh</span>
+      </div>
+      <div x-data="dashboardCharts()" x-init="init()" class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="min-w-0">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">Response time trends</h3>
+          <div data-chart-host="response-trends" x-ref="responseHost" class="chart-host h-72 w-full"></div>
+        </div>
+        <div class="min-w-0">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">Vector search performance</h3>
+          <div data-chart-host="vector-performance" x-ref="scatterHost" class="chart-host h-72 w-full"></div>
+        </div>
+        <div class="min-w-0 lg:col-span-2">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">System performance breakdown</h3>
+          <div data-chart-host="system-breakdown" x-ref="breakdownHost" class="chart-host h-72 w-full"></div>
+        </div>
+      </div>
     </section>
 
     <section id="panel-classify-compare" data-ui-panel="classify-compare" class="ui-panel p-4 lg:col-span-2">
@@ -101,24 +119,58 @@ SPDX-License-Identifier: Apache-2.0
 </section>
 
 <script>
-  function latencyChart() {
+  function dashboardCharts() {
     return {
-      chart: null,
+      charts: [],
       async init() {
         const data = await fetch('/api/metrics/charts').then((r) => r.json())
-        this.chart = new ApexCharts(this.$refs.latencyHost, {
-          chart: { type: 'line', height: 256, foreColor: '#a1a1aa', toolbar: { show: false } },
-          stroke: { curve: 'smooth', width: 2 },
-          xaxis: { categories: data.labels },
-          theme: { mode: 'dark' },
-          colors: ['#ca8a04', '#4ade80', '#60a5fa'],
+        const timeSeries = data.timeSeries ?? { labels: [], series: {} }
+        const series = timeSeries.series ?? {}
+        const scatter = Array.isArray(data.scatter) ? data.scatter : []
+        const breakdown = data.breakdown ?? { labels: [], values: [] }
+
+        this.charts.push(new ApexCharts(this.$refs.responseHost, {
+          chart: { type: 'line', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+          stroke: { curve: 'smooth', width: [3, 2, 2] },
+          grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
+          markers: { size: 3 },
+          xaxis: { categories: timeSeries.labels ?? [] },
+          yaxis: { title: { text: 'Milliseconds' } },
+          colors: ['#8f5f43', '#587487', '#6f8064'],
           series: [
-            { name: 'Total ms', data: data.series.totalMs },
-            { name: 'Oracle ms', data: data.series.oracleMs },
-            { name: 'Embedding ms', data: data.series.embeddingMs },
+            { name: 'Total response', data: series.totalMs ?? [] },
+            { name: 'Oracle vector', data: series.oracleMs ?? [] },
+            { name: 'Embedding', data: series.embeddingMs ?? [] },
           ],
-        })
-        this.chart.render()
+        }))
+
+        this.charts.push(new ApexCharts(this.$refs.scatterHost, {
+          chart: { type: 'scatter', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+          grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
+          colors: ['#8f5f43'],
+          xaxis: {
+            min: 0,
+            max: 1,
+            tickAmount: 5,
+            title: { text: 'Similarity score' },
+          },
+          yaxis: { title: { text: 'Total ms' } },
+          series: [{
+            name: 'Query performance',
+            data: scatter.map((point) => ({ x: point.similarityScore, y: point.totalMs })),
+          }],
+        }))
+
+        this.charts.push(new ApexCharts(this.$refs.breakdownHost, {
+          chart: { type: 'donut', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+          labels: breakdown.labels ?? [],
+          colors: ['#8f5f43', '#587487', '#6f8064', '#ca8a04', '#a9978d'],
+          legend: { position: 'right' },
+          plotOptions: { pie: { donut: { size: '62%' } } },
+          series: breakdown.values ?? [],
+        }))
+
+        this.charts.forEach((chart) => chart.render())
       },
     }
   }

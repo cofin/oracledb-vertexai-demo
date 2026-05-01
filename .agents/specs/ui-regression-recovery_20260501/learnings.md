@@ -20,3 +20,10 @@
 - **Files changed:** `src/app/domain/web/templates/pages/explore.html.j2`, `src/app/domain/web/controllers/_pages.py`, `src/app/domain/products/controllers/_vector.py`, `src/app/domain/system/controllers/_explore.py`, system schemas/controller exports, and focused web/vector/system tests.
 - **Validation:** Focused Explore/vector/system tests passed, `make test` passed with 211 tests, `./node_modules/.bin/vite build` passed with the existing large-bundle warning, and `make lint` passed cleanly.
 - **Learning:** Litestar's body DTO path rejects HTMX form posts when the route is declared as JSON body data, so the vector demo endpoint should parse JSON and form payloads from the request directly for the mixed HTMX/JSON contract.
+
+## 2026-05-01 05:42 - Phase 4: ApexCharts Dashboard Restoration
+
+- **Implemented:** Expanded `/api/metrics/charts` from a single latency series into a typed dashboard payload with response time-series, vector similarity scatter points, and component timing breakdown data; rendered all three views as bounded ApexCharts in the Explore analytics panel.
+- **Files changed:** `src/app/domain/system/schemas/_metrics.py`, `src/app/domain/system/services/services.py`, `src/app/domain/system/controllers/_metrics.py`, `src/app/db/sql/system.sql`, `src/app/domain/web/templates/pages/explore.html.j2`, named-SQL/page/frontend/chart tests, and system integration package markers.
+- **Validation:** Focused chart/page/named-SQL tests passed, `./node_modules/.bin/vite build` passed with the existing large-bundle warning, `make lint` passed cleanly, and `make test` passed with 215 tests.
+- **Learning:** Keep chart API shape aligned with the client by returning the full dashboard payload from one endpoint; the old single-series endpoint could not support response trends, scatter, and breakdown views without client-side guessing.

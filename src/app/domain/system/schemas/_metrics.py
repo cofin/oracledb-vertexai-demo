@@ -85,6 +85,40 @@ class MetricsTimeSeries(CamelizedBaseStruct, omit_defaults=True):
     series: MetricsTimeSeriesPoints
 
 
+class MetricsScatterPoint(CamelizedBaseStruct, omit_defaults=True):
+    """Single vector-search point for similarity-vs-latency charts."""
+
+    similarity_score: float
+    total_ms: float
+    oracle_ms: float
+    embedding_ms: float
+
+
+class MetricsBreakdownRow(CamelizedBaseStruct, omit_defaults=True):
+    """Aggregate component timing row projected from ``search_metric``."""
+
+    embedding_ms: float
+    oracle_ms: float
+    ai_ms: float
+    intent_ms: float
+    other_ms: float
+
+
+class MetricsBreakdown(CamelizedBaseStruct, omit_defaults=True):
+    """Labels and values for the system breakdown donut chart."""
+
+    labels: list[str]
+    values: list[float]
+
+
+class MetricsCharts(CamelizedBaseStruct, omit_defaults=True):
+    """Complete Explore dashboard chart payload."""
+
+    time_series: MetricsTimeSeries
+    scatter: list[MetricsScatterPoint]
+    breakdown: MetricsBreakdown
+
+
 class ClassifyCompare(CamelizedBaseStruct, omit_defaults=True):
     """Offline intent-classifier comparison payload for the explore page."""
 
