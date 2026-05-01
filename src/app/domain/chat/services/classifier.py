@@ -28,7 +28,7 @@ INTENT_VALUES: list[str] = [m.value for m in IntentLabel]
 _SYSTEM_INSTRUCTION = """Classify the user's coffee-related intent. Return exactly one label.
 
 Labels:
-- PRODUCT_RAG: menu, catalog, product, price, roast, caffeine, preparation, availability, substitution, or recommendation questions. Choose this for idioms and vague preference requests such as "something bold", "wake me up", "surprise me", "what's good today", "what should I get", "do you have decaf", or "what is on the menu".
+- PRODUCT_RAG: menu, catalog, product, price, roast, caffeine, preparation, availability, substitution, breakfast/food pairing, or recommendation questions. Choose this for idioms and vague preference requests such as "breakfast", "something bold", "wake me up", "surprise me", "what's good today", "what should I get", "do you have decaf", or "what is on the menu".
 - STORE_LOCATION: store locations, hours, addresses, nearest cafe, pickup location, or directions.
 - ORDER_STATUS: order status, delivery status, pickup status, refunds, or changes to an existing order.
 - GENERAL_CONVERSATION: greetings, thanks, small talk, or non-menu conversation.

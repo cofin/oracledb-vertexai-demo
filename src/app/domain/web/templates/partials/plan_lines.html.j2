@@ -16,8 +16,16 @@
       </p>
 
       {% if plan.plan_rows %}
-        <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-          <table class="w-full min-w-[42rem] text-left text-xs">
+        <div class="rounded-lg border border-border bg-surface">
+          <table class="w-full table-fixed text-left text-xs">
+            <colgroup>
+              <col class="w-10">
+              <col>
+              <col class="w-24">
+              <col class="w-16">
+              <col class="w-20">
+              <col class="w-20">
+            </colgroup>
             <thead class="bg-surface-strong text-muted">
               <tr>
                 <th class="px-3 py-2 font-semibold">Id</th>
@@ -32,11 +40,11 @@
               {% for row in plan.plan_rows %}
                 <tr data-plan-row class="border-t border-border {% if row.is_vector %}bg-accent-soft/60 text-accent-strong{% else %}text-strong{% endif %}">
                   <td class="px-3 py-2 font-mono">{{ row.id }}</td>
-                  <td class="px-3 py-2 font-medium">{{ row.operation }}</td>
-                  <td class="px-3 py-2 font-mono text-muted">{{ row.name or '—' }}</td>
+                  <td class="break-words px-3 py-2 font-medium">{{ row.operation }}</td>
+                  <td class="break-words px-3 py-2 font-mono text-muted">{{ row.name or '—' }}</td>
                   <td class="px-3 py-2 text-right font-mono text-muted">{{ row.rows or '—' }}</td>
-                  <td class="px-3 py-2 text-right font-mono text-muted">{{ row.cost or '—' }}</td>
-                  <td class="px-3 py-2 text-right font-mono text-muted">{{ row.time or '—' }}</td>
+                  <td class="break-words px-3 py-2 text-right font-mono text-muted">{{ row.cost or '—' }}</td>
+                  <td class="break-words px-3 py-2 text-right font-mono text-muted">{{ row.time or '—' }}</td>
                 </tr>
               {% endfor %}
             </tbody>

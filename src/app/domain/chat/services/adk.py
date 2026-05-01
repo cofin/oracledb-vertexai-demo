@@ -30,6 +30,7 @@ from app.domain.chat.services.classifier import (
 )
 from app.domain.chat.services.workflow import make_workflow
 from app.domain.products.services import ProductService, StoreService, VertexAIService  # noqa: TC001
+from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, CacheService, MetricsService, PersonaManager
 from app.lib.service import SQLSpecAsyncService
 from app.lib.settings import get_settings
@@ -199,6 +200,29 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
         metric_state.setdefault("sql_phases", []).extend(sql_phases)
 
 
+def _similarity_score(products: list[Any]) -> float | None:
+    if not products:
+        return None
+    first = products[0]
+    value = first.get("similarity_score") if isinstance(first, dict) else getattr(first, "similarity_score", None)
+    return float(value) if isinstance(value, int | float) else None
+
+
+def _product_lookup_ran(search_metrics: dict[str, Any], sql_phases: list[dict[str, Any]]) -> bool:
+    return bool(
+        search_metrics.get("vector_query")
+        or search_metrics.get("products_found")
+        or search_metrics.get("results_count")
+        or any(phase.get("sql_key") == "vector-search-products" for phase in sql_phases)
+    )
+
+
+def _effective_intent(intent_detected: str, search_metrics: dict[str, Any], sql_phases: list[dict[str, Any]]) -> str:
+    if _product_lookup_ran(search_metrics, sql_phases):
+        return _PRODUCT_RAG_INTENT
+    return intent_detected
+
+
 async def _ground_product_rag_turn(
     query: str,
     metric_state: dict[str, Any],
@@ -247,6 +271,17 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         oracle_ms = (time.time() - oracle_start) * 1000
         tool_total_ms = embedding_ms + oracle_ms
         model = str(getattr(self.vertex_ai_service, "embedding_model", "unknown"))
+        await self.metrics_service.record_search(
+            SearchMetricsCreate(
+                query_id=str(uuid.uuid4()),
+                user_id="chat",
+                search_time_ms=tool_total_ms,
+                embedding_time_ms=embedding_ms,
+                oracle_time_ms=oracle_ms,
+                similarity_score=_similarity_score(products),
+                result_count=len(products),
+            )
+        )
         return {
             "products": sanitize_for_json(products),
             "embedding_cache_hit": cache_hit,
@@ -526,7 +561,12 @@ class ADKRunner:
         cached_metrics = dict(cached_response.get("search_metrics") or {})
         cached_metrics["total_ms"] = round(elapsed_ms)
         answer = str(cached_response.get("answer", ""))
-        intent_detected = str(cached_response.get("intent_detected", "GENERAL_CONVERSATION"))
+        sql_phases = _coerce_sql_phases(cached_response.get("sql_phases"))
+        intent_detected = _effective_intent(
+            str(cached_response.get("intent_detected", "GENERAL_CONVERSATION")),
+            cached_metrics,
+            sql_phases,
+        )
         if answer:
             await self._append_display_history(
                 user_id=user_id,
@@ -544,7 +584,7 @@ class ADKRunner:
             "search_metrics": cached_metrics,
             "from_cache": True,
             "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit")),
-            "sql_phases": [response_cache_phase, *_coerce_sql_phases(cached_response.get("sql_phases"))],
+            "sql_phases": [response_cache_phase, *sql_phases],
         }
 
     async def _product_rag_event(
@@ -680,16 +720,22 @@ class ADKRunner:
                 raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
             raise
 
-        intent_detected = str(workflow_output.get("intent") or intent_detected or "GENERAL_CONVERSATION")
-
         answer = str(workflow_output.get("answer") or "".join(answer_parts) or "".join(partial_answer_parts))
-        if intent_detected == _PRODUCT_RAG_INTENT:
-            answer = await _ground_product_rag_turn(query, metric_state, tools_service)
-
         elapsed_ms = (time.time() - start) * 1000
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
         product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        intent_detected = _effective_intent(
+            str(workflow_output.get("intent") or intent_detected or "GENERAL_CONVERSATION"),
+            search_metrics,
+            product_sql_phases,
+        )
+        if intent_detected == _PRODUCT_RAG_INTENT:
+            answer = await _ground_product_rag_turn(query, metric_state, tools_service)
+            elapsed_ms = (time.time() - start) * 1000
+            search_metrics = dict(metric_state.get("search_metrics", {}))
+            search_metrics["total_ms"] = round(elapsed_ms)
+            product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
         sql_phases = [response_cache_phase, *product_sql_phases]
 
         response_data = {

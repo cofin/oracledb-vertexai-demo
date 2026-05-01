@@ -1,0 +1,10 @@
+{
+  "flow_id": "settings-config-consolidation_20260501",
+  "type": "prd",
+  "status": "review",
+  "parent_prd": null,
+  "beads_epic_id": null,
+  "created_at": "2026-05-01T16:31:11Z",
+  "updated_at": "2026-05-01T16:31:11Z",
+  "description": "Review and consolidate src/app/lib/settings.py by removing unused settings branches, wiring or deleting drifted config knobs, aligning .env/tooling contracts, and narrowing AI/chat/cache/database/web/logging settings around live runtime behavior."
+}

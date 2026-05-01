@@ -101,6 +101,27 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
     assert metric_state["rag_products"] == [{"id": 1, "name": "Midnight Brew"}]
 
 
+def test_effective_intent_promotes_actual_product_lookup() -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    assert (
+        adk_module._effective_intent(
+            "GENERAL_CONVERSATION",
+            {"vector_query": "breakfast", "results_count": 1},
+            [],
+        )
+        == "PRODUCT_RAG"
+    )
+    assert (
+        adk_module._effective_intent(
+            "GENERAL_CONVERSATION",
+            {},
+            [{"sql_key": "vector-search-products"}],
+        )
+        == "PRODUCT_RAG"
+    )
+
+
 async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
     from app.domain.chat.services.adk import AgentToolsService
 
@@ -109,11 +130,13 @@ async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
     vertex_ai_service = MagicMock()
     vertex_ai_service.embedding_model = "gemini-embedding-001"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
+    metrics_service = MagicMock()
+    metrics_service.record_search = AsyncMock()
 
     tools_service = AgentToolsService(
         driver=MagicMock(),
         product_service=product_service,
-        metrics_service=MagicMock(),
+        metrics_service=metrics_service,
         vertex_ai_service=vertex_ai_service,
         store_service=MagicMock(),
         cache_service=MagicMock(),
@@ -127,6 +150,12 @@ async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
         return_cache_status=True,
     )
     product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2)
+    metrics_service.record_search.assert_awaited_once()
+    metrics = metrics_service.record_search.await_args.args[0]
+    assert metrics.user_id == "chat"
+    assert metrics.result_count == 1
+    assert metrics.embedding_time_ms >= 0
+    assert metrics.oracle_time_ms >= 0
     assert result["vector_query"] == "dark roast"
     assert result["embedding_cache_hit"] is True
     assert result["search_metrics"]["vector_query"] == "dark roast"
@@ -592,6 +621,50 @@ async def test_process_request_returns_cached_response_without_model(monkeypatch
     assert result["from_cache"] is True
     assert result["embedding_cache_hit"] is True
     assert result["search_metrics"]["results_count"] == 2
+
+
+async def test_cached_response_with_product_lookup_metrics_promotes_visible_intent(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-cache"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(
+        return_value={
+            "answer": "The Wakey Wakey Waffles are a popular choice.",
+            "intent_detected": "GENERAL_CONVERSATION",
+            "search_metrics": {"vector_query": "breakfast", "results_count": 1},
+            "embedding_cache_hit": False,
+            "sql_phases": [{"sql_key": "vector-search-products"}],
+        }
+    )
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("Runner should not be constructed on cache hit")
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=MagicMock())
+
+    result = await runner.process_request(
+        query="breakfast",
+        user_id="u1",
+        session_id="sess-cache",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert result["answer"].startswith("The Wakey Wakey Waffles")
+    assert result["intent_detected"] == "PRODUCT_RAG"
+    assert result["search_metrics"]["vector_query"] == "breakfast"
 
 
 async def test_process_request_raises_ai_service_unconfigured_on_credential_error(

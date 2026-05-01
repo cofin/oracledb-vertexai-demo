@@ -35,6 +35,10 @@ def test_explore_dashboard_defines_bounded_apexcharts() -> None:
     assert "height: 286" in source
     assert "data-plan-line" in plan_partial
     assert "data-plan-row" in plan_partial
+    assert "overflow-x-auto" not in plan_partial
+    assert "min-w-[42rem]" not in plan_partial
+    assert "table-fixed" in plan_partial
+    assert "break-words" in plan_partial
     assert "text-surface" in template
     assert "x-data" not in template
     assert "x-ref" not in template

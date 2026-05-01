@@ -67,6 +67,7 @@ async def test_classifier_passes_text_x_enum_config() -> None:
     assert cfg.response_schema == {"type": "STRING", "enum": INTENT_VALUES}
     assert cfg.temperature == 0
     assert "what is on the menu" in cfg.system_instruction
+    assert "breakfast" in cfg.system_instruction
     assert "something bold" in cfg.system_instruction
     assert "When a coffee or menu request is ambiguous, choose PRODUCT_RAG" in cfg.system_instruction
 
