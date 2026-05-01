@@ -158,6 +158,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         "search_metrics",
         "from_cache",
         "embedding_cache_hit",
+        "sql_phases",
     }
     assert result["session_id"] == session_id
     assert result["intent_detected"] == IntentLabel.PRODUCT_RAG.value
@@ -169,6 +170,11 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
     assert result["response_time_ms"] < 4000
     assert result["from_cache"] is False
     assert result["embedding_cache_hit"] is True
+    sql_keys = {phase["sql_key"] for phase in result["sql_phases"]}
+    assert {"get-cached-response", "get-cached-embedding", "vector-search-products"} <= sql_keys
+    vector_phase = next(phase for phase in result["sql_phases"] if phase["sql_key"] == "vector-search-products")
+    assert vector_phase["row_count"] >= 1
+    assert vector_phase["binds"]["query_vector"].startswith("<VECTOR[3072 FLOAT32], sha256=")
     assert classifier.phrases == [query]
 
     persisted = await session_service.get_session(

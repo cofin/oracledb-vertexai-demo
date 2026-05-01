@@ -224,6 +224,7 @@ class CoffeeChatController(Controller):
                 answer=answer,
                 query_id=str(uuid.uuid4()),
                 search_metrics=result.get("search_metrics", {}),
+                sql_phases=result.get("sql_phases", []),
                 from_cache=from_cache,
                 embedding_cache_hit=bool(result.get("embedding_cache_hit", False)),
                 intent_detected=intent,

@@ -25,6 +25,17 @@ _FAKE_REPLY: dict[str, Any] = {
     "from_cache": False,
     "embedding_cache_hit": True,
     "intent_detected": "PRODUCT_RAG",
+    "sql_phases": [
+        {
+            "label": "Oracle vector search",
+            "sql_key": "vector-search-products",
+            "sql": "SELECT * FROM product WHERE VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold",
+            "binds": {"query_vector": "<VECTOR[3072 FLOAT32], sha256=abc123, norm=1.0>", "threshold": 0.5},
+            "row_count": 1,
+            "runtime_ms": 11,
+            "cache_status": "miss",
+        }
+    ],
 }
 
 
@@ -119,6 +130,8 @@ async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
     assert '"intent_detected": "PRODUCT_RAG"' in response.text
     assert '"vector_query": "ethiopian"' in response.text
     assert '"embedding_cache_hit": true' in response.text
+    assert '"sql_key": "vector-search-products"' in response.text
+    assert "<VECTOR[3072 FLOAT32]" in response.text
 
 
 async def test_stream_handles_runner_exception_after_response_started(

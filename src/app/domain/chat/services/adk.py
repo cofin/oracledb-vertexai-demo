@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 import uuid
 from hashlib import sha256
+from math import fsum, sqrt
 from typing import TYPE_CHECKING, Any, cast
 
 import structlog
@@ -19,6 +20,7 @@ from google.genai import types
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 from sqlspec.extensions.adk import SQLSpecSessionService  # noqa: TC002
 
+from app.config import db_manager
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services.classifier import FlashLiteIntentClassifier  # noqa: TC001
 from app.domain.chat.services.workflow import make_workflow
@@ -49,6 +51,7 @@ _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "search_metrics",
     "from_cache",
     "embedding_cache_hit",
+    "sql_phases",
 )
 
 
@@ -62,6 +65,60 @@ def _format_price(value: Any) -> str:
     if not isinstance(value, int | float):
         return ""
     return f" (${value:.2f})"
+
+
+def _named_sql_text(sql_key: str) -> str:
+    return str(db_manager.get_sql(sql_key).sql)
+
+
+def _sha256_text(value: str) -> str:
+    return sha256(value.encode()).hexdigest()
+
+
+def _summarize_vector(values: Any) -> str:
+    if not isinstance(values, list | tuple):
+        return "<VECTOR[unknown FLOAT32]>"
+    floats = [float(value) for value in values]
+    digest = sha256(",".join(f"{value:.8g}" for value in floats).encode()).hexdigest()[:12]
+    norm = sqrt(fsum(value * value for value in floats))
+    return f"<VECTOR[{len(floats)} FLOAT32], sha256={digest}, norm={norm:.4f}>"
+
+
+def _sql_phase(
+    *,
+    label: str,
+    sql_key: str,
+    binds: dict[str, Any],
+    row_count: int,
+    runtime_ms: float,
+    cache_status: str,
+) -> dict[str, Any]:
+    return {
+        "label": label,
+        "sql_key": sql_key,
+        "sql": _named_sql_text(sql_key),
+        "binds": sanitize_for_json(binds),
+        "row_count": row_count,
+        "runtime_ms": round(runtime_ms, 2),
+        "cache_status": cache_status,
+    }
+
+
+def _response_cache_phase(cache_key: str, *, hit: bool, runtime_ms: float) -> dict[str, Any]:
+    return _sql_phase(
+        label="Response cache lookup",
+        sql_key="get-cached-response",
+        binds={"key_hash": _sha256_text(cache_key)[:16]},
+        row_count=1 if hit else 0,
+        runtime_ms=runtime_ms,
+        cache_status="hit" if hit else "miss",
+    )
+
+
+def _coerce_sql_phases(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict) and item.get("sql_key")]
 
 
 def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
@@ -98,6 +155,9 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
     search_metrics["vector_query"] = str(result.get("vector_query") or query)
     search_metrics["results_count"] = products_found
     search_metrics["products_found"] = products_found
+    sql_phases = _coerce_sql_phases(result.get("sql_phases"))
+    if sql_phases:
+        metric_state.setdefault("sql_phases", []).extend(sql_phases)
 
 
 async def _ground_product_rag_turn(
@@ -147,6 +207,7 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         products = await self.product_service.search_by_vector(embedding, similarity_threshold, limit)
         oracle_ms = (time.time() - oracle_start) * 1000
         tool_total_ms = embedding_ms + oracle_ms
+        model = str(getattr(self.vertex_ai_service, "embedding_model", "unknown"))
         return {
             "products": sanitize_for_json(products),
             "embedding_cache_hit": cache_hit,
@@ -158,6 +219,28 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
                 "oracle_ms": round(oracle_ms, 2),
                 "tool_ms": round(tool_total_ms, 2),
             },
+            "sql_phases": [
+                _sql_phase(
+                    label="Embedding cache lookup",
+                    sql_key="get-cached-embedding",
+                    binds={"hash": _sha256_text(query), "model": model},
+                    row_count=1 if cache_hit else 0,
+                    runtime_ms=embedding_ms,
+                    cache_status="hit" if cache_hit else "miss",
+                ),
+                _sql_phase(
+                    label="Oracle vector search",
+                    sql_key="vector-search-products",
+                    binds={
+                        "query_vector": _summarize_vector(embedding),
+                        "threshold": similarity_threshold,
+                        "limit": limit,
+                    },
+                    row_count=len(products),
+                    runtime_ms=oracle_ms,
+                    cache_status="miss",
+                ),
+            ],
         }
 
     async def get_product_details(self, product_id: str) -> dict[str, Any]:
@@ -362,11 +445,18 @@ class ADKRunner:
         session = await self._get_or_create_session(user_id, session_id)
 
         cache_key = tools_service.make_response_cache_key(query, persona)
+        cache_start = time.time()
         cached_response = await tools_service.get_cached_chat_response(cache_key)
+        response_cache_phase = _response_cache_phase(
+            cache_key,
+            hit=bool(cached_response),
+            runtime_ms=(time.time() - cache_start) * 1000,
+        )
         if cached_response:
             elapsed_ms = (time.time() - start) * 1000
             cached_metrics = dict(cached_response.get("search_metrics") or {})
             cached_metrics["total_ms"] = round(elapsed_ms)
+            sql_phases = [response_cache_phase, *_coerce_sql_phases(cached_response.get("sql_phases"))]
             yield {
                 "type": "final",
                 "answer": str(cached_response.get("answer", "")),
@@ -376,13 +466,14 @@ class ADKRunner:
                 "search_metrics": cached_metrics,
                 "from_cache": True,
                 "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit", False)),
+                "sql_phases": sql_phases,
             }
             return
 
         instruction = self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
         temperature = self._persona_manager.get_temperature(persona)
 
-        metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False}
+        metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
         tools = self._make_tool_factories(tools_service, metric_state)
         workflow = self._build_workflow(instruction, temperature, tools)
 
@@ -423,12 +514,15 @@ class ADKRunner:
         elapsed_ms = (time.time() - start) * 1000
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
+        product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        sql_phases = [response_cache_phase, *product_sql_phases]
 
         response_data = {
             "answer": answer,
             "intent_detected": intent_detected,
             "search_metrics": search_metrics,
             "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
+            "sql_phases": product_sql_phases,
         }
         if answer:
             await tools_service.set_cached_chat_response(cache_key, response_data)
@@ -442,6 +536,7 @@ class ADKRunner:
             "search_metrics": search_metrics,
             "from_cache": False,
             "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
+            "sql_phases": sql_phases,
         }
 
     async def process_request(
@@ -475,6 +570,7 @@ class ADKRunner:
             "search_metrics": {},
             "from_cache": False,
             "embedding_cache_hit": False,
+            "sql_phases": [],
         }
 
 

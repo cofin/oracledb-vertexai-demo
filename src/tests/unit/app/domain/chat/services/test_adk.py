@@ -107,6 +107,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
     product_service = MagicMock()
     product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew"}])
     vertex_ai_service = MagicMock()
+    vertex_ai_service.embedding_model = "gemini-embedding-001"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
 
     tools_service = AgentToolsService(
@@ -130,6 +131,14 @@ async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
     assert result["embedding_cache_hit"] is True
     assert result["search_metrics"]["vector_query"] == "dark roast"
     assert {"embedding_ms", "oracle_ms", "tool_ms"} <= result["search_metrics"].keys()
+    assert result["sql_phases"][0]["sql_key"] == "get-cached-embedding"
+    assert result["sql_phases"][0]["binds"]["model"] == vertex_ai_service.embedding_model
+    assert result["sql_phases"][0]["cache_status"] == "hit"
+    assert result["sql_phases"][1]["sql_key"] == "vector-search-products"
+    assert result["sql_phases"][1]["row_count"] == 1
+    assert result["sql_phases"][1]["binds"]["query_vector"].startswith("<VECTOR[2 FLOAT32], sha256=")
+    assert result["sql_phases"][1]["binds"]["query_vector"].endswith(">")
+    assert result["sql_phases"][1]["binds"]["query_vector"] != str([0.1, 0.2])
 
 
 async def test_get_product_details_closure_delegates_to_tools_service() -> None:
@@ -283,6 +292,17 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
             "results_count": 1,
             "vector_query": "recommend something",
             "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+            "sql_phases": [
+                {
+                    "label": "Oracle vector search",
+                    "sql_key": "vector-search-products",
+                    "sql": "SELECT * FROM product",
+                    "binds": {"query_vector": "<VECTOR[3072 FLOAT32], sha256=abc123, norm=1.0>"},
+                    "row_count": 1,
+                    "runtime_ms": 5.0,
+                    "cache_status": "miss",
+                }
+            ],
         }
     )
 
@@ -309,11 +329,14 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
         "search_metrics",
         "from_cache",
         "embedding_cache_hit",
+        "sql_phases",
     }
     assert set(result.keys()) == expected_keys
     assert "Yirgacheffe" in result["answer"]
     assert result["session_id"] == "sess-42"
     assert result["intent_detected"] == "PRODUCT_RAG"
+    sql_keys = {phase["sql_key"] for phase in result["sql_phases"]}
+    assert {"get-cached-response", "vector-search-products"} <= sql_keys
     assert isinstance(result["response_time_ms"], float)
     run_kwargs = fake_runner.run_async.call_args.kwargs
     assert run_kwargs["run_config"].streaming_mode.value == "sse"

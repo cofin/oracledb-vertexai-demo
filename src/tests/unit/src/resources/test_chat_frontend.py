@@ -28,6 +28,10 @@ def test_chat_stream_renders_message_level_telemetry() -> None:
     assert "payload.embedding_cache_hit" in source
     assert "payload.from_cache" in source
     assert "renderMessageTelemetry(payload)" in source
+    assert "data-telemetry-detail" in source
+    assert "showTelemetryPopover" in source
+    assert "payload.sql_phases" in source
+    assert "SQL" in source
 
 
 def test_chat_stream_final_payload_replaces_speculative_delta_text() -> None:

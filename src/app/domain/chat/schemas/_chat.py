@@ -43,6 +43,7 @@ class CoffeeChatReply(CamelizedBaseStruct, omit_defaults=True):
     answer: str
     query_id: str
     search_metrics: dict = {}
+    sql_phases: list[dict] = []
     from_cache: bool = False
     embedding_cache_hit: bool = False
     intent_detected: str = "GENERAL_CONVERSATION"
