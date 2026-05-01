@@ -19,8 +19,16 @@
       embed <span class="font-semibold text-strong">{{ metrics_badges.embedding_ms }} ms</span>
     </span>
   {% endif %}
+  {% if metrics_badges.vector_query %}
+    <span class="rounded-full border border-border bg-surface-strong/60 px-2 py-0.5 text-muted">
+      query <span class="font-semibold text-strong">&ldquo;{{ metrics_badges.vector_query }}&rdquo;</span>
+    </span>
+  {% endif %}
+  {% if metrics_badges.embedding_cache_hit %}
+    <span class="rounded-full bg-success/15 px-2 py-0.5 text-success">embedding hit</span>
+  {% endif %}
   {% if metrics_badges.from_cache %}
-    <span class="rounded-full bg-success/15 px-2 py-0.5 text-success">cache hit</span>
+    <span class="rounded-full bg-success/15 px-2 py-0.5 text-success">response hit</span>
   {% endif %}
   {% if metrics_badges.intent %}
     <span class="rounded-full bg-accent-soft px-2 py-0.5 text-accent-strong">{{ metrics_badges.intent }}</span>

@@ -42,12 +42,15 @@ const renderMetrics = (payload) => {
     return
   }
   const metrics = payload.search_metrics ?? {}
+  const vectorQuery = metrics.vector_query ?? metrics.query
   const badges = [
     ["Intent", payload.intent_detected],
+    ["Query", vectorQuery],
     ["Total", Number.isFinite(metrics.total_ms) ? `${metrics.total_ms} ms` : null],
     ["Oracle", Number.isFinite(metrics.oracle_ms) ? `${metrics.oracle_ms} ms` : null],
     ["Embedding", Number.isFinite(metrics.embedding_ms) ? `${metrics.embedding_ms} ms` : null],
-    ["Source", payload.from_cache ? "Cache" : "Live"],
+    ["Embedding cache", payload.embedding_cache_hit ? "Hit" : null],
+    ["Source", payload.from_cache ? "Response cache" : "Live"],
   ].filter(([, value]) => value)
 
   target.innerHTML = badges
@@ -56,6 +59,50 @@ const renderMetrics = (payload) => {
         `<span class="rounded-full border border-border bg-accent-soft px-2.5 py-1 text-accent-strong">${label}: ${escapeHtml(String(value))}</span>`,
     )
     .join("")
+}
+
+const formatMetricMs = (value) => {
+  if (!Number.isFinite(value)) {
+    return null
+  }
+  return `${Math.round(value)} ms`
+}
+
+const telemetryChip = (icon, label, value, variant = "neutral") => {
+  const variantClass =
+    variant === "hit"
+      ? "border-success/25 bg-success/10 text-success"
+      : "border-border bg-surface-strong/55 text-muted"
+  return `<span class="inline-flex min-w-0 items-center gap-1.5 rounded-full border ${variantClass} px-2 py-0.5" title="${escapeHtml(
+    `${label}: ${value}`,
+  )}">
+    <span class="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-surface text-[10px] font-semibold text-accent-strong" aria-hidden="true">${icon}</span>
+    <span class="truncate">${escapeHtml(String(value))}</span>
+  </span>`
+}
+
+const renderMessageTelemetry = (payload) => {
+  const target = document.getElementById("pending-reply-meta")
+  if (!target) {
+    return
+  }
+
+  const metrics = payload.search_metrics ?? {}
+  const vectorQuery = metrics.vector_query ?? metrics.query
+  const chips = [
+    payload.intent_detected ? telemetryChip("I", "Intent", payload.intent_detected) : null,
+    vectorQuery ? telemetryChip("Q", "Vector query", `"${vectorQuery}"`) : null,
+    formatMetricMs(metrics.total_ms) ? telemetryChip("T", "Total response", formatMetricMs(metrics.total_ms)) : null,
+    formatMetricMs(metrics.embedding_ms)
+      ? telemetryChip("E", "Embedding phase", formatMetricMs(metrics.embedding_ms))
+      : null,
+    formatMetricMs(metrics.oracle_ms) ? telemetryChip("O", "Oracle vector phase", formatMetricMs(metrics.oracle_ms)) : null,
+    payload.embedding_cache_hit ? telemetryChip("E", "Embedding cache", "hit", "hit") : null,
+    payload.from_cache ? telemetryChip("R", "Response cache", "hit", "hit") : null,
+  ].filter(Boolean)
+
+  target.hidden = chips.length === 0
+  target.innerHTML = chips.join("")
 }
 
 const showChatError = (message) => {
@@ -92,6 +139,7 @@ const appendUserAndPendingMessages = (message) => {
         <span class="font-medium text-muted">Barista</span>
       </header>
       <p id="pending-reply-text" class="mt-2 whitespace-pre-wrap text-base text-strong"></p>
+      <div id="pending-reply-meta" class="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]" hidden></div>
       <div class="mt-3 flex items-center gap-1.5">
         <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
         <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
@@ -128,6 +176,7 @@ const finalizePendingReply = () => {
   const pending = document.getElementById("pending-reply")
   const target = document.getElementById("pending-reply-text")
   pending?.querySelector(".typing-dot")?.parentElement?.remove()
+  pending?.querySelector("#pending-reply-meta")?.removeAttribute("id")
   pending?.removeAttribute("id")
   target?.removeAttribute("id")
 }
@@ -159,6 +208,7 @@ const handleChatStreamEvent = ({ eventName, data }) => {
     if (!currentText.trim()) {
       setPendingText(payload.answer ?? "")
     }
+    renderMessageTelemetry(payload)
     renderMetrics(payload)
     finalizePendingReply()
     return

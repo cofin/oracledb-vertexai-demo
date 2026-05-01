@@ -190,11 +190,19 @@ Embedding cache state is reported separately from response cache state.
 
 When product search runs, the tool records:
 
+- `vector_query`
+- `embedding_ms`
+- `oracle_ms`
+- `tool_ms`
 - `results_count`
 - `products_found`
 - `embedding_cache_hit`
 
-The UI reads these fields for badges and for "did RAG happen?" debugging.
+The UI reads these fields for message-level telemetry badges and for "did RAG
+happen?" debugging. Preserve the vector query and phase timings when changing
+ADK tools, because the demo is meant to make intent routing, Oracle vector
+lookup, embedding cache hits, and response cache hits visible in the chat
+message itself.
 
 ## Debugging Checklist
 

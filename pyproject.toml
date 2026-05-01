@@ -235,6 +235,8 @@ module = ["app.db.migrations.*"]
 [tool.pytest.ini_options]
 addopts = ["-ra"]
 filterwarnings = [
+    "ignore:.*authlib\\.jose module is deprecated.*:authlib.deprecate.AuthlibDeprecationWarning:authlib\\._joserfc_helpers",
+    "ignore:.*\\[EXPERIMENTAL\\] feature FeatureName\\.(PLUGGABLE_AUTH|PROGRESSIVE_SSE_STREAMING) is enabled\\.:UserWarning:google\\.adk\\.features\\._feature_decorator",
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",

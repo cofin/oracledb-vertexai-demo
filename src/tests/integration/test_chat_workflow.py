@@ -157,6 +157,8 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
     assert result["answer"]
     assert result["search_metrics"]["products_found"] >= 1
     assert result["search_metrics"]["results_count"] == result["search_metrics"]["products_found"]
+    assert result["search_metrics"]["vector_query"] == query
+    assert {"embedding_ms", "oracle_ms", "tool_ms"} <= result["search_metrics"].keys()
     assert result["response_time_ms"] < 4000
     assert result["from_cache"] is False
     assert result["embedding_cache_hit"] is True

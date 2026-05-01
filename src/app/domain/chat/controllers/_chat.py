@@ -43,7 +43,9 @@ def _metrics_badges(result: dict, intent: str, from_cache: bool) -> dict:
         "total_ms": metrics.get("total_ms"),
         "oracle_ms": metrics.get("oracle_ms"),
         "embedding_ms": metrics.get("embedding_ms"),
+        "vector_query": metrics.get("vector_query"),
         "from_cache": from_cache,
+        "embedding_cache_hit": bool(result.get("embedding_cache_hit")),
         "intent": intent,
     }
 
@@ -204,6 +206,7 @@ class CoffeeChatController(Controller):
                     "intent_detected": intent,
                     "latency_ms": latency,
                     "from_cache": from_cache,
+                    "embedding_cache_hit": bool(result.get("embedding_cache_hit", False)),
                     "metrics_badges": badges,
                 },
                 trigger_event="chat:reply-rendered",

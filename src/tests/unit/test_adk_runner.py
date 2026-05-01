@@ -76,7 +76,13 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
 
     tools_service = MagicMock()
     tools_service.search_products_by_vector = AsyncMock(
-        return_value={"products": [{"id": 1}], "embedding_cache_hit": True, "results_count": 1}
+        return_value={
+            "products": [{"id": 1}],
+            "embedding_cache_hit": True,
+            "results_count": 1,
+            "vector_query": "dark roast",
+            "search_metrics": {"embedding_ms": 12.2, "oracle_ms": 4.4, "tool_ms": 16.6},
+        }
     )
     metric_state: dict[str, Any] = {}
     runner = ADKRunner(session_service=MagicMock(), classifier=MagicMock(), persona_manager=MagicMock())
@@ -88,6 +94,41 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
     tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5)
     assert result["products"] == [{"id": 1}]
     assert metric_state["embedding_cache_hit"] is True
+    assert metric_state["search_metrics"]["vector_query"] == "dark roast"
+    assert metric_state["search_metrics"]["embedding_ms"] == 12.2
+    assert metric_state["search_metrics"]["oracle_ms"] == 4.4
+    assert metric_state["search_metrics"]["results_count"] == 1
+
+
+async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
+    from app.domain.chat.services.adk import AgentToolsService
+
+    product_service = MagicMock()
+    product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew"}])
+    vertex_ai_service = MagicMock()
+    vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
+
+    tools_service = AgentToolsService(
+        driver=MagicMock(),
+        product_service=product_service,
+        metrics_service=MagicMock(),
+        vertex_ai_service=vertex_ai_service,
+        store_service=MagicMock(),
+        cache_service=MagicMock(),
+    )
+
+    result = await tools_service.search_products_by_vector("dark roast", limit=2, similarity_threshold=0.4)
+
+    vertex_ai_service.get_text_embedding.assert_awaited_once_with(
+        "dark roast",
+        task_type="RETRIEVAL_QUERY",
+        return_cache_status=True,
+    )
+    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2)
+    assert result["vector_query"] == "dark roast"
+    assert result["embedding_cache_hit"] is True
+    assert result["search_metrics"]["vector_query"] == "dark roast"
+    assert {"embedding_ms", "oracle_ms", "tool_ms"} <= result["search_metrics"].keys()
 
 
 async def test_get_product_details_closure_delegates_to_tools_service() -> None:

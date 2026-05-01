@@ -36,6 +36,9 @@
 - `/api/chat/stream` is an SSE endpoint. Streaming runs ADK with
   `RunConfig(streaming_mode=StreamingMode.SSE)` and preserves the non-streaming
   response payload keys.
+- Product RAG tool calls record `vector_query`, `embedding_ms`, `oracle_ms`,
+  `tool_ms`, result counts, and embedding cache status; the chat UI shows these
+  as message-level telemetry along with intent and response-cache status.
 - Frontend pages are HTMX + Jinja + Tailwind v4 + Alpine/ApexCharts through
   `litestar-vite` template mode, not a standalone SPA.
 - EXPLAIN PLAN uses two named SQL calls: one `EXPLAIN PLAN FOR ...` and one
@@ -105,6 +108,10 @@
   committed context, not disposable scratch.
 - Flow sync/status is a Flow skill workflow backed by Beads state and `.agents/`
   docs; do not assume a `flow sync` shell command exists.
+- Logging should follow the DMA accelerator pattern: `app.config` uses the
+  custom processors in `app.lib.log`, `Settings.from_env()` sets Litestar /
+  Granian logging env defaults, and filters suppress only known ADK/Authlib
+  warning noise.
 - README should not link screenshots until fresh browser verification captures
   current `/` and `/explore` views.
 <!-- truth: end -->

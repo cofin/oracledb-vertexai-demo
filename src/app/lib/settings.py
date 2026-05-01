@@ -210,7 +210,10 @@ class LogSettings:
     """Logger configuration"""
 
     # https://stackoverflow.com/a/1845097/6560549
-    EXCLUDE_PATHS: str = r"\A(?!x)x"
+    EXCLUDE_PATHS: str = (
+        r"^/health|^/static/|^/assets/|^/favicon\.ico|^/@vite|^/@fs|^/node_modules|"
+        r"\.(?:js|css|ico|png|jpg|svg|woff2?)$"
+    )
     """Regex to exclude paths from logging."""
     HTTP_EVENT: str = "HTTP"
     """Log event name for logs from Litestar handlers."""
@@ -248,9 +251,9 @@ class LogSettings:
     """Attributes of the [Response][litestar.response.Response] to be
     logged."""
     GRANIAN_ACCESS_LEVEL: int = 30
-    """Level to log uvicorn access logs."""
+    """Level to log ASGI access logs."""
     GRANIAN_ERROR_LEVEL: int = 20
-    """Level to log uvicorn error logs."""
+    """Level to log ASGI error logs."""
 
 
 @dataclass
@@ -452,6 +455,13 @@ class Settings:
     cache: CacheSettings = field(default_factory=CacheSettings)
     vite: ViteSettings = field(default_factory=ViteSettings)
 
+    def setup_litestar_env(self) -> None:
+        """Set Litestar and Granian defaults expected by the app server."""
+        os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
+        os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
+        os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
+        os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
+
     @classmethod
     @lru_cache(maxsize=1, typed=True)
     def from_env(cls, dotenv_filename: str = ".env") -> Settings:
@@ -464,7 +474,9 @@ class Settings:
             console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
 
             load_dotenv(env_file, override=True)
-        return Settings()
+        settings = Settings()
+        settings.setup_litestar_env()
+        return settings
 
 
 def get_settings() -> Settings:

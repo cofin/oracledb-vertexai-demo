@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Logging configuration and utilities for DMA."""
+"""Logging configuration and utilities for Cymbal Coffee."""
 
 from __future__ import annotations
 
@@ -81,10 +81,15 @@ class SuppressADKWarningsFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """Return False to suppress log record."""
         msg = record.getMessage()
-        # Suppress the "non-text parts in the response" warning
-        if "non-text parts in the response" in msg and "function_call" in msg:
+        suppressed_fragments = (
+            "FeatureName.PLUGGABLE_AUTH is enabled",
+            "FeatureName.PROGRESSIVE_SSE_STREAMING is enabled",
+            "authlib.jose module is deprecated",
+            "returning concatenated text result from text parts",
+        )
+        if any(fragment in msg for fragment in suppressed_fragments):
             return False
-        return "returning concatenated text result from text parts" not in msg
+        return not ("non-text parts in the response" in msg and "function_call" in msg)
 
 
 class SuppressAsyncioTaskExceptionFilter(logging.Filter):

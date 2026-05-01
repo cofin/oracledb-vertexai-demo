@@ -15,3 +15,16 @@ def test_chat_stream_form_data_is_captured_before_disabling_input() -> None:
     assert form_data_index < busy_index
     assert "body: formData" in source
     assert "body: new FormData(form)" not in source
+
+
+def test_chat_stream_renders_message_level_telemetry() -> None:
+    source = (Path(__file__).parents[2] / "resources" / "main.js").read_text()
+
+    assert 'id="pending-reply-meta"' in source
+    assert "const renderMessageTelemetry = (payload) =>" in source
+    assert "Vector query" in source
+    assert "Embedding phase" in source
+    assert "Oracle vector phase" in source
+    assert "payload.embedding_cache_hit" in source
+    assert "payload.from_cache" in source
+    assert "renderMessageTelemetry(payload)" in source

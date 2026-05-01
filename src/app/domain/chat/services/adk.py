@@ -72,12 +72,29 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     async def search_products_by_vector(
         self, query: str, limit: int = 5, similarity_threshold: float = 0.7
     ) -> dict[str, Any]:
-        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(query, return_cache_status=True)
+        embedding_start = time.time()
+        embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
+            query,
+            task_type="RETRIEVAL_QUERY",
+            return_cache_status=True,
+        )
+        embedding_ms = (time.time() - embedding_start) * 1000
+
+        oracle_start = time.time()
         products = await self.product_service.search_by_vector(embedding, similarity_threshold, limit)
+        oracle_ms = (time.time() - oracle_start) * 1000
+        tool_total_ms = embedding_ms + oracle_ms
         return {
             "products": sanitize_for_json(products),
             "embedding_cache_hit": cache_hit,
             "results_count": len(products),
+            "vector_query": query,
+            "search_metrics": {
+                "vector_query": query,
+                "embedding_ms": round(embedding_ms, 2),
+                "oracle_ms": round(oracle_ms, 2),
+                "tool_ms": round(tool_total_ms, 2),
+            },
         }
 
     async def get_product_details(self, product_id: str) -> dict[str, Any]:
@@ -207,6 +224,10 @@ class ADKRunner:
             metric_state["embedding_cache_hit"] = bool(result.get("embedding_cache_hit", False))
             products_found = int(result.get("results_count") or len(result.get("products") or []))
             search_metrics = metric_state.setdefault("search_metrics", {})
+            tool_metrics = result.get("search_metrics")
+            if isinstance(tool_metrics, dict):
+                search_metrics.update(tool_metrics)
+            search_metrics["vector_query"] = str(result.get("vector_query") or query)
             search_metrics["results_count"] = products_found
             search_metrics["products_found"] = products_found
             return result

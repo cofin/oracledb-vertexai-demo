@@ -53,6 +53,21 @@
 - With the existing healthy Oracle container, `uv run coffee load-fixtures`
   loaded 137 rows and `uv run coffee run` served `/`, `/explore`, and `/schema`
   with HTTP 200.
+- Browser smoke found the streamed chat form was disabling the message input
+  before `new FormData(form)`, which removes the disabled control from the
+  request body and causes the backend to stream `Message cannot be empty`.
+  Capture `FormData` before busy-state changes and keep a regression check
+  against that ordering.
+- Re-reviewed DMA accelerator logging after ADK2 stream smoke. The demo should
+  use `app.lib.log.structlog_processors()` / `stdlib_logger_processors()` in
+  `app.config`, not Litestar's default processor chains, so TTY stdlib logs do
+  not duplicate `message=...`. Keep the narrow ADK/Authlib warning filters and
+  static asset log exclusion in tests so real stream exceptions remain visible.
+- Restored chat telemetry that the ADK2 rewrite dropped: the product RAG tool
+  now captures the actual vector query plus embedding, Oracle vector, and tool
+  timings using `RETRIEVAL_QUERY`; streamed and HTMX-rendered assistant
+  messages show intent, vector query, phase timings, embedding-cache hit, and
+  response-cache hit indicators.
 - Remaining manual verification: destructive fresh-clone/start-infra timing,
   browser screenshot capture, and colleague cold readthrough.
 

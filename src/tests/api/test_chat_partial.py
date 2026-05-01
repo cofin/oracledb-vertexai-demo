@@ -21,9 +21,9 @@ pytestmark = pytest.mark.anyio
 
 _FAKE_REPLY: dict[str, Any] = {
     "answer": "A pour-over Ethiopian Yirgacheffe brews bright and floral.",
-    "search_metrics": {"total_ms": 42, "oracle_ms": 11, "embedding_ms": 30},
+    "search_metrics": {"total_ms": 42, "oracle_ms": 11, "embedding_ms": 30, "vector_query": "ethiopian"},
     "from_cache": False,
-    "embedding_cache_hit": False,
+    "embedding_cache_hit": True,
     "intent_detected": "PRODUCT_RAG",
 }
 
@@ -61,6 +61,11 @@ async def test_htmx_returns_partial(htmx_client: AsyncTestClient) -> None:
     body = response.text
     assert '<article class="message' in body, "HTMX branch must render the message bubble fragment"
     assert "<!DOCTYPE html>" not in body, "HTMX branch must not return a full page"
+    assert "Intent: PRODUCT_RAG" in body
+    assert "Vector query: ethiopian" in body
+    assert "Embedding phase: 30 ms" in body
+    assert "Oracle vector phase: 11 ms" in body
+    assert "embedding cache hit" in body
     call_kwargs = ADKRunner.process_request.await_args.kwargs  # type: ignore[attr-defined]
     assert call_kwargs["session_id"] != "client-controlled"
     assert call_kwargs["user_id"] == f"web:{call_kwargs['session_id']}"
@@ -112,3 +117,5 @@ async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
     assert "event: delta" in response.text
     assert "event: final" in response.text
     assert '"intent_detected": "PRODUCT_RAG"' in response.text
+    assert '"vector_query": "ethiopian"' in response.text
+    assert '"embedding_cache_hit": true' in response.text

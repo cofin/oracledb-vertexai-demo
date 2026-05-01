@@ -58,7 +58,6 @@ def _initialize() -> None:
     """Materialize every public attribute from the current environment."""
     global _initialized  # noqa: PLW0603
 
-    import structlog
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
     from litestar.contrib.jinja import JinjaTemplateEngine
@@ -67,8 +66,6 @@ def _initialize() -> None:
         LoggingConfig,
         StructLoggingConfig,
         default_logger_factory,
-        default_structlog_processors,
-        default_structlog_standard_lib_processors,
     )
     from litestar.middleware.logging import LoggingMiddlewareConfig
     from litestar.middleware.session.server_side import ServerSideSessionConfig as _SessionConfig
@@ -79,9 +76,11 @@ def _initialize() -> None:
     from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
     from sqlspec.base import SQLSpec as _SQLSpec
 
+    from app.lib import log as log_conf
     from app.lib.settings import BASE_DIR, get_settings
 
     settings = get_settings()
+    log_as_json = not log_conf.is_tty()
     db_cfg = settings.db.create_config()
     db_mgr = _SQLSpec()
     db_mgr.add_config(db_cfg)
@@ -104,14 +103,26 @@ def _initialize() -> None:
                 NotFoundException,
             },
             log_exceptions="always",
-            processors=default_structlog_processors(as_json=False),
-            logger_factory=default_logger_factory(as_json=False),
+            processors=log_conf.structlog_processors(as_json=log_as_json),
+            logger_factory=default_logger_factory(as_json=log_as_json),
             standard_lib_logging_config=LoggingConfig(
+                log_exceptions="always",
+                disable_stack_trace={
+                    400,
+                    401,
+                    403,
+                    404,
+                    409,
+                    503,
+                    NotAuthorizedException,
+                    PermissionDeniedException,
+                    NotFoundException,
+                },
                 root={"level": logging.getLevelName(settings.log.LEVEL), "handlers": ["queue_listener"]},
                 formatters={
                     "standard": {
-                        "()": structlog.stdlib.ProcessorFormatter,
-                        "processors": default_structlog_standard_lib_processors(as_json=False),
+                        "()": "structlog.stdlib.ProcessorFormatter",
+                        "processors": log_conf.stdlib_logger_processors(as_json=log_as_json),
                     },
                 },
                 loggers={
@@ -231,8 +242,32 @@ def __getattr__(name: str) -> object:
     raise AttributeError(msg)
 
 
+def _install_warning_filters() -> None:
+    """Suppress known noisy third-party warnings before app imports trigger them."""
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*non-text parts in the response.*function_call.*",
+        category=Warning,
+        module=r"google_(?:genai|generativeai)(?:\..*)?$",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*\[EXPERIMENTAL\] feature FeatureName\.(?:PLUGGABLE_AUTH|PROGRESSIVE_SSE_STREAMING) is enabled\.",
+        category=UserWarning,
+        module=r"google\.adk\.features\._feature_decorator",
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*authlib\.jose module is deprecated.*",
+        category=Warning,
+        module=r"authlib\._joserfc_helpers",
+    )
+
+
 def setup_logging() -> None:
     """Configure structlog and stdlib logging plus noise-suppression filters."""
+    _install_warning_filters()
+
     if not _initialized:
         _initialize()
 
@@ -262,10 +297,3 @@ def setup_logging() -> None:
 
     logging.getLogger("asyncio").addFilter(log_conf.SuppressAsyncioTaskExceptionFilter())
     logging.getLogger("_granian").addFilter(log_conf.SuppressGranianExcInfoFilter())
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r".*non-text parts in the response.*function_call.*",
-        category=Warning,
-        module=r"google_(?:genai|generativeai)(?:\..*)?$",
-    )

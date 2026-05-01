@@ -232,6 +232,8 @@ configured database.
   and control Oracle INMEMORY storage for SQLSpec extension tables.
 - Placeholder Vertex project IDs are rejected before ADK starts so expected
   local misconfiguration returns a clean 503.
-- `google.adk`, `google.genai`, and warning loggers have filters in
-  `app.config.setup_logging()` to keep expected framework warnings out of the
-  useful app logs.
+- Logging follows the DMA accelerator pattern: `app.config` builds
+  `StructlogConfig` from the custom processors in `app.lib.log`, settings set
+  Litestar / Granian logging env defaults, static assets are excluded from
+  request logs, and `app.config.setup_logging()` filters only known ADK/Authlib
+  warning noise so real runtime exceptions stay visible.
