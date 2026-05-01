@@ -75,7 +75,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 - Quick Start section is decent but mentions deleted commands (`bulk-embed`).
 - Duplicates between "Development Commands" and "Management CLI" sections.
-- 7 external resource links — keep only the 3 directly load-bearing (Oracle 23ai, Vertex AI, Litestar).
+- 7 external resource links — keep only the 3 directly load-bearing (Oracle 26ai, Vertex AI, Litestar).
 - Architecture paragraph is fine; expand by 2 sentences to mention ADK 2.0 + HTMX.
 - README removes stale screenshot links until current chat/explore screenshots
   are captured during browser verification.
@@ -147,42 +147,42 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 ## Implementation Plan
 
-### Phase 1: Spec + knowledge archival (`oracledb-vertexai-4d6.5.1`)
+### Phase 1: Spec + knowledge archival (`oracledb-vertexai-4d6.5.1`) — [x] synced from Beads
 
-- [ ] **1.1** **First, verify `.gitignore` does not exclude `.agents/archive/`.** If excluded, edit `.gitignore` to remove the rule before any move (otherwise the moves vanish from the repo).
-- [ ] **1.2** Create `.agents/archive/specs/` and `.agents/archive/knowledge/` (and `.agents/archive/knowledge/guides/`).
-- [ ] **1.3** `git mv` each of the 8 obsolete spec dirs into `.agents/archive/specs/`.
-- [ ] **1.4** `git mv` each of the 8 obsolete knowledge files into `.agents/archive/knowledge/`.
-- [ ] **1.5** Update `.agents/flows.md`: remove archived flow entries from the active list; add an "Archived" footer section linking to `archive/specs/`.
+- [x] **1.1** **First, verify `.gitignore` does not exclude `.agents/archive/`.** If excluded, edit `.gitignore` to remove the rule before any move (otherwise the moves vanish from the repo).
+- [x] **1.2** Create `.agents/archive/specs/` and `.agents/archive/knowledge/` (and `.agents/archive/knowledge/guides/`).
+- [x] **1.3** `git mv` each of the 8 obsolete spec dirs into `.agents/archive/specs/`.
+- [x] **1.4** `git mv` each of the 8 obsolete knowledge files into `.agents/archive/knowledge/`.
+- [x] **1.5** Update `.agents/flows.md`: remove archived flow entries from the active list; add an "Archived" footer section linking to `archive/specs/`.
 
-### Phase 2: Guide consolidation (`oracledb-vertexai-4d6.5.2`)
+### Phase 2: Guide consolidation (`oracledb-vertexai-4d6.5.2`) — [x] synced from Beads
 
-- [ ] **2.1** Rewrite `.agents/knowledge/guides/architecture.md` from scratch (≤500 lines): high-level diagram, three-provider Dishka layout, named SQL pattern, ADK 2.0 workflow shape, HTMX template + Vite mode. Pull merged content from the 3 archive-bound guides as needed.
-- [ ] **2.2** Rewrite `.agents/knowledge/guides/oracle-vector-search.md` (≤500 lines): VECTOR(3072), HNSW INMEMORY recipe, vector_memory_size requirement, EXPLAIN PLAN read, similarity vs distance.
-- [ ] **2.3** Rewrite `.agents/knowledge/guides/adk-agent-patterns.md` (≤500 lines): ADK 2.0 Workflow/BaseNode, closure-bound tools, parallel fan-out, before_agent_callback credential guard, Flash-Lite enum classifier.
-- [ ] **2.4** `git mv` the 7 archive-bound guides into `.agents/archive/knowledge/guides/`.
+- [x] **2.1** Rewrite `.agents/knowledge/guides/architecture.md` from scratch (≤500 lines): high-level diagram, three-provider Dishka layout, named SQL pattern, ADK 2.0 workflow shape, HTMX template + Vite mode. Pull merged content from the 3 archive-bound guides as needed.
+- [x] **2.2** Rewrite `.agents/knowledge/guides/oracle-vector-search.md` (≤500 lines): VECTOR(3072), HNSW INMEMORY recipe, vector_memory_size requirement, EXPLAIN PLAN read, similarity vs distance.
+- [x] **2.3** Rewrite `.agents/knowledge/guides/adk-agent-patterns.md` (≤500 lines): ADK 2.0 Workflow/BaseNode, closure-bound tools, parallel fan-out, before_agent_callback credential guard, Flash-Lite enum classifier.
+- [x] **2.4** `git mv` the 7 archive-bound guides into `.agents/archive/knowledge/guides/`.
 
-### Phase 3: CLI cleanup (`oracledb-vertexai-4d6.5.3`)
+### Phase 3: CLI cleanup (`oracledb-vertexai-4d6.5.3`) — [x] synced from Beads
 
-- [ ] **3.1** Keep `coffee bulk-embed`; make product-document embedding
+- [x] **3.1** Keep `coffee bulk-embed`; make product-document embedding
   semantics explicit (`RETRIEVAL_DOCUMENT`), validate batch size, and improve
   command/help copy.
-- [ ] **3.2** Keep `coffee export-fixtures`; improve command/help copy and keep
+- [x] **3.2** Keep `coffee export-fixtures`; improve command/help copy and keep
   it as the lifecycle path for refreshing committed demo fixtures.
-- [ ] **3.3** Convert `load-fixtures` and `export-fixtures` to `@async_inject`
+- [x] **3.3** Convert `load-fixtures` and `export-fixtures` to `@async_inject`
   async commands; remove local nested async functions and direct `run_` calls.
-- [ ] **3.4** Update `src/app/cli/commands/__init__.py` so command registration
+- [x] **3.4** Update `src/app/cli/commands/__init__.py` so command registration
   docs advertise the retained lifecycle commands.
-- [ ] **3.5** Smoke: `uv run coffee --help`, `uv run coffee bulk-embed --help`,
+- [x] **3.5** Smoke: `uv run coffee --help`, `uv run coffee bulk-embed --help`,
   and `uv run coffee export-fixtures --help` exit 0 and list the retained
   commands.
 
-### Phase 4: README rewrite (`oracledb-vertexai-4d6.5.4`)
+### Phase 4: README rewrite (`oracledb-vertexai-4d6.5.4`) — [x] synced from Beads
 
-- [ ] **4.1** Replace `README.md` with the new ≤120-line quickstart structure. Skeleton:
+- [x] **4.1** Replace `README.md` with the new ≤120-line quickstart structure. Skeleton:
 
   ```markdown
-  # Cymbal Coffee — Oracle 23ai + Vertex AI + ADK Demo
+  # Cymbal Coffee — Oracle 26ai + Vertex AI + ADK Demo
   Reference app for AI-powered apps on Oracle Database with Google ADK 2.0 + Vertex AI.
 
   ## 5-Minute Quickstart
@@ -200,10 +200,10 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
   - Oracle-backed response + embedding cache
 
   ## Architecture
-  Two-page Litestar app served via Granian. Vector search on Oracle 23ai with HNSW
+  Two-page Litestar app served via Granian. Vector search on Oracle 26ai with HNSW
   INMEMORY indexes. Chat orchestrated by Google ADK 2.0 (Workflow graph + parallel
-  Gemini Flash-Lite intent classifier). Frontend is HTMX + Tailwind v4 + Alpine.js +
-  ApexCharts via litestar-vite template mode.
+  Gemini Flash-Lite intent classifier). Frontend is HTMX + Tailwind v4 + vanilla
+  JavaScript + ApexCharts via litestar-vite template mode.
 
   ## Common Commands
   | Command | Purpose |
@@ -225,39 +225,49 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
   - **Tests failing:** check `make start-infra` is healthy
   ```
 
-- [ ] **4.2** Remove stale screenshot references from README. Capture current chat/explore screenshots during Phase 6 browser verification before linking them again.
+- [x] **4.2** Remove stale screenshot references from README. Capture current chat/explore screenshots during Phase 6 browser verification before linking them again.
 
-### Phase 5: CLAUDE.md + patterns.md update (`oracledb-vertexai-4d6.5.5`)
+### Phase 5: CLAUDE.md + patterns.md update (`oracledb-vertexai-4d6.5.5`) — [x] synced from Beads
 
-- [ ] **5.1** `CLAUDE.md` edits (apply as a single commit, **review the rendered diff before committing** — this file is loaded into every future Claude Code session, so a bad edit propagates broadly):
+- [x] **5.1** `CLAUDE.md` edits (apply as a single commit, **review the rendered diff before committing** — this file is loaded into every future Claude Code session, so a bad edit propagates broadly):
     - Delete the `array.array('f', query_embedding)` example block (around line 143).
     - Replace the DI example with the post-Ch 2 pattern (handler-arg `Inject[T]` from `app.lib.di`).
     - Update the Testing block: prefer `@pytest.mark.anyio`.
     - Fix the broken link `specs/AGENTS.md` → `.agents/index.md`.
     - Update the Project Structure tree to reflect normalized domain packages (`controllers/`, `services/`, `schemas/`).
-- [ ] **5.1.5** Open the rendered `CLAUDE.md` in a viewer; confirm the Project Structure tree matches what `tree -L 4 src/app/` actually produces; confirm no stale references to React, `array.array`, or pre-Ch 2 DI.
-- [ ] **5.2** `.agents/patterns.md` rewrite (≤150 lines, 4 sections):
+- [x] **5.1.5** Open the rendered `CLAUDE.md` in a viewer; confirm the Project Structure tree matches what `tree -L 4 src/app/` actually produces; confirm no stale references to React, `array.array`, or pre-Ch 2 DI.
+- [x] **5.2** `.agents/patterns.md` rewrite (≤150 lines, 4 sections):
     - **Architecture:** three-provider Dishka, named SQL, ADK 2.0 workflow shape, HTMX template mode, EXPLAIN PLAN viewer.
     - **Code style:** PEP 604, no future annotations in Dishka providers, `Inject[T]` over `inject()` decorator, async I/O everywhere, `schema_type=` always.
     - **Testing:** anyio fixtures and real-Oracle integration tests against
       the repo-managed Oracle lifecycle (`make start-infra`,
       `uv run python manage.py database upgrade --no-prompt`).
     - **Operational gotchas:** `vector_memory_size >= 4G`, `text/x.enum` requires Flash-Lite, `hot_file` ↔ `vite.config.ts` coupled paths, `ensure_tables()` adds 30-100ms first boot.
-- [ ] **5.3** Regenerate `.agents/index.md` as a flat index of surviving artifacts.
+- [x] **5.3** Regenerate `.agents/index.md` as a flat index of surviving artifacts.
 
-### Phase 6: Verification + walkthrough (`oracledb-vertexai-4d6.5.6`)
+### Phase 6: Verification + walkthrough (`oracledb-vertexai-4d6.5.6`) — [~] synced from Beads
 
-- [ ] **6.1** `make lint && make test` — clean.
+- [x] **6.1** `make lint && make test` — clean.
 - [ ] **6.2** `make install` from a fresh clone (or container): time the full quickstart sequence end-to-end. Document timing in Beads notes; if > 5 minutes excluding image pull, identify the bottleneck.
-- [ ] **6.3** Open `/` and `/explore` in a browser; capture current screenshots before linking them from README again.
+- [x] **6.3** Open `/` and `/explore` in a browser; capture current screenshots before linking them from README again.
 - [ ] **6.4** Have a colleague read the new README cold and try the quickstart. Capture friction points; fix the README, not the colleague.
 - [ ] **6.5** Final `git status` audit: zero **untracked** files outside `dist/`, `node_modules/`, `.venv/`. Every change in `src/`, `.agents/`, `docs/`, `pyproject.toml`, `README.md`, `CLAUDE.md` is either a tracked modification or a `git mv` to archive. No surprise additions; no dropped tests.
 
 ---
 
+## Sync Notes (2026-05-01)
+
+- Backend state: `oracledb-vertexai-4d6.5.1` through `.5.5` are closed; `oracledb-vertexai-4d6.5.6` remains in progress.
+- Verification done in Phase 6 includes lint/test passes, targeted chat/explore regression tests, current chat/explore screenshots, Vite build, Ruff checks, and whitespace checks.
+- Current frontend stack is HTMX/Jinja templates plus litestar-vite, Tailwind v4, vanilla JavaScript, and ApexCharts. Alpine was removed during UI regression recovery.
+- Latest manual-testing fixes: chat intent telemetry promotes to `PRODUCT_RAG` when a product vector lookup actually ran, chat-side vector lookups write metrics, and the structured EXPLAIN PLAN table wraps instead of forcing horizontal scroll.
+- Remaining closeout before Ch 5 can close: fresh-clone quickstart timing or explicit waiver, colleague cold readthrough or explicit waiver, and final git-status audit after shared branch work settles.
+
+---
+
 ## Out of Scope (defer to other flows)
 
-- Multi-tenant auth, SAQ/background workers, streaming chat (PRD out-of-scope).
+- Multi-tenant auth, SAQ/background workers, or new chat transport work. Existing streaming chat remains part of the current recovered UI contract.
 - New product/store features are not part of this cleanup chapter. Follow-on PRD `store-location-inventory-chat_20260501` owns store locations, Dallas fixture coverage, inventory, browser geolocation, and Maps integration. Do not prune fixture lifecycle or store-domain documentation that PRD depends on.
 - DDL refactoring beyond Ch 1's HNSW + 3072 + INMEMORY changes.
 - Renaming `worker_container_var` for naming consistency (separate cleanup flow).

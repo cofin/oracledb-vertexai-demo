@@ -136,7 +136,8 @@
 - `.agents/.gitignore` must not hide `.agents/archive/`; archived Flow history is
   committed context, not disposable scratch.
 - Flow sync/status is a Flow skill workflow backed by Beads state and `.agents/`
-  docs; do not assume a `flow sync` shell command exists.
+  docs; do not assume a `flow sync` shell command exists, and do not run
+  `bd sync` because Beads does not expose that command.
 - Logging should follow the DMA accelerator pattern: `app.config` uses the
   custom processors in `app.lib.log`, `Settings.from_env()` sets Litestar /
   Granian logging env defaults, and filters suppress only known ADK/Authlib

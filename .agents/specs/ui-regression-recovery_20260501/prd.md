@@ -9,8 +9,8 @@
 ## North Star
 
 Recover the demo-quality UI that existed on `main` while keeping the ADK2,
-SQLSpec, Litestar, HTMX, Alpine, Tailwind v4, and Vite rewrite direction. The
-reference baseline is the `main` branch HTMX/Jinja application:
+SQLSpec, Litestar, HTMX, Tailwind v4, vanilla JavaScript, and Vite rewrite
+direction. The reference baseline is the `main` branch HTMX/Jinja application:
 
 - `app/server/templates/coffee_chat.html`
 - `app/server/templates/performance_dashboard.html`

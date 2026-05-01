@@ -5,11 +5,15 @@ import tailwindcss from "@tailwindcss/vite"
 import litestar from "litestar-vite-plugin"
 import { defineConfig, version } from "vite"
 
+declare const process: { env: Record<string, string | undefined> }
+
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 type BundlerWarning = { code?: string; id?: string }
 const ASSET_URL = process.env.VITE_ASSET_URL || process.env.ASSET_URL || "/static/dist/"
 
 export default defineConfig({
+  clearScreen: false,
+  logLevel: "warn",
   // Vite copies project-root publicDir into bundleDir at build time. Brand assets
   // live alongside the JS/CSS sources under src/resources/public/, so point Vite there.
   publicDir: "src/resources/public",

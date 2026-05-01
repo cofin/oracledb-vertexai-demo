@@ -21,7 +21,7 @@ make test
 
 ## Guiding Principles
 
-1. **Beads backend is the Source of Truth:** Use official Beads (`bd`) and run `/flow:sync` to export task state to spec.md when `syncPolicy.flowSyncAfterMutation` is enabled.
+1. **Beads backend is the Source of Truth:** Use official Beads (`bd`) for task state. Do not run `bd sync`; that command does not exist. When markdown views need refresh, use the Flow plugin sync workflow if available, or reconcile `.agents/specs/` and `.agents/flows.md` from Beads state explicitly.
 2. **The Tech Stack is Deliberate:** Changes to the tech stack must be documented in `tech-stack.md` *before* implementation
 3. **Test-Driven Development:** Write unit tests before implementing functionality
 4. **High Code Coverage:** Aim for >80% code coverage for all modules
@@ -97,7 +97,7 @@ All tasks follow a strict lifecycle:
 
 ### Task Workflow (TDD) - Beads-First
 
-**CRITICAL:** Beads is the source of truth. Never write `[x]`, `[~]`, `[!]`, or `[-]` markers to spec.md manually. After Beads state changes, agents MUST follow `syncPolicy.flowSyncAfterMutation` and run `/flow:sync` when it is enabled.
+**CRITICAL:** Beads is the source of truth. Never write `[x]`, `[~]`, `[!]`, or `[-]` markers to spec.md manually. After Beads state changes, follow `syncPolicy.flowSyncAfterMutation` by using the Flow plugin sync workflow if available, or by explicitly reconciling the markdown view from Beads state. Do not run `bd sync`; it is not a valid command.
 
 **Companion Skills Usage:**
 
@@ -117,7 +117,7 @@ All tasks follow a strict lifecycle:
 1. **Select Task:** Use the active backend's ready queue, or fall back to parsing spec.md
 
 2. **Mark In Progress:**
-   - Sync to Beads using the active backend
+   - Update Beads state using the active backend
    - **Do NOT edit spec.md** - Beads is source of truth
 
 3. **Write Failing Tests (Red Phase):**
@@ -158,12 +158,12 @@ All tasks follow a strict lifecycle:
 9. **Record Task Completion (Beads-First):**
    - **Step 9.1: Get Commit Hash:** Obtain the hash of the *just-completed commit* (`git log -1 --format="%h"`).
    - **Step 9.2: Close in Beads:** use the active backend to record completion
-   - **Step 9.3 (Manual Sync):** Follow `syncPolicy.flowSyncAfterMutation`; when enabled, run `/flow-sync` so `spec.md` aligns with Beads.
-   - **Do NOT manually edit spec.md markers** - they are managed by running `/flow-sync`.
+   - **Step 9.3 (Markdown View Refresh):** Follow `syncPolicy.flowSyncAfterMutation`; when enabled, use the Flow plugin sync workflow if available, or explicitly update the markdown view from Beads state. Do not run `bd sync`.
+   - **Do NOT manually edit spec.md markers** - refresh markdown through the Flow plugin workflow or explicit Beads-state reconciliation.
 
 10. **Log Learnings:**
     - Append discoveries to track's `learnings.md`
-    - Sync to Beads using the active backend's note/comment command
+    - Record in Beads using the active backend's note/comment command
     - Elevate reusable patterns to `.agents/patterns.md` at phase completion
     - If the user had to repeat a correction or showed frustration, capture that as a workflow gap and elevate it into the knowledge system
     - Capture validated repo-native commands and verification workflows so future agents reuse the same `make`, `just`, `task`, package-script, or pre-commit entrypoints
@@ -262,8 +262,8 @@ Validated repo-native commands are also high-signal learnings. If the project al
     - Update the epic with verification summary using the active backend's note/comment command
 
 8. **Sync to spec.md (Manual):**
-    - Follow `syncPolicy.flowSyncAfterMutation`; when enabled, run `/flow-sync` so `spec.md` aligns with Beads for human-readable status.
-    - **Do NOT manually edit spec.md** - Beads is source of truth, and you must sync it using the command.
+    - Follow `syncPolicy.flowSyncAfterMutation`; when enabled, use the Flow plugin sync workflow if available, or explicitly update `spec.md` from Beads state for human-readable status.
+    - **Do NOT manually edit task markers in spec.md** - Beads is source of truth. Do not run `bd sync`; it does not exist in this environment.
 
 9. **Announce Completion:** Inform the user that the phase is complete and the checkpoint has been recorded in Beads.
 
@@ -425,7 +425,7 @@ A task is complete when:
 7. Implementation notes added to `spec.md`
 8. Changes committed with proper message
 9. Task closed in Beads with the active backend's completion command and commit reference
-10. Markdown synced manually by running `/flow-sync`.
+10. Markdown views refreshed through the Flow plugin workflow or explicit Beads-state reconciliation; never by running `bd sync`.
 11. No ignored Flow artifacts were force-added to git.
 
 ## Emergency Procedures
