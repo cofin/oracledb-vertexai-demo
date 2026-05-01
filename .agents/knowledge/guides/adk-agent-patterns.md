@@ -115,6 +115,12 @@ recommendation, availability, substitution, and idiomatic preference requests.
 That text is what makes "wake me up", "what is good today", and "do you have
 decaf" eligible for product RAG.
 
+For `PRODUCT_RAG` turns, the final answer must be grounded to the products
+returned by Cymbal Coffee tools. If the LLM node skips tool use or emits an
+internal tool-schema message, run the product search fallback and format the
+final answer from returned menu rows rather than trusting the speculative model
+text.
+
 ## Intent Classification
 
 Intent classification is a separate Gemini Flash-Lite call using

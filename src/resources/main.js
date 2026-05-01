@@ -204,10 +204,7 @@ const handleChatStreamEvent = ({ eventName, data }) => {
     return
   }
   if (eventName === "final") {
-    const currentText = document.getElementById("pending-reply-text")?.textContent ?? ""
-    if (!currentText.trim()) {
-      setPendingText(payload.answer ?? "")
-    }
+    setPendingText(payload.answer ?? "")
     renderMessageTelemetry(payload)
     renderMetrics(payload)
     finalizePendingReply()

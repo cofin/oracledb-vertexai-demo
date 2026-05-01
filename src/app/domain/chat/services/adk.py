@@ -39,6 +39,8 @@ logger = structlog.get_logger()
 _APP_NAME = "coffee_assistant"
 _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
 _PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
+_CHAT_CACHE_VERSION = "menu-grounded-v1"
+_PRODUCT_RAG_INTENT = "PRODUCT_RAG"
 _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "answer",
     "session_id",
@@ -48,6 +50,67 @@ _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "from_cache",
     "embedding_cache_hit",
 )
+
+
+def _coerce_products(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict) and item.get("name")]
+
+
+def _format_price(value: Any) -> str:
+    if not isinstance(value, int | float):
+        return ""
+    return f" (${value:.2f})"
+
+
+def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
+    menu_products = _coerce_products(products)
+    if not menu_products:
+        return "I couldn't find a matching Cymbal Coffee menu item for that. Try another flavor, roast, or drink style and I'll check the menu again."
+
+    first = menu_products[0]
+    lead = "For breakfast" if "breakfast" in query.casefold() else "For that"
+    name = str(first["name"])
+    description = str(first.get("description") or "").strip()
+    answer = f"{lead}, I'd start with {name}{_format_price(first.get('price'))}"
+    if description:
+        answer += f": {description}"
+    else:
+        answer += "."
+
+    if len(menu_products) > 1:
+        second = menu_products[1]
+        answer += f" Another good menu option is {second['name']}{_format_price(second.get('price'))}."
+    return answer
+
+
+def _record_product_search_result(metric_state: dict[str, Any], result: dict[str, Any], query: str) -> None:
+    metric_state["embedding_cache_hit"] = bool(result.get("embedding_cache_hit"))
+    products = _coerce_products(result.get("products"))
+    if products:
+        metric_state["rag_products"] = products
+    products_found = int(result.get("results_count") or len(products))
+    search_metrics = metric_state.setdefault("search_metrics", {})
+    tool_metrics = result.get("search_metrics")
+    if isinstance(tool_metrics, dict):
+        search_metrics.update(tool_metrics)
+    search_metrics["vector_query"] = str(result.get("vector_query") or query)
+    search_metrics["results_count"] = products_found
+    search_metrics["products_found"] = products_found
+
+
+async def _ground_product_rag_turn(
+    query: str,
+    metric_state: dict[str, Any],
+    tools_service: AgentToolsService,
+) -> str:
+    products = _coerce_products(metric_state.get("rag_products"))
+    if not products:
+        fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5)
+        _record_product_search_result(metric_state, fallback_result, query)
+        products = _coerce_products(metric_state.get("rag_products"))
+    return _grounded_product_answer(query, products)
 
 
 class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
@@ -135,7 +198,7 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     def make_response_cache_key(self, query: str, persona: str) -> str:
         normalized = " ".join(query.casefold().split())
         model = self.vertex_ai_service.model
-        digest = sha256(f"{model}:{persona}:{normalized}".encode()).hexdigest()
+        digest = sha256(f"{_CHAT_CACHE_VERSION}:{model}:{persona}:{normalized}".encode()).hexdigest()
         return f"chat:{digest}"
 
     async def get_cached_chat_response(self, cache_key: str) -> dict[str, Any] | None:
@@ -218,18 +281,11 @@ class ADKRunner:
             availability, dietary substitution, and idiomatic preference requests.
 
             Returns:
-                Matching products and cache/search metadata.
+                Matching menu products and cache/search metadata. Only these
+                returned products may be recommended to the user.
             """
             result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
-            metric_state["embedding_cache_hit"] = bool(result.get("embedding_cache_hit", False))
-            products_found = int(result.get("results_count") or len(result.get("products") or []))
-            search_metrics = metric_state.setdefault("search_metrics", {})
-            tool_metrics = result.get("search_metrics")
-            if isinstance(tool_metrics, dict):
-                search_metrics.update(tool_metrics)
-            search_metrics["vector_query"] = str(result.get("vector_query") or query)
-            search_metrics["results_count"] = products_found
-            search_metrics["products_found"] = products_found
+            _record_product_search_result(metric_state, result, query)
             return result
 
         async def get_product_details(product_id: str) -> dict[str, Any]:
@@ -238,7 +294,10 @@ class ADKRunner:
             Returns:
                 Product details, or an error object when no product matches.
             """
-            return await tools_service.get_product_details(product_id)
+            result = await tools_service.get_product_details(product_id)
+            if "error" not in result and result.get("name"):
+                metric_state["rag_products"] = [result]
+            return result
 
         async def get_all_store_locations() -> list[dict[str, Any]]:
             """List Cymbal Coffee store locations for address, hours, pickup, or nearest-cafe questions.
@@ -358,6 +417,9 @@ class ADKRunner:
             intent_detected = str(state.get("intent") or intent_detected)
 
         answer = str(workflow_output.get("answer") or "".join(answer_parts) or "".join(partial_answer_parts))
+        if intent_detected == _PRODUCT_RAG_INTENT:
+            answer = await _ground_product_rag_turn(query, metric_state, tools_service)
+
         elapsed_ms = (time.time() - start) * 1000
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)

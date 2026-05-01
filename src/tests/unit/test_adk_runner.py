@@ -77,7 +77,7 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
     tools_service = MagicMock()
     tools_service.search_products_by_vector = AsyncMock(
         return_value={
-            "products": [{"id": 1}],
+            "products": [{"id": 1, "name": "Midnight Brew"}],
             "embedding_cache_hit": True,
             "results_count": 1,
             "vector_query": "dark roast",
@@ -92,12 +92,13 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
     result = await search("dark roast", limit=3, similarity_threshold=0.5)
 
     tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5)
-    assert result["products"] == [{"id": 1}]
+    assert result["products"] == [{"id": 1, "name": "Midnight Brew"}]
     assert metric_state["embedding_cache_hit"] is True
     assert metric_state["search_metrics"]["vector_query"] == "dark roast"
     assert metric_state["search_metrics"]["embedding_ms"] == 12.2
     assert metric_state["search_metrics"]["oracle_ms"] == 4.4
     assert metric_state["search_metrics"]["results_count"] == 1
+    assert metric_state["rag_products"] == [{"id": 1, "name": "Midnight Brew"}]
 
 
 async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
@@ -268,6 +269,22 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
     tools_service.get_cached_chat_response = AsyncMock(return_value=None)
     tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 8,
+                    "name": "Yirgacheffe",
+                    "description": "A bright Ethiopian coffee.",
+                    "price": 5.25,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "recommend something",
+            "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+        }
+    )
 
     monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
@@ -294,7 +311,7 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
         "embedding_cache_hit",
     }
     assert set(result.keys()) == expected_keys
-    assert result["answer"] == "Try our Yirgacheffe."
+    assert "Yirgacheffe" in result["answer"]
     assert result["session_id"] == "sess-42"
     assert result["intent_detected"] == "PRODUCT_RAG"
     assert isinstance(result["response_time_ms"], float)
@@ -331,6 +348,22 @@ async def test_process_request_prefers_workflow_output_intent(monkeypatch: Any) 
     tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
     tools_service.get_cached_chat_response = AsyncMock(return_value=None)
     tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 9,
+                    "name": "Dark Roast",
+                    "description": "A bold, smoky menu favorite.",
+                    "price": 4.75,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "something bold",
+            "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+        }
+    )
 
     monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
     monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
@@ -347,8 +380,79 @@ async def test_process_request_prefers_workflow_output_intent(monkeypatch: Any) 
         tools_service=tools_service,
     )
 
-    assert result["answer"] == "The boldest option is Dark Roast."
+    assert "Dark Roast" in result["answer"]
     assert result["intent_detected"] == "PRODUCT_RAG"
+
+
+async def test_product_rag_response_is_grounded_to_menu_products(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-grounded"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    async def fake_events() -> Any:
+        event = MagicMock()
+        event.output = {
+            "answer": "Try the Maple Cloud Latte.",
+            "intent": "PRODUCT_RAG",
+        }
+        event.content = None
+        event.partial = False
+        yield event
+
+    fake_runner = MagicMock()
+    fake_runner.run_async = MagicMock(return_value=fake_events())
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 7,
+                    "name": "Breakfast Blend",
+                    "description": "A smooth, balanced roast for the morning.",
+                    "price": 4.5,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "what's good for breakfast?",
+            "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+        }
+    )
+
+    monkeypatch.setattr(adk_module, "Runner", lambda **kw: fake_runner)
+    monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=persona_manager)
+
+    result = await runner.process_request(
+        query="what's good for breakfast?",
+        user_id="u1",
+        session_id="sess-grounded",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert "Breakfast Blend" in result["answer"]
+    assert "Maple Cloud Latte" not in result["answer"]
+    assert result["intent_detected"] == "PRODUCT_RAG"
+    assert result["search_metrics"]["products_found"] == 1
+    assert result["search_metrics"]["vector_query"] == "what's good for breakfast?"
+    tools_service.search_products_by_vector.assert_awaited_once_with("what's good for breakfast?", 3, 0.5)
 
 
 async def test_process_request_returns_cached_response_without_model(monkeypatch: Any) -> None:

@@ -28,3 +28,11 @@ def test_chat_stream_renders_message_level_telemetry() -> None:
     assert "payload.embedding_cache_hit" in source
     assert "payload.from_cache" in source
     assert "renderMessageTelemetry(payload)" in source
+
+
+def test_chat_stream_final_payload_replaces_speculative_delta_text() -> None:
+    source = (Path(__file__).parents[2] / "resources" / "main.js").read_text()
+
+    final_branch = source[source.index('if (eventName === "final")') : source.index('if (eventName === "error")')]
+    assert 'setPendingText(payload.answer ?? "")' in final_branch
+    assert "currentText.trim()" not in final_branch
