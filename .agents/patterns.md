@@ -78,6 +78,9 @@
   `src/tests/integration/<module path>/test_*.py`. Do not add new
   top-level issue buckets such as `src/tests/api`, and do not add direct
   `src/tests/unit/test_*.py` or `src/tests/integration/test_*.py` files.
+- Before creating a new test file, find the existing module-path test file and
+  add the behavior there. Prefer parameterized cases, shared fixtures, and
+  existing functional sections over one-file-per-issue coverage.
 - Nested test directories are real packages with SPDX-bearing `__init__.py`
   files so repo ruff checks do not treat moved tests as implicit namespaces.
 - Unit tests should pin public contracts and local patterns: CLI command

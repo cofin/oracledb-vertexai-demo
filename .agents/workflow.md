@@ -31,6 +31,7 @@ make test
 8. **Be Collaborative:** Never use blamey or ownership-deflecting language such as "not my issue" or "not caused by my change." Describe unrelated failures factually, offer the smallest useful next step, and ask the user whether to handle them now or separately.
 9. **Minimal Targeted Changes:** Make the smallest coherent change set that solves the task. Do not make opportunistic cleanup edits or random unrelated modifications without approval.
 10. **No Silent Descoping:** If the task is larger or messier than expected, refine the plan or ask the user how to prioritize. Do not quietly skip work.
+11. **Test Integration Over Test Sprawl:** New coverage should extend the existing module-path test file and shared fixtures when possible. Do not create one-off issue or feature test files when the behavior belongs in an existing `src/tests/{unit,integration}/<module path>/test_*.py` module.
 <!-- truth: end -->
 
 ## Beads Integration
@@ -120,8 +121,11 @@ All tasks follow a strict lifecycle:
    - **Do NOT edit spec.md** - Beads is source of truth
 
 3. **Write Failing Tests (Red Phase):**
-   - Create a new test file for the feature or bug fix.
-   - Write one or more unit tests that clearly define the expected behavior and acceptance criteria for the task.
+   - First locate the source module under test, then find the matching test module under `src/tests/unit/<module path>/` or `src/tests/integration/<module path>/`.
+   - Extend the existing module-path test file whenever the behavior belongs to an already-tested module. Prefer adding a parameterized case, shared fixture, or assertion to the existing functional section over creating another file.
+   - Create a new test file only when no module-path test file exists yet, or when the source module/behavior is genuinely new and the file name maps to that module's public contract.
+   - Never create new top-level issue/feature buckets such as `src/tests/api`, direct `src/tests/unit/test_*.py`, direct `src/tests/integration/test_*.py`, or regression files named after tickets.
+   - Write one or more tests that clearly define the expected behavior and acceptance criteria for the task.
    - **CRITICAL:** Run the tests and confirm that they fail as expected. This is the "Red" phase of TDD. Do not proceed until you have failing tests.
 
 4. **Implement to Pass Tests (Green Phase):**
@@ -209,8 +213,9 @@ Validated repo-native commands are also high-signal learnings. If the project al
     - **Step 2.2: List Changed Files:** Execute `git diff --name-only <previous_checkpoint_sha> HEAD` to get a precise list of all files modified during this phase.
     - **Step 2.3: Verify and Create Tests:** For each file in the list:
         - **CRITICAL:** First, check its extension. Exclude non-code files (e.g., `.json`, `.md`, `.yaml`).
-        - For each remaining code file, verify a corresponding test file exists.
-        - If a test file is missing, you **must** create one. Before writing the test, **first, analyze other test files in the repository to determine the correct naming convention and testing style.** The new tests **must** validate the functionality described in this phase's tasks (`spec.md`).
+        - For each remaining code file, verify corresponding coverage exists in the matching `src/tests/unit/<module path>/` or `src/tests/integration/<module path>/` file.
+        - If coverage is missing, first integrate the new case into the existing module-path test file using parameterization or shared fixtures where practical.
+        - Create a new test file only when the target source module has no existing module-path test file or the new behavior is substantial enough to deserve a separate module-owned contract file. The new tests **must** validate the functionality described in this phase's tasks (`spec.md`).
 
 3. **Execute Automated Tests with Proactive Debugging:**
     - Before execution, you **must** announce the exact shell command you will use to run the tests.

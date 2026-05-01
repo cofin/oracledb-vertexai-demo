@@ -29,3 +29,9 @@ Examples:
 Shared test-only helpers belong under `src/tests/support/`. Keep helper modules
 private to the suite; do not add production helpers solely for tests.
 
+Before adding a new test file, look for the existing module-path test file and
+extend it. Prefer a new parameterized case, shared fixture, or additional
+assertion in the current functional section over one-off files for individual
+issues or features. Create a new test file only when the source module has no
+matching test file yet, or when the new module behavior deserves a separate
+module-owned contract file.
