@@ -116,7 +116,7 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
 
     from unittest.mock import MagicMock
 
-    from app.domain.products.schemas import VectorDemo, VectorQuery
+    from app.domain.products.schemas import VectorDemo
 
     mock_vector_search = AsyncMock()
     mock_vector_search.similarity_search.return_value = (
@@ -143,10 +143,11 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
     mock_metrics = AsyncMock()
     request = MagicMock()
     request.htmx = False
+    request.headers = {"content-type": "application/json"}
+    request.json = AsyncMock(return_value={"query": "dark roast"})
 
     response = await VectorController.vector_search_demo.fn(
         object.__new__(VectorController),
-        data=VectorQuery(query="dark roast"),
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
         request=request,

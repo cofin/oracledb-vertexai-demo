@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from app.lib.schema import CamelizedBaseStruct
 
 
@@ -81,3 +83,12 @@ class MetricsTimeSeries(CamelizedBaseStruct, omit_defaults=True):
 
     labels: list[str]
     series: MetricsTimeSeriesPoints
+
+
+class ClassifyCompare(CamelizedBaseStruct, omit_defaults=True):
+    """Offline intent-classifier comparison payload for the explore page."""
+
+    available: bool
+    rows: list[dict[str, Any]]
+    summary: dict[str, Any]
+    hint: str | None = None

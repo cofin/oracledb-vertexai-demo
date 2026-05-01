@@ -13,3 +13,10 @@
 - **Files changed:** `src/app/domain/chat/services/adk.py`, `src/app/domain/chat/controllers/_chat.py`, `src/app/domain/chat/schemas/_chat.py`, `src/resources/main.js`, and existing chat controller/service/frontend tests.
 - **Validation:** Targeted chat/service/frontend tests passed, `./node_modules/.bin/vite build` passed, `make test` passed with 206 tests, and `make lint` passed cleanly.
 - **Learning:** Store only product lookup SQL phases in cached response payloads; add a fresh `get-cached-response` phase at read time so cached turns show both the cache hit and the original product lookup context without preserving an old cache-miss phase.
+
+## 2026-05-01 05:16 - Phase 3: Explore Functional Restoration
+
+- **Implemented:** Restored the fifth Explore panel for classify-compare, added `/api/classify-compare` with present/missing dataset branches, made `/explore?q=...` prefill both shared query inputs, and fixed `/api/vector-demo` to accept real HTMX form posts.
+- **Files changed:** `src/app/domain/web/templates/pages/explore.html.j2`, `src/app/domain/web/controllers/_pages.py`, `src/app/domain/products/controllers/_vector.py`, `src/app/domain/system/controllers/_explore.py`, system schemas/controller exports, and focused web/vector/system tests.
+- **Validation:** Focused Explore/vector/system tests passed, `make test` passed with 211 tests, `./node_modules/.bin/vite build` passed with the existing large-bundle warning, and `make lint` passed cleanly.
+- **Learning:** Litestar's body DTO path rejects HTMX form posts when the route is declared as JSON body data, so the vector demo endpoint should parse JSON and form payloads from the request directly for the mixed HTMX/JSON contract.

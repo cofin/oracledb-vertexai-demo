@@ -4,6 +4,7 @@
 import re
 import time
 import uuid
+from typing import Any
 from urllib.parse import quote
 
 from litestar import Controller, Response, get, post
@@ -20,6 +21,23 @@ from app.domain.products.services import OracleVectorSearchService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
+
+
+def _payload_value(payload: Any, key: str, default: str = "") -> str:
+    getter = getattr(payload, "get", None)
+    value = getter(key, default) if callable(getter) else default
+    if isinstance(value, list | tuple):
+        value = value[0] if value else default
+    return str(value or default)
+
+
+async def _vector_query_from_request(request: HTMXRequest) -> VectorQuery:
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        payload = await request.json()
+    else:
+        payload = await request.form()
+    return VectorQuery(query=_payload_value(payload, "query"))
 
 
 class VectorController(Controller):
@@ -42,12 +60,12 @@ class VectorController(Controller):
     @post(path="/api/vector-demo", name="vector.demo")
     async def vector_search_demo(
         self,
-        data: VectorQuery,
         vector_search_service: Inject[OracleVectorSearchService],
         metrics_service: Inject[MetricsService],
         request: HTMXRequest,
     ) -> Response | HTMXTemplate:
         """Run vector search; HTMX clients get a partial + PushUrl, SPA clients JSON."""
+        data = await _vector_query_from_request(request)
         query = self.validate_message(data.query)
 
         full_request_start = time.time()

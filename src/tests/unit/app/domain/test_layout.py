@@ -25,7 +25,7 @@ DOMAIN_PACKAGES: tuple[tuple[str, frozenset[str]], ...] = (
     ),
     (
         "app.domain.system.controllers",
-        frozenset({"MetricsController", "SystemController"}),
+        frozenset({"ExploreController", "MetricsController", "SystemController"}),
     ),
 )
 

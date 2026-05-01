@@ -20,5 +20,5 @@ class PageController(Controller):
         return Template(template_name="pages/chat.html.j2")
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self) -> Template:
-        return Template(template_name="pages/explore.html.j2")
+    async def explore_page(self, q: str | None = None) -> Template:
+        return Template(template_name="pages/explore.html.j2", context={"query": q or ""})

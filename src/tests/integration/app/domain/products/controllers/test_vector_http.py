@@ -9,15 +9,17 @@ the focus here is the HTMX/JSON response branch.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from litestar.plugins.htmx import HTMXTemplate
 
-from app.domain.products import schemas as product_schemas
 from app.domain.products.controllers import VectorController
 from app.domain.products.schemas import ProductMatch
+
+if TYPE_CHECKING:
+    from litestar.testing import AsyncTestClient
 
 pytestmark = pytest.mark.anyio
 
@@ -45,15 +47,21 @@ def _mock_services() -> tuple[AsyncMock, AsyncMock]:
     return mock_vector_search, mock_metrics
 
 
-async def test_htmx_returns_partial_and_pushes_url() -> None:
+def _request(*, htmx: bool) -> MagicMock:
     request = MagicMock()
-    request.htmx = True
+    request.htmx = htmx
+    request.headers = {"content-type": "application/json"}
+    request.json = AsyncMock(return_value={"query": "dark roast"})
+    return request
+
+
+async def test_htmx_returns_partial_and_pushes_url() -> None:
+    request = _request(htmx=True)
     mock_vector_search, mock_metrics = _mock_services()
 
     controller = object.__new__(VectorController)
     response = await VectorController.vector_search_demo.fn(
         controller,
-        data=product_schemas.VectorQuery(query="dark roast"),
         request=request,
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
@@ -69,13 +77,11 @@ async def test_htmx_returns_partial_and_pushes_url() -> None:
 async def test_non_htmx_returns_json() -> None:
     from app.domain.products.schemas import VectorDemo
 
-    request = MagicMock()
-    request.htmx = False
+    request = _request(htmx=False)
     mock_vector_search, mock_metrics = _mock_services()
 
     response: Any = await VectorController.vector_search_demo.fn(
         object.__new__(VectorController),
-        data=product_schemas.VectorQuery(query="dark roast"),
         request=request,
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
@@ -84,3 +90,34 @@ async def test_non_htmx_returns_json() -> None:
     assert isinstance(response.content, VectorDemo)
     assert response.content.results[0].name == "Cold Brew"
     assert response.content.cache_hit is False
+
+
+async def test_htmx_vector_search_route_through_test_client(
+    htmx_client: AsyncTestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.products.services import OracleVectorSearchService
+    from app.domain.system.services import MetricsService
+
+    async def fake_similarity_search(
+        self: OracleVectorSearchService,
+        query: str,
+        k: int = 5,
+        threshold: float = 0.5,
+    ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
+        del self, k, threshold
+        assert query == "dark roast"
+        return _matches(), True, {"embedding_ms": 12.0, "oracle_ms": 4.0}
+
+    async def fake_record_search(self: MetricsService, metrics: Any) -> None:
+        del self
+        assert metrics.result_count == 1
+
+    monkeypatch.setattr(OracleVectorSearchService, "similarity_search", fake_similarity_search)
+    monkeypatch.setattr(MetricsService, "record_search", fake_record_search)
+
+    response = await htmx_client.post("/api/vector-demo", data={"query": "dark roast"})
+
+    assert response.status_code == 200, response.text[:500]
+    assert response.headers["HX-Push-Url"] == "/explore?q=dark%20roast"
+    assert "Cold Brew" in response.text

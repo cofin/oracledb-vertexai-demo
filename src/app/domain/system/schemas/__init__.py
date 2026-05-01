@@ -7,6 +7,7 @@ from ._cache import EmbeddingCache, ResponseCache
 from ._metrics import (
     CacheStats,
     CacheStatsRow,
+    ClassifyCompare,
     MetricCard,
     MetricsSummary,
     MetricsTimeSeries,
@@ -20,6 +21,7 @@ from ._session import HistoryMeta, UserSession, UserSessionCreate
 __all__ = (
     "CacheStats",
     "CacheStatsRow",
+    "ClassifyCompare",
     "EmbeddingCache",
     "HistoryMeta",
     "MetricCard",
