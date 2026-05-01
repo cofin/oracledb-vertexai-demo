@@ -735,7 +735,7 @@ grpc = [
 
 [[package]]
 name = "google-api-python-client"
-version = "2.194.0"
+version = "2.195.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "google-api-core" },
@@ -744,22 +744,22 @@ dependencies = [
     { name = "httplib2" },
     { name = "uritemplate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/ab/e83af0eb043e4ccc49571ca7a6a49984e9d00f4e9e6e6f1238d60bc84dce/google_api_python_client-2.194.0.tar.gz", hash = "sha256:db92647bd1a90f40b79c9618461553c2b20b6a43ce7395fa6de07132dc14f023", size = 14443469, upload-time = "2026-04-08T23:07:35.757Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/07/08d759b9cb10f48af14b25262dd0d6685ca8cda6c1f9e8a8109f57457205/google_api_python_client-2.195.0.tar.gz", hash = "sha256:c72cf2661c3addf01c880ce60541e83e1df354644b874f7f9d8d5ed2070446ae", size = 14584819, upload-time = "2026-04-30T21:51:50.638Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/34/5a624e49f179aa5b0cb87b2ce8093960299030ff40423bfbde09360eb908/google_api_python_client-2.194.0-py3-none-any.whl", hash = "sha256:61eaaac3b8fc8fdf11c08af87abc3d1342d1b37319cc1b57405f86ef7697e717", size = 15016514, upload-time = "2026-04-08T23:07:33.093Z" },
+    { url = "https://files.pythonhosted.org/packages/21/b9/2c71095e31fff57668fec7c07ac897df065f15521d070e63229e13689590/google_api_python_client-2.195.0-py3-none-any.whl", hash = "sha256:753e62057f23049a89534bea0162b60fe391b85fb86d80bcdf884d05ec91c5bf", size = 15162418, upload-time = "2026-04-30T21:51:47.444Z" },
 ]
 
 [[package]]
 name = "google-auth"
-version = "2.49.2"
+version = "2.50.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "pyasn1-modules" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/fc/e925290a1ad95c975c459e2df070fac2b90954e13a0370ac505dff78cb99/google_auth-2.49.2.tar.gz", hash = "sha256:c1ae38500e73065dcae57355adb6278cf8b5c8e391994ae9cbadbcb9631ab409", size = 333958, upload-time = "2026-04-10T00:41:21.888Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/18/238d7021d151bdab868f23433817b027dd759135202f4dfce0670d1230ca/google_auth-2.50.0.tar.gz", hash = "sha256:f35eafb191195328e8ce10a7883970877e7aeb49c2bfaa54aa0e394316d353d0", size = 336523, upload-time = "2026-04-30T21:19:29.659Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/76/d241a5c927433420507215df6cac1b1fa4ac0ba7a794df42a84326c68da8/google_auth-2.49.2-py3-none-any.whl", hash = "sha256:c2720924dfc82dedb962c9f52cabb2ab16714fd0a6a707e40561d217574ed6d5", size = 240638, upload-time = "2026-04-10T00:41:14.501Z" },
+    { url = "https://files.pythonhosted.org/packages/37/cf/4880c2137c14280b2f59975cdf12cc442bc0ae1f9ea473a26eaa0c146786/google_auth-2.50.0-py3-none-any.whl", hash = "sha256:04382175e28b94f49694977f0a792688b59a668def1499e9d8de996dc9ce5b15", size = 246495, upload-time = "2026-04-30T21:19:27.664Z" },
 ]
 
 [package.optional-dependencies]
@@ -1151,7 +1151,7 @@ wheels = [
 
 [[package]]
 name = "google-genai"
-version = "1.73.1"
+version = "1.74.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1165,9 +1165,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/d8/40f5f107e5a2976bbac52d421f04d14fc221b55a8f05e66be44b2f739fe6/google_genai-1.73.1.tar.gz", hash = "sha256:b637e3a3b9e2eccc46f27136d470165803de84eca52abfed2e7352081a4d5a15", size = 530998, upload-time = "2026-04-14T21:06:19.153Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/c8/4a8f1de0a3268d526a345b8c74456b3e1e6ffd200982626326cf7ca83e5b/google_genai-1.74.0.tar.gz", hash = "sha256:c4c473cebdeb6e5adbb0639326de66a3a85a2209e0d32de7d66bf05c698abae8", size = 536772, upload-time = "2026-04-29T22:16:35.881Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/af/508e0528015240d710c6763f7c89ff44fab9a94a80b4377e265d692cbfd6/google_genai-1.73.1-py3-none-any.whl", hash = "sha256:af2d2287d25e42a187de19811ef33beb2e347c7e2bdb4dc8c467d78254e43a2c", size = 783595, upload-time = "2026-04-14T21:06:17.464Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/2b/539c328b66f7bfef2df869371a1789361228e5a7694ba02a642608367b46/google_genai-1.74.0-py3-none-any.whl", hash = "sha256:87d0b311c67d4b2a0ca741e9fc6891330c29defae81d46d8db41079aa1a3d80a", size = 790433, upload-time = "2026-04-29T22:16:33.979Z" },
 ]
 
 [[package]]
@@ -2894,7 +2894,7 @@ wheels = [
 
 [[package]]
 name = "sqlspec"
-version = "0.46.1"
+version = "0.46.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mypy-extensions" },
@@ -2902,13 +2902,13 @@ dependencies = [
     { name = "sqlglot" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/fb/0226f08dc2d83802cf8e658b044d69fbbf09508dc956a6b05ea7ca3714c7/sqlspec-0.46.1.tar.gz", hash = "sha256:a036f4413c6ba6e38bb8f3f774c406b0f6f3b3d8938210bd255efbc9142a90da", size = 2129761, upload-time = "2026-04-28T21:22:58.191Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3e/5e/1e6aa5030a4e5f2d6414d6975fe09c81ea97dd90e8b2347274b664cb0e4b/sqlspec-0.46.2.tar.gz", hash = "sha256:bcdf8de7731fb24ee6ca02a66bbe3e0e55651027b129e75c02e22514d74c9282", size = 2134931, upload-time = "2026-04-30T21:01:16.793Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/02/af517297b46eb5c242d8f8797f6c8799639ccc0a9afae3d331cc9eb8f5f9/sqlspec-0.46.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:197c6f020adac7c87dfd0022c4fa75f96e84bb147c741aa97afdcb621c37e9ed", size = 5074310, upload-time = "2026-04-28T21:22:40.578Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/d9/ffb5d2d547b7ba107e49c2033ba1b9a80ba35bc3d1d6b7eb93c8208c59f1/sqlspec-0.46.1-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:69e2e0f53ae230de3f7f78d5c8143554104cae4c02e4c85dd7967ee896714828", size = 4758291, upload-time = "2026-04-28T21:22:42.782Z" },
-    { url = "https://files.pythonhosted.org/packages/3d/53/f944aa6a10bbec3de644e4b372abefc6744492ed84f662458d7a20b3bc9b/sqlspec-0.46.1-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:926d95527c5e2d23f9810d8494e94cfff99724944b8f206db6d372066d19816f", size = 5170711, upload-time = "2026-04-28T21:22:44.792Z" },
-    { url = "https://files.pythonhosted.org/packages/45/2a/13b075eee7c0662b5cc922f3411d3d72db927696f4fdc0f6b09d3bd3e97d/sqlspec-0.46.1-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0451ce58e7a9d16694ee3fce33e18df4b45333e5e68b62b89df8b83a69bb8d1d", size = 4809157, upload-time = "2026-04-28T21:22:46.448Z" },
-    { url = "https://files.pythonhosted.org/packages/3c/97/43e2d1e20db0f615bcb484834e5a0e5a4f33e7804d742f9b37b685f6c519/sqlspec-0.46.1-py3-none-any.whl", hash = "sha256:63616eabb26cf952e98ea5ed2be57e766cde966bdee99104e9e6fd90d8a7ab80", size = 1088098, upload-time = "2026-04-28T21:22:56.389Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/ce/eefa8d01f08b1dcfaee4f63ccafcd5b9d5c92f2b304680273e6807bf34d8/sqlspec-0.46.2-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:66d2dc65e30b3ea21c7d3cf2411798d4c112e0116bf7736547807f0890313bdf", size = 5078517, upload-time = "2026-04-30T21:00:55.845Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/9b/00d2b24dd8242a4371559971cbb5a13db8932ed1212d0359677b086fdc72/sqlspec-0.46.2-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ed2a660cc0bc83702fcbefc70665bc54a5caf4946c12a072e76da649112ff3e7", size = 4760533, upload-time = "2026-04-30T21:00:58.356Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/ee/c056b89fb24fb882cf71d07d0729aa5a57386b69175d81665f7e5bb5bcaf/sqlspec-0.46.2-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl", hash = "sha256:3b9a828eb5b670dcb1b70b057470f214b0b76b9bc09286596c752132fda9de4f", size = 5172752, upload-time = "2026-04-30T21:01:00.685Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/02/fa21b60571702f79058f617af1224275762fa073d2cf2f8e2c884fe39901/sqlspec-0.46.2-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:bb317a2e05f2a814d63712cb45ef2e872ae53144a86a493e420b3640f36a47fb", size = 4813391, upload-time = "2026-04-30T21:01:02.852Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/79/bec5e8a0c12b413967409b43fe778a008a3ccd3153e74ebff40e819187e3/sqlspec-0.46.2-py3-none-any.whl", hash = "sha256:c31e6401b722021db82528c1ee54ddcfa5acffd953afffac1308063f89553270", size = 1090116, upload-time = "2026-04-30T21:01:14.534Z" },
 ]
 
 [package.optional-dependencies]
