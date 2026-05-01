@@ -3,7 +3,7 @@
 *Flow ID: `source-organization-contract_20260501`*
 *Chapter 1 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.1`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -105,3 +105,19 @@ Initial hotspots found:
 - Existing hotspots are allowlisted with explicit reasons, not silently ignored.
 - No production source files are changed in this chapter.
 - Focused tests pass.
+
+---
+
+## Implementation Evidence
+
+- Red test observed: `uv run pytest src/tests/unit/app/test_source_organization.py -q`
+  failed before the temporary hotspot allowlist was added.
+- Focused tests passed:
+  - `uv run pytest src/tests/unit/app/test_source_organization.py -q`
+  - `uv run pytest src/tests/unit/app/domain/test_layout.py src/tests/unit/app/cli/test_surface.py -q`
+  - `uv run pytest src/tests/unit/app/test_source_organization.py src/tests/unit/tools/test_maps_embed_key_script.py -q`
+- Verification passed:
+  - `uv run ruff check src/tests/unit/app/test_source_organization.py src/tests/unit/tools/test_maps_embed_key_script.py src/tests/unit/tools/__init__.py`
+  - `make lint`
+  - `make test`
+  - `git diff --cached --check`

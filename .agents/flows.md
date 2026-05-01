@@ -102,7 +102,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 *Link: [./specs/demo-source-organization_20260501/](./specs/demo-source-organization_20260501/)*
 *Beads: oracledb-vertexai-8jt*
 
-  ### [ ] Ch 1: source-organization-contract_20260501
+  ### [x] Ch 1: source-organization-contract_20260501
   *Link: [./specs/source-organization-contract_20260501/](./specs/source-organization-contract_20260501/)*
   *Beads: oracledb-vertexai-8jt.1*
 

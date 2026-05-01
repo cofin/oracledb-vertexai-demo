@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-import subprocess
+import subprocess  # noqa: S404
 
 from tests.support.paths import PROJECT_ROOT
 
@@ -11,8 +11,8 @@ SCRIPT = PROJECT_ROOT / "tools/scripts/create-maps-embed-key.sh"
 
 
 def run_script(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["bash", str(SCRIPT), *args],
+    return subprocess.run(  # noqa: S603
+        ["/usr/bin/env", "bash", str(SCRIPT), *args],
         cwd=PROJECT_ROOT,
         check=False,
         text=True,
