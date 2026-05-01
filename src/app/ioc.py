@@ -30,7 +30,7 @@ from app.domain.products.services.services import (
     VertexAIService,
 )
 from app.domain.system.services.services import CacheService, MetricsService, PersonaManager
-from app.lib.di import LitestarProvider, QueryContext, query_id_var
+from app.lib.di import QueryContext, query_id_var
 from app.lib.settings import get_settings
 
 
@@ -134,13 +134,13 @@ PROVIDERS: tuple[type[Provider], ...] = (
 )
 
 
-def make_litestar_container() -> AsyncContainer:
-    """Build the Dishka container for Litestar.
+def make_container(*extra_providers: Provider) -> AsyncContainer:
+    """Build the Dishka container with the three user providers plus any extras.
 
-    Returns:
-        A configured :class:`AsyncContainer` with ``LitestarProvider`` plus the 3 user providers.
+    Pass ``LitestarProvider()`` to wire the request scope to Litestar; pass
+    nothing for the ``coffee`` CLI.
     """
-    return make_async_container(LitestarProvider(), *(P() for P in PROVIDERS))
+    return make_async_container(*extra_providers, *(P() for P in PROVIDERS))
 
 
 __all__ = (
@@ -148,5 +148,5 @@ __all__ = (
     "DomainServiceProvider",
     "IntegrationsProvider",
     "LitestarPersistenceProvider",
-    "make_litestar_container",
+    "make_container",
 )

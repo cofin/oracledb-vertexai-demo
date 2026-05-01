@@ -27,6 +27,7 @@ def test_vite_settings_stay_in_template_mode(monkeypatch: MonkeyPatch) -> None:
 
 
 def test_vite_settings_pass_trusted_proxies(monkeypatch: MonkeyPatch) -> None:
+    """``litestar_vite.RuntimeConfig`` reads ``LITESTAR_TRUSTED_PROXIES`` itself."""
     from app.lib.settings import ViteSettings
 
     monkeypatch.setenv("LITESTAR_TRUSTED_PROXIES", "*")
@@ -47,16 +48,6 @@ def test_vite_settings_asset_url_matches_standard_env_fallback(monkeypatch: Monk
     monkeypatch.setenv("VITE_ASSET_URL", "/static/dist/")
 
     assert ViteSettings().get_config().paths.asset_url == "/static/dist/"
-
-
-def test_vite_settings_wires_lifespan_flag(monkeypatch: MonkeyPatch) -> None:
-    from app.lib.settings import ViteSettings
-
-    monkeypatch.setenv("VITE_USE_SERVER_LIFESPAN", "False")
-
-    config = ViteSettings().get_config()
-
-    assert config.runtime.start_dev_server is False
 
 
 def test_settings_exports_app_url_from_litestar_port(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
@@ -92,3 +83,29 @@ def test_settings_preserves_shell_app_url_override(monkeypatch: MonkeyPatch, tmp
         assert os.environ["APP_URL"] == "http://localhost:9000"
     finally:
         Settings.from_env.cache_clear()
+
+
+def test_maps_settings_default_to_link_only_mode(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import MapsSettings
+
+    monkeypatch.delenv("MAPS_ENABLE_EMBED", raising=False)
+    monkeypatch.delenv("GOOGLE_MAPS_EMBED_API_KEY", raising=False)
+
+    settings = MapsSettings()
+
+    assert settings.ENABLE_EMBED is False
+    assert not settings.EMBED_API_KEY
+    assert settings.embed_enabled is False
+
+
+def test_maps_settings_require_flag_and_separate_key(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import MapsSettings
+
+    monkeypatch.setenv("MAPS_ENABLE_EMBED", "true")
+    monkeypatch.delenv("GOOGLE_MAPS_EMBED_API_KEY", raising=False)
+
+    assert MapsSettings().embed_enabled is False
+
+    monkeypatch.setenv("GOOGLE_MAPS_EMBED_API_KEY", "maps-key")
+
+    assert MapsSettings().embed_enabled is True

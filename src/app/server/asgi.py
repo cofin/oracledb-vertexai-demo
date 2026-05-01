@@ -17,13 +17,13 @@ def create_app() -> Litestar:
 
     from litestar import Litestar
 
-    from app.ioc import make_litestar_container
-    from app.lib.di import setup_dishka
+    from app.ioc import make_container
+    from app.lib.di import LitestarProvider, setup_dishka
     from app.lib.settings import get_settings
     from app.server.core import ApplicationCore
 
     settings = get_settings()
-    container = make_litestar_container()
+    container = make_container(LitestarProvider())
 
     @asynccontextmanager
     async def dishka_lifespan(app: Litestar) -> AsyncIterator[None]:

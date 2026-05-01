@@ -28,14 +28,15 @@ def test_ioc_provider_classes_have_expected_names() -> None:
 
 
 def test_make_litestar_container_resolves_expected_types() -> None:
-    """`make_litestar_container` builds a container with persistence + integration + domain types."""
+    """`make_container(LitestarProvider())` builds a container with persistence + integration + domain types."""
     from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
     from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 
     from app.domain.products.services.services import ProductService
-    from app.ioc import make_litestar_container
+    from app.ioc import make_container
+    from app.lib.di import LitestarProvider
 
-    container = make_litestar_container()
+    container = make_container(LitestarProvider())
     registered_types: set[type] = set()
     registry = container.registry
     while registry is not None:

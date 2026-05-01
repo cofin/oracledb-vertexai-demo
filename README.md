@@ -61,6 +61,7 @@ close over request-scoped services.
 ## Docs
 
 - Architecture: [.agents/knowledge/guides/architecture.md](.agents/knowledge/guides/architecture.md)
+- Maps setup and privacy: [docs/maps.md](docs/maps.md)
 - Oracle vector search: [.agents/knowledge/guides/oracle-vector-search.md](.agents/knowledge/guides/oracle-vector-search.md)
 - ADK patterns: [.agents/knowledge/guides/adk-agent-patterns.md](.agents/knowledge/guides/adk-agent-patterns.md)
 - Oracle vectors: <https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/>

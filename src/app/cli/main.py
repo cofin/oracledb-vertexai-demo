@@ -42,6 +42,11 @@ click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """``coffee`` top-level entry point."""
+    from app.ioc import make_container
+
+    ctx.ensure_object(dict)
+    ctx.obj["container_factory"] = make_container
+
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

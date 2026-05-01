@@ -297,6 +297,21 @@ class AppSettings:
 
 
 @dataclass
+class MapsSettings:
+    """Google Maps integration settings."""
+
+    ENABLE_EMBED: bool = field(default_factory=lambda: os.getenv("MAPS_ENABLE_EMBED", "False") in TRUE_VALUES)
+    """Enable optional Google Maps Embed iframe rendering."""
+    EMBED_API_KEY: str = field(default_factory=lambda: os.getenv("GOOGLE_MAPS_EMBED_API_KEY", ""))
+    """Restricted Google Maps Embed API key. Do not reuse Gemini or Vertex keys."""
+
+    @property
+    def embed_enabled(self) -> bool:
+        """Return true only when embed rendering is explicitly enabled and keyed."""
+        return self.ENABLE_EMBED and bool(self.EMBED_API_KEY.strip())
+
+
+@dataclass
 class VertexAISettings:
     """Vertex AI configuration settings."""
 
@@ -389,29 +404,16 @@ class ViteSettings:
 
     DEV_MODE: bool = field(default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES)
     """Enable Vite dev server mode."""
-    USE_SERVER_LIFESPAN: bool = field(
-        default_factory=lambda: os.getenv("VITE_USE_SERVER_LIFESPAN", "True") in TRUE_VALUES
-    )
-    """Use server lifespan to manage Vite process."""
-    PORT: int = field(default_factory=lambda: int(os.getenv("VITE_PORT", "5173")))
-    """Vite dev server port."""
-    HOST: str = field(default_factory=lambda: os.getenv("VITE_HOST", "0.0.0.0"))  # noqa: S104
-    """Vite dev server host."""
     BUNDLE_DIR: Path = field(
         default_factory=lambda: Path(
             os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static" / "dist")),
         ),
     )
-    """Vite bundle directory.
-
-    Vite emits ``manifest.json`` + hashed bundles here; ``dist/hot`` is the
-    HMR marker written when ``DEV_MODE`` is true. Lives inside the ``web``
-    domain peer-package so templates and bundle output stay co-located.
-    """
-    ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL", "/static/dist/"))
+    """Vite bundle directory."""
+    ASSET_URL: str = field(
+        default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL") or "/static/dist/",
+    )
     """Vite asset URL."""
-    TRUSTED_PROXIES: str | None = field(default_factory=lambda: os.getenv("LITESTAR_TRUSTED_PROXIES"))
-    """Trusted reverse proxies for X-Forwarded-* headers."""
 
     @property
     def set_static_files(self) -> bool:
@@ -442,13 +444,7 @@ class ViteSettings:
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
-            runtime=RuntimeConfig(
-                executor="node",
-                host=self.HOST,
-                port=self.PORT,
-                start_dev_server=self.USE_SERVER_LIFESPAN,
-                trusted_proxies=self.TRUSTED_PROXIES,
-            ),
+            runtime=RuntimeConfig(executor="node"),
         )
 
 
@@ -462,6 +458,7 @@ class Settings:
     agent: AgentSettings = field(default_factory=AgentSettings)
     cache: CacheSettings = field(default_factory=CacheSettings)
     vite: ViteSettings = field(default_factory=ViteSettings)
+    maps: MapsSettings = field(default_factory=MapsSettings)
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""
