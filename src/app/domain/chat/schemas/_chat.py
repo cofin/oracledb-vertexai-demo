@@ -42,6 +42,10 @@ class CoffeeChatReply(CamelizedBaseStruct, omit_defaults=True):
     messages: list[ChatMessage]
     answer: str
     query_id: str
+    store_results: list[dict]
+    inventory_results: list[dict]
+    map_actions: list[dict]
+    location_context: dict
     search_metrics: dict = {}
     sql_phases: list[dict] = []
     from_cache: bool = False

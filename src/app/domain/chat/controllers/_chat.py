@@ -24,12 +24,24 @@ from app.lib.di import Inject
 
 logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
+_MIN_LATITUDE = -90.0
+_MAX_LATITUDE = 90.0
+_MIN_LONGITUDE = -180.0
+_MAX_LONGITUDE = 180.0
 
 
 @dataclass
 class CoffeeChatForm:
     message: str
     persona: str = "enthusiast"
+    location_consent: bool = False
+    latitude: float | None = None
+    longitude: float | None = None
+    accuracy: float | None = None
+    city: str = ""
+    state: str = ""
+    zip_code: str = ""
+    store_name: str = ""
 
 
 def _metrics_badges(result: dict, intent: str, from_cache: bool) -> dict:
@@ -50,12 +62,84 @@ def _metrics_badges(result: dict, intent: str, from_cache: bool) -> dict:
     }
 
 
-def _payload_value(payload: Any, key: str, default: str = "") -> str:
+_MISSING = object()
+
+
+def _payload_raw(payload: Any, *keys: str, default: Any = "") -> Any:
     getter = getattr(payload, "get", None)
-    value = getter(key, default) if callable(getter) else default
+    if not callable(getter):
+        return default
+    value = _MISSING
+    for key in keys:
+        value = getter(key, _MISSING)
+        if value is not _MISSING:
+            break
+    if value is _MISSING:
+        value = default
     if isinstance(value, list | tuple):
         value = value[0] if value else default
+    return default if value is None else value
+
+
+def _payload_value(payload: Any, *keys: str, default: str = "") -> str:
+    value = _payload_raw(payload, *keys, default=default)
     return str(value or default)
+
+
+def _payload_bool(payload: Any, *keys: str, default: bool = False) -> bool:
+    value = _payload_raw(payload, *keys, default=default)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "on"}
+    return default
+
+
+def _payload_float(payload: Any, *keys: str) -> float | None:
+    value = _payload_raw(payload, *keys, default=None)
+    if value is None or (isinstance(value, str) and not value):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationException(detail="Location coordinates must be numbers") from exc
+
+
+def _location_text(value: str) -> str:
+    return value.replace("\x00", "").strip()[:100]
+
+
+def _location_context_from_form(data: CoffeeChatForm) -> dict[str, Any]:
+    context: dict[str, Any] = {}
+    for key, value in (
+        ("city", data.city),
+        ("state", data.state),
+        ("zip_code", data.zip_code),
+        ("store_name", data.store_name),
+    ):
+        cleaned = _location_text(value)
+        if cleaned:
+            context[key] = cleaned
+
+    if not data.location_consent:
+        return context
+
+    if data.latitude is None and data.longitude is None:
+        return context
+    if data.latitude is None or data.longitude is None:
+        raise ValidationException(detail="Location coordinates require latitude and longitude")
+    if not _MIN_LATITUDE <= data.latitude <= _MAX_LATITUDE or not (
+        _MIN_LONGITUDE <= data.longitude <= _MAX_LONGITUDE
+    ):
+        raise ValidationException(detail="Invalid location coordinates")
+
+    coordinates = {"latitude": data.latitude, "longitude": data.longitude}
+    if data.accuracy is not None:
+        coordinates["accuracy_meters"] = max(data.accuracy, 0.0)
+    context["coordinates"] = coordinates
+    return context
 
 
 async def _chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
@@ -71,7 +155,15 @@ async def _chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
         payload = await request.form()
     return CoffeeChatForm(
         message=_payload_value(payload, "message"),
-        persona=_payload_value(payload, "persona", "enthusiast"),
+        persona=_payload_value(payload, "persona", default="enthusiast"),
+        location_consent=_payload_bool(payload, "locationConsent", "location_consent"),
+        latitude=_payload_float(payload, "latitude", "lat"),
+        longitude=_payload_float(payload, "longitude", "lng", "lon"),
+        accuracy=_payload_float(payload, "accuracy", "accuracyMeters", "accuracy_meters"),
+        city=_payload_value(payload, "city"),
+        state=_payload_value(payload, "state"),
+        zip_code=_payload_value(payload, "zipCode", "zip_code", "zip"),
+        store_name=_payload_value(payload, "storeName", "store_name"),
     )
 
 
@@ -128,6 +220,7 @@ class CoffeeChatController(Controller):
         data = await _chat_form_from_request(request)
         try:
             clean_message = self.validate_message(data.message)
+            location_context = _location_context_from_form(data)
         except ValidationException as exc:
             if request.htmx:
                 return HTMXTemplate(
@@ -148,6 +241,7 @@ class CoffeeChatController(Controller):
                 session_id=session_id,
                 persona=validated_persona,
                 tools_service=tools_service,
+                location_context=location_context,
             )
         except AIServiceUnconfigured as exc:
             await logger.awarning("AI service not configured", detail=str(exc))
@@ -207,6 +301,10 @@ class CoffeeChatController(Controller):
                 from_cache=from_cache,
                 embedding_cache_hit=bool(result.get("embedding_cache_hit", False)),
                 intent_detected=intent,
+                store_results=result.get("store_results", []),
+                inventory_results=result.get("inventory_results", []),
+                map_actions=result.get("map_actions", []),
+                location_context=result.get("location_context", {}),
             ),
         )
 
@@ -228,6 +326,7 @@ class CoffeeChatController(Controller):
             try:
                 clean_message = self.validate_message(data.message)
                 validated_persona = self.validate_persona(data.persona)
+                location_context = _location_context_from_form(data)
                 user_id, session_id = adk_session_identity(request)
                 async for event in adk_runner.stream_request(
                     query=clean_message,
@@ -235,6 +334,7 @@ class CoffeeChatController(Controller):
                     session_id=session_id,
                     persona=validated_persona,
                     tools_service=tools_service,
+                    location_context=location_context,
                 ):
                     event_type = str(event.get("type", "message"))
                     yield {"event": event_type, "data": json.dumps(event)}

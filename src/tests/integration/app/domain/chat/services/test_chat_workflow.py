@@ -159,6 +159,10 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         "from_cache",
         "embedding_cache_hit",
         "sql_phases",
+        "store_results",
+        "inventory_results",
+        "map_actions",
+        "location_context",
     }
     assert result["session_id"] == session_id
     assert result["intent_detected"] == IntentLabel.PRODUCT_RAG.value
@@ -170,6 +174,10 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
     assert result["response_time_ms"] < 4000
     assert result["from_cache"] is False
     assert result["embedding_cache_hit"] is True
+    assert result["store_results"] == []
+    assert result["inventory_results"] == []
+    assert result["map_actions"] == []
+    assert result["location_context"] == {}
     sql_keys = {phase["sql_key"] for phase in result["sql_phases"]}
     assert {"get-cached-response", "get-cached-embedding", "vector-search-products"} <= sql_keys
     vector_phase = next(phase for phase in result["sql_phases"] if phase["sql_key"] == "vector-search-products")
