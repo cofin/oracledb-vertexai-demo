@@ -59,7 +59,7 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 ## Current Baseline Schema (0001)
 
-The initial Oracle 23ai schema in this project includes:
+The initial Oracle 26ai schema in this project includes:
 
 - `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-001`.
 - `store` table for location data with `JSON`-encoded business hours.
@@ -68,9 +68,9 @@ The initial Oracle 23ai schema in this project includes:
 
 ## Vector Memory Pool
 
-Oracle 23ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
+Oracle 26ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
 
-Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle 23ai Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the ~1100 vectors at 3072 dims that ship with the demo (~18 MB with HNSW overhead):
+Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the ~1100 vectors at 3072 dims that ship with the demo (~18 MB with HNSW overhead):
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE=SPFILE;

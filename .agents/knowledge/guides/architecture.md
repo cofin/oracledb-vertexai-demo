@@ -12,7 +12,7 @@ Cymbal Coffee is a two-page Litestar application:
 - `/api/vector-demo` returns either HTMX partials or JSON vector-search results.
 - `/api/explain-plan` returns Oracle `DBMS_XPLAN.DISPLAY()` output for the vector query.
 
-The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 23ai,
+The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
 Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
 Jinja/HTMX with Vite, Tailwind v4, Alpine, and a small `src/resources/main.js`
 streaming client.
@@ -23,7 +23,7 @@ browser
   -> Dishka request scope
   -> domain services
   -> SQLSpec Oracle driver and Google GenAI client
-  -> Oracle 23ai, Vertex AI, ADK session store
+  -> Oracle 26ai, Vertex AI, ADK session store
 ```
 
 ## Source Layout
@@ -167,7 +167,7 @@ POST /api/vector-demo
 ```
 
 Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-001`. HNSW indexes use Oracle 23ai `ORGANIZATION INMEMORY
+by `gemini-embedding-001`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH`.
 
 ## Frontend

@@ -1,7 +1,7 @@
 -- Copyright 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- Standalone DBA script for sizing the Oracle 23ai vector memory pool.
+-- Standalone DBA script for sizing the Oracle 26ai vector memory pool.
 --
 -- Use this when you cannot rely on container init (autonomous database,
 -- shared dev DB, prod) or you need to bump the pool size without recreating

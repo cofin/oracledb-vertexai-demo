@@ -1,7 +1,7 @@
 -- Copyright 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- Configure Oracle 23ai vector memory pool for HNSW INMEMORY indexes.
+-- Configure Oracle 26ai vector memory pool for HNSW INMEMORY indexes.
 --
 -- vector_memory_size is a STATIC parameter (SCOPE=SPFILE only), so the pool
 -- is not allocated until the next instance restart. This script runs as the
@@ -11,7 +11,7 @@
 -- subsequent init script runs. After restart the Vector Memory pool is live
 -- and downstream init / migrations / HNSW INMEMORY index DDL succeed.
 --
--- Oracle 23ai Free Edition rejects sga_max_size / sga_target overrides
+-- Oracle Free Edition rejects sga_max_size / sga_target overrides
 -- (ORA-56752 — Free is locked to ~1.5 G SGA + 512 M PGA = 2 G total). The
 -- vector pool must therefore fit inside the existing SGA. 512 M is plenty
 -- for the demo dataset (~50 products + ~1000 intent exemplars at 3072 dims

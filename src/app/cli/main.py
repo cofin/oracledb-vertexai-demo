@@ -31,7 +31,7 @@ click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
 @click.group(
     name="coffee",
     help=(
-        "[bold cyan]Cymbal Coffee[/bold cyan] — Oracle 23ai + Vertex AI demo CLI.\n\n"
+        "[bold cyan]Cymbal Coffee[/bold cyan] — Oracle 26ai + Vertex AI demo CLI.\n\n"
         "Production-app commands only. Database migrations, asset pipelines, and "
         "infrastructure live on [bold]python manage.py[/bold]."
     ),

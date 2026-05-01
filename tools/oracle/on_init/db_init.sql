@@ -1,8 +1,8 @@
 -- Copyright 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- Oracle 23AI Database Schema for Coffee Recommendation System
--- This script creates all necessary tables with Oracle 23AI features
+-- Oracle 26ai Database Schema for Coffee Recommendation System
+-- This script creates all necessary tables with Oracle 26ai features
 
 -- Switch to the PDB (Pluggable Database)
 ALTER SESSION SET CONTAINER = freepdb1;

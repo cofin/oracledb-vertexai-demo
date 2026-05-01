@@ -235,27 +235,27 @@ bootstrap: install init doctor start-infra migrate load-fixtures ## One-shot loc
 	@echo "${OK} Bootstrap complete. Run 'make run' to start the app."
 
 # =============================================================================
-# Local Infrastructure (Oracle 23AI Docker)
+# Local Infrastructure (Oracle 26ai Docker)
 # =============================================================================
 .PHONY: start-infra
 start-infra: ## Start local containers
-	@echo "${INFO} Starting local Oracle 23AI instance..."
+	@echo "${INFO} Starting local Oracle 26ai instance..."
 	@uv run python manage.py infra start --recreate
 	@echo "${OK} Infrastructure started"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers
-	@echo "${INFO} Stopping local Oracle 23AI instance..."
+	@echo "${INFO} Stopping local Oracle 26ai instance..."
 	@uv run python manage.py infra stop
 	@echo "${OK} Infrastructure stopped"
 
 .PHONY: wipe-infra
 wipe-infra: ## Remove local container info
-	@echo "${INFO} Wiping local Oracle 23AI instance..."
+	@echo "${INFO} Wiping local Oracle 26ai instance..."
 	@uv run python manage.py infra wipe --volumes --force --yes
 	@echo "${OK} Infrastructure wiped"
 
 .PHONY: infra-logs
 infra-logs: ## Tail development infrastructure logs
-	@echo "${INFO} Tailing logs for local Oracle 23AI instance..."
+	@echo "${INFO} Tailing logs for local Oracle 26ai instance..."
 	@uv run python manage.py infra logs --follow

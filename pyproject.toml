@@ -24,7 +24,7 @@ dependencies = [
     "dishka>=1.4.2",
     "litestar-vite>=0.18.2",
 ]
-description = "Reference application for Oracle 23AI and VertexAI integration."
+description = "Reference application for Oracle 26ai and Vertex AI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
 license = { text = "MIT" }
 maintainers = [{ name = "Cody Fincher", email = "cody.fincher@gmail.com" }]

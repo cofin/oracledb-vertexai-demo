@@ -45,7 +45,7 @@ async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str
 async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
     """Reset Oracle identity sequences to match the current maximum IDs in tables.
 
-    Uses Oracle 23ai's START WITH LIMIT VALUE to automatically resynchronize
+    Uses Oracle 26ai's START WITH LIMIT VALUE to automatically resynchronize
     identity sequences after loading fixtures with explicit IDs.
     This prevents duplicate key violations when inserting new records.
     """

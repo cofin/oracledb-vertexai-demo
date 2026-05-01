@@ -61,13 +61,13 @@ class TestDatabaseLifecycle:
         from tools.oracle.database import DatabaseConfig
 
         return DatabaseConfig(
-            container_name="oracle23ai-test",
+            container_name="oracle-free-test",
             image="gvenzl/oracle-free:latest",
             host_port=1522,  # Use different port to avoid conflicts
             oracle_system_password="TestPassword123!",  # noqa: S106
             app_user="testuser",
             app_user_password="testpass123",  # noqa: S106
-            data_volume_name="oracle23ai-test-data",
+            data_volume_name="oracle-free-test-data",
         )
 
     @pytest.fixture
@@ -81,7 +81,7 @@ class TestDatabaseLifecycle:
         """Test loading database config from environment."""
         from tools.oracle.database import DatabaseConfig
 
-        monkeypatch.setenv("ORACLE23AI_PORT", "1523")
+        monkeypatch.setenv("ORACLE26AI_PORT", "1523")
         monkeypatch.setenv("ORACLE_SYSTEM_PASSWORD", "EnvPassword123!")
         monkeypatch.setenv("ORACLE_USER", "envuser")
         monkeypatch.setenv("ORACLE_PASSWORD", "envpass123")
@@ -92,6 +92,17 @@ class TestDatabaseLifecycle:
         assert config.oracle_system_password == "EnvPassword123!"  # noqa: S105
         assert config.app_user == "envuser"
         assert config.app_user_password == "envpass123"  # noqa: S105
+
+    def test_database_config_from_legacy_port_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test loading database config from the legacy Oracle 23ai port alias."""
+        from tools.oracle.database import DatabaseConfig
+
+        monkeypatch.delenv("ORACLE26AI_PORT", raising=False)
+        monkeypatch.setenv("ORACLE23AI_PORT", "1524")
+
+        config = DatabaseConfig.from_env()
+
+        assert config.host_port == 1524
 
     @pytest.mark.slow
     def test_database_status_check(self, runtime: ContainerRuntime, db_config: DatabaseConfig) -> None:
@@ -250,7 +261,7 @@ class TestConnectionTesting:
         # Set managed mode variables
         monkeypatch.setenv("DATABASE_USER", "manageduser")
         monkeypatch.setenv("DATABASE_PASSWORD", "managedpass")
-        monkeypatch.setenv("ORACLE23AI_PORT", "1521")
+        monkeypatch.setenv("ORACLE26AI_PORT", "1521")
         monkeypatch.setenv("DATABASE_SERVICE_NAME", "FREEPDB1")
 
         config = ConnectionConfig.from_env()

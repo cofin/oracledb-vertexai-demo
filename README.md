@@ -1,6 +1,6 @@
-# Cymbal Coffee: Oracle 23ai + Vertex AI + ADK
+# Cymbal Coffee: Oracle 26ai + Vertex AI + ADK
 
-Reference app for AI-powered product search on Oracle Database 23ai with Google
+Reference app for AI-powered product search on Oracle Database 26ai with Google
 ADK 2.0, Vertex AI, SQLSpec, Litestar, HTMX, and Vite.
 
 ## 5-Minute Quickstart
@@ -40,7 +40,7 @@ request-scoped SQLSpec Oracle driver plus domain services, while app-scoped
 providers own the Google GenAI client, SQLSpec ADK session service, intent
 classifier, and ADK runner.
 
-Oracle 23ai stores products, embeddings, caches, metrics, server-side web
+Oracle 26ai stores products, embeddings, caches, metrics, server-side web
 sessions, and ADK session/event rows. Vertex AI generates 3072-dimensional
 embeddings and Gemini replies; ADK coordinates a workflow graph whose tool calls
 close over request-scoped services.

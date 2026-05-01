@@ -1,7 +1,7 @@
 # Copyright 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Oracle Database 23ai + Google Vertex AI Demo Application."""
+"""Oracle Database 26ai + Google Vertex AI Demo Application."""
 
 from __future__ import annotations
 

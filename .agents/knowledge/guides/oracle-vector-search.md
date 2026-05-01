@@ -1,6 +1,6 @@
 # Oracle Vector Search Guide
 
-Current guide for the Cymbal Coffee Oracle 23ai vector stack.
+Current guide for the Cymbal Coffee Oracle 26ai vector stack.
 
 ## Current Contract
 

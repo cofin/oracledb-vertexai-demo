@@ -106,7 +106,8 @@ class ConnectionConfig:
             "DATABASE_PASSWORD", os.getenv("ORACLE_PASSWORD", "super-secret" if mode == DeploymentMode.MANAGED else "")
         )
         host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
-        port = int(os.getenv("DATABASE_PORT", os.getenv("ORACLE23AI_PORT", "1521")))
+        oracle_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
+        port = int(os.getenv("DATABASE_PORT", oracle_port))
         service_name = os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1" if mode == DeploymentMode.MANAGED else "ORCL")
         dsn = os.getenv("DATABASE_DSN")
 

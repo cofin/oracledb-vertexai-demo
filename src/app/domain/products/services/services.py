@@ -177,7 +177,7 @@ class OracleVectorSearchService:
 
         Two driver round-trips: ``EXPLAIN PLAN FOR <vector-search>`` then
         ``DBMS_XPLAN.DISPLAY()``. The returned summary is the first plan
-        operation that mentions the VECTOR access path (Oracle 23ai's
+        operation that mentions the VECTOR access path (Oracle 26ai's
         hallmark for HNSW/IVF lookups).
         """
         embedding, _ = await self.vertex_ai_service.get_text_embedding(

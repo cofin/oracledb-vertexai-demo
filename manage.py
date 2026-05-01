@@ -13,7 +13,7 @@
 # ///
 """Cymbal Coffee Infrastructure and Database Lifecycle Management.
 
-Unified DevOps CLI for the Oracle 23ai + Vertex AI demo. Mirrors the
+Unified DevOps CLI for the Oracle 26ai + Vertex AI demo. Mirrors the
 ``dma/accelerator`` layout: six top-level groups (``init``, ``install``,
 ``doctor``, ``infra``, ``database``, ``assets``).
 
@@ -68,7 +68,7 @@ console = Console()
     help="""
     [bold cyan]Cymbal Coffee Infrastructure and Database Management[/bold cyan]
 
-    Unified DevOps CLI for the Oracle 23ai + Vertex AI demo.
+    Unified DevOps CLI for the Oracle 26ai + Vertex AI demo.
     """,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
@@ -88,9 +88,9 @@ cli.add_command(doctor_command, name="doctor")
 # =============================================================================
 
 
-@cli.group(name="infra", help="Manage development infrastructure (Oracle 23ai container).")
+@cli.group(name="infra", help="Manage development infrastructure (Oracle 26ai container).")
 def infra_group() -> None:
-    """Oracle 23ai container lifecycle — flat namespace, accelerator-style."""
+    """Oracle 26ai container lifecycle — flat namespace, accelerator-style."""
 
 
 _INFRA_RENAME = {

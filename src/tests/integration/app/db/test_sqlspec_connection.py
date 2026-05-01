@@ -155,7 +155,7 @@ class TestSQLSpecConnection:
         if result:
             # Verify VECTOR type is recognized
             assert result["column_name"] == "EMBEDDING"
-            # Oracle 23AI uses VECTOR data type
+            # Oracle 26ai uses VECTOR data type
             assert "VECTOR" in result["data_type"].upper() or result["data_type"].upper() == "CLOB"
 
     async def test_oracle_merge_statement_support(self, driver: OracleAsyncDriver) -> None:
