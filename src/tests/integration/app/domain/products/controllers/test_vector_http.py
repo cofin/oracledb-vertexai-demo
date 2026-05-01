@@ -121,3 +121,49 @@ async def test_htmx_vector_search_route_through_test_client(
     assert response.status_code == 200, response.text[:500]
     assert response.headers["HX-Push-Url"] == "/explore?q=dark%20roast"
     assert "Cold Brew" in response.text
+
+
+async def test_htmx_vector_search_returns_inline_error_on_service_failure(
+    htmx_client: AsyncTestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.products.services import OracleVectorSearchService
+
+    async def fail_similarity_search(
+        self: OracleVectorSearchService,
+        query: str,
+        k: int = 5,
+        threshold: float = 0.5,
+    ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
+        del self, query, k, threshold
+        msg = "Vertex AI API has not been used in project demo-project"
+        raise RuntimeError(msg)
+
+    monkeypatch.setattr(OracleVectorSearchService, "similarity_search", fail_similarity_search)
+
+    response = await htmx_client.post("/api/vector-demo", data={"query": "dark roast"})
+
+    assert response.status_code == 200, response.text[:500]
+    assert "Vector search is unavailable" in response.text
+    assert "demo-project" not in response.text
+
+
+async def test_explain_plan_route_reads_query_string(
+    client: AsyncTestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.products.schemas import ExplainPlan
+    from app.domain.products.services import OracleVectorSearchService
+
+    async def fake_explain_search_plan(self: OracleVectorSearchService, query: str) -> ExplainPlan:
+        del self
+        assert query == "dark roast"
+        return ExplainPlan(plan_lines=["Plan hash value: 123", "TABLE ACCESS BY VECTOR"], plan_summary="TABLE ACCESS BY VECTOR")
+
+    monkeypatch.setattr(OracleVectorSearchService, "explain_search_plan", fake_explain_search_plan)
+
+    response = await client.get("/api/explain-plan?query=dark%20roast")
+
+    assert response.status_code == 200, response.text[:500]
+    payload = response.json()
+    assert payload["planSummary"] == "TABLE ACCESS BY VECTOR"

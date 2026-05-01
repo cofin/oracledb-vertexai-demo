@@ -30,9 +30,9 @@ not the visual or behavioral baseline for this recovery.
 1. The chat UI is better than the first ADK2 rewrite, but it is still missing
    the richer `main` affordances: message-level metadata affordances, readable
    detail popovers, and clear per-phase timing context.
-2. The explore page regressed from the older dashboard. It currently renders
-   only four panels; the classify-compare panel and the richer chart/dashboard
-   treatment are missing.
+2. The explore page regressed from the older dashboard. It currently needs the
+   core vector, explain, metrics, and chart/dashboard treatment restored while
+   leaving the descoped classify-compare comparison out of the active UI.
 3. SQL visibility has not been restored. The old UI explained the Oracle query
    path; the new UI shows query text and timings but not the SQL that ran.
 4. The charts do not match the older dashboard quality. ApexCharts is present,
@@ -67,18 +67,14 @@ not the visual or behavioral baseline for this recovery.
 
 ### Explore/Dashboard Experience
 
-- Restore a five-panel explore/dashboard page:
+- Restore a four-panel explore/dashboard page:
   1. vector search
   2. EXPLAIN PLAN viewer
   3. metrics summary
   4. latency time-series chart
-  5. classify-compare chart/status panel
 - Use the `main` HTMX dashboard and screenshots as the visual reference:
   readable metric cards, clear chart groupings, restrained Cymbal Coffee
   branding, and helpful detail affordances.
-- The classify-compare panel must gracefully handle the missing
-  `dist/classify-compare.json` case with an inline hint, but the panel itself
-  must remain visible.
 - ApexCharts is acceptable, but the resulting page must be visually comparable
   to the old dashboard. If ApexCharts cannot reproduce the quality quickly,
   switch the implementation detail rather than accepting a worse chart.
@@ -130,7 +126,6 @@ All new or updated tests must follow the refactored layout documented in
 | Vector demo HTTP/HTMX contracts | `src/tests/integration/app/domain/products/controllers/test_vector_http.py` |
 | Vector/explain controller unit contracts | `src/tests/unit/app/domain/products/controllers/test_vector.py` and `src/tests/unit/app/domain/products/controllers/test_explain_plan.py` |
 | Metrics chart/summary schema contracts | `src/tests/unit/app/domain/system/controllers/test_metrics_charts.py` and `src/tests/unit/app/domain/system/controllers/test_metrics_summary_cards.py` |
-| Classify-compare endpoint | `src/tests/integration/app/domain/system/controllers/test_explore_http.py` if implemented under `app.domain.system.controllers._explore`; otherwise mirror the actual controller module path |
 | Named SQL registry and SQL call-site coverage | `src/tests/unit/app/db/test_named_sql.py` |
 
 Do not add `src/tests/api`, direct `src/tests/unit/test_*.py`, direct
@@ -193,28 +188,25 @@ Restore the old dashboard quality on the current HTMX/Vite stack.
 
 Deliverables:
 
-- Rework `pages/explore.html.j2` to render all five panels.
-- Restore classify-compare panel behavior and missing-file state.
+- Rework `pages/explore.html.j2` to render the core four panels.
 - Improve chart styling/layout to match the old dashboard quality.
 - Add result/detail popovers for vector search and EXPLAIN PLAN output.
 
 Tests:
 
 - Extend `src/tests/integration/app/domain/web/controllers/test_pages.py` so
-  `/explore` requires all five panel IDs, including `panel-classify-compare`.
+  `/explore` requires the core panel IDs and excludes descoped compare UI.
 - Extend `src/tests/integration/app/domain/products/controllers/test_vector_http.py`
   for vector-result telemetry/detail payload.
-- Add `src/tests/integration/app/domain/system/controllers/test_explore_http.py`
-  if the classify-compare endpoint is restored under `app.domain.system`.
 - Extend `src/tests/unit/src/resources/test_chat_frontend.py` or add
   `src/tests/unit/src/resources/test_explore_frontend.py` for chart/popover JS
   contracts.
 
 Acceptance:
 
-- `/explore` renders five visible panels.
+- `/explore` renders the four in-scope visible panels.
 - Charts are readable at desktop and mobile widths.
-- The classify-compare panel is present even when its data file is absent.
+- The descoped classify-compare panel and endpoint are absent.
 
 ### Chapter 4 - `executed-sql-visibility_20260501`
 
@@ -260,7 +252,7 @@ Acceptance:
 
 - `make test` and `make lint` pass, or any unrelated failures are documented
   with exact evidence.
-- Screenshots show restored chat telemetry and five-panel explore/dashboard.
+- Screenshots show restored chat telemetry and four-panel explore/dashboard.
 - No stale `src/tests/api` paths are introduced.
 
 ---
@@ -269,6 +261,7 @@ Acceptance:
 
 - Restoring React or TanStack.
 - Reintroducing legacy intent exemplars as the runtime classifier.
+- Reintroducing classify-compare UI/API surfaces.
 - Changing Oracle migrations except where needed for telemetry persistence.
 - Running destructive demo/tape workflows.
 
@@ -280,7 +273,7 @@ This PRD is complete when:
 
 - Chat telemetry and SQL detail affordances are visible and tested.
 - Product recommendations remain menu-grounded.
-- Explore renders five panels, including classify-compare.
+- Explore renders the four in-scope panels and omits classify-compare.
 - Metrics/charts look comparable to the `main` dashboard screenshots.
 - Executed SQL is shown safely for SQL-backed phases.
 - All tests live in the refactored module-path layout.

@@ -7,9 +7,12 @@ import uuid
 from typing import Any
 from urllib.parse import quote
 
+import structlog
+from google.genai import errors as genai_errors
 from litestar import Controller, Response, get, post
 from litestar.exceptions import ValidationException
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
+from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 
 from app.domain.products.schemas import (
     ExplainPlan,
@@ -21,6 +24,37 @@ from app.domain.products.services import OracleVectorSearchService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
+
+logger = structlog.get_logger()
+
+
+_SERVICE_UNAVAILABLE_MESSAGE = "Vector search is unavailable. Check Vertex AI and Oracle configuration, then retry."
+
+
+def _is_expected_service_unavailable(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    if isinstance(exc, genai_errors.ClientError):
+        return any(
+            marker in text
+            for marker in (
+                "api key",
+                "credentials",
+                "permission_denied",
+                "service_disabled",
+                "forbidden",
+                "unauthorized",
+            )
+        )
+    return any(
+        marker in text
+        for marker in (
+            "api key",
+            "credentials",
+            "permission_denied",
+            "service_disabled",
+            "vertex ai api has not been used",
+        )
+    )
 
 
 def _payload_value(payload: Any, key: str, default: str = "") -> str:
@@ -72,7 +106,25 @@ class VectorController(Controller):
         detailed_timings: dict[str, float] = {}
 
         similarity_search_start = time.time()
-        results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
+        try:
+            results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
+        except Exception as exc:
+            if not _is_expected_service_unavailable(exc):
+                raise
+            await logger.awarning("Vector search demo unavailable", error_type=type(exc).__name__)
+            if request.htmx:
+                return HTMXTemplate(
+                    template_name="partials/search_result_list.html.j2",
+                    context={"matches": [], "query": query, "error": _SERVICE_UNAVAILABLE_MESSAGE},
+                )
+            return Response(
+                content={
+                    "status": HTTP_503_SERVICE_UNAVAILABLE,
+                    "title": _SERVICE_UNAVAILABLE_MESSAGE,
+                    "detail": "Service Unavailable",
+                },
+                status_code=HTTP_503_SERVICE_UNAVAILABLE,
+            )
         detailed_timings["similarity_search_total_ms"] = (time.time() - similarity_search_start) * 1000
         detailed_timings.update(vector_timings)
 
@@ -131,10 +183,16 @@ class VectorController(Controller):
         )
 
     @get(path="/api/explain-plan", name="vector.explain_plan", exclude_from_auth=True)
-    async def explain_plan(
-        self,
-        query: str,
-        vector_search_service: Inject[OracleVectorSearchService],
-    ) -> ExplainPlan:
+    async def explain_plan(self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]) -> ExplainPlan:
         """Return the Oracle EXPLAIN PLAN for the vector-search SQL."""
-        return await vector_search_service.explain_search_plan(self.validate_message(query))
+        query = self.validate_message(_payload_value(request.query_params, "query"))
+        try:
+            return await vector_search_service.explain_search_plan(query)
+        except Exception as exc:
+            if not _is_expected_service_unavailable(exc):
+                raise
+            await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
+            return ExplainPlan(
+                plan_lines=[_SERVICE_UNAVAILABLE_MESSAGE],
+                plan_summary="Plan unavailable",
+            )

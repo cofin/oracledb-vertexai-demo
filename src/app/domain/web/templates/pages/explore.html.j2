@@ -11,6 +11,8 @@ SPDX-License-Identifier: Apache-2.0
 {% block page_subheading %}Vector search, EXPLAIN PLAN, and live service telemetry{% endblock %}
 
 {% block content %}
+{% set vector_trigger = "load, keyup changed delay:300ms" if query else "keyup changed delay:300ms" %}
+{% set plan_trigger = "load, keyup changed delay:500ms" if query else "keyup changed delay:500ms" %}
 <section class="space-y-6">
   <header class="flex items-center justify-between gap-4">
     <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
@@ -19,30 +21,36 @@ SPDX-License-Identifier: Apache-2.0
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     {# Panel 1: live vector search — server partial via HTMX #}
-    <section id="panel-vector-search" data-ui-panel="vector-search" class="ui-panel p-4">
+    <section id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar" class="ui-panel p-4">
       <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
       <input type="search" name="query" value="{{ query }}" placeholder="dark ethiopian pour-over" autocomplete="off"
-        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
-        hx-post="/api/vector-demo" hx-trigger="keyup changed delay:300ms" hx-target="#search-results" hx-include="this">
-      <div id="search-results" class="mt-3 space-y-2"></div>
+        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        hx-post="/api/vector-demo" hx-trigger="{{ vector_trigger }}" hx-target="#search-results" hx-include="this"
+        hx-swap="outerHTML">
+      <div id="search-results" class="mt-3 min-h-28 space-y-2">
+        <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
+          Type to search the Cymbal Coffee menu.
+        </p>
+      </div>
     </section>
 
     {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
     <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel p-4">
       <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
       <input type="search" name="query" value="{{ query }}" placeholder="dark ethiopian pour-over" autocomplete="off"
-        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
-        hx-get="/api/explain-plan" hx-trigger="keyup changed delay:500ms" hx-target="#plan" hx-swap="json">
+        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        hx-get="/api/explain-plan" hx-trigger="{{ plan_trigger }}" hx-target="#plan" hx-swap="json">
       <div id="plan" class="mt-3">
         <template ls-if="planSummary">
           <p class="text-xs text-muted">
             Top vector op: <span class="font-mono text-accent-strong">${planSummary}</span>
           </p>
-          <pre
-            class="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-base">
-              <template ls-for="line in planLines">${line}
-</template>
-            </pre>
+          <div
+            class="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-surface">
+            <template ls-for="line in planLines">
+              <p data-plan-line class="whitespace-pre-wrap">${line}</p>
+            </template>
+          </div>
         </template>
         <template ls-else>
           <p class="text-xs text-muted">Type to see the plan.</p>
@@ -50,17 +58,15 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
-    {# Panel 3: metrics summary cards — client-side ls-for templating #}
-    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel p-4">
+    {# Panel 3: metrics summary cards — Alpine-managed JSON fetch #}
+    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel p-4 lg:col-span-2">
       <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
-      <div id="metrics-summary" class="grid grid-cols-2 gap-3" hx-get="/api/metrics/summary"
-        hx-trigger="load, every 10s" hx-swap="json">
-        <template ls-for="card in $data.cards" ls-key="card.label">
+      <div id="metrics-summary" x-data="metricsSummary()" x-init="init()" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <template x-for="card in cards" :key="card.label">
           <article data-metric-card class="metric-card px-3 py-2">
-            <p class="text-xs text-muted">${card.label}</p>
-            <p class="text-base font-semibold text-strong">${card.value}</p>
-            <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'"
-              class="text-xs">${card.trendValue ?? card.trend}</p>
+            <p class="text-xs text-muted" x-text="card.label"></p>
+            <p class="text-base font-semibold text-strong" x-text="card.value"></p>
+            <p :class="trendClass(card)" class="text-xs" x-text="card.trendValue ?? card.trend ?? 'neutral'"></p>
           </article>
         </template>
       </div>
@@ -91,34 +97,42 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
-    <section id="panel-classify-compare" data-ui-panel="classify-compare" class="ui-panel p-4 lg:col-span-2">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 class="mb-1 text-sm font-semibold text-strong">5 · Classify compare</h2>
-          <p class="text-xs text-muted">Ground-truth intent labels compared against live classification output.</p>
-        </div>
-        <span class="telemetry-chip border-border bg-surface-strong/55 text-muted">offline eval</span>
-      </div>
-      <div x-data="classifyComparePanel()" x-init="init()" class="mt-4">
-        <div x-show="missing" x-cloak class="rounded-lg border border-border bg-surface-strong/60 p-3 text-sm text-muted">
-          <p class="font-medium text-strong">Classify compare data is not available yet.</p>
-          <p class="mt-1" x-text="hint"></p>
-        </div>
-        <div x-show="available" x-cloak class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div data-chart-host="classify-compare" x-ref="classifyHost" class="chart-host h-72 w-full"></div>
-          <div class="rounded-lg border border-border bg-surface-strong/50 p-3">
-            <p class="text-xs font-semibold uppercase text-muted">Rows</p>
-            <p class="mt-1 text-2xl font-semibold text-strong" x-text="rows.length"></p>
-            <p class="mt-3 text-xs text-muted">Gold labels, legacy labels, and new classifier labels are counted per intent.</p>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
   <div data-ui-popover-root="explore" class="popover-surface sr-only" aria-hidden="true"></div>
 </section>
 
 <script>
+  function metricsSummary() {
+    return {
+      cards: [],
+      async init() {
+        await this.refresh()
+        window.setInterval(() => this.refresh(), 10000)
+      },
+      async refresh() {
+        const data = await fetch('/api/metrics/summary').then((r) => r.json())
+        this.cards = Array.isArray(data.cards) ? data.cards : []
+      },
+      trendClass(card) {
+        if (card.trend === 'up') {
+          return 'text-success'
+        }
+        if (card.trend === 'down') {
+          return 'text-danger'
+        }
+        return 'text-muted'
+      },
+    }
+  }
+
+  function renderEmptyChart(host, message) {
+    host.replaceChildren()
+    const empty = document.createElement('div')
+    empty.className = 'flex h-full min-h-64 items-center justify-center text-sm font-medium text-muted'
+    empty.textContent = message
+    host.appendChild(empty)
+  }
+
   function dashboardCharts() {
     return {
       charts: [],
@@ -128,86 +142,75 @@ SPDX-License-Identifier: Apache-2.0
         const series = timeSeries.series ?? {}
         const scatter = Array.isArray(data.scatter) ? data.scatter : []
         const breakdown = data.breakdown ?? { labels: [], values: [] }
+        const hasTrendData = Array.isArray(timeSeries.labels) && timeSeries.labels.length > 0
+        const trendLabels = hasTrendData ? timeSeries.labels : ['No data']
+        const totalSeries = hasTrendData ? (series.totalMs ?? []) : [0]
+        const oracleSeries = hasTrendData ? (series.oracleMs ?? []) : [0]
+        const embeddingSeries = hasTrendData ? (series.embeddingMs ?? []) : [0]
+        const breakdownValues = Array.isArray(breakdown.values) ? breakdown.values.map(Number) : []
+        const hasBreakdownData = breakdownValues.some((value) => value > 0)
+        const breakdownData = hasBreakdownData
+          ? breakdown.labels.map((label, index) => ({ x: label, y: breakdownValues[index] ?? 0 }))
+          : []
 
-        this.charts.push(new ApexCharts(this.$refs.responseHost, {
-          chart: { type: 'line', height: 286, foreColor: '#77675f', toolbar: { show: false } },
-          stroke: { curve: 'smooth', width: [3, 2, 2] },
-          grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
-          markers: { size: 3 },
-          xaxis: { categories: timeSeries.labels ?? [] },
-          yaxis: { title: { text: 'Milliseconds' } },
-          colors: ['#8f5f43', '#587487', '#6f8064'],
-          series: [
-            { name: 'Total response', data: series.totalMs ?? [] },
-            { name: 'Oracle vector', data: series.oracleMs ?? [] },
-            { name: 'Embedding', data: series.embeddingMs ?? [] },
-          ],
-        }))
+        if (hasTrendData) {
+          this.charts.push(new ApexCharts(this.$refs.responseHost, {
+            chart: { type: 'line', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+            stroke: { curve: 'smooth', width: [3, 2, 2] },
+            grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
+            markers: { size: 3 },
+            xaxis: { categories: trendLabels },
+            yaxis: { title: { text: 'Milliseconds' } },
+            colors: ['#8f5f43', '#587487', '#6f8064'],
+            series: [
+              { name: 'Total response', data: totalSeries },
+              { name: 'Oracle vector', data: oracleSeries },
+              { name: 'Embedding', data: embeddingSeries },
+            ],
+          }))
+        } else {
+          renderEmptyChart(this.$refs.responseHost, 'No response metrics yet')
+        }
 
-        this.charts.push(new ApexCharts(this.$refs.scatterHost, {
-          chart: { type: 'scatter', height: 286, foreColor: '#77675f', toolbar: { show: false } },
-          grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
-          colors: ['#8f5f43'],
-          xaxis: {
-            min: 0,
-            max: 1,
-            tickAmount: 5,
-            title: { text: 'Similarity score' },
-          },
-          yaxis: { title: { text: 'Total ms' } },
-          series: [{
-            name: 'Query performance',
-            data: scatter.map((point) => ({ x: point.similarityScore, y: point.totalMs })),
-          }],
-        }))
+        if (scatter.length > 0) {
+          this.charts.push(new ApexCharts(this.$refs.scatterHost, {
+            chart: { type: 'scatter', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+            grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
+            colors: ['#8f5f43'],
+            xaxis: {
+              min: 0,
+              max: 1,
+              tickAmount: 5,
+              title: { text: 'Similarity score' },
+            },
+            yaxis: { title: { text: 'Total ms' } },
+            series: [{
+              name: 'Query performance',
+              data: scatter.map((point) => ({ x: point.similarityScore, y: point.totalMs })),
+            }],
+          }))
+        } else {
+          renderEmptyChart(this.$refs.scatterHost, 'No vector metrics yet')
+        }
 
-        this.charts.push(new ApexCharts(this.$refs.breakdownHost, {
-          chart: { type: 'donut', height: 286, foreColor: '#77675f', toolbar: { show: false } },
-          labels: breakdown.labels ?? [],
-          colors: ['#8f5f43', '#587487', '#6f8064', '#ca8a04', '#a9978d'],
-          legend: { position: 'right' },
-          plotOptions: { pie: { donut: { size: '62%' } } },
-          series: breakdown.values ?? [],
-        }))
+        if (hasBreakdownData) {
+          this.charts.push(new ApexCharts(this.$refs.breakdownHost, {
+            chart: { type: 'bar', height: 286, foreColor: '#77675f', toolbar: { show: false } },
+            colors: ['#8f5f43'],
+            grid: { borderColor: 'rgba(143, 95, 67, 0.16)' },
+            legend: { show: false },
+            plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '58%' } },
+            xaxis: { title: { text: 'Average ms' } },
+            series: [{ name: 'Average ms', data: breakdownData }],
+          }))
+        } else {
+          renderEmptyChart(this.$refs.breakdownHost, 'No component metrics yet')
+        }
 
         this.charts.forEach((chart) => chart.render())
       },
     }
   }
 
-  function classifyComparePanel() {
-    return {
-      available: false,
-      missing: false,
-      hint: '',
-      rows: [],
-      chart: null,
-      async init() {
-        const response = await fetch('/api/classify-compare')
-        const data = await response.json()
-        this.available = Boolean(data.available)
-        this.missing = !this.available
-        this.hint = data.hint ?? 'Run the classify-compare command to generate the dataset.'
-        this.rows = Array.isArray(data.rows) ? data.rows : []
-        if (!this.available) {
-          return
-        }
-        const intents = [...new Set(this.rows.flatMap((row) => [row.gold, row.legacy, row.new]).filter(Boolean))]
-        const countFor = (field, intent) => this.rows.filter((row) => row[field] === intent).length
-        this.chart = new ApexCharts(this.$refs.classifyHost, {
-          chart: { type: 'bar', height: 288, foreColor: '#77675f', toolbar: { show: false } },
-          plotOptions: { bar: { borderRadius: 3, columnWidth: '62%' } },
-          xaxis: { categories: intents },
-          colors: ['#6f8064', '#8f5f43', '#587487'],
-          series: [
-            { name: 'Gold', data: intents.map((intent) => countFor('gold', intent)) },
-            { name: 'Legacy', data: intents.map((intent) => countFor('legacy', intent)) },
-            { name: 'New', data: intents.map((intent) => countFor('new', intent)) },
-          ],
-        })
-        this.chart.render()
-      },
-    }
-  }
-  </script>
+</script>
 {% endblock %}

@@ -16,8 +16,8 @@
 
 ## 2026-05-01 05:16 - Phase 3: Explore Functional Restoration
 
-- **Implemented:** Restored the fifth Explore panel for classify-compare, added `/api/classify-compare` with present/missing dataset branches, made `/explore?q=...` prefill both shared query inputs, and fixed `/api/vector-demo` to accept real HTMX form posts.
-- **Files changed:** `src/app/domain/web/templates/pages/explore.html.j2`, `src/app/domain/web/controllers/_pages.py`, `src/app/domain/products/controllers/_vector.py`, `src/app/domain/system/controllers/_explore.py`, system schemas/controller exports, and focused web/vector/system tests.
+- **Implemented:** Made `/explore?q=...` prefill both shared query inputs and fixed `/api/vector-demo` to accept real HTMX form posts. Classify-compare was later descoped and removed from the active UI/API surface.
+- **Files changed:** `src/app/domain/web/templates/pages/explore.html.j2`, `src/app/domain/web/controllers/_pages.py`, `src/app/domain/products/controllers/_vector.py`, and focused web/vector tests.
 - **Validation:** Focused Explore/vector/system tests passed, `make test` passed with 211 tests, `./node_modules/.bin/vite build` passed with the existing large-bundle warning, and `make lint` passed cleanly.
 - **Learning:** Litestar's body DTO path rejects HTMX form posts when the route is declared as JSON body data, so the vector demo endpoint should parse JSON and form payloads from the request directly for the mixed HTMX/JSON contract.
 
@@ -27,3 +27,11 @@
 - **Files changed:** `src/app/domain/system/schemas/_metrics.py`, `src/app/domain/system/services/services.py`, `src/app/domain/system/controllers/_metrics.py`, `src/app/db/sql/system.sql`, `src/app/domain/web/templates/pages/explore.html.j2`, named-SQL/page/frontend/chart tests, and system integration package markers.
 - **Validation:** Focused chart/page/named-SQL tests passed, `./node_modules/.bin/vite build` passed with the existing large-bundle warning, `make lint` passed cleanly, and `make test` passed with 215 tests.
 - **Learning:** Keep chart API shape aligned with the client by returning the full dashboard payload from one endpoint; the old single-series endpoint could not support response trends, scatter, and breakdown views without client-side guessing.
+
+## 2026-05-01 06:10 - Phase 5: Descoped Compare Surface Cleanup
+
+- **Implemented:** Removed the classify-compare panel, endpoint, schemas, exports, and tests after the comparison surface was explicitly descoped. Also fixed Explore query autoload so vector search and EXPLAIN PLAN run from `/explore?q=...`, scoped the Litestar HTMX extension away from HTML swaps, and replaced raw Vertex misconfiguration failures with clean inline unavailable states.
+- **Files changed:** `src/app/domain/web/templates/pages/explore.html.j2`, `src/app/domain/products/controllers/_vector.py`, `src/app/domain/system/controllers`, `src/app/domain/system/schemas`, `src/resources/main.js`, `src/resources/styles.css`, and focused web/vector/layout/frontend tests.
+- **Validation:** Focused web/vector/frontend tests passed, Playwright desktop/mobile smoke returned HTTP 200 for chat, explore, vector, explain, and metrics requests with no console/page errors, expected Vertex misconfiguration logs were concise warnings without tracebacks, `./node_modules/.bin/vite build` passed with the existing bundle-size warning, `make lint` passed cleanly after Ruff formatting, and `make test` passed with 217 tests.
+- **Learning:** Keep the Flow PRD aligned when scope changes after a chapter closes; otherwise the verification task can accidentally preserve a previously restored but now-descoped surface.
+- **Learning:** `hx-ext="litestar"` must not wrap HTML-swap HTMX panels in this app; scope it out with `ignore:litestar` for partial HTML swaps and keep it for JSON templating surfaces.

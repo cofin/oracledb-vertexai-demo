@@ -45,7 +45,6 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
         "panel-explain-plan",
         "panel-metrics-summary",
         "panel-latency-chart",
-        "panel-classify-compare",
     ):
         assert f'id="{panel_id}"' in body, f"explore page must render panel {panel_id}"
     assert 'data-ui-panel="vector-search"' in body
@@ -53,7 +52,7 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
     assert 'data-chart-host="response-trends"' in body
     assert 'data-chart-host="vector-performance"' in body
     assert 'data-chart-host="system-breakdown"' in body
-    assert 'data-chart-host="classify-compare"' in body
+    assert "classify-compare" not in body
     assert 'data-ui-popover-root="explore"' in body
 
 
@@ -63,3 +62,17 @@ async def test_explore_page_prefills_shared_query(client: AsyncTestClient) -> No
     body = response.text
     assert 'value="dark roast"' in body
     assert body.count('name="query"') == 2
+    assert 'id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar"' in body
+    assert 'hx-post="/api/vector-demo" hx-trigger="load, keyup changed delay:300ms"' in body
+    assert 'hx-swap="outerHTML"' in body
+    assert 'hx-get="/api/explain-plan" hx-trigger="load, keyup changed delay:500ms"' in body
+    assert body.count("text-surface placeholder:text-surface/60") == 2
+
+
+async def test_explore_page_does_not_autoload_empty_query(client: AsyncTestClient) -> None:
+    response = await client.get("/explore")
+    assert response.status_code == 200, response.text[:500]
+    body = response.text
+    assert 'hx-trigger="load,' not in body
+    assert 'hx-trigger="keyup changed delay:300ms"' in body
+    assert 'hx-trigger="keyup changed delay:500ms"' in body

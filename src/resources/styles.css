@@ -42,7 +42,7 @@
 
   .app-header__inner {
     display: grid;
-    max-width: 72rem;
+    max-width: 86rem;
     margin: 0 auto;
     gap: 1rem;
     padding: 1rem;
@@ -57,9 +57,24 @@
     text-decoration: none;
   }
 
-  .app-brand__logo {
-    width: min(14rem, 62vw);
+  .app-brand__lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .app-brand__mark {
+    width: 4.25rem;
     height: auto;
+  }
+
+  .app-brand__wordmark {
+    max-width: 7rem;
+    color: var(--color-strong);
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 0.86;
   }
 
   .app-brand__meta,
@@ -83,7 +98,7 @@
 
   .app-title__heading {
     color: var(--color-strong);
-    font-size: clamp(2rem, 5vw, 4.75rem);
+    font-size: clamp(2rem, 4vw, 3.75rem);
     font-weight: 500;
     letter-spacing: 0;
     line-height: 0.98;
@@ -131,7 +146,7 @@
   }
 
   .app-main {
-    max-width: 72rem;
+    max-width: 86rem;
     margin: 0 auto;
     padding: 1.25rem 1rem 2.5rem;
   }
@@ -174,6 +189,7 @@
 
   .chart-host {
     min-height: 16rem;
+    overflow: hidden;
     border-radius: 0.5rem;
     background:
       linear-gradient(180deg, rgba(88, 116, 135, 0.08), transparent),

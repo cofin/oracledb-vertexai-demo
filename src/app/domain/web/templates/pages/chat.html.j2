@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 {% block page_subheading %}Menu-grounded recommendations with Oracle 26ai product search{% endblock %}
 
 {% block content %}
-<section x-data="{ persona: 'enthusiast' }" class="chat-shell grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+<section x-data="{ persona: 'enthusiast' }" class="chat-shell grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
   <aside data-ui-panel="chat-sidebar" class="ui-panel flex flex-col justify-between p-5">
     <div class="space-y-5">
       <div>
@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
   </aside>
 
-  <div data-ui-panel="chat-thread" class="ui-panel flex min-h-[34rem] flex-col">
+  <div data-ui-panel="chat-thread" class="ui-panel flex min-h-[34rem] flex-col lg:min-h-[42rem]">
     <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="polite">
       <article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
         <header class="flex items-center justify-between text-xs">

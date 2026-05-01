@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from app.lib.schema import CamelizedBaseStruct
 
 
@@ -56,7 +54,7 @@ class MetricCard(CamelizedBaseStruct, omit_defaults=True):
 
 
 class MetricsSummary(CamelizedBaseStruct, omit_defaults=True):
-    """Card list rendered client-side via ``<template ls-for>``."""
+    """Card list rendered client-side in the Explore dashboard."""
 
     cards: list[MetricCard]
 
@@ -105,7 +103,7 @@ class MetricsBreakdownRow(CamelizedBaseStruct, omit_defaults=True):
 
 
 class MetricsBreakdown(CamelizedBaseStruct, omit_defaults=True):
-    """Labels and values for the system breakdown donut chart."""
+    """Labels and values for the system breakdown chart."""
 
     labels: list[str]
     values: list[float]
@@ -117,12 +115,3 @@ class MetricsCharts(CamelizedBaseStruct, omit_defaults=True):
     time_series: MetricsTimeSeries
     scatter: list[MetricsScatterPoint]
     breakdown: MetricsBreakdown
-
-
-class ClassifyCompare(CamelizedBaseStruct, omit_defaults=True):
-    """Offline intent-classifier comparison payload for the explore page."""
-
-    available: bool
-    rows: list[dict[str, Any]]
-    summary: dict[str, Any]
-    hint: str | None = None

@@ -10,8 +10,21 @@ import "./styles.css"
 window.htmx = htmx
 window.Alpine = Alpine
 window.ApexCharts = ApexCharts
-Alpine.start()
 registerHtmxExtension()
+
+const processHtmxDom = () => {
+  if (document.body) {
+    htmx.process(document.body)
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", processHtmxDom, { once: true })
+} else {
+  processHtmxDom()
+}
+
+Alpine.start()
 
 const escapeHtml = (value) => {
   const div = document.createElement("div")

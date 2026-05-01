@@ -4,8 +4,12 @@
 #}
 
 {# Result list returned by POST /api/vector-demo when HX-Request is set. #}
-<div id="search-results" class="space-y-2">
-  {% if matches %}
+<div id="search-results" class="mt-3 min-h-28 space-y-2">
+  {% if error %}
+    <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">
+      {{ error }}
+    </p>
+  {% elif matches %}
     {% for match in matches %}
       {% include "partials/search_result.html.j2" %}
     {% endfor %}

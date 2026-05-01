@@ -15,7 +15,7 @@ the real-Oracle path is covered separately.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -40,9 +40,11 @@ async def test_explain_plan_returns_plan_lines_and_summary() -> None:
     }
 
     controller = object.__new__(VectorController)
+    request = MagicMock()
+    request.query_params = {"query": "dark roast"}
     response = await VectorController.explain_plan.fn(
         controller,
-        query="dark roast",
+        request=request,
         vector_search_service=mock_service,
     )
 
@@ -57,9 +59,11 @@ async def test_explain_plan_rejects_empty_query() -> None:
     from litestar.exceptions import ValidationException
 
     controller = object.__new__(VectorController)
+    request = MagicMock()
+    request.query_params = {"query": "   "}
     with pytest.raises(ValidationException):
         await VectorController.explain_plan.fn(
             controller,
-            query="   ",
+            request=request,
             vector_search_service=AsyncMock(),
         )
