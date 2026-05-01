@@ -27,6 +27,18 @@ if TYPE_CHECKING:
     from app.utils.domains import DomainPlugin
 
 
+def __getattr__(name: str) -> object:
+    """Lazily initialize plugins on first attribute access (PEP 562)."""
+    if not _initialized:
+        _initialize()
+        try:
+            return globals()[name]
+        except KeyError:
+            pass
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
 class _SQLSpecPlugin:
     """SQLSpec plugin variant that does not register the ``db`` CLI group.
 
@@ -106,15 +118,3 @@ def _reset() -> None:
     for name in lazy_names:
         g.pop(name, None)
     _initialized = False
-
-
-def __getattr__(name: str) -> object:
-    """Lazily initialize plugins on first attribute access (PEP 562)."""
-    if not _initialized:
-        _initialize()
-        try:
-            return globals()[name]
-        except KeyError:
-            pass
-    msg = f"module {__name__!r} has no attribute {name!r}"
-    raise AttributeError(msg)

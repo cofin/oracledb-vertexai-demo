@@ -34,7 +34,6 @@ PUBLIC_UNDERSCORE_MODULES = frozenset(
 PRIVATE_HELPER_PACKAGES = frozenset({"_helpers"})
 MODULE_INFRASTRUCTURE_FILES = frozenset({"__init__.py", "__main__.py", "__metadata__.py"})
 TEMPORARY_HOTSPOT_ALLOWLIST = {
-    "src/app/config.py": "Chapter 2 will separate lazy app configuration mechanics from the public config surface.",
     "src/app/domain/chat/services/adk.py": "Chapter 4 will split ADK grounding, telemetry, history, cache, and tool helpers.",
     "src/app/domain/products/controllers/_vector.py": (
         "Chapter 3 will move vector request parsing and service-unavailable helpers behind the controller story."
@@ -43,9 +42,6 @@ TEMPORARY_HOTSPOT_ALLOWLIST = {
     "src/app/domain/products/services/services.py": (
         "Chapter 3 will move distance and location-hint helpers behind the product and store service classes."
     ),
-    "src/app/server/plugins.py": "Chapter 2 will review lazy SQLSpec plugin initialization and public plugin exports.",
-    "src/app/utils/domains.py": "Chapter 2 will move discovery cache internals behind the public domain plugin API.",
-    "src/app/utils/fixtures.py": "Chapter 2 will put fixture loader/exporter classes before conversion helpers.",
 }
 
 

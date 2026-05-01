@@ -54,6 +54,53 @@ log: StructlogConfig
 template: TemplateConfig
 
 
+def __getattr__(name: str) -> object:
+    """Lazily initialize configuration on first attribute access (PEP 562)."""
+    if not _initialized:
+        _initialize()
+        try:
+            return globals()[name]
+        except KeyError:
+            pass
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
+
+
+def setup_logging() -> None:
+    """Configure structlog and stdlib logging plus noise-suppression filters."""
+    _install_warning_filters()
+
+    if not _initialized:
+        _initialize()
+
+    import structlog
+
+    from app.lib import log as log_conf
+
+    structlog_config = cast("StructlogConfig", globals()["log"])
+    settings = cast("Settings", globals()["_settings"])
+
+    if structlog_config.structlog_logging_config.standard_lib_logging_config:
+        structlog_config.structlog_logging_config.standard_lib_logging_config.configure()
+    structlog_config.structlog_logging_config.configure()
+    structlog.configure(
+        cache_logger_on_first_use=True,
+        logger_factory=structlog_config.structlog_logging_config.logger_factory,
+        processors=structlog_config.structlog_logging_config.processors,
+        wrapper_class=structlog.make_filtering_bound_logger(settings.log.LEVEL),
+    )
+    logging.captureWarnings(True)
+
+    adk_filter = log_conf.SuppressADKWarningsFilter()
+    logging.getLogger("py.warnings").addFilter(adk_filter)
+    for logger_name in ("google.adk", "google.genai", "google_genai", "google_genai.types"):
+        logging.getLogger(logger_name).addFilter(adk_filter)
+    logging.root.addFilter(adk_filter)
+
+    logging.getLogger("asyncio").addFilter(log_conf.SuppressAsyncioTaskExceptionFilter())
+    logging.getLogger("_granian").addFilter(log_conf.SuppressGranianExcInfoFilter())
+
+
 def _initialize() -> None:
     """Materialize every public attribute from the current environment."""
     global _initialized  # noqa: PLW0603
@@ -230,18 +277,6 @@ def _reset() -> None:
     plugins._reset()  # noqa: SLF001
 
 
-def __getattr__(name: str) -> object:
-    """Lazily initialize configuration on first attribute access (PEP 562)."""
-    if not _initialized:
-        _initialize()
-        try:
-            return globals()[name]
-        except KeyError:
-            pass
-    msg = f"module {__name__!r} has no attribute {name!r}"
-    raise AttributeError(msg)
-
-
 def _install_warning_filters() -> None:
     """Suppress known noisy third-party warnings before app imports trigger them."""
     warnings.filterwarnings(
@@ -262,38 +297,3 @@ def _install_warning_filters() -> None:
         category=Warning,
         module=r"authlib\._joserfc_helpers",
     )
-
-
-def setup_logging() -> None:
-    """Configure structlog and stdlib logging plus noise-suppression filters."""
-    _install_warning_filters()
-
-    if not _initialized:
-        _initialize()
-
-    import structlog
-
-    from app.lib import log as log_conf
-
-    structlog_config = cast("StructlogConfig", globals()["log"])
-    settings = cast("Settings", globals()["_settings"])
-
-    if structlog_config.structlog_logging_config.standard_lib_logging_config:
-        structlog_config.structlog_logging_config.standard_lib_logging_config.configure()
-    structlog_config.structlog_logging_config.configure()
-    structlog.configure(
-        cache_logger_on_first_use=True,
-        logger_factory=structlog_config.structlog_logging_config.logger_factory,
-        processors=structlog_config.structlog_logging_config.processors,
-        wrapper_class=structlog.make_filtering_bound_logger(settings.log.LEVEL),
-    )
-    logging.captureWarnings(True)
-
-    adk_filter = log_conf.SuppressADKWarningsFilter()
-    logging.getLogger("py.warnings").addFilter(adk_filter)
-    for logger_name in ("google.adk", "google.genai", "google_genai", "google_genai.types"):
-        logging.getLogger(logger_name).addFilter(adk_filter)
-    logging.root.addFilter(adk_filter)
-
-    logging.getLogger("asyncio").addFilter(log_conf.SuppressAsyncioTaskExceptionFilter())
-    logging.getLogger("_granian").addFilter(log_conf.SuppressGranianExcInfoFilter())

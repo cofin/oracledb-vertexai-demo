@@ -21,49 +21,6 @@ logger = structlog.get_logger(__name__)
 DATETIME_FIELDS = frozenset({"created_at", "updated_at", "last_activity", "expires_at", "last_accessed"})
 
 
-def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
-    """Coerce JSON-encoded values to Python types Oracle JSON_TABLE accepts.
-
-    Returns:
-        A copy of ``record`` with ``None`` values dropped, ``price`` strings
-        promoted to ``Decimal``, and ISO-8601 audit-column strings parsed to
-        ``datetime``.
-    """
-    prepared: dict[str, Any] = {}
-    for key, value in record.items():
-        if value is None:
-            continue
-        if key == "price" and isinstance(value, str):
-            prepared[key] = Decimal(value)
-        elif isinstance(value, bool):
-            prepared[key] = int(value)
-        elif key in DATETIME_FIELDS and isinstance(value, str):
-            prepared[key] = datetime.fromisoformat(value)
-        else:
-            prepared[key] = value
-    return prepared
-
-
-def _prepare_for_export(value: Any) -> Any:
-    """Normalize a row value for JSON serialization.
-
-    Returns:
-        ``list`` for numpy-style arrays, ISO strings for ``datetime``-like
-        values, decoded text or hex for ``bytes``; all other values pass through.
-    """
-    if hasattr(value, "tolist"):
-        with contextlib.suppress(TypeError):
-            return value.tolist()
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    if isinstance(value, bytes):
-        try:
-            return value.decode("utf-8")
-        except UnicodeDecodeError:
-            return value.hex()
-    return value
-
-
 class FixtureLoader:
     """Idempotent fixture upsert via Oracle ``MERGE`` + ``JSON_TABLE``."""
 
@@ -173,3 +130,46 @@ class FixtureExporter:
         await write_fixture_async(str(output_dir), table_name, normalized, compress=compress)
         suffix = ".json.gz" if compress else ".json"
         return str(output_dir / f"{table_name}{suffix}")
+
+
+def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Coerce JSON-encoded values to Python types Oracle JSON_TABLE accepts.
+
+    Returns:
+        A copy of ``record`` with ``None`` values dropped, ``price`` strings
+        promoted to ``Decimal``, and ISO-8601 audit-column strings parsed to
+        ``datetime``.
+    """
+    prepared: dict[str, Any] = {}
+    for key, value in record.items():
+        if value is None:
+            continue
+        if key == "price" and isinstance(value, str):
+            prepared[key] = Decimal(value)
+        elif isinstance(value, bool):
+            prepared[key] = int(value)
+        elif key in DATETIME_FIELDS and isinstance(value, str):
+            prepared[key] = datetime.fromisoformat(value)
+        else:
+            prepared[key] = value
+    return prepared
+
+
+def _prepare_for_export(value: Any) -> Any:
+    """Normalize a row value for JSON serialization.
+
+    Returns:
+        ``list`` for numpy-style arrays, ISO strings for ``datetime``-like
+        values, decoded text or hex for ``bytes``; all other values pass through.
+    """
+    if hasattr(value, "tolist"):
+        with contextlib.suppress(TypeError):
+            return value.tolist()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError:
+            return value.hex()
+    return value

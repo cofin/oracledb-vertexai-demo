@@ -4,7 +4,7 @@
 *Chapter 2 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.2`*
 *Depends on: `source-organization-contract_20260501`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -98,3 +98,17 @@ fixture load/export behavior.
 - App-core files no longer require temporary source organization allowlist
   entries except documented framework constraints.
 - Focused tests and Ruff pass.
+
+## Implementation Notes
+
+- `app.lib.log` now acts as the public logging facade and re-exports focused
+  private implementations from `_log_filters`, `_log_processors`,
+  `_log_middleware`, and `_log_security`.
+- `app.config` and `app.server.plugins` keep their lazy module-level
+  `__getattr__` contracts visible before private initialization details.
+- `app.utils.domains` presents the domain plugin and discovery API before cache
+  and import-walking internals.
+- `app.utils.fixtures` now shows `FixtureLoader` and `FixtureExporter` before
+  conversion helpers.
+- Verification: focused app lib/utils/domain tests, source organization guard,
+  `make lint`, `make test`, and `git diff --check`.

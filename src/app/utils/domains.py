@@ -35,72 +35,6 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
-class _DiscoveryCache:
-    """Cache for discovered controllers to avoid re-discovery."""
-
-    def __init__(self) -> None:
-        self.controllers: list[type[Controller]] | None = None
-        self.packages: frozenset[str] | None = None
-
-    def clear(self) -> None:
-        """Clear the cache."""
-        self.controllers = None
-        self.packages = None
-
-    def is_cached(self, domain_packages: list[str]) -> bool:
-        """Check if results for these packages are cached."""
-        return self.controllers is not None and self.packages == frozenset(domain_packages)
-
-    def get(self) -> list[type[Controller]] | None:
-        """Get cached controllers."""
-        return self.controllers
-
-    def set(self, controllers: list[type[Controller]], packages: list[str]) -> None:
-        """Set cached controllers."""
-        self.controllers = controllers
-        self.packages = frozenset(packages)
-
-
-_cache = _DiscoveryCache()
-
-
-class _DiscoveryState:
-    """Store discovery results for deferred logging during lifespan startup."""
-
-    # Discovery results (populated during on_app_init)
-    controller_count: int = 0
-    controllers_by_domain: dict[str, list[str]] = {}
-    listener_count: int = 0
-
-    # Logging flags (prevent duplicate logs across app creations)
-    logged_controllers: bool = False
-    logged_listeners: bool = False
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset discovery state (for testing)."""
-        cls.controller_count = 0
-        cls.controllers_by_domain = {}
-        cls.listener_count = 0
-        cls.logged_controllers = False
-        cls.logged_listeners = False
-
-    @classmethod
-    def log_discovery_results(cls) -> None:
-        """Log discovery results (called during lifespan startup)."""
-        if not cls.logged_controllers and cls.controller_count > 0:
-            cls.logged_controllers = True
-            logger.info("Loaded API controllers", total=cls.controller_count, domains=len(cls.controllers_by_domain))
-            logger.debug(
-                "Controller inventory by domain",
-                by_domain={k: sorted(v) for k, v in sorted(cls.controllers_by_domain.items())},
-            )
-
-        if not cls.logged_listeners and cls.listener_count > 0:
-            cls.logged_listeners = True
-            logger.info("Discovered domain listeners", total=cls.listener_count)
-
-
 @dataclass
 class DomainPluginConfig:
     """Configuration for domain auto-discovery plugin."""
@@ -143,85 +77,6 @@ def find_listeners_in_module(module: object) -> list[EventListener]:
             listeners.append(obj)
 
     return listeners
-
-
-def _iter_domain_directories(domain_pkg: str) -> list[tuple[str, Path]]:
-    """Iterate through domain subdirectories in a package."""
-    try:
-        base_module = importlib.import_module(domain_pkg)
-    except ImportError:
-        logger.warning("Domain package not found", package=domain_pkg)
-        return []
-
-    if not hasattr(base_module, "__path__"):
-        logger.warning("Package has no __path__", package=domain_pkg)
-        return []
-
-    base_path = Path(base_module.__path__[0])
-    results: list[tuple[str, Path]] = []
-
-    for domain_dir in sorted(base_path.iterdir()):
-        if not domain_dir.is_dir():
-            continue
-        if domain_dir.name.startswith(("_", ".")):
-            continue
-
-        domain_module_path = f"{domain_pkg}.{domain_dir.name}"
-        results.append((domain_module_path, domain_dir))
-
-    return results
-
-
-def _discover_controllers_in_submodule(controller_module_path: str) -> list[type[Controller]]:
-    """Discover controllers in a single submodule path."""
-    try:
-        controller_module = importlib.import_module(controller_module_path)
-    except ImportError:
-        return []
-
-    all_controllers: list[type[Controller]] = []
-
-    if hasattr(controller_module, "__path__"):
-        for _, modname, ispkg in pkgutil.walk_packages(controller_module.__path__, prefix=f"{controller_module_path}."):
-            if ispkg:
-                continue
-            try:
-                mod = importlib.import_module(modname)
-                controllers = find_controllers_in_module(mod)
-                all_controllers.extend(controllers)
-            except (ImportError, AttributeError, SyntaxError) as e:
-                logger.warning("Failed to import controller module", module=modname, error=str(e))
-
-    controllers = find_controllers_in_module(controller_module)
-    all_controllers.extend(controllers)
-
-    return all_controllers
-
-
-def _discover_listeners_in_submodule(listener_module_path: str) -> list["EventListener"]:
-    """Discover listeners in a single submodule path."""
-    try:
-        listener_module = importlib.import_module(listener_module_path)
-    except ImportError:
-        return []
-
-    all_listeners: list[EventListener] = []
-
-    if hasattr(listener_module, "__path__"):
-        for _, modname, ispkg in pkgutil.walk_packages(listener_module.__path__, prefix=f"{listener_module_path}."):
-            if ispkg:
-                continue
-            try:
-                mod = importlib.import_module(modname)
-                listeners = find_listeners_in_module(mod)
-                all_listeners.extend(listeners)
-            except (ImportError, AttributeError, SyntaxError) as e:
-                logger.warning("Failed to import listener module", module=modname, error=str(e))
-
-    listeners = find_listeners_in_module(listener_module)
-    all_listeners.extend(listeners)
-
-    return all_listeners
 
 
 def discover_domain_controllers(
@@ -351,6 +206,148 @@ def clear_discovery_cache() -> None:
     """Clear the controller discovery cache and reset logging flags."""
     _cache.clear()
     _DiscoveryState.reset()
+
+
+class _DiscoveryCache:
+    """Cache for discovered controllers to avoid re-discovery."""
+
+    def __init__(self) -> None:
+        self.controllers: list[type[Controller]] | None = None
+        self.packages: frozenset[str] | None = None
+
+    def clear(self) -> None:
+        """Clear the cache."""
+        self.controllers = None
+        self.packages = None
+
+    def is_cached(self, domain_packages: list[str]) -> bool:
+        """Check if results for these packages are cached."""
+        return self.controllers is not None and self.packages == frozenset(domain_packages)
+
+    def get(self) -> list[type[Controller]] | None:
+        """Get cached controllers."""
+        return self.controllers
+
+    def set(self, controllers: list[type[Controller]], packages: list[str]) -> None:
+        """Set cached controllers."""
+        self.controllers = controllers
+        self.packages = frozenset(packages)
+
+
+_cache = _DiscoveryCache()
+
+
+class _DiscoveryState:
+    """Store discovery results for deferred logging during lifespan startup."""
+
+    controller_count: int = 0
+    controllers_by_domain: dict[str, list[str]] = {}
+    listener_count: int = 0
+    logged_controllers: bool = False
+    logged_listeners: bool = False
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset discovery state (for testing)."""
+        cls.controller_count = 0
+        cls.controllers_by_domain = {}
+        cls.listener_count = 0
+        cls.logged_controllers = False
+        cls.logged_listeners = False
+
+    @classmethod
+    def log_discovery_results(cls) -> None:
+        """Log discovery results (called during lifespan startup)."""
+        if not cls.logged_controllers and cls.controller_count > 0:
+            cls.logged_controllers = True
+            logger.info("Loaded API controllers", total=cls.controller_count, domains=len(cls.controllers_by_domain))
+            logger.debug(
+                "Controller inventory by domain",
+                by_domain={k: sorted(v) for k, v in sorted(cls.controllers_by_domain.items())},
+            )
+
+        if not cls.logged_listeners and cls.listener_count > 0:
+            cls.logged_listeners = True
+            logger.info("Discovered domain listeners", total=cls.listener_count)
+
+
+def _iter_domain_directories(domain_pkg: str) -> list[tuple[str, Path]]:
+    """Iterate through domain subdirectories in a package."""
+    try:
+        base_module = importlib.import_module(domain_pkg)
+    except ImportError:
+        logger.warning("Domain package not found", package=domain_pkg)
+        return []
+
+    if not hasattr(base_module, "__path__"):
+        logger.warning("Package has no __path__", package=domain_pkg)
+        return []
+
+    base_path = Path(base_module.__path__[0])
+    results: list[tuple[str, Path]] = []
+
+    for domain_dir in sorted(base_path.iterdir()):
+        if not domain_dir.is_dir():
+            continue
+        if domain_dir.name.startswith(("_", ".")):
+            continue
+
+        domain_module_path = f"{domain_pkg}.{domain_dir.name}"
+        results.append((domain_module_path, domain_dir))
+
+    return results
+
+
+def _discover_controllers_in_submodule(controller_module_path: str) -> list[type[Controller]]:
+    """Discover controllers in a single submodule path."""
+    try:
+        controller_module = importlib.import_module(controller_module_path)
+    except ImportError:
+        return []
+
+    all_controllers: list[type[Controller]] = []
+
+    if hasattr(controller_module, "__path__"):
+        for _, modname, ispkg in pkgutil.walk_packages(controller_module.__path__, prefix=f"{controller_module_path}."):
+            if ispkg:
+                continue
+            try:
+                mod = importlib.import_module(modname)
+                controllers = find_controllers_in_module(mod)
+                all_controllers.extend(controllers)
+            except (ImportError, AttributeError, SyntaxError) as e:
+                logger.warning("Failed to import controller module", module=modname, error=str(e))
+
+    controllers = find_controllers_in_module(controller_module)
+    all_controllers.extend(controllers)
+
+    return all_controllers
+
+
+def _discover_listeners_in_submodule(listener_module_path: str) -> list["EventListener"]:
+    """Discover listeners in a single submodule path."""
+    try:
+        listener_module = importlib.import_module(listener_module_path)
+    except ImportError:
+        return []
+
+    all_listeners: list[EventListener] = []
+
+    if hasattr(listener_module, "__path__"):
+        for _, modname, ispkg in pkgutil.walk_packages(listener_module.__path__, prefix=f"{listener_module_path}."):
+            if ispkg:
+                continue
+            try:
+                mod = importlib.import_module(modname)
+                listeners = find_listeners_in_module(mod)
+                all_listeners.extend(listeners)
+            except (ImportError, AttributeError, SyntaxError) as e:
+                logger.warning("Failed to import listener module", module=modname, error=str(e))
+
+    listeners = find_listeners_in_module(listener_module)
+    all_listeners.extend(listeners)
+
+    return all_listeners
 
 
 __all__ = (
