@@ -16,13 +16,19 @@ if TYPE_CHECKING:
 SQL_DIR = APP_ROOT / "db" / "sql"
 DOMAIN_DIR = APP_ROOT / "domain"
 
-EXPECTED_FILES = ("products.sql", "stores.sql", "system.sql")
+EXPECTED_FILES = ("inventory.sql", "products.sql", "stores.sql", "system.sql")
 
 EXPECTED_KEYS = (
     "get-product",
     "list-products-for-embedding",
     "vector-search-products",
     "list-stores",
+    "find-stores-by-city",
+    "find-stores-by-state",
+    "find-stores-by-zip",
+    "rank-stores-by-distance",
+    "list-store-inventory",
+    "find-stores-with-product-inventory",
     "get-cached-response",
     "get-cached-embedding",
     "get-cache-stats",

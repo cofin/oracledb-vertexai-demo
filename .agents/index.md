@@ -1,6 +1,7 @@
 # Project Context Index
 
-Flat index of active project context. Archived history is under `.agents/archive/`.
+Flat index of active project context. Durable knowledge must live in this tree,
+not behind archive links.
 
 | Area | Path | Purpose |
 | --- | --- | --- |
@@ -11,6 +12,7 @@ Flat index of active project context. Archived history is under `.agents/archive
 | Flow | [flows.md](./flows.md) | Active Flow registry |
 | Patterns | [patterns.md](./patterns.md) | Living architecture, code, test, and operations patterns |
 | Knowledge | [knowledge/index.md](./knowledge/index.md) | Knowledge-base registry |
+| Knowledge | [knowledge/project-guide.md](./knowledge/project-guide.md) | Cohesive current-state guide synthesized from completed work |
 | Guide | [knowledge/guides/architecture.md](./knowledge/guides/architecture.md) | App architecture and service boundaries |
 | Guide | [knowledge/guides/oracle-vector-search.md](./knowledge/guides/oracle-vector-search.md) | Oracle vector search and HNSW operations |
 | Guide | [knowledge/guides/adk-agent-patterns.md](./knowledge/guides/adk-agent-patterns.md) | ADK Workflow, tools, sessions, and streaming |
@@ -24,7 +26,7 @@ Flat index of active project context. Archived history is under `.agents/archive
 | Beads | [beads.json](./beads.json) | Beads task database |
 | Active Spec | [specs/cymbal-coffee-reset_20260429/prd.md](./specs/cymbal-coffee-reset_20260429/prd.md) | Master reset PRD |
 | Active Spec | [specs/foundation-bump_20260429/spec.md](./specs/foundation-bump_20260429/spec.md) | Foundation/dependency chapter |
-| Active Spec | [specs/accelerator-restructure_20260429/spec.md](./specs/accelerator-restructure_20260429/spec.md) | Accelerator-style restructure chapter |
+| Active Spec | [specs/domain-service-restructure_20260429/spec.md](./specs/domain-service-restructure_20260429/spec.md) | Domain-service restructure chapter |
 | Active Spec | [specs/adk2-runner_20260429/spec.md](./specs/adk2-runner_20260429/spec.md) | ADK 2 runner chapter |
 | Active Spec | [specs/htmx-vite-frontend_20260429/spec.md](./specs/htmx-vite-frontend_20260429/spec.md) | HTMX/Vite frontend chapter |
 | Active Spec | [specs/prune-and-document_20260429/spec.md](./specs/prune-and-document_20260429/spec.md) | Prune and document chapter |
@@ -35,7 +37,15 @@ Flat index of active project context. Archived history is under `.agents/archive
 | Active Spec | [specs/ruff-copyright-modernization/spec.md](./specs/ruff-copyright-modernization/spec.md) | Copyright modernization |
 | Active Spec | [specs/vector-calculator_20260429/spec.md](./specs/vector-calculator_20260429/spec.md) | Vector calculator |
 | Active Spec | [specs/vhs-demo-recordings_20260429/prd.md](./specs/vhs-demo-recordings_20260429/prd.md) | VHS demo recording plan |
+| Active Spec | [specs/test-suite-reorganization_20260501/prd.md](./specs/test-suite-reorganization_20260501/prd.md) | Test suite layout cleanup |
+| Active Spec | [specs/ui-regression-recovery_20260501/prd.md](./specs/ui-regression-recovery_20260501/prd.md) | Chat/explore UI regression recovery |
+| Active Spec | [specs/store-location-inventory-chat_20260501/prd.md](./specs/store-location-inventory-chat_20260501/prd.md) | Store-aware chat, inventory, browser location, and maps master PRD |
+| Active Spec | [specs/store-data-foundation_20260501/spec.md](./specs/store-data-foundation_20260501/spec.md) | Store coordinates, Dallas fixture, and inventory data foundation |
+| Active Spec | [specs/store-query-services_20260501/spec.md](./specs/store-query-services_20260501/spec.md) | Store, hours, nearest-store, inventory, and Maps URL query services |
+| Active Spec | [specs/store-intent-routing_20260501/spec.md](./specs/store-intent-routing_20260501/spec.md) | Deterministic store and product-availability chat routing |
+| Active Spec | [specs/browser-location-maps-ui_20260501/spec.md](./specs/browser-location-maps-ui_20260501/spec.md) | Browser location opt-in, store cards, and optional map rendering |
+| Active Spec | [specs/store-maps-security-docs_20260501/spec.md](./specs/store-maps-security-docs_20260501/spec.md) | Maps security headers, restricted key helper, and docs |
+| Active Spec | [specs/settings-config-consolidation_20260501/prd.md](./specs/settings-config-consolidation_20260501/prd.md) | Settings and configuration consolidation plan |
 | Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
 | Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |
 | Plan | [plans/installation-simplification.md](./plans/installation-simplification.md) | Installation simplification notes |
-| Archive | [archive/](./archive/) | Preserved historical specs and knowledge |

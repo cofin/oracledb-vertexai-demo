@@ -1,3 +1,0 @@
-- Modern Oracle baseline is already captured in `0001_cymball_coffee_products.sql` with `BOOLEAN`, `JSON`, and `VECTOR` columns plus `store` table parity.
-- Fixture load ordering should include `store` before dependent semantic tables to keep imports deterministic.
-- Product reads should normalize Oracle boolean nullability (`NVL(in_stock, TRUE)`) for stable typed API responses.

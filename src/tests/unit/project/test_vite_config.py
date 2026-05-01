@@ -15,4 +15,3 @@ def test_vite_config_is_warning_only() -> None:
 
     assert 'logLevel: "warn"' in source
     assert "clearScreen: false" in source
-

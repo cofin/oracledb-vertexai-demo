@@ -26,7 +26,7 @@ Implementation must follow these alignment constraints:
 |---|---|---|
 | `cymbal-coffee-reset_20260429` | planned/open saga | Updated to name this PRD as a follow-on and to preserve fixture lifecycle commands needed by store/inventory work. |
 | `foundation-bump_20260429` | completed | Compatible. It already established 0001-as-baseline and fixture regeneration patterns. New work must edit only 0001 and reload from scratch. |
-| `accelerator-restructure_20260429` | completed | Compatible. Store/inventory work must extend `stores.sql` and add `inventory.sql`; no inline service SQL. |
+| Domain-service restructure chapter | completed | Compatible. Store/inventory work must extend `stores.sql` and add `inventory.sql`; no inline service SQL. |
 | `adk2-runner_20260429` | completed | Compatible. Store intents become new deterministic routes on the existing classifier-first runner. |
 | `htmx-vite-frontend_20260429` | completed | Compatible. Maps UI belongs in the existing chat template and `src/resources/main.js`. |
 | `prune-and-document_20260429` | in progress | Updated to clarify that this PRD is a separate follow-on and should not prune fixture/export or store docs paths that it depends on. |

@@ -5,7 +5,7 @@
   "parent_prd": "cymbal-coffee-reset_20260429",
   "beads_epic_id": "oracledb-vertexai-4d6.5",
   "created_at": "2026-04-29T01:30:00Z",
-  "updated_at": "2026-05-01T16:47:12Z",
-  "synced_at": "2026-05-01T16:47:12Z",
-  "description": "Make the demo learnable cold in 30 minutes. Archive 8 obsolete spec dirs + 8 knowledge notes; collapse 8 guides to exactly 3 evergreen guides; trim CLI to 5 canonical commands; rewrite README as 5-minute quickstart (<=120 lines); update CLAUDE.md and patterns.md to match post-Ch1-4 reality."
+  "updated_at": "2026-05-01T17:45:20Z",
+  "synced_at": "2026-05-01T17:45:20Z",
+  "description": "Make the demo learnable cold in 30 minutes. Synthesize obsolete specs and knowledge into active guidance; keep exactly 3 topic guides plus a cohesive project guide; trim CLI to the canonical command surface; rewrite README as a 5-minute quickstart; update CLAUDE.md and patterns.md to match post-Ch1-4 reality."
 }

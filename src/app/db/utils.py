@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 COFFEE_SHOP_TABLES = [
     "store",
     "product",
+    "store_product_inventory",
 ]
 
 
@@ -55,6 +56,7 @@ async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
     tables_with_identity = [
         "product",
         "store",
+        "store_product_inventory",
         "response_cache",
         "embedding_cache",
         "search_metric",

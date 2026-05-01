@@ -1,3 +1,0 @@
-- In DDD layout, ADK runner implementation should live under `app/domain/chat/services/_adk/runner.py`, not legacy flat service paths.
-- Persona-aware system prompt composition (`BASE_SYSTEM_INSTRUCTION` + persona overlay) keeps one static ADK agent reusable while preserving behavioral flexibility.
-- Dishka router integration (`Inject[ADKRunner]` on handlers, no route decorators) keeps DI explicit and framework-native.

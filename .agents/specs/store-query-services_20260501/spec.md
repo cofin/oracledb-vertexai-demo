@@ -14,7 +14,7 @@ Expose grounded store, hours, nearest-store, maps URL, and inventory query primi
 ## Dependencies
 
 - Requires `store-data-foundation_20260501`.
-- Must preserve the named-SQL pattern from `accelerator-restructure_20260429`.
+- Must preserve the named-SQL pattern from the domain-service restructure chapter.
 
 ---
 

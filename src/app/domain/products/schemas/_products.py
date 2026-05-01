@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 — used in handler-visible schema; Litestar OpenAPI needs runtime ref
-from typing import Any
+from typing import Any, Literal
 
 from msgspec import field
 
 from app.lib.schema import CamelizedBaseStruct
+
+StockStatus = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
 
 
 class Product(CamelizedBaseStruct, omit_defaults=True):
@@ -39,8 +41,57 @@ class Store(CamelizedBaseStruct, omit_defaults=True):
     state: str | None = None
     zip: str | None = None
     phone: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone: str | None = None
+    google_place_id: str | None = None
     hours: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
+
+
+class StoreDistance(Store, omit_defaults=True):
+    """Store row plus local coordinate ranking score."""
+
+    distance_score: float = 0.0
+
+
+class StoreProductInventory(CamelizedBaseStruct, omit_defaults=True):
+    """Store-product inventory row."""
+
+    id: int
+    store_id: int
+    product_id: int
+    quantity_available: int
+    stock_status: StockStatus
+    pickup_available: bool = True
+    updated_at: datetime | None = None
+
+
+class StoreInventoryItem(StoreProductInventory, omit_defaults=True):
+    """Store inventory row with product display fields."""
+
+    product_name: str = ""
+    product_category: str | None = None
+    product_sku: str | None = None
+    product_price: float | None = None
+
+
+class ProductAvailability(StoreProductInventory, omit_defaults=True):
+    """Product availability row with store and product display fields."""
+
+    store_name: str = ""
+    store_address: str = ""
+    store_city: str | None = None
+    store_state: str | None = None
+    store_zip: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    timezone: str | None = None
+    google_place_id: str | None = None
+    product_name: str = ""
+    product_category: str | None = None
+    product_sku: str | None = None
+    product_price: float | None = None
 
 
 class VectorQuery(CamelizedBaseStruct, omit_defaults=True):

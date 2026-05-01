@@ -490,4 +490,3 @@ defaults:
 6. Keep one primary chat model plus optional intent-model override.
 7. Keep embedding model and dimensions as their own explicit AI settings.
 8. Remove settings that remain unwired after the cleanup.
-

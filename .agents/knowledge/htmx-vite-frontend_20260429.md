@@ -20,7 +20,7 @@ Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and re
 - Oracle EXPLAIN PLAN viewer: two driver calls (`EXPLAIN PLAN FOR ...` + `DBMS_XPLAN.DISPLAY()`); both must be named SQL.
 - `litestar-vite` mode=`template` + `HTMXPlugin()` (built-in to Litestar 2.x; no separate PyPI dep).
 - `vite.config.ts` `publicDir` is project-root-relative — must be set explicitly to `src/resources/public` for brand assets to ship.
-- CLI split: `coffee` (rich_click, no `litestar_group()`) for app commands; `manage.py` for infra/db/assets. Mirrors `dma/accelerator`'s `dma` vs `manage.py`.
+- CLI split: `coffee` (rich_click, no `litestar_group()`) for app lifecycle commands; `manage.py` for infra, database, and assets.
 - Engineering conventions: typed Structs at every API boundary, direct schema imports, `from_json` not `json.loads`, `schema_type=` on every sqlspec select, `COALESCE` in SQL for null-safe aggregates, inline single-use locals.
 
 ## Key Files

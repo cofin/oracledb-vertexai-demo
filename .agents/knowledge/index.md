@@ -1,8 +1,14 @@
 # Knowledge Base
 
-> Persistent learnings from all completed flows.
+> Current-state learnings from completed flows.
 > For actionable patterns, see [patterns.md](../patterns.md).
-> Drill into specific entries only when relevant to current work.
+> Do not rely on `.agents/archive/`; durable content must be synthesized here.
+
+## Cohesive Guide
+
+- [Project Knowledge Guide](project-guide.md) - current architecture, data,
+  AI, store/location/inventory/maps plans, settings cleanup, frontend, testing,
+  operations, and Flow-memory policy synthesized from completed work.
 
 ## Entries
 
@@ -38,3 +44,8 @@
 - **runner**: guides/adk-agent-patterns.md
 - **chat**: guides/adk-agent-patterns.md
 - **session**: guides/adk-agent-patterns.md
+- **store-location**: project-guide.md
+- **inventory**: project-guide.md
+- **maps**: project-guide.md
+- **settings**: project-guide.md
+- **configuration**: project-guide.md

@@ -9,8 +9,9 @@
 - The critical archive ignore check must include `.agents/.gitignore`, not only
   the repo-root `.gitignore`; `.agents/.gitignore` contained `archive`, which
   hid the moved files until the rule was removed.
-- `.agents/flows.md` now keeps archived specs out of the active registry and
-  points future readers at `.agents/archive/specs/`.
+- `.agents/flows.md` keeps completed historical specs out of the active
+  registry. Durable lessons must be synthesized into active knowledge instead
+  of pointing future readers at archive paths.
 - Flow sync/status in this repo is a Beads-backed skill workflow. Do not assume
   a `flow sync` shell subcommand exists.
 
@@ -58,8 +59,8 @@
   request body and causes the backend to stream `Message cannot be empty`.
   Capture `FormData` before busy-state changes and keep a regression check
   against that ordering.
-- Re-reviewed DMA accelerator logging after ADK2 stream smoke. The demo should
-  use `app.lib.log.structlog_processors()` / `stdlib_logger_processors()` in
+- Re-reviewed logging after ADK2 stream smoke. The demo should use
+  `app.lib.log.structlog_processors()` / `stdlib_logger_processors()` in
   `app.config`, not Litestar's default processor chains, so TTY stdlib logs do
   not duplicate `message=...`. Keep the narrow ADK/Authlib warning filters and
   static asset log exclusion in tests so real stream exceptions remain visible.
@@ -79,15 +80,33 @@
   `CURRENT_TIMESTAMP`; expired-row deletion belongs in the explicit
   `CacheService.delete_expired_responses()` maintenance operation, not in the
   hot read path.
+- Final audit should verify named outcomes instead of old absolute active-spec
+  counts. Follow-on Flow specs can be active while Ch 5 remains in closeout, so
+  the durable acceptance check is that the obsolete spec dirs are no longer in
+  `.agents/specs/`, the active guide set is exactly the three evergreen guides,
+  and the archived guide folder contains the 7 archive-bound guides plus 3
+  merge-source guides and stale guides README.
 - Remaining manual verification: destructive fresh-clone/start-infra timing,
   browser screenshot capture, and colleague cold readthrough.
+
+## Archive policy checkpoint (2026-05-01)
+
+- `.agents/archive/` is now ignored disposable history instead of durable
+  project memory. The old rule that archive must remain committed is
+  superseded.
+- Durable archive lessons must be synthesized into `.agents/knowledge/`,
+  `.agents/patterns.md`, or `.agents/workflow.md` before archive files are
+  removed or ignored.
+- Active indexes, guides, workflows, and Flow registry entries should not link
+  readers into archive paths.
 
 ## Pre-implementation findings (planning phase, 2026-04-29)
 
 - The `.agents/` knowledge base accumulated **8 timestamped notes + 8 guides** plus 7 archived spec dirs since the project began. Most decisions live in code now; the notes are valuable history but noise to a new contributor.
 - **Migration `0001_cymball_coffee_products.sql` is already minimal** — no dead DDL or commented-out experimental code. Ch 1 handles the only required edits (HNSW, 3072, INMEMORY, MD5→SHA256 comment).
 - `manage.py init` may pull deleted commands — audit during Phase 3.
-- `.gitignore` must NOT exclude `.agents/archive/` — historical context is part of the repo per PRD.
+- Superseded 2026-05-01: `.agents/archive/` is intentionally ignored after
+  durable context is synthesized into active knowledge.
 - A 5-minute quickstart bound is ambitious but achievable: the bottleneck is usually `make install-uv && make install` (uv-cached makes this fast on warm machines). Time it on a fresh container to validate.
 - `coffee bulk-embed` and `coffee export-fixtures` are app lifecycle commands and
   should stay on `coffee`; clean them up in place instead of moving them to

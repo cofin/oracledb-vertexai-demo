@@ -173,8 +173,9 @@ All tasks follow a strict lifecycle:
 
 1. **Capture** - After each task, append learnings to flow's `learnings.md`
 2. **Elevate** - At phase/flow completion, move reusable patterns to `.agents/patterns.md`
-3. **Synthesize** - During sync and archive, integrate learnings directly into cohesive, logically organized knowledge base chapters in `.agents/knowledge/` (e.g., `architecture.md`, `conventions.md`). Update the current state, do NOT outline history.
-4. **Inherit** - New flows read `patterns.md` + scan `.agents/knowledge/` chapters.
+3. **Synthesize** - During sync and archive, integrate learnings directly into cohesive, logically organized knowledge base chapters in `.agents/knowledge/` (for example, `project-guide.md`, `guides/architecture.md`, or `guides/oracle-vector-search.md`). Update the current state, do NOT outline history.
+4. **Unlink archive** - Treat `.agents/archive/` as ignored, disposable local history. Do not leave active docs, guides, indexes, specs, or workflow instructions that require readers to follow links into archive content. If archive content still matters, fold it into `.agents/knowledge/` or `.agents/patterns.md` first.
+5. **Inherit** - New flows read `patterns.md` + scan `.agents/knowledge/` chapters.
 
 Repeated user corrections or frustration are high-signal learning triggers. Do not leave them buried in chat history; turn them into explicit patterns or knowledge updates.
 Validated repo-native commands are also high-signal learnings. If the project already has a canonical `make lint`, `make test`, `make check`, `just check`, `task test`, or equivalent wrapper, preserve it in this workflow and elevate it when needed.
@@ -186,7 +187,7 @@ Validated repo-native commands are also high-signal learnings. If the project al
 | **Patterns** | `.agents/patterns.md` | Always | Elevated actionable rules for priming |
 | **Knowledge Chapters** | `.agents/knowledge/*.md` | On demand | Synthesized implementation details and current state |
 
-**Important:** `.agents/patterns.md` is NOT archived with flows. It remains at the top level as persistent project knowledge. Knowledge chapters in `.agents/knowledge/` also persist independently of archives and describe the active codebase state.
+**Important:** `.agents/patterns.md` is NOT archived with flows. It remains at the top level as persistent project knowledge. Knowledge chapters in `.agents/knowledge/` also persist independently of archives and describe the active codebase state. `.agents/archive/` is ignored local history; it must not be the only place a durable lesson exists.
 
 **Learnings Entry Format:**
 

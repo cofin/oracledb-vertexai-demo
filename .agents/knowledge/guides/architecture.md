@@ -14,8 +14,8 @@ Cymbal Coffee is a two-page Litestar application:
 
 The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
 Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
-Jinja/HTMX with Vite, Tailwind v4, Alpine, and a small `src/resources/main.js`
-streaming client.
+Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and a small
+`src/resources/main.js` streaming client.
 
 ```text
 browser
@@ -161,6 +161,26 @@ search the live menu, format a grounded answer only from returned products,
 persist display history into ADK session state, cache the final response, and
 emit a single final SSE event.
 
+## Store, Inventory, And Maps Expansion
+
+Active store-aware chat planning extends the existing product domain rather than
+adding a separate store app. The planned components are:
+
+- store data foundation in the baseline migration and fixtures: coordinates,
+  timezone, optional Google place IDs, Dallas store data, explicit product stock
+  booleans, and curated `store_product_inventory` rows;
+- store and inventory query services behind named SQL and typed schemas;
+- closure-bound ADK tools for store lookup, hours, nearest stores, and product
+  availability;
+- deterministic `STORE_LOCATION` and `PRODUCT_AVAILABILITY` routes beside the
+  existing deterministic `PRODUCT_RAG` path;
+- HTMX/Jinja chat rendering for store cards, inventory cards, directions links,
+  and optional one-at-a-time Maps Embed output.
+
+Maps URLs are the default integration and need no API key. Browser coordinates
+are request-scoped and require explicit consent. Embedded maps require separate
+settings and a restricted Maps Embed key; do not reuse Gemini or Vertex keys.
+
 ## Vector Search Flow
 
 ```text
@@ -239,8 +259,8 @@ configured database.
   and control Oracle INMEMORY storage for SQLSpec extension tables.
 - Placeholder Vertex project IDs are rejected before ADK starts so expected
   local misconfiguration returns a clean 503.
-- Logging follows the DMA accelerator pattern: `app.config` builds
-  `StructlogConfig` from the custom processors in `app.lib.log`, settings set
-  Litestar / Granian logging env defaults, static assets are excluded from
-  request logs, and `app.config.setup_logging()` filters only known ADK/Authlib
-  warning noise so real runtime exceptions stay visible.
+- `app.config` builds `StructlogConfig` from
+  `app.lib.log.structlog_processors()` and `stdlib_logger_processors()`.
+  Settings set Litestar / Granian logging env defaults. Static assets are
+  excluded from request logs, and `app.config.setup_logging()` filters only
+  known ADK/Authlib warning noise so real runtime exceptions stay visible.

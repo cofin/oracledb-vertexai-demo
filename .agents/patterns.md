@@ -1,7 +1,8 @@
 # Project Patterns
 
 > Current conventions for the Cymbal Coffee Oracle 26ai + Vertex AI demo.
-> Historical notes live under `.agents/archive/`; this file is the living surface.
+> This file and `.agents/knowledge/` are the living surfaces for durable agent
+> guidance.
 
 <!-- truth: start -->
 ## Architecture
@@ -50,8 +51,12 @@
 - Product RAG tool calls record `vector_query`, `embedding_ms`, `oracle_ms`,
   `tool_ms`, result counts, and embedding cache status; the chat UI shows these
   as message-level telemetry along with intent and response-cache status.
-- Frontend pages are HTMX + Jinja + Tailwind v4 + Alpine/ApexCharts through
-  `litestar-vite` template mode, not a standalone SPA.
+- Store/location/inventory work stays in the products domain: seed coordinates,
+  Dallas, and curated inventory; route store answers from service facts.
+- Maps URLs are the no-key baseline. Browser coordinates are opt-in and
+  request-scoped; embeds require a separate restricted Maps Embed key.
+- Frontend pages are HTMX + Jinja + Tailwind v4 + vanilla JavaScript/ApexCharts
+  through `litestar-vite` template mode, not a standalone SPA.
 - EXPLAIN PLAN uses two named SQL calls: one `EXPLAIN PLAN FOR ...` and one
   `DBMS_XPLAN.DISPLAY()` read.
 - `coffee` is the app CLI. Keep `bulk-embed`, `export-fixtures`,
@@ -83,6 +88,7 @@
   `RETRIEVAL_DOCUMENT` for product/document embedding refresh.
 - Keep placeholder Vertex project checks on the typed `AIServiceUnconfigured`
   path so local misconfiguration returns a clean 503.
+- Settings stay dataclass/cached, quiet, and effectively immutable; remove future knobs until source behavior wires them.
 
 ## Testing
 
@@ -133,15 +139,11 @@
   so SQLSpec extension tables use Oracle INMEMORY where the database supports it.
 - `OracleAsyncConfig` uses `connection_config=`; older `pool_config=` wiring can
   silently drop credentials and surface as `DPY-4001`.
-- `.agents/.gitignore` must not hide `.agents/archive/`; archived Flow history is
-  committed context, not disposable scratch.
+- `.agents/archive/` is ignored disposable history; synthesize durable
+  knowledge into `.agents/knowledge/` or this file before archive cleanup.
 - Flow sync/status is a Flow skill workflow backed by Beads state and `.agents/`
   docs; do not assume a `flow sync` shell command exists, and do not run
   `bd sync` because Beads does not expose that command.
-- Logging should follow the DMA accelerator pattern: `app.config` uses the
-  custom processors in `app.lib.log`, `Settings.from_env()` sets Litestar /
-  Granian logging env defaults, and filters suppress only known ADK/Authlib
-  warning noise.
-- README should not link screenshots until fresh browser verification captures
-  current `/` and `/explore` views.
+- Logging must use `app.lib.log` processors, set Litestar/Granian env defaults,
+  exclude static-asset logs, and filter only known ADK/Authlib warning noise.
 <!-- truth: end -->

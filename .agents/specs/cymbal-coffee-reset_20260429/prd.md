@@ -53,8 +53,8 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 - Regenerate all fixture embeddings with `gemini-embedding-001`, recompress `.json.gz`.
 - Delete every `array.array('f', ...)` site — sqlspec's native vector handlers do it now.
 
-### Chapter 2 — `accelerator-restructure_20260429`
-**Structural shape.** Mirror `~/code/g/dma/accelerator` — without throwing out Dishka.
+### Chapter 2 - `domain-service-restructure_20260429`
+**Structural shape.** Adopt the domain-service structural pattern — without throwing out Dishka.
 
 - Add `lib/service.py` with `SQLSpecAsyncService` base (`paginate`, `get_or_404`, `exists`, `begin_transaction`) per `sqlspec/references/service-patterns.md`.
 - Extract every inline SQL string into `db/sql/*.sql` files; wire `db_manager.load_sql_files()` + access via `db_manager.get_sql("name")`.
@@ -178,7 +178,7 @@ PRD is complete when:
 
 - **Master**: `oracledb-vertexai-4d6`
 - **Ch 1** `foundation-bump_20260429` → `oracledb-vertexai-4d6.1`
-- **Ch 2** `accelerator-restructure_20260429` → `oracledb-vertexai-4d6.2` (blocked by Ch 1)
+- **Ch 2** `domain-service-restructure_20260429` -> `oracledb-vertexai-4d6.2` (blocked by Ch 1)
 - **Ch 3** `adk2-runner_20260429` → `oracledb-vertexai-4d6.3` (blocked by Ch 2)
 - **Ch 4** `htmx-vite-frontend_20260429` → `oracledb-vertexai-4d6.4` (blocked by Ch 2)
 - **Ch 5** `prune-and-document_20260429` → `oracledb-vertexai-4d6.5` (blocked by Ch 3 and Ch 4)

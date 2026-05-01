@@ -1,3 +1,0 @@
-- For Dishka + Litestar domain routing, keep DI wiring centralized (`setup_dishka(container, app)` + `DomainPlugin(use_dishka_router=True)`) and avoid route-level `@inject` decorators.
-- Preserve generated API/types artifacts and route scaffolding early (`litestar assets generate-types`) to reduce frontend/backend contract drift.
-- Maintain both lightweight chat UI and richer dashboard UI tests to keep quick-path and analytics-path regressions visible.

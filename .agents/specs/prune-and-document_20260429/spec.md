@@ -9,7 +9,19 @@
 
 ### Objective
 
-Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes. Archive obsolete flow specs + knowledge notes; collapse 8 guides to **3 evergreen guides**; trim the CLI to the canonical demo surface; rewrite the root `README.md` as a 5-minute quickstart; update `CLAUDE.md` and `.agents/patterns.md` to reflect the codebase as it actually is after Chapters 1–4. No new functionality; pure simplification.
+Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes. Synthesize obsolete flow specs + knowledge notes into durable active guidance; collapse 8 guides to **3 evergreen guides** plus a cohesive project guide; trim the CLI to the canonical demo surface; rewrite the root `README.md` as a 5-minute quickstart; update `CLAUDE.md` and `.agents/patterns.md` to reflect the codebase as it actually is after Chapters 1–4. No new functionality; pure simplification.
+
+### Archive Policy Update (2026-05-01)
+
+`.agents/archive/` is no longer durable project memory. It is ignored local
+history and may be removed from the repository. Any earlier requirement in this
+spec to preserve archive folders, count archive files, or link readers into
+archive paths is superseded by this policy:
+
+- durable lessons must live in `.agents/patterns.md`, `.agents/workflow.md`, or
+  `.agents/knowledge/`;
+- active guides, indexes, workflows, and specs must not require archive links;
+- archive cleanup is acceptable after the useful content is synthesized.
 
 ### Code Analysis Summary (verified 2026-04-29)
 
@@ -44,9 +56,9 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 | `.agents/knowledge/guides/architecture.md` | KEEP — rewrite to reflect post-Ch 1–4 state |
 | `.agents/knowledge/guides/oracle-vector-search.md` | KEEP — rewrite to cover HNSW INMEMORY + 3072-dim + EXPLAIN PLAN |
 | `.agents/knowledge/guides/adk-agent-patterns.md` | KEEP — rewrite to cover ADK 2.0 Workflow + parallel classifier + closure-bound tools |
-| `sqlspec-patterns.md` | MERGE into `architecture.md` (named SQL pattern, paginate, filters); then delete |
-| `vertex-ai-integration.md` | MERGE into `architecture.md` (embedding model, task_type, dim 3072); then delete |
-| `oracle-performance.md` | MERGE into `oracle-vector-search.md` (vector_memory_size, INMEMORY); then delete |
+| `sqlspec-patterns.md` | MERGE into `architecture.md` (named SQL pattern, paginate, filters); then archive |
+| `vertex-ai-integration.md` | MERGE into `architecture.md` (embedding model, task_type, dim 3072); then archive |
+| `oracle-performance.md` | MERGE into `oracle-vector-search.md` (vector_memory_size, INMEMORY); then archive |
 | `litestar-framework.md` | ARCHIVE — covered by `litestar:litestar*` skill docs + CLAUDE.md |
 | `sqlcl-usage-guide.md` | ARCHIVE — operational, not foundational |
 | `manage-cli-guide.md` | ARCHIVE — `manage.py` survives but its surface is a 3-line README mention |
@@ -99,9 +111,11 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 ### Requirements
 
-1. `.agents/archive/specs/` exists; the 8 listed spec dirs are moved (not deleted) so historical context is preserved but out of the active surface.
-2. `.agents/archive/knowledge/` exists; the 8 listed knowledge files moved.
-3. `.agents/knowledge/guides/` contains exactly 3 files: `architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`. The merged content from `sqlspec-patterns.md`, `vertex-ai-integration.md`, `oracle-performance.md` is folded in; archived files moved to `.agents/archive/knowledge/guides/`.
+1. Useful content from obsolete specs, notes, and guides is synthesized into
+   active guidance before archive cleanup.
+2. Active guides, indexes, workflows, and specs do not require links into
+   `.agents/archive/`.
+3. `.agents/knowledge/guides/` contains exactly 3 files: `architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`. The merged content from `sqlspec-patterns.md`, `vertex-ai-integration.md`, `oracle-performance.md`, and other durable archive notes is folded into those files or `.agents/knowledge/project-guide.md`.
 4. `coffee bulk-embed` and `coffee export-fixtures` remain on the hand-rolled
    `coffee` command surface. Clean them up in place: explicit embedding task
    type, clearer help text, no local nested async/run wrappers, and coverage so
@@ -120,10 +134,16 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 ### Acceptance Criteria
 
-- `find .agents/specs -maxdepth 1 -type d | wc -l` returns **6** (root + master PRD dir + 4 chapter dirs; the 8 obsolete dirs are gone — including `install-simplification_20260429`).
+- The 8 obsolete spec dirs are gone from `.agents/specs/`. Do not assert a
+  fixed top-level `.agents/specs/` count after Ch 5; newer follow-on flows may
+  be active at the same time.
 - `ls .agents/knowledge/guides/` returns exactly: `architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`.
-- `ls .agents/archive/specs/ | wc -l` ≥ 8.
-- `ls .agents/archive/knowledge/guides/ | wc -l` = 7.
+- `.agents/archive/knowledge/guides/` contains 11 archived files: 7
+  archive-bound guides, 3 merge-source guides, and the stale guides README.
+- `.agents/knowledge/project-guide.md` exists and synthesizes current-state
+  knowledge that should survive archive removal.
+- Active indexes, guides, workflow docs, and the Flow registry do not contain
+  Markdown links into archive paths.
 - `uv run coffee --help` lists `bulk-embed` and `export-fixtures`.
 - `src/app/cli/commands/manage.py` has no direct `sqlspec.utils.sync_tools.run_`
   usage or local nested `_load_fixtures` / `_export_fixtures` async wrappers;
@@ -136,12 +156,16 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 ### Risks / Known Gotchas
 
-- **Don't delete archived files; move them.** History is valuable for future archaeologists. `git mv` keeps the diff clean.
+- **Archive is disposable.** Do not use archive contents as required reading;
+  synthesize useful lessons into active knowledge before removing or ignoring
+  archive files.
 - **`manage.py` is not in the PRD's must-survive list** — but it bootstraps `init`, which IS. Confirm `manage.py init` still works after Ch 5; if it pulls a deleted command, fix it.
 - **Quickref files** under `.claude/skills/` are referenced by `CLAUDE.md` — keep them; they're load-bearing for future sessions. Verify their content still matches post-Ch 1–4.
 - **Screenshots** must be current before they are linked from README; stale React-era screenshots are worse than no screenshot.
 - **Existing PR / commit messages** may reference deleted files; that's fine, those are immutable history.
-- **Archive directory is gitignored?** Verify `.gitignore` does NOT exclude `.agents/archive/` — the PRD wants archived flows preserved in the repo.
+- **Archive directory is gitignored.** `.agents/archive/` is intentionally
+  ignored; the PRD wants durable lessons preserved in active knowledge, not in
+  archive-only files.
 
 ---
 
@@ -149,18 +173,19 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 
 ### Phase 1: Spec + knowledge archival (`oracledb-vertexai-4d6.5.1`) — [x] synced from Beads
 
-- [x] **1.1** **First, verify `.gitignore` does not exclude `.agents/archive/`.** If excluded, edit `.gitignore` to remove the rule before any move (otherwise the moves vanish from the repo).
+- [x] **1.1** Superseded 2026-05-01: `.agents/archive/` is intentionally ignored after durable lessons are synthesized into active knowledge.
 - [x] **1.2** Create `.agents/archive/specs/` and `.agents/archive/knowledge/` (and `.agents/archive/knowledge/guides/`).
 - [x] **1.3** `git mv` each of the 8 obsolete spec dirs into `.agents/archive/specs/`.
 - [x] **1.4** `git mv` each of the 8 obsolete knowledge files into `.agents/archive/knowledge/`.
-- [x] **1.5** Update `.agents/flows.md`: remove archived flow entries from the active list; add an "Archived" footer section linking to `archive/specs/`.
+- [x] **1.5** Update `.agents/flows.md`: remove archived flow entries from the active list; keep archive guidance unlinked because archive history is disposable.
 
 ### Phase 2: Guide consolidation (`oracledb-vertexai-4d6.5.2`) — [x] synced from Beads
 
 - [x] **2.1** Rewrite `.agents/knowledge/guides/architecture.md` from scratch (≤500 lines): high-level diagram, three-provider Dishka layout, named SQL pattern, ADK 2.0 workflow shape, HTMX template + Vite mode. Pull merged content from the 3 archive-bound guides as needed.
 - [x] **2.2** Rewrite `.agents/knowledge/guides/oracle-vector-search.md` (≤500 lines): VECTOR(3072), HNSW INMEMORY recipe, vector_memory_size requirement, EXPLAIN PLAN read, similarity vs distance.
 - [x] **2.3** Rewrite `.agents/knowledge/guides/adk-agent-patterns.md` (≤500 lines): ADK 2.0 Workflow/BaseNode, closure-bound tools, parallel fan-out, before_agent_callback credential guard, Flash-Lite enum classifier.
-- [x] **2.4** `git mv` the 7 archive-bound guides into `.agents/archive/knowledge/guides/`.
+- [x] **2.4** `git mv` the 7 archive-bound guides, 3 merge-source guides,
+  and stale guides README into `.agents/archive/knowledge/guides/`.
 
 ### Phase 3: CLI cleanup (`oracledb-vertexai-4d6.5.3`) — [x] synced from Beads
 
@@ -258,9 +283,18 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 ## Sync Notes (2026-05-01)
 
 - Backend state: `oracledb-vertexai-4d6.5.1` through `.5.5` are closed; `oracledb-vertexai-4d6.5.6` remains in progress.
+- Archive policy changed: `.agents/archive/` is ignored disposable history.
+  Durable lessons are now synthesized into `.agents/knowledge/project-guide.md`,
+  topic guides, `.agents/patterns.md`, and `.agents/workflow.md`; active docs
+  should not link readers into archive paths.
 - Verification done in Phase 6 includes lint/test passes, targeted chat/explore regression tests, current chat/explore screenshots, Vite build, Ruff checks, and whitespace checks.
 - Current frontend stack is HTMX/Jinja templates plus litestar-vite, Tailwind v4, vanilla JavaScript, and ApexCharts. Alpine was removed during UI regression recovery.
 - Latest manual-testing fixes: chat intent telemetry promotes to `PRODUCT_RAG` when a product vector lookup actually ran, chat-side vector lookups write metrics, and the structured EXPLAIN PLAN table wraps instead of forcing horizontal scroll.
+- Lightweight acceptance refresh confirmed the three active guides, 8 archived
+  spec dirs, 11 archived guide files, README at 82 lines,
+  `.agents/patterns.md` at 147 lines, stale `CLAUDE.md` references removed,
+  retained `coffee` lifecycle command help output, and `git diff --check`
+  clean. Final `git status` audit remains open while shared-branch edits settle.
 - Remaining closeout before Ch 5 can close: fresh-clone quickstart timing or explicit waiver, colleague cold readthrough or explicit waiver, and final git-status audit after shared branch work settles.
 
 ---

@@ -1,8 +1,0 @@
-{
-  "flow_id": "enhance-test-coverage",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-04-13T00:00:00Z",
-  "updated_at": "2026-04-13T00:00:00Z",
-  "description": "Enhance test coverage and maintainability for the Vertex AI and Oracle 23ai integration components."
-}

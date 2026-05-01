@@ -1,3 +1,0 @@
-- For flow-managed repos, Beads status is authoritative; always sync markdown task markers after status changes.
-- Maintaining `.agent/knowledge/index.md` as a compact registry makes cross-flow recall faster than searching raw specs.
-- During migration from legacy guides, preserving concise gotchas in `patterns.md` yields better downstream implementation quality.

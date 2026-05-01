@@ -12,8 +12,8 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/foundation-bump_20260429/](./specs/foundation-bump_20260429/)*
   *Beads: oracledb-vertexai-4d6.1*
 
-  ### [x] Ch 2: accelerator-restructure_20260429
-  *Link: [./specs/accelerator-restructure_20260429/](./specs/accelerator-restructure_20260429/)*
+  ### [x] Ch 2: domain-service-restructure_20260429
+  *Link: [./specs/domain-service-restructure_20260429/](./specs/domain-service-restructure_20260429/)*
   *Beads: oracledb-vertexai-4d6.2*
 
   ### [x] Ch 3: adk2-runner_20260429
@@ -100,4 +100,6 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ## Archived
 
-Archived specs are preserved under [./archive/specs/](./archive/specs/).
+Archived specs are disposable local history and may be ignored or removed from
+the repository. Durable learnings belong in `.agents/knowledge/` and
+`.agents/patterns.md`; do not point active Flow guidance at archive paths.

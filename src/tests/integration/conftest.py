@@ -178,7 +178,7 @@ async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
     purges any zero-vector pollution left by prior ``coffee load-fixtures`` runs
     against the dev container so vector-search assertions stay deterministic.
     """
-    for table in ("product", "store"):
+    for table in ("store_product_inventory", "product", "store"):
         with contextlib.suppress(Exception):
             await session.execute(f"TRUNCATE TABLE {table}")
     await session.commit()

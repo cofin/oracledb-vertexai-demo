@@ -31,4 +31,3 @@
   immutable settings, make shell env override `.env`, and introduce a focused
   `ChatSettings` for response cache, ADK session namespace, history, and product
   RAG defaults.
-

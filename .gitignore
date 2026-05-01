@@ -172,3 +172,7 @@ todo
 .beads-credential-key
 .beads
 .playwright-mcp
+
+# Flow archive history is disposable local context; durable guidance belongs in
+# tracked .agents/knowledge and .agents/patterns docs.
+.agents/archive/
