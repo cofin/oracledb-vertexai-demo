@@ -70,7 +70,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 6. `request_container_var`, `_resolve_request_container`, and the module-level `search_products_by_vector` / `get_product_details` tool functions are deleted; tools become per-request closures.
 7. `before_agent_callback` on the `LlmAgent` runs the credential guard — returns `types.Content(parts=[Part(text="...")])` with the 503 message text when the Vertex client can't be initialized; controller maps the response to HTTP 503 via a typed `AIServiceUnconfigured` exception path.
 8. App startup hook (`src/app/server/asgi.py`) calls `await store.ensure_tables()` so the demo boots without a separate ADK-session DDL step. Main product migrations still run through `uv run python manage.py database upgrade`.
-9. New integration test `src/tests/integration/test_chat_workflow.py` asserts (a) `intent_detected` is one of the enum values, (b) `answer` is non-empty, (c) `response_time_ms < 4000` (95th pct expectation; widen if needed).
+9. New integration test `src/tests/integration/app/domain/chat/services/test_chat_workflow.py` asserts (a) `intent_detected` is one of the enum values, (b) `answer` is non-empty, (c) `response_time_ms < 4000` (95th pct expectation; widen if needed).
 
 ### Acceptance Criteria
 
@@ -79,7 +79,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 - `python -c "from app.domain.chat.services.workflow import make_workflow; print(make_workflow.__doc__)"` runs without ImportError.
 - Manual `POST /api/chat` returns response within 4 seconds; response includes populated `intent_detected`, `search_metrics`, `from_cache`, `embedding_cache_hit`.
 - App boot logs include `ADKStore.ensure_tables() OK` (or equivalent).
-- `make lint && make test` green; `uv run pytest src/tests/integration/test_chat_workflow.py -v` passes.
+- `make lint && make test` green; `uv run pytest src/tests/integration/app/domain/chat/services/test_chat_workflow.py -v` passes.
 - A repro of the *old* slow-path is impossible — searching for the `else: container = make_litestar_container()` branch in `adk.py` yields no match.
 
 ### Risks / Known Gotchas
@@ -102,8 +102,8 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 0: API surface verification (`oracledb-vertexai-4d6.3.0`)
 
-- [x] **0.1** ~~After Ch 1 has bumped `google-adk==2.0.0b1`, run a smoke import~~ **VERIFIED 2026-04-30**: All assumed imports resolve cleanly against installed `google-adk==2.0.0b1` — `Context`/`Runner`/`Workflow` from `google.adk`, `BaseNode`/`FunctionNode`/`node` from `google.adk.workflow`, `LlmAgent` from `google.adk.agents`, `CallbackContext` from `google.adk.agents.callback_context`. `@node` decoration produces a `FunctionNode` (a `BaseNode`). Pinned in `src/tests/unit/test_adk2_surface_pin.py`.
-- [x] **0.2** ~~Same smoke for `Runner` accepting a workflow root~~ **VERIFIED 2026-04-30**: `Runner.__init__` exposes both `agent: Optional[BaseAgent] = None` and `node: Any = None` as separate kwargs. `Workflow` is a `BaseNode` subclass (not a `BaseAgent`), so the workflow root MUST be passed as `Runner(node=workflow, ...)`, **NOT** `agent=workflow`. Phase 4.1c + 4.1d updated. Pinned in `src/tests/unit/test_adk2_surface_pin.py`.
+- [x] **0.1** ~~After Ch 1 has bumped `google-adk==2.0.0b1`, run a smoke import~~ **VERIFIED 2026-04-30**: All assumed imports resolve cleanly against installed `google-adk==2.0.0b1` — `Context`/`Runner`/`Workflow` from `google.adk`, `BaseNode`/`FunctionNode`/`node` from `google.adk.workflow`, `LlmAgent` from `google.adk.agents`, `CallbackContext` from `google.adk.agents.callback_context`. `@node` decoration produces a `FunctionNode` (a `BaseNode`). Pinned in `src/tests/unit/vendor/google_adk/test_surface_pin.py`.
+- [x] **0.2** ~~Same smoke for `Runner` accepting a workflow root~~ **VERIFIED 2026-04-30**: `Runner.__init__` exposes both `agent: Optional[BaseAgent] = None` and `node: Any = None` as separate kwargs. `Workflow` is a `BaseNode` subclass (not a `BaseAgent`), so the workflow root MUST be passed as `Runner(node=workflow, ...)`, **NOT** `agent=workflow`. Phase 4.1c + 4.1d updated. Pinned in `src/tests/unit/vendor/google_adk/test_surface_pin.py`.
 - [x] **0.3** ~~Confirm `gemini-2.5-flash-lite` accepts `response_mime_type="text/x.enum"`~~ **PARTIAL 2026-04-30**: SDK-level shape verified — `types.GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": [...]})` constructs cleanly with `google-genai` (pinned in `test_adk2_surface_pin.py::test_genai_types_for_classifier`). Live API smoke deferred — no `GOOGLE_API_KEY`/`VERTEX_AI_API_KEY` available in this environment. Smoke once creds are available with: `client.aio.models.generate_content(model="gemini-2.5-flash-lite", contents="Where's the nearest Cymbal?", config=GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": ["PRODUCT_RAG","STORE_LOCATION","ORDER_STATUS","GENERAL_CONVERSATION"]}))` and assert `response.text` is one of the enum values.
 
 ### Phase 1: ADK store + startup hooks (`oracledb-vertexai-4d6.3.1`)
@@ -148,7 +148,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
   ```
 - [x] **2.2** Add `INTENT_MODEL: str = "gemini-2.5-flash-lite"` to `settings.vertex_ai`. [e48d80e]
 - [x] **2.3** Wire `FlashLiteIntentClassifier` into the APP-scoped `provide_intent_classifier` slot **already reserved** by Ch 2 in `IntegrationsProvider` (`src/app/ioc.py`). The provider depends on `genai.Client` from the same provider; signature: `def provide_intent_classifier(self, client: genai.Client) -> FlashLiteIntentClassifier: return FlashLiteIntentClassifier(client, model=settings.vertex_ai.INTENT_MODEL)`. [e48d80e]
-- [x] **2.4** Unit test `src/tests/unit/test_classifier.py` — mock `client.aio.models.generate_content` to return `MagicMock(text="PRODUCT_RAG")`; assert classifier returns the enum. [e48d80e]
+- [x] **2.4** Unit test `src/tests/unit/app/domain/chat/services/test_classifier.py` — mock `client.aio.models.generate_content` to return `MagicMock(text="PRODUCT_RAG")`; assert classifier returns the enum. [e48d80e]
 
 ### Phase 3: Workflow + parallel fan-out (`oracledb-vertexai-4d6.3.3`)
 
@@ -186,7 +186,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
       return Workflow(name="coffee_workflow", edges=[("START", classify_and_respond)])
   ```
-- [x] **3.2** Unit test `src/tests/unit/test_workflow_factory.py` — mock classifier + agent, run the workflow, assert dict shape. [a5f6da6]
+- [x] **3.2** Unit test `src/tests/unit/app/domain/chat/services/test_workflow.py` — mock classifier + agent, run the workflow, assert dict shape. [a5f6da6]
 
 ### Phase 4: ADKRunner rewrite (`oracledb-vertexai-4d6.3.4`)
 
@@ -224,7 +224,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 ### Phase 6: Integration test + verification (`oracledb-vertexai-4d6.3.7`)
 
-- [ ] **6.1** `src/tests/integration/test_chat_workflow.py`:
+- [ ] **6.1** `src/tests/integration/app/domain/chat/services/test_chat_workflow.py`:
   - Fixture: real Oracle (already present), mock `genai.Client` to return deterministic responses.
   - Call `ADKRunner.process_request("What's a good dark roast?", ..., persona="enthusiast", tools_service=AgentToolsService(...))`.
   - Assert response dict contains `intent_detected == "PRODUCT_RAG"`, `answer` non-empty, `search_metrics["products_found"] >= 1`.

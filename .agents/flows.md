@@ -40,6 +40,10 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/test-suite-reorganization_20260501/](./specs/test-suite-reorganization_20260501/)*
   *Beads: oracledb-vertexai-4d6.9*
 
+  ### [ ] Corrective PRD: ui-regression-recovery_20260501
+  *Link: [./specs/ui-regression-recovery_20260501/](./specs/ui-regression-recovery_20260501/)*
+  *Beads: not created - draft alignment only*
+
   ---
 
   ## [ ] PRD: pyapp-packaging_20260429
