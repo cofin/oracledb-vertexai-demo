@@ -36,6 +36,10 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
   *Beads: oracledb-vertexai-4d6.7*
 
+  ### [x] Corrective PRD: test-suite-reorganization_20260501
+  *Link: [./specs/test-suite-reorganization_20260501/](./specs/test-suite-reorganization_20260501/)*
+  *Beads: oracledb-vertexai-4d6.9*
+
   ---
 
   ## [ ] PRD: pyapp-packaging_20260429

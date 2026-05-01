@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,13 +13,17 @@ import pytest
 from litestar.testing import AsyncTestClient
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Callable
 
     from litestar import Litestar
     from sqlspec.adapters.oracledb import OracleAsyncDriver
 
     from app.domain.products.services import ProductService
     from app.domain.system.services import CacheService
+
+
+_ORACLE_SCHEMA_READY = False
+_ORACLE_SEED_DATA_READY = False
 
 
 # Pin every integration test in this directory to a single xdist worker. The
@@ -129,6 +134,28 @@ async def _seed_marker_product(session: OracleAsyncDriver) -> None:
     await session.commit()
 
 
+async def _ensure_oracle_schema(session: OracleAsyncDriver) -> None:
+    """Create idempotent Oracle test schema objects once per pytest worker."""
+    global _ORACLE_SCHEMA_READY  # noqa: PLW0603
+
+    if _ORACLE_SCHEMA_READY:
+        return
+    await _bootstrap_test_schema(session)
+    _ORACLE_SCHEMA_READY = True
+
+
+async def _ensure_oracle_seed_data(session: OracleAsyncDriver) -> None:
+    """Load deterministic fixture data once per pytest worker."""
+    global _ORACLE_SEED_DATA_READY  # noqa: PLW0603
+
+    if _ORACLE_SEED_DATA_READY:
+        return
+    await _truncate_fixture_tables(session)
+    await _load_app_fixtures(session)
+    await _seed_marker_product(session)
+    _ORACLE_SEED_DATA_READY = True
+
+
 @pytest.fixture
 async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient, None]:
     """Create test client."""
@@ -172,16 +199,45 @@ async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
 
 
 @pytest.fixture
-async def driver() -> AsyncGenerator[OracleAsyncDriver, None]:
-    """Provide SQLSpec driver for tests against a freshly-seeded DB.
+def unique_test_id() -> str:
+    """Return a stable unique suffix for one integration test."""
+    return uuid.uuid4().hex
+
+
+@pytest.fixture
+async def oracle_seed_data() -> None:
+    """Ensure shared Oracle schema and fixture data are ready for this worker.
 
     The repo-managed Oracle container and migrations must already be available.
-    The integration setup pipeline only prepares deterministic test data:
+    This fixture only performs expensive DDL/truncate/fixture loading once per
+    pytest worker; function-scoped driver sessions depend on the prepared data.
+    """
+    from app.config import db, db_manager
+
+    try:
+        async with db_manager.provide_session(db) as session:
+            await _ensure_oracle_schema(session)
+            await _ensure_oracle_seed_data(session)
+    finally:
+        # pytest-anyio creates a fresh event loop per test by default.
+        # Closing the shared pool avoids loop-bound pool reuse across tests.
+        with contextlib.suppress(Exception):
+            await db.close_pool()
+
+
+@pytest.fixture
+async def driver(oracle_seed_data: None) -> AsyncGenerator[OracleAsyncDriver, None]:
+    """Provide an isolated SQLSpec driver session against shared seeded data.
+
+    The setup pipeline prepares deterministic data once per worker:
 
         1. Bootstrap schema (idempotent CREATE TABLE)
-        2. Truncate fixture-owned tables (purge cross-test pollution)
-        3. Load .json.gz fixtures (products + stores)
-        4. Insert the SEED-SKU-001 marker the older tests rely on
+        2. Truncate fixture-owned tables once
+        3. Load .json.gz fixtures once
+        4. Insert the SEED-SKU-001 marker once
+
+    Tests that mutate shared app tables should use unique identifiers and
+    explicit cleanup fixtures instead of relying on suite-wide truncation.
     """
     from app.config import db, db_manager
 
@@ -190,16 +246,31 @@ async def driver() -> AsyncGenerator[OracleAsyncDriver, None]:
 
     try:
         async with db_manager.provide_session(db) as session:
-            await _bootstrap_test_schema(session)
-            await _truncate_fixture_tables(session)
-            await _load_app_fixtures(session)
-            await _seed_marker_product(session)
             yield session
     finally:
         # pytest-anyio creates a fresh event loop per test by default.
         # Closing the shared pool avoids loop-bound pool reuse across tests.
         with contextlib.suppress(Exception):
             await db.close_pool()
+
+
+@pytest.fixture
+async def tracked_product_skus(driver: OracleAsyncDriver) -> AsyncGenerator[Callable[[str], None], None]:
+    """Track product SKUs inserted by a test and delete them afterwards."""
+    skus: list[str] = []
+
+    def track(sku: str) -> None:
+        skus.append(sku)
+
+    try:
+        yield track
+    finally:
+        for sku in skus:
+            with contextlib.suppress(Exception):
+                await driver.execute("DELETE FROM product WHERE sku = :sku", sku=sku)
+        if skus:
+            with contextlib.suppress(Exception):
+                await driver.commit()
 
 
 @pytest.fixture
