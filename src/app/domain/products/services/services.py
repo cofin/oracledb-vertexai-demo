@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import re
 import time
-from math import asin, cos, radians, sin, sqrt
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -26,43 +25,13 @@ from app.domain.products.schemas import (
     StoreHours,
     StoreInventoryItem,
 )
+from app.domain.products.services._location import haversine_miles, location_hint_matches
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
 
 logger = structlog.get_logger()
-
-
-def _haversine_miles(latitude: float, longitude: float, store: Store | ProductAvailability) -> float:
-    """Return local distance in miles without calling external Maps APIs."""
-    if store.latitude is None or store.longitude is None:
-        return float("inf")
-    earth_radius_miles = 3958.8
-    lat1 = radians(latitude)
-    lon1 = radians(longitude)
-    lat2 = radians(store.latitude)
-    lon2 = radians(store.longitude)
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    return 2 * earth_radius_miles * asin(sqrt(a))
-
-
-def _location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
-    normalized = location_hint.casefold().strip()
-    if not normalized:
-        return True
-    fields = (
-        row.store_name,
-        row.store_address,
-        row.store_city,
-        row.store_state,
-        row.store_zip,
-    )
-    return any(normalized in str(field or "").casefold() for field in fields)
-
-# --- Product Service ---
 
 
 class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
@@ -183,7 +152,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         ranked = [
             StoreDistance(
                 **asdict(store),
-                distance_miles=round(_haversine_miles(latitude, longitude, store), 2),
+                distance_miles=round(haversine_miles(latitude, longitude, store), 2),
             )
             for store in stores
             if store.latitude is not None and store.longitude is not None
@@ -225,7 +194,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
             schema_type=ProductAvailability,
         )
         if location_hint:
-            rows = [row for row in rows if _location_hint_matches(row, location_hint)]
+            rows = [row for row in rows if location_hint_matches(row, location_hint)]
         latitude, longitude = coordinates or (None, None)
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
 
@@ -241,7 +210,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         ranked: list[ProductAvailability] = []
         for row in rows:
             data = asdict(row)
-            data["distance_miles"] = round(_haversine_miles(latitude, longitude, row), 2)
+            data["distance_miles"] = round(haversine_miles(latitude, longitude, row), 2)
             ranked.append(ProductAvailability(**data))
         ranked.sort(key=lambda row: row.distance_miles if row.distance_miles is not None else float("inf"))
         return ranked

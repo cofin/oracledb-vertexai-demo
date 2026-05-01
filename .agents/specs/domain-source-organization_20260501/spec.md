@@ -4,7 +4,7 @@
 *Chapter 3 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.3`*
 *Depends on: `source-organization-contract_20260501`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -92,3 +92,20 @@ parsing or formatting mechanics.
 - No endpoint route, response payload, SQL key, or schema field changes.
 - Domain source organization allowlist entries are removed or justified.
 - Focused domain tests and Ruff pass.
+
+## Implementation Notes
+
+- Chat controller request parsing, location-context shaping, and metrics badge
+  formatting moved to `app.domain.chat.controllers._helpers`, leaving
+  `CoffeeChatController` as the first top-level definition.
+- Vector controller request parsing and service-unavailable fallbacks moved to
+  `app.domain.products.controllers._vector_helpers`.
+- Product/store distance ranking and location-hint matching moved to
+  `app.domain.products.services._location`.
+- Maps URL builders now lead `app.domain.products.services.maps`, with URL
+  formatting helpers below the public API.
+- Source organization tests now assert domain controller modules start with
+  their controller classes.
+- Verification: focused domain unit tests, focused domain integration
+  controller tests, source organization guard, `make lint`, `make test`, and
+  `git diff --check`.

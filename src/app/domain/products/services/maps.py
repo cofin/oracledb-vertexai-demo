@@ -12,16 +12,6 @@ if TYPE_CHECKING:
 _MAPS_HOST = "www.google.com"
 
 
-def _store_query(store: Store) -> str:
-    locality = " ".join(part for part in (store.state, store.zip) if part)
-    city_region = ", ".join(part for part in (store.city, locality) if part)
-    return ", ".join(part for part in (store.name, store.address, city_region) if part)
-
-
-def _maps_url(path: str, params: dict[str, str]) -> str:
-    return urlunsplit(("https", _MAPS_HOST, path, urlencode({"api": "1", **params}), ""))
-
-
 def build_store_search_url(store: Store) -> str:
     """Build a no-key Google Maps search URL for a store."""
     params = {"query": _store_query(store)}
@@ -40,3 +30,13 @@ def build_store_directions_url(store: Store, origin: tuple[float, float] | str |
     elif origin:
         params["origin"] = origin
     return _maps_url("/maps/dir/", params)
+
+
+def _store_query(store: Store) -> str:
+    locality = " ".join(part for part in (store.state, store.zip) if part)
+    city_region = ", ".join(part for part in (store.city, locality) if part)
+    return ", ".join(part for part in (store.name, store.address, city_region) if part)
+
+
+def _maps_url(path: str, params: dict[str, str]) -> str:
+    return urlunsplit(("https", _MAPS_HOST, path, urlencode({"api": "1", **params}), ""))

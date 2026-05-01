@@ -33,15 +33,16 @@ PUBLIC_UNDERSCORE_MODULES = frozenset(
 )
 PRIVATE_HELPER_PACKAGES = frozenset({"_helpers"})
 MODULE_INFRASTRUCTURE_FILES = frozenset({"__init__.py", "__main__.py", "__metadata__.py"})
+DOMAIN_CONTROLLER_ENTRYPOINTS = {
+    "src/app/domain/chat/controllers/_chat.py": "CoffeeChatController",
+    "src/app/domain/products/controllers/_products.py": "ProductController",
+    "src/app/domain/products/controllers/_vector.py": "VectorController",
+    "src/app/domain/system/controllers/_metrics.py": "MetricsController",
+    "src/app/domain/system/controllers/_system.py": "SystemController",
+    "src/app/domain/web/controllers/_pages.py": "PageController",
+}
 TEMPORARY_HOTSPOT_ALLOWLIST = {
     "src/app/domain/chat/services/adk.py": "Chapter 4 will split ADK grounding, telemetry, history, cache, and tool helpers.",
-    "src/app/domain/products/controllers/_vector.py": (
-        "Chapter 3 will move vector request parsing and service-unavailable helpers behind the controller story."
-    ),
-    "src/app/domain/products/services/maps.py": "Chapter 3 will keep public Maps URL builders before private URL helpers.",
-    "src/app/domain/products/services/services.py": (
-        "Chapter 3 will move distance and location-hint helpers behind the product and store service classes."
-    ),
 }
 
 
@@ -123,3 +124,14 @@ def test_public_modules_do_not_start_with_private_helper_runs() -> None:
             offenders[project_path] = [f"{definition.name}:{definition.line}" for definition in private_prefix]
 
     assert offenders == {}
+
+
+def test_domain_controller_modules_start_with_controller_classes() -> None:
+    source_files = {_project_path(path): path for path in _source_files()}
+
+    for project_path, expected_controller in DOMAIN_CONTROLLER_ENTRYPOINTS.items():
+        definitions = _top_level_definitions(source_files[project_path])
+        assert definitions, f"{project_path} has no public controller definition"
+        assert definitions[0].name == expected_controller, (
+            f"{project_path} should lead with {expected_controller}, got {definitions[0].name}"
+        )

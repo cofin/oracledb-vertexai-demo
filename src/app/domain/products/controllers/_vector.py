@@ -4,21 +4,25 @@
 import re
 import time
 import uuid
-from typing import Any
 from urllib.parse import quote
 
 import structlog
-from google.genai import errors as genai_errors
 from litestar import Controller, Response, get, post
 from litestar.exceptions import ValidationException
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 
+from app.domain.products.controllers._vector_helpers import (
+    SERVICE_UNAVAILABLE_MESSAGE,
+    is_expected_service_unavailable,
+    payload_value,
+    unavailable_plan,
+    vector_query_from_request,
+)
 from app.domain.products.schemas import (
     ExplainPlan,
     VectorDemo,
     VectorDemoMatch,
-    VectorQuery,
 )
 from app.domain.products.services import OracleVectorSearchService
 from app.domain.system.schemas import SearchMetricsCreate
@@ -26,56 +30,6 @@ from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
 logger = structlog.get_logger()
-
-
-_SERVICE_UNAVAILABLE_MESSAGE = "Vector search is unavailable. Check Vertex AI and Oracle configuration, then retry."
-
-
-def _is_expected_service_unavailable(exc: BaseException) -> bool:
-    text = str(exc).lower()
-    if isinstance(exc, genai_errors.ClientError):
-        return any(
-            marker in text
-            for marker in (
-                "api key",
-                "credentials",
-                "permission_denied",
-                "service_disabled",
-                "forbidden",
-                "unauthorized",
-            )
-        )
-    return any(
-        marker in text
-        for marker in (
-            "api key",
-            "credentials",
-            "permission_denied",
-            "service_disabled",
-            "vertex ai api has not been used",
-        )
-    )
-
-
-def _payload_value(payload: Any, key: str, default: str = "") -> str:
-    getter = getattr(payload, "get", None)
-    value = getter(key, default) if callable(getter) else default
-    if isinstance(value, list | tuple):
-        value = value[0] if value else default
-    return str(value or default)
-
-
-def _unavailable_plan(message: str = _SERVICE_UNAVAILABLE_MESSAGE) -> ExplainPlan:
-    return ExplainPlan(plan_lines=[message], plan_summary="Plan unavailable")
-
-
-async def _vector_query_from_request(request: HTMXRequest) -> VectorQuery:
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        payload = await request.json()
-    else:
-        payload = await request.form()
-    return VectorQuery(query=_payload_value(payload, "query"))
 
 
 class VectorController(Controller):
@@ -103,7 +57,7 @@ class VectorController(Controller):
         request: HTMXRequest,
     ) -> Response | HTMXTemplate:
         """Run vector search; HTMX clients get a partial + PushUrl, SPA clients JSON."""
-        data = await _vector_query_from_request(request)
+        data = await vector_query_from_request(request)
         query = self.validate_message(data.query)
 
         full_request_start = time.time()
@@ -113,7 +67,7 @@ class VectorController(Controller):
         try:
             results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
         except Exception as exc:
-            if not _is_expected_service_unavailable(exc):
+            if not is_expected_service_unavailable(exc):
                 raise
             await logger.awarning("Vector search demo unavailable", error_type=type(exc).__name__)
             if request.htmx:
@@ -122,15 +76,15 @@ class VectorController(Controller):
                     context={
                         "matches": [],
                         "query": query,
-                        "error": _SERVICE_UNAVAILABLE_MESSAGE,
-                        "plan": _unavailable_plan(),
+                        "error": SERVICE_UNAVAILABLE_MESSAGE,
+                        "plan": unavailable_plan(),
                         "plan_oob": True,
                     },
                 )
             return Response(
                 content={
                     "status": HTTP_503_SERVICE_UNAVAILABLE,
-                    "title": _SERVICE_UNAVAILABLE_MESSAGE,
+                    "title": SERVICE_UNAVAILABLE_MESSAGE,
                     "detail": "Service Unavailable",
                 },
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
@@ -177,10 +131,10 @@ class VectorController(Controller):
             try:
                 plan = await vector_search_service.explain_search_plan(query)
             except Exception as exc:
-                if not _is_expected_service_unavailable(exc):
+                if not is_expected_service_unavailable(exc):
                     raise
                 await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
-                plan = _unavailable_plan()
+                plan = unavailable_plan()
             return HTMXTemplate(
                 template_name="partials/explore_search_response.html.j2",
                 context={"matches": matches, "query": query, "plan": plan, "plan_oob": True},
@@ -202,11 +156,11 @@ class VectorController(Controller):
     @get(path="/api/explain-plan", name="vector.explain_plan", exclude_from_auth=True)
     async def explain_plan(self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]) -> ExplainPlan:
         """Return the Oracle EXPLAIN PLAN for the vector-search SQL."""
-        query = self.validate_message(_payload_value(request.query_params, "query"))
+        query = self.validate_message(payload_value(request.query_params, "query"))
         try:
             return await vector_search_service.explain_search_plan(query)
         except Exception as exc:
-            if not _is_expected_service_unavailable(exc):
+            if not is_expected_service_unavailable(exc):
                 raise
             await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
-            return _unavailable_plan()
+            return unavailable_plan()
