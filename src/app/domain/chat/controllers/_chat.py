@@ -19,11 +19,10 @@ from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 from app.domain.chat import schemas
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services import ADKRunner, AgentToolsService
+from app.domain.chat.session import adk_session_identity, clear_adk_session_identity
 from app.lib.di import Inject
 
 logger = structlog.get_logger()
-_ADK_SESSION_KEY = "adk_session_id"
-_ADK_USER_KEY = "adk_user_id"
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 
 
@@ -49,26 +48,6 @@ def _metrics_badges(result: dict, intent: str, from_cache: bool) -> dict:
         "embedding_cache_hit": bool(result.get("embedding_cache_hit")),
         "intent": intent,
     }
-
-
-def _adk_session_identity(request: HTMXRequest) -> tuple[str, str]:
-    """Bridge Litestar's server-side session identity to ADK's session backend.
-
-    Returns:
-        The ADK user id and session id derived from the Litestar session.
-    """
-    session = request.session
-    session_id = session.get(_ADK_SESSION_KEY)
-    if not isinstance(session_id, str) or not session_id:
-        session_id = request.get_session_id() or str(uuid.uuid4())
-        session[_ADK_SESSION_KEY] = session_id
-
-    user_id = session.get(_ADK_USER_KEY)
-    if not isinstance(user_id, str) or not user_id:
-        user_id = f"web:{session_id}"
-        session[_ADK_USER_KEY] = user_id
-
-    return user_id, session_id
 
 
 def _payload_value(payload: Any, key: str, default: str = "") -> str:
@@ -160,7 +139,7 @@ class CoffeeChatController(Controller):
             raise
 
         validated_persona = self.validate_persona(data.persona)
-        user_id, session_id = _adk_session_identity(request)
+        user_id, session_id = adk_session_identity(request)
 
         try:
             result = await adk_runner.process_request(
@@ -249,7 +228,7 @@ class CoffeeChatController(Controller):
             try:
                 clean_message = self.validate_message(data.message)
                 validated_persona = self.validate_persona(data.persona)
-                user_id, session_id = _adk_session_identity(request)
+                user_id, session_id = adk_session_identity(request)
                 async for event in adk_runner.stream_request(
                     query=clean_message,
                     user_id=user_id,
@@ -276,3 +255,15 @@ class CoffeeChatController(Controller):
                 }
 
         return ServerSentEvent(stream_events(), status_code=200)
+
+    @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)
+    async def clear_chat_session(self, adk_runner: Inject[ADKRunner], request: HTMXRequest) -> Response:
+        """Clear the anonymous browser's ADK chat session.
+
+        Returns:
+            JSON confirmation for the frontend reset button.
+        """
+        user_id, session_id = adk_session_identity(request)
+        await adk_runner.clear_session(user_id=user_id, session_id=session_id)
+        clear_adk_session_identity(request)
+        return Response(content={"status": "cleared"})

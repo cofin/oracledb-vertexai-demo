@@ -157,3 +157,26 @@ async def test_stream_handles_runner_exception_after_response_started(
     assert "event: error" in response.text
     assert "Chat failed while streaming. Please try again." in response.text
     assert "tool exploded" not in response.text
+
+
+async def test_clear_chat_session_deletes_adk_session_and_resets_bridge(
+    client: AsyncTestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.chat.services import ADKRunner
+
+    calls: list[dict[str, str]] = []
+
+    async def _clear_session(self: Any, **kwargs: str) -> None:
+        del self
+        calls.append(kwargs)
+
+    monkeypatch.setattr(ADKRunner, "clear_session", _clear_session)
+
+    response = await client.post("/api/chat/session/clear")
+
+    assert response.status_code == 200, response.text[:500]
+    assert response.json() == {"status": "cleared"}
+    assert calls
+    assert calls[0]["session_id"]
+    assert calls[0]["user_id"] == f"web:{calls[0]['session_id']}"

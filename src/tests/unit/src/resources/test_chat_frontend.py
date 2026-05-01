@@ -40,3 +40,12 @@ def test_chat_stream_final_payload_replaces_speculative_delta_text() -> None:
     final_branch = source[source.index('if (eventName === "final")') : source.index('if (eventName === "error")')]
     assert 'setPendingText(payload.answer ?? "")' in final_branch
     assert "currentText.trim()" not in final_branch
+
+
+def test_chat_frontend_exposes_clear_chat_button_handler() -> None:
+    source = (RESOURCES_ROOT / "main.js").read_text()
+
+    assert "[data-clear-chat]" in source
+    assert 'fetch("/api/chat/session/clear"' in source
+    assert "resetChatMessages()" in source
+    assert "welcomeMessageHtml" in source

@@ -190,7 +190,10 @@ def test_build_workflow_constructs_llmagent_and_calls_make_workflow(monkeypatch:
     monkeypatch.setattr(adk_module, "LlmAgent", FakeLlmAgent)
     monkeypatch.setattr(adk_module, "make_workflow", fake_make_workflow)
 
+    from app.domain.chat.services.classifier import IntentLabel
+
     classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
     runner = ADKRunner(session_service=MagicMock(), classifier=classifier, persona_manager=MagicMock())
 
     async def fake_tool() -> None: ...
@@ -261,7 +264,10 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
     persona_manager.get_temperature = MagicMock(return_value=0.7)
 
+    from app.domain.chat.services.classifier import IntentLabel
+
     classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
 
     async def fake_events() -> Any:
         event = MagicMock()
@@ -338,8 +344,8 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     sql_keys = {phase["sql_key"] for phase in result["sql_phases"]}
     assert {"get-cached-response", "vector-search-products"} <= sql_keys
     assert isinstance(result["response_time_ms"], float)
-    run_kwargs = fake_runner.run_async.call_args.kwargs
-    assert run_kwargs["run_config"].streaming_mode.value == "sse"
+    fake_runner.run_async.assert_not_called()
+    tools_service.search_products_by_vector.assert_awaited_once_with("recommend something", 3, 0.5)
     tools_service.set_cached_chat_response.assert_awaited_once()
 
 
@@ -476,6 +482,71 @@ async def test_product_rag_response_is_grounded_to_menu_products(monkeypatch: An
     assert result["search_metrics"]["products_found"] == 1
     assert result["search_metrics"]["vector_query"] == "what's good for breakfast?"
     tools_service.search_products_by_vector.assert_awaited_once_with("what's good for breakfast?", 3, 0.5)
+
+
+async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-direct-rag"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("Product RAG turns must not stream speculative model text before grounding")
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 10,
+                    "name": "Wakey Wakey Waffles",
+                    "description": "Fluffy, golden waffles.",
+                    "price": 7.5,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "hey",
+            "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+        }
+    )
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
+
+    events = [
+        event
+        async for event in runner.stream_request(
+            query="hey",
+            user_id="u1",
+            session_id="sess-direct-rag",
+            persona="enthusiast",
+            tools_service=tools_service,
+        )
+    ]
+
+    assert [event["type"] for event in events] == ["final"]
+    assert "Wakey Wakey Waffles" in events[0]["answer"]
+    assert events[0]["intent_detected"] == "PRODUCT_RAG"
+    tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5)
 
 
 async def test_process_request_returns_cached_response_without_model(monkeypatch: Any) -> None:

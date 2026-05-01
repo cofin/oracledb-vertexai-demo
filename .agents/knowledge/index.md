@@ -10,6 +10,16 @@
 |---------|-----------|--------|---------|
 | [htmx-vite-frontend_20260429](htmx-vite-frontend_20260429.md) | 2026-04-29 | htmx, vite, alpine, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan | Ch 4: source-tree flatten + CLI restructure + HTMX/Vite frontend rebuild — delete React, build /explore page with EXPLAIN PLAN viewer |
 
+## Guides
+
+- [ADK Agent Patterns](guides/adk-agent-patterns.md) - current ADK 2 runner
+  process flow, Litestar session bridge, Product RAG grounding, SSE streaming,
+  response cache, display history, and clear-chat behavior.
+- [Architecture](guides/architecture.md) - package boundaries and service
+  ownership.
+- [Oracle Vector Search](guides/oracle-vector-search.md) - vector SQL and
+  Oracle search behavior.
+
 ## Topic Index
 
 <!-- Topics are added automatically during flow archival -->
@@ -24,3 +34,7 @@
 - **cli**: htmx-vite-frontend_20260429
 - **oracle**: htmx-vite-frontend_20260429
 - **explain-plan**: htmx-vite-frontend_20260429
+- **adk**: guides/adk-agent-patterns.md
+- **runner**: guides/adk-agent-patterns.md
+- **chat**: guides/adk-agent-patterns.md
+- **session**: guides/adk-agent-patterns.md

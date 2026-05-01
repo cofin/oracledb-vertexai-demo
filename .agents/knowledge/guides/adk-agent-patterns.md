@@ -10,13 +10,14 @@ The chat implementation is a Litestar-hosted ADK 2.0 workflow:
 CoffeeChatController
   -> ADKRunner.stream_request()
   -> SQLSpecSessionService
-  -> Runner(node=coffee_workflow, ...)
-  -> Workflow graph
-  -> SSE delta and final events
+  -> response cache lookup
+  -> FlashLiteIntentClassifier
+  -> Product RAG direct path OR Runner(node=coffee_workflow, ...)
+  -> final event, with SSE deltas only for model-streamed non-RAG turns
 ```
 
-The graph is deterministic at the orchestration layer and adaptive inside the
-LLM node:
+The ADK workflow graph is still available for model-streamed conversational
+turns:
 
 ```text
 START -> intent FunctionNode -> JoinNode
@@ -25,7 +26,13 @@ JoinNode -> classify_and_respond FunctionNode
 ```
 
 `max_concurrency=2` lets the Flash-Lite classifier and coffee response run in
-parallel.
+parallel inside the workflow path.
+
+For product/menu/RAG turns, the runner classifies first and bypasses speculative
+model streaming. It searches the menu through `AgentToolsService`, formats the
+answer from returned Cymbal Coffee rows, and yields a single final event. This
+prevents the browser from showing an ungrounded model delta and then replacing it
+with a grounded final answer.
 
 ## Runner Boundary
 
@@ -50,7 +57,7 @@ The browser session and ADK session are separate stores:
 - ADK session/event tables: `adk_sessions`, `adk_events`
 - Optional ADK memory table: `adk_memory_entries`
 
-`CoffeeChatController._adk_session_identity()` bridges them by storing:
+`app.domain.chat.session.adk_session_identity()` bridges them by storing:
 
 - `adk_session_id`
 - `adk_user_id`
@@ -59,6 +66,16 @@ inside the Litestar session, then passing those identifiers to ADK.
 
 Do not treat Litestar's session object as the ADK session. It is only the web
 identity anchor.
+
+`GET /` uses that same bridge to hydrate chat history. The page asks
+`ADKRunner.get_history()` for display messages. The runner first reads
+`session.state["display_history"]`, then falls back to persisted ADK events when
+that display history is missing. If neither exists, the template shows the
+static welcome message.
+
+The sidebar `Clear chat` button calls `POST /api/chat/session/clear`. That
+deletes the current ADK session/events and removes the Litestar bridge keys. It
+does not clear products, metrics, response cache, or embedding cache.
 
 ## SQLSpec ADK Store
 
@@ -121,6 +138,27 @@ internal tool-schema message, run the product search fallback and format the
 final answer from returned menu rows rather than trusting the speculative model
 text.
 
+The current preferred path is classifier-first:
+
+```text
+request text
+  -> response cache lookup
+  -> FlashLiteIntentClassifier
+  -> if PRODUCT_RAG:
+       search_products_by_vector(query, 3, 0.5)
+       format final answer from returned products only
+       persist intent + display_history in ADK session state
+       cache response
+       yield final event only
+  -> otherwise:
+       run ADK workflow with SSE streaming
+       yield model deltas
+       yield final event
+```
+
+This keeps menu answers deterministic and menu-grounded while preserving model
+streaming for genuine conversation.
+
 ## Intent Classification
 
 Intent classification is a separate Gemini Flash-Lite call using
@@ -166,6 +204,10 @@ The current browser path streams:
 When debugging slow chat, verify the browser is using `/api/chat/stream`, not
 `/api/chat`.
 
+Do not emit Product RAG deltas before grounding. For Product RAG, the only
+browser-visible response should be the final grounded payload. Non-RAG turns may
+stream partial model text.
+
 ## Credential Guard
 
 `credential_guard_callback()` short-circuits model execution when local AI config
@@ -186,6 +228,7 @@ Every final chat result must include:
 - `search_metrics`
 - `from_cache`
 - `embedding_cache_hit`
+- `sql_phases`
 
 Keep this shape stable for HTMX partials, JSON clients, and tests.
 
@@ -210,6 +253,11 @@ ADK tools, because the demo is meant to make intent routing, Oracle vector
 lookup, embedding cache hits, and response cache hits visible in the chat
 message itself.
 
+Search metric inserts must use the app serializer boundary:
+`schema_dump(metrics, wire_format=False)`. Database writes need Python field
+names such as `result_count`; wire-format/camelized names such as `resultCount`
+produce invalid Oracle identifiers.
+
 ## Debugging Checklist
 
 Menu question not using RAG:
@@ -233,9 +281,9 @@ fresh cache rows in SQL with `CURRENT_TIMESTAMP`, return the typed
 explicit cache cleanup operation.
 
 Session state missing:
-Confirm `_adk_session_identity()` stores IDs in the Litestar session and that
-`SQLSpecSessionService` is backed by `OracleAsyncADKStore`, not an in-memory
-ADK session service.
+Confirm `app.domain.chat.session.adk_session_identity()` stores IDs in the
+Litestar session and that `SQLSpecSessionService` is backed by
+`OracleAsyncADKStore`, not an in-memory ADK session service.
 
 No streaming in the UI:
 Confirm the form action is `/api/chat/stream`, the request accepts

@@ -138,21 +138,28 @@ service.
 
 ```text
 POST /api/chat/stream
-  -> CoffeeChatController._adk_session_identity()
+  -> app.domain.chat.session.adk_session_identity()
   -> ADKRunner.stream_request()
   -> SQLSpecSessionService get/create session
-  -> ADK Workflow:
-       START -> intent FunctionNode -> JoinNode
-       START -> LlmAgent coffee_turn -> JoinNode
-       JoinNode -> classify_and_respond FunctionNode
-  -> SSE delta events
-  -> final event with answer, intent, cache, timing, and session id
+  -> response cache lookup
+  -> FlashLiteIntentClassifier
+  -> PRODUCT_RAG direct vector search and grounded final event
+     OR ADK workflow stream for conversational turns:
+        START -> intent FunctionNode -> JoinNode
+        START -> LlmAgent coffee_turn -> JoinNode
+        JoinNode -> classify_and_respond FunctionNode
+  -> final event with answer, intent, SQL/query metadata, cache, timing, and session id
 ```
 
 The LLM tools are closure-bound per request. The closures call
 `AgentToolsService`, which holds the request-scoped SQLSpec driver plus product,
 cache, metrics, store, and Vertex services. This keeps database sessions aligned
 with Litestar request scope while ADK owns only orchestration.
+
+Product RAG turns do not stream speculative model deltas. They classify first,
+search the live menu, format a grounded answer only from returned products,
+persist display history into ADK session state, cache the final response, and
+emit a single final SSE event.
 
 ## Vector Search Flow
 

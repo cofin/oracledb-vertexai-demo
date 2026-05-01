@@ -8,6 +8,7 @@ from __future__ import annotations
 import time
 import uuid
 from hashlib import sha256
+from inspect import isawaitable
 from math import fsum, sqrt
 from typing import TYPE_CHECKING, Any, cast
 
@@ -22,7 +23,11 @@ from sqlspec.extensions.adk import SQLSpecSessionService  # noqa: TC002
 
 from app.config import db_manager
 from app.domain.chat.exceptions import AIServiceUnconfigured
-from app.domain.chat.services.classifier import FlashLiteIntentClassifier  # noqa: TC001
+from app.domain.chat.schemas import ChatMessage
+from app.domain.chat.services.classifier import (
+    FlashLiteIntentClassifier,
+    IntentLabel,
+)
 from app.domain.chat.services.workflow import make_workflow
 from app.domain.products.services import ProductService, StoreService, VertexAIService  # noqa: TC001
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, CacheService, MetricsService, PersonaManager
@@ -43,6 +48,7 @@ _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VER
 _PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
 _CHAT_CACHE_VERSION = "menu-grounded-v1"
 _PRODUCT_RAG_INTENT = "PRODUCT_RAG"
+_DISPLAY_HISTORY_STATE_KEY = "display_history"
 _CHAT_RESULT_KEYS: tuple[str, ...] = (
     "answer",
     "session_id",
@@ -119,6 +125,39 @@ def _coerce_sql_phases(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, dict) and item.get("sql_key")]
+
+
+def _coerce_history_messages(value: Any) -> list[ChatMessage]:
+    if not isinstance(value, list):
+        return []
+    messages: list[ChatMessage] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        source = str(item.get("source") or "")
+        message = str(item.get("message") or "")
+        if source in {"human", "ai"} and message:
+            messages.append(ChatMessage(source=source, message=message))
+    return messages
+
+
+def _event_history_messages(events: Any) -> list[ChatMessage]:
+    if not isinstance(events, list):
+        return []
+    messages: list[ChatMessage] = []
+    for event in events:
+        if getattr(event, "partial", False):
+            continue
+        text = _event_content_text(event).strip()
+        if not text:
+            continue
+        role = getattr(getattr(event, "content", None), "role", None)
+        author = str(getattr(event, "author", "") or "")
+        if role == "user":
+            messages.append(ChatMessage(source="human", message=text))
+        elif role == "model" and author in {"coffee_turn", "CoffeeAssistant", "model"}:
+            messages.append(ChatMessage(source="ai", message=text))
+    return messages
 
 
 def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
@@ -420,6 +459,139 @@ class ADKRunner:
             )
         return session
 
+    async def get_history(self, user_id: str, session_id: str) -> list[ChatMessage]:
+        """Return displayable chat history for the current ADK session."""
+        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        if not session:
+            return []
+
+        state = getattr(session, "state", None) or {}
+        if isinstance(state, dict):
+            persisted = _coerce_history_messages(state.get(_DISPLAY_HISTORY_STATE_KEY))
+            if persisted:
+                return persisted
+        return _event_history_messages(getattr(session, "events", []))
+
+    async def clear_session(self, user_id: str, session_id: str) -> None:
+        """Delete the current ADK session and its event history."""
+        await self._session_service.delete_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+
+    async def _append_display_history(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        query: str,
+        answer: str,
+        intent_detected: str | None = None,
+    ) -> None:
+        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        if not session:
+            return
+
+        state = dict(getattr(session, "state", None) or {})
+        if intent_detected:
+            state["intent"] = intent_detected
+        history = [
+            *[
+                {"source": message.source, "message": message.message}
+                for message in _coerce_history_messages(state.get(_DISPLAY_HISTORY_STATE_KEY))
+            ],
+            {"source": "human", "message": query},
+            {"source": "ai", "message": answer},
+        ]
+        state[_DISPLAY_HISTORY_STATE_KEY] = history[-40:]
+        update_state = getattr(getattr(self._session_service, "store", None), "update_session_state", None)
+        if callable(update_state):
+            result = update_state(session_id, state)
+            if isawaitable(result):
+                await result
+
+    async def _classify_intent(self, query: str) -> str:
+        intent_result = self._classifier.classify(query)
+        intent_label = await intent_result if isawaitable(intent_result) else intent_result
+        return intent_label.value if isinstance(intent_label, IntentLabel) else str(intent_label)
+
+    async def _cached_response_event(
+        self,
+        *,
+        start: float,
+        query: str,
+        user_id: str,
+        session: Any,
+        cached_response: dict[str, Any],
+        response_cache_phase: dict[str, Any],
+    ) -> dict[str, Any]:
+        elapsed_ms = (time.time() - start) * 1000
+        cached_metrics = dict(cached_response.get("search_metrics") or {})
+        cached_metrics["total_ms"] = round(elapsed_ms)
+        answer = str(cached_response.get("answer", ""))
+        intent_detected = str(cached_response.get("intent_detected", "GENERAL_CONVERSATION"))
+        if answer:
+            await self._append_display_history(
+                user_id=user_id,
+                session_id=session.id,
+                query=query,
+                answer=answer,
+                intent_detected=intent_detected,
+            )
+        return {
+            "type": "final",
+            "answer": answer,
+            "session_id": session.id,
+            "response_time_ms": elapsed_ms,
+            "intent_detected": intent_detected,
+            "search_metrics": cached_metrics,
+            "from_cache": True,
+            "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit")),
+            "sql_phases": [response_cache_phase, *_coerce_sql_phases(cached_response.get("sql_phases"))],
+        }
+
+    async def _product_rag_event(
+        self,
+        *,
+        start: float,
+        query: str,
+        user_id: str,
+        session: Any,
+        cache_key: str,
+        response_cache_phase: dict[str, Any],
+        tools_service: AgentToolsService,
+    ) -> dict[str, Any]:
+        metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
+        answer = await _ground_product_rag_turn(query, metric_state, tools_service)
+        elapsed_ms = (time.time() - start) * 1000
+        search_metrics = dict(metric_state.get("search_metrics", {}))
+        search_metrics["total_ms"] = round(elapsed_ms)
+        product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        response_data = {
+            "answer": answer,
+            "intent_detected": _PRODUCT_RAG_INTENT,
+            "search_metrics": search_metrics,
+            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
+            "sql_phases": product_sql_phases,
+        }
+        if answer:
+            await tools_service.set_cached_chat_response(cache_key, response_data)
+            await self._append_display_history(
+                user_id=user_id,
+                session_id=session.id,
+                query=query,
+                answer=answer,
+                intent_detected=_PRODUCT_RAG_INTENT,
+            )
+        return {
+            "type": "final",
+            "answer": answer,
+            "session_id": session.id,
+            "response_time_ms": elapsed_ms,
+            "intent_detected": _PRODUCT_RAG_INTENT,
+            "search_metrics": search_metrics,
+            "from_cache": False,
+            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
+            "sql_phases": [response_cache_phase, *product_sql_phases],
+        }
+
     async def stream_request(  # noqa: PLR0914, PLR0915
         self,
         query: str,
@@ -453,21 +625,27 @@ class ADKRunner:
             runtime_ms=(time.time() - cache_start) * 1000,
         )
         if cached_response:
-            elapsed_ms = (time.time() - start) * 1000
-            cached_metrics = dict(cached_response.get("search_metrics") or {})
-            cached_metrics["total_ms"] = round(elapsed_ms)
-            sql_phases = [response_cache_phase, *_coerce_sql_phases(cached_response.get("sql_phases"))]
-            yield {
-                "type": "final",
-                "answer": str(cached_response.get("answer", "")),
-                "session_id": session.id,
-                "response_time_ms": elapsed_ms,
-                "intent_detected": str(cached_response.get("intent_detected", "GENERAL_CONVERSATION")),
-                "search_metrics": cached_metrics,
-                "from_cache": True,
-                "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit", False)),
-                "sql_phases": sql_phases,
-            }
+            yield await self._cached_response_event(
+                start=start,
+                query=query,
+                user_id=user_id,
+                session=session,
+                cached_response=cached_response,
+                response_cache_phase=response_cache_phase,
+            )
+            return
+
+        intent_detected = await self._classify_intent(query)
+        if intent_detected == _PRODUCT_RAG_INTENT:
+            yield await self._product_rag_event(
+                start=start,
+                query=query,
+                user_id=user_id,
+                session=session,
+                cache_key=cache_key,
+                response_cache_phase=response_cache_phase,
+                tools_service=tools_service,
+            )
             return
 
         instruction = self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
@@ -502,10 +680,7 @@ class ADKRunner:
                 raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
             raise
 
-        intent_detected = str(workflow_output.get("intent") or "GENERAL_CONVERSATION")
-        state = getattr(session, "state", None) or {}
-        if isinstance(state, dict):
-            intent_detected = str(state.get("intent") or intent_detected)
+        intent_detected = str(workflow_output.get("intent") or intent_detected or "GENERAL_CONVERSATION")
 
         answer = str(workflow_output.get("answer") or "".join(answer_parts) or "".join(partial_answer_parts))
         if intent_detected == _PRODUCT_RAG_INTENT:
@@ -526,6 +701,13 @@ class ADKRunner:
         }
         if answer:
             await tools_service.set_cached_chat_response(cache_key, response_data)
+            await self._append_display_history(
+                user_id=user_id,
+                session_id=session.id,
+                query=query,
+                answer=answer,
+                intent_detected=intent_detected,
+            )
 
         yield {
             "type": "final",

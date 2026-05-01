@@ -5,7 +5,6 @@ import htmx from "htmx.org"
 import Alpine from "alpinejs"
 import ApexCharts from "apexcharts"
 import { registerHtmxExtension } from "litestar-vite-plugin/helpers"
-import "./styles.css"
 
 window.htmx = htmx
 window.Alpine = Alpine
@@ -43,6 +42,30 @@ const scrollMessages = () => {
 
 const removePendingReply = () => {
   document.getElementById("pending-reply")?.remove()
+}
+
+const welcomeMessageHtml = () => `<article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
+  <header class="flex items-center justify-between text-xs">
+    <span class="font-medium text-muted">Barista</span>
+    <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+  </header>
+  <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+    Welcome back. Tell me what sounds good and I'll check the Cymbal Coffee menu.
+  </p>
+</article>`
+
+const resetChatMessages = () => {
+  const messages = document.getElementById("messages")
+  if (messages) {
+    messages.innerHTML = welcomeMessageHtml()
+  }
+  const metrics = document.getElementById("metrics-badges")
+  if (metrics) {
+    metrics.innerHTML = ""
+  }
+  hideTelemetryPopover()
+  clearChatError()
+  scrollMessages()
 }
 
 const setFormBusy = (form, isBusy) => {
@@ -458,6 +481,21 @@ document.body.addEventListener("click", (event) => {
   const close = event.target.closest("[data-telemetry-close]")
   if (close) {
     hideTelemetryPopover()
+    return
+  }
+  const clearChat = event.target.closest("[data-clear-chat]")
+  if (clearChat) {
+    fetch("/api/chat/session/clear", { method: "POST", headers: { Accept: "application/json" } })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Clear chat failed with status ${response.status}`)
+        }
+        resetChatMessages()
+      })
+      .catch((error) => {
+        const messageText = error instanceof Error ? error.message : "Clear chat failed. Please try again."
+        showChatError(messageText)
+      })
     return
   }
   const trigger = event.target.closest("[data-telemetry-detail]")

@@ -28,6 +28,7 @@ from app.domain.system.schemas import (
     SearchMetricsCreate,
 )
 from app.lib.service import SQLSpecAsyncService
+from app.utils.serialization import schema_dump
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -251,7 +252,7 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles performance metrics and search logging."""
 
     async def record_search(self, metrics: SearchMetricsCreate) -> None:
-        await self.driver.execute(sql.insert("search_metric").values(**msgspec.to_builtins(metrics)))
+        await self.driver.execute(sql.insert("search_metric").values(**schema_dump(metrics, wire_format=False)))
 
     async def get_performance_stats(self, hours: int = 24) -> PerformanceStats:
         since = datetime.now(UTC) - timedelta(hours=hours)

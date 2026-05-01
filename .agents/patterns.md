@@ -29,13 +29,24 @@
 - ADK conversation state uses SQLSpec's Oracle ADK extension tables
   (`adk_sessions`, `adk_events`, optional memory). Litestar browser sessions use
   the separate SQLSpec Litestar session table (`app_session`).
-- Chat uses ADK 2 Workflow/BaseNode orchestration: intent classification and
-  coffee response work run as graph branches and merge into one response.
+- Chat uses classifier-first ADK 2 orchestration. `ADKRunner` checks response
+  cache, classifies intent, sends `PRODUCT_RAG` turns through direct menu
+  grounding, and uses the ADK Workflow/BaseNode graph for non-RAG streamed model
+  conversation.
 - ADK tools are closure-bound per request inside `ADKRunner`; they must use the
   active Dishka request services, not module globals.
 - `/api/chat/stream` is an SSE endpoint. Streaming runs ADK with
-  `RunConfig(streaming_mode=StreamingMode.SSE)` and preserves the non-streaming
-  response payload keys.
+  `RunConfig(streaming_mode=StreamingMode.SSE)` for non-RAG turns and preserves
+  the non-streaming response payload keys.
+- Product RAG turns must not stream speculative model deltas. The runner should
+  emit a single grounded final event built from returned Cymbal Coffee menu
+  rows.
+- Chat page history is hydrated from the Litestar-session-bound ADK session.
+  Display history lives in ADK session state under `display_history`, with ADK
+  event replay as a fallback.
+- The chat sidebar clear button deletes the current ADK session/events and
+  clears only the Litestar ADK bridge keys. It must not clear menu data, metrics,
+  response cache, or embedding cache.
 - Product RAG tool calls record `vector_query`, `embedding_ms`, `oracle_ms`,
   `tool_ms`, result counts, and embedding cache status; the chat UI shows these
   as message-level telemetry along with intent and response-cache status.
@@ -64,6 +75,9 @@
   named SQL for static reads.
 - Use `from_json` / `to_json` from `app.utils.serialization`, not ad hoc
   `json.loads` / `json.dumps`, in app code.
+- Use `schema_dump(..., wire_format=False)` from `app.utils.serialization` when
+  dumping msgspec schemas into database writes that require Python/Oracle column
+  names instead of camelized wire names.
 - Push aggregate null handling into SQL with `COALESCE`, not Python `value or 0`.
 - For Vertex embeddings, use `RETRIEVAL_QUERY` for user searches and
   `RETRIEVAL_DOCUMENT` for product/document embedding refresh.

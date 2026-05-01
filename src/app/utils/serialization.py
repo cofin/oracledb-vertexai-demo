@@ -11,6 +11,7 @@ from sqlspec.utils.serializers import (
     numpy_array_dec_hook,
     numpy_array_enc_hook,
     numpy_array_predicate,
+    schema_dump,
     to_json,
 )
 
@@ -20,6 +21,7 @@ __all__ = (
     "numpy_array_enc_hook",
     "numpy_array_predicate",
     "sanitize_for_json",
+    "schema_dump",
     "to_json",
 )
 
