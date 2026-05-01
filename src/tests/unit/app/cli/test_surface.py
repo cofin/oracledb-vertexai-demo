@@ -37,3 +37,12 @@ def test_public_cli_modules_keep_implementation_helpers_private() -> None:
         source = path.read_text(encoding="utf-8")
         assert "\ndef _" not in source, path
         assert "\nasync def _" not in source, path
+
+
+def test_data_ops_helper_is_a_small_compatibility_surface() -> None:
+    source = Path("src/app/cli/_helpers/data_ops.py").read_text(encoding="utf-8")
+
+    assert len(source.splitlines()) <= 80
+    assert "from app.cli._helpers.embeddings import" in source
+    assert "from app.cli._helpers.fixtures import" in source
+    assert "from app.cli._helpers.database import" in source

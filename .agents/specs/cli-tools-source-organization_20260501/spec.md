@@ -4,7 +4,7 @@
 *Chapter 5 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.5`*
 *Depends on: `source-organization-contract_20260501`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -94,3 +94,17 @@ tool modules into responsibility-focused files that a demo reader can navigate.
 - `app.cli._helpers.data_ops` is no longer a 500-line mixed-responsibility file.
 - Operational tools remain import-compatible or all consumers are updated.
 - Focused CLI/tool tests and Ruff pass.
+
+## Implementation Notes
+
+- Split the former `app.cli._helpers.data_ops` mixed helper module into focused
+  `embeddings`, `cache`, `models`, `database`, and `fixtures` modules.
+- Kept `data_ops.py` as a small compatibility re-export surface for existing
+  imports.
+- Updated `app.cli.commands.manage` to import directly from focused helpers
+  while keeping the public `coffee` command names unchanged.
+- Added a CLI source test that keeps `data_ops.py` small and verifies the
+  focused helper imports remain visible.
+- Verification: CLI surface tests, Oracle tool integration tests, source
+  organization guard, `ruff check src/app/cli tools`, `make lint`, `make test`,
+  and `git diff --check`.

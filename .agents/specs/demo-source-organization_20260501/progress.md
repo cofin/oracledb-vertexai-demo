@@ -12,7 +12,7 @@
 - [x] `app-core-source-organization_20260501` - app config, logging, discovery, env, and fixture utilities
 - [x] `domain-source-organization_20260501` - controllers, product/store services, schemas, web, and system domain pass
 - [x] `adk-runner-source-organization_20260501` - ADK runner narrative split and focused private helper modules
-- [ ] `cli-tools-source-organization_20260501` - coffee CLI helpers and operational tools
+- [x] `cli-tools-source-organization_20260501` - coffee CLI helpers and operational tools
 - [ ] `source-organization-verification_20260501` - final whole-tree audit, patterns update, and aggregate gates
 
 ## Review Notes
@@ -26,3 +26,4 @@
 - Chapter 2 implemented on 2026-05-01; verification passed with focused pytest, source organization guard, `make lint`, `make test`, and diff checks.
 - Chapter 3 implemented on 2026-05-01; verification passed with focused domain unit/integration tests, source organization guard, `make lint`, `make test`, and diff checks.
 - Chapter 4 implemented on 2026-05-01; verification passed with focused ADK unit/integration tests, source organization guard, `make lint`, `make test`, and diff checks.
+- Chapter 5 implemented on 2026-05-01; verification passed with CLI surface tests, Oracle tool integration tests, source organization guard, `make lint`, `make test`, and diff checks.

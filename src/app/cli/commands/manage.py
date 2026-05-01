@@ -13,17 +13,16 @@ from __future__ import annotations
 
 import rich_click as click
 
-from app.cli._helpers.data_ops import (
-    clear_application_cache,
+from app.cli._helpers.cache import clear_application_cache
+from app.cli._helpers.database import downgrade_database, upgrade_database
+from app.cli._helpers.embeddings import generate_product_embeddings
+from app.cli._helpers.fixtures import (
     display_available_tables,
     display_fixture_list,
-    downgrade_database,
     export_fixture_data,
-    generate_product_embeddings,
     load_fixture_data,
-    show_model_info,
-    upgrade_database,
 )
+from app.cli._helpers.models import show_model_info
 from app.cli.main import cli
 from app.cli.utils import async_inject
 
