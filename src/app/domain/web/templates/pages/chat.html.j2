@@ -1,82 +1,66 @@
 {#
- Copyright 2026 Google LLC
- SPDX-License-Identifier: Apache-2.0
+Copyright 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
 #}
 
 {% extends "base.html.j2" %}
 
 {% block title %}Cymbal Coffee — Barista Chat{% endblock %}
+{% block page_kicker %}Cymbal Coffee{% endblock %}
+{% block page_heading %}Connoisseur{% endblock %}
+{% block page_subheading %}Menu-grounded recommendations with Oracle 26ai product search{% endblock %}
 
 {% block content %}
-  <section
-    x-data="{ persona: 'enthusiast' }"
-    class="chat-shell grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]"
-  >
-    <aside class="flex flex-col justify-between rounded-lg border border-border bg-surface p-5">
-      <div class="space-y-5">
-        <img src="/static/dist/cymbal-coffee-logo.svg" alt="Cymbal Coffee" class="h-16 w-auto">
-        <div>
-          <p class="text-xs font-semibold uppercase text-accent-strong">Connoisseur</p>
-          <h1 class="mt-1 text-3xl font-semibold text-strong">Barista chat</h1>
-        </div>
+<section x-data="{ persona: 'enthusiast' }" class="chat-shell grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+  <aside data-ui-panel="chat-sidebar" class="ui-panel flex flex-col justify-between p-5">
+    <div class="space-y-5">
+      <div>
+        <p class="text-xs font-semibold uppercase text-accent-strong">Connoisseur</p>
+        <h1 class="mt-1 text-3xl font-semibold text-strong">Barista chat</h1>
       </div>
-
-      <div class="mt-6 space-y-3">
-        <p class="text-sm font-medium text-muted">Persona</p>
-        <div role="radiogroup" class="grid grid-cols-2 gap-2 text-sm">
-          <template x-for="value in ['novice', 'enthusiast', 'expert', 'barista']" :key="value">
-            <button
-              type="button"
-              x-text="value"
-              @click="persona = value"
-              :aria-pressed="persona === value"
-              :class="persona === value ? 'border-accent bg-accent-soft text-accent-strong' : 'border-border bg-surface text-muted hover:text-strong'"
-              class="rounded-lg border px-3 py-2 text-left capitalize transition-colors"
-            ></button>
-          </template>
-        </div>
-      </div>
-
-      <div id="metrics-badges" class="mt-6 flex flex-wrap items-center gap-2 text-xs"></div>
-    </aside>
-
-    <div class="flex min-h-[34rem] flex-col rounded-lg border border-border bg-surface shadow-sm">
-      <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="polite">
-        <article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
-          <header class="flex items-center justify-between text-xs">
-            <span class="font-medium text-muted">Barista</span>
-            <span class="rounded-full bg-sage/15 px-2 py-0.5 text-[11px] text-sage">READY</span>
-          </header>
-          <p class="mt-2 whitespace-pre-wrap text-base text-strong">
-            Welcome back. Tell me what sounds good and I'll check the Cymbal Coffee menu.
-          </p>
-        </article>
-      </div>
-
-      <div id="chat-error" class="px-4 md:px-5"></div>
-
-      <form
-        data-chat-form="true"
-        action="/api/chat/stream"
-        method="post"
-        class="border-t border-border bg-surface-strong/45 p-3"
-      >
-        <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
-          <input type="hidden" name="persona" :value="persona">
-          <input
-            type="text"
-            name="message"
-            autocomplete="off"
-            required
-            placeholder="What should I drink today?"
-            class="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
-          >
-          <button
-            type="submit"
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-strong disabled:cursor-wait disabled:opacity-70"
-          >Send</button>
-        </div>
-      </form>
     </div>
-  </section>
+
+    <div class="mt-6 space-y-3">
+      <p class="text-sm font-medium text-muted">Persona</p>
+      <div role="radiogroup" class="grid grid-cols-2 gap-2 text-sm">
+        <template x-for="value in ['novice', 'enthusiast', 'expert', 'barista']" :key="value">
+          <button type="button" x-text="value" @click="persona = value" :aria-pressed="persona === value"
+            :class="persona === value ? 'border-accent bg-accent-soft text-accent-strong' : 'border-border bg-surface text-muted hover:text-strong'"
+            class="rounded-lg border px-3 py-2 text-left capitalize transition-colors"></button>
+        </template>
+      </div>
+    </div>
+
+    <div id="metrics-badges" class="mt-6 flex flex-wrap items-center gap-2 text-xs" data-telemetry-chip-list="chat">
+    </div>
+  </aside>
+
+  <div data-ui-panel="chat-thread" class="ui-panel flex min-h-[34rem] flex-col">
+    <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="polite">
+      <article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
+        <header class="flex items-center justify-between text-xs">
+          <span class="font-medium text-muted">Barista</span>
+          <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+        </header>
+        <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+          Welcome back. Tell me what sounds good and I'll check the Cymbal Coffee menu.
+        </p>
+      </article>
+    </div>
+
+    <div id="chat-error" class="px-4 md:px-5"></div>
+
+    <form data-chat-form="true" action="/api/chat/stream" method="post"
+      class="border-t border-border bg-surface-strong/45 p-3">
+      <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
+        <input type="hidden" name="persona" :value="persona">
+        <input type="text" name="message" autocomplete="off" required placeholder="What should I drink today?"
+          class="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+        <button type="submit"
+          class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-strong disabled:cursor-wait disabled:opacity-70">Send</button>
+      </div>
+    </form>
+  </div>
+  <div data-ui-popover-root="chat" class="popover-surface sr-only" aria-hidden="true"></div>
+</section>
 {% endblock %}

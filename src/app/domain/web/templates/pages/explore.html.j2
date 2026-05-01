@@ -1,122 +1,103 @@
 {#
- Copyright 2026 Google LLC
- SPDX-License-Identifier: Apache-2.0
+Copyright 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
 #}
 
 {% extends "base.html.j2" %}
 
 {% block title %}Cymbal Coffee — Explore{% endblock %}
+{% block page_kicker %}Oracle 26ai Lab{% endblock %}
+{% block page_heading %}Performance dashboard{% endblock %}
+{% block page_subheading %}Vector search, EXPLAIN PLAN, and live service telemetry{% endblock %}
 
 {% block content %}
-  <section class="space-y-6">
-    <header class="flex items-center justify-between gap-4">
-      <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
-      <p class="text-xs text-muted">Four panels driven by Oracle 23ai + Vertex AI</p>
-    </header>
+<section class="space-y-6">
+  <header class="flex items-center justify-between gap-4">
+    <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
+      <p class="text-xs text-muted">Live Oracle 26ai + Vertex AI instrumentation</p>
+  </header>
 
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      {# Panel 1: live vector search — server partial via HTMX #}
-      <section id="panel-vector-search" class="rounded-xl border border-border bg-surface p-4">
-        <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
-        <input
-          type="search"
-          name="query"
-          placeholder="dark ethiopian pour-over"
-          autocomplete="off"
-          class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
-          hx-post="/api/vector-demo"
-          hx-trigger="keyup changed delay:300ms"
-          hx-target="#search-results"
-          hx-include="this"
-        >
-        <div id="search-results" class="mt-3 space-y-2"></div>
-      </section>
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    {# Panel 1: live vector search — server partial via HTMX #}
+    <section id="panel-vector-search" data-ui-panel="vector-search" class="ui-panel p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
+      <input type="search" name="query" placeholder="dark ethiopian pour-over" autocomplete="off"
+        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        hx-post="/api/vector-demo" hx-trigger="keyup changed delay:300ms" hx-target="#search-results" hx-include="this">
+      <div id="search-results" class="mt-3 space-y-2"></div>
+    </section>
 
-      {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
-      <section id="panel-explain-plan" class="rounded-xl border border-border bg-surface p-4">
-        <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
-        <input
-          type="search"
-          name="query"
-          placeholder="dark ethiopian pour-over"
-          autocomplete="off"
-          class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
-          hx-get="/api/explain-plan"
-          hx-trigger="keyup changed delay:500ms"
-          hx-target="#plan"
-          hx-swap="json"
-        >
-        <div id="plan" class="mt-3">
-          <template ls-if="planSummary">
-            <p class="text-xs text-muted">
-              Top vector op: <span class="font-mono text-accent-strong">${planSummary}</span>
-            </p>
-            <pre class="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-base">
+    {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
+    <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
+      <input type="search" name="query" placeholder="dark ethiopian pour-over" autocomplete="off"
+        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        hx-get="/api/explain-plan" hx-trigger="keyup changed delay:500ms" hx-target="#plan" hx-swap="json">
+      <div id="plan" class="mt-3">
+        <template ls-if="planSummary">
+          <p class="text-xs text-muted">
+            Top vector op: <span class="font-mono text-accent-strong">${planSummary}</span>
+          </p>
+          <pre
+            class="mt-2 max-h-64 overflow-auto rounded-lg border border-border bg-deep p-3 font-mono text-xs leading-relaxed text-base">
               <template ls-for="line in planLines">${line}
 </template>
             </pre>
-          </template>
-          <template ls-else>
-            <p class="text-xs text-muted">Type to see the plan.</p>
-          </template>
-        </div>
-      </section>
+        </template>
+        <template ls-else>
+          <p class="text-xs text-muted">Type to see the plan.</p>
+        </template>
+      </div>
+    </section>
 
-      {# Panel 3: metrics summary cards — client-side ls-for templating #}
-      <section id="panel-metrics-summary" class="rounded-xl border border-border bg-surface p-4">
-        <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
-        <div
-          id="metrics-summary"
-          class="grid grid-cols-2 gap-3"
-          hx-get="/api/metrics/summary"
-          hx-trigger="load, every 10s"
-          hx-swap="json"
-        >
-          <template ls-for="card in $data.cards" ls-key="card.label">
-            <article class="rounded-lg border border-border bg-deep px-3 py-2">
-              <p class="text-xs text-muted">${card.label}</p>
-              <p class="text-base font-semibold text-strong">${card.value}</p>
-              <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'" class="text-xs">${card.trendValue ?? card.trend}</p>
-            </article>
-          </template>
-        </div>
-      </section>
+    {# Panel 3: metrics summary cards — client-side ls-for templating #}
+    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
+      <div id="metrics-summary" class="grid grid-cols-2 gap-3" hx-get="/api/metrics/summary"
+        hx-trigger="load, every 10s" hx-swap="json">
+        <template ls-for="card in $data.cards" ls-key="card.label">
+          <article data-metric-card class="metric-card px-3 py-2">
+            <p class="text-xs text-muted">${card.label}</p>
+            <p class="text-base font-semibold text-strong">${card.value}</p>
+            <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'"
+              class="text-xs">${card.trendValue ?? card.trend}</p>
+          </article>
+        </template>
+      </div>
+    </section>
 
-      {# Panel 4: latency time-series — Alpine + ApexCharts #}
-      <section id="panel-latency-chart" class="rounded-xl border border-border bg-surface p-4">
-        <h2 class="mb-2 text-sm font-semibold text-strong">4 · Latency time-series</h2>
-        <div
-          x-data="latencyChart()"
-          x-init="init()"
-          x-ref="latencyHost"
-          class="h-64 w-full"
-        ></div>
-      </section>
+    {# Panel 4: latency time-series — Alpine + ApexCharts #}
+    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">4 · Latency time-series</h2>
+      <div data-chart-host="latency" x-data="latencyChart()" x-init="init()" x-ref="latencyHost"
+        class="chart-host h-64 w-full"></div>
+    </section>
 
-    </div>
-  </section>
+  </div>
+  <div data-ui-popover-root="explore" class="popover-surface sr-only" aria-hidden="true"></div>
+</section>
 
-  <script>
-    function latencyChart() {
-      return {
-        chart: null,
-        async init() {
-          const data = await fetch('/api/metrics/charts').then((r) => r.json())
-          this.chart = new ApexCharts(this.$refs.latencyHost, {
-            chart: { type: 'line', height: 256, foreColor: '#a1a1aa', toolbar: { show: false } },
-            stroke: { curve: 'smooth', width: 2 },
-            xaxis: { categories: data.labels },
-            theme: { mode: 'dark' },
-            colors: ['#ca8a04', '#4ade80', '#60a5fa'],
-            series: [
-              { name: 'Total ms', data: data.series.totalMs },
-              { name: 'Oracle ms', data: data.series.oracleMs },
-              { name: 'Embedding ms', data: data.series.embeddingMs },
-            ],
-          })
-          this.chart.render()
-        },
-      }
+<script>
+  function latencyChart() {
+    return {
+      chart: null,
+      async init() {
+        const data = await fetch('/api/metrics/charts').then((r) => r.json())
+        this.chart = new ApexCharts(this.$refs.latencyHost, {
+          chart: { type: 'line', height: 256, foreColor: '#a1a1aa', toolbar: { show: false } },
+          stroke: { curve: 'smooth', width: 2 },
+          xaxis: { categories: data.labels },
+          theme: { mode: 'dark' },
+          colors: ['#ca8a04', '#4ade80', '#60a5fa'],
+          series: [
+            { name: 'Total ms', data: data.series.totalMs },
+            { name: 'Oracle ms', data: data.series.oracleMs },
+            { name: 'Embedding ms', data: data.series.embeddingMs },
+          ],
+        })
+        this.chart.render()
+      },
     }
-  </script>
+  }
+</script>
 {% endblock %}

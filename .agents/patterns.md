@@ -1,6 +1,6 @@
 # Project Patterns
 
-> Current conventions for the Cymbal Coffee Oracle 23ai + Vertex AI demo.
+> Current conventions for the Cymbal Coffee Oracle 26ai + Vertex AI demo.
 > Historical notes live under `.agents/archive/`; this file is the living surface.
 
 <!-- truth: start -->

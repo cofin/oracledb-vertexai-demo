@@ -56,7 +56,7 @@ const renderMetrics = (payload) => {
   target.innerHTML = badges
     .map(
       ([label, value]) =>
-        `<span class="rounded-full border border-border bg-accent-soft px-2.5 py-1 text-accent-strong">${label}: ${escapeHtml(String(value))}</span>`,
+        `<span class="telemetry-chip border-accent/20 bg-accent-soft text-accent-strong" data-telemetry-chip>${label}: ${escapeHtml(String(value))}</span>`,
     )
     .join("")
 }
@@ -73,7 +73,7 @@ const telemetryChip = (icon, label, value, variant = "neutral") => {
     variant === "hit"
       ? "border-success/25 bg-success/10 text-success"
       : "border-border bg-surface-strong/55 text-muted"
-  return `<span class="inline-flex min-w-0 items-center gap-1.5 rounded-full border ${variantClass} px-2 py-0.5" title="${escapeHtml(
+  return `<span class="telemetry-chip ${variantClass}" data-telemetry-chip title="${escapeHtml(
     `${label}: ${value}`,
   )}">
     <span class="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-surface text-[10px] font-semibold text-accent-strong" aria-hidden="true">${icon}</span>

@@ -1,8 +1,8 @@
 # Progress: UI Regression Recovery
 
 *PRD ID: `ui-regression-recovery_20260501`*
-*Status: Draft*
-*Beads epic: not created yet*
+*Status: Active*
+*Beads epic: `oracledb-vertexai-4d6.8`*
 
 ---
 
@@ -19,3 +19,4 @@
 - Draft aligned on 2026-05-01 after the test-suite reorganization landed.
 - The reference baseline is GitHub `main`'s HTMX/Jinja UI, not the unfinished React upgrade attempt.
 - All test paths in this PRD use the new `src/tests/unit/<module path>/...` and `src/tests/integration/<module path>/...` layout.
+- Current user-facing Oracle label is `Oracle 26ai`; do not restore older `Oracle 23ai` copy when recovering UI from screenshots.

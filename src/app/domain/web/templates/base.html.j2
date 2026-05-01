@@ -1,24 +1,41 @@
 {#
- Copyright 2026 Google LLC
- SPDX-License-Identifier: Apache-2.0
+Copyright 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
 #}
 
 <!DOCTYPE html>
 <html lang="en" class="bg-canvas">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}Cymbal Coffee{% endblock %}</title>
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    {{ vite_hmr() | safe }}
-    {{ vite('src/resources/main.js') | safe }}
-  </head>
-  <body hx-ext="litestar" class="min-h-screen bg-canvas font-sans text-strong antialiased">
-    {% include "_nav.html.j2" %}
-    {% include "partials/_flash.html.j2" %}
-    <main class="mx-auto max-w-6xl px-4 py-5">
-      {% block content %}{% endblock %}
-    </main>
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Cymbal Coffee{% endblock %}</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  {{ vite_hmr() | safe }}
+  {{ vite('src/resources/main.js') | safe }}
+</head>
+
+<body hx-ext="litestar" data-app-shell="true" class="app-shell font-sans text-strong antialiased">
+  <header data-app-header="true" class="app-header">
+    <div class="app-header__inner">
+      <a href="/" class="app-brand" aria-label="Cymbal Coffee home">
+        <img src="/static/dist/cymbal-coffee-logo.svg" alt="Cymbal Coffee" class="app-brand__logo">
+        <span class="app-brand__meta">Powered by Oracle 26ai + Google Vertex AI</span>
+      </a>
+      <div class="app-title">
+        <p class="app-title__kicker">{% block page_kicker %}Cymbal Coffee{% endblock %}</p>
+        <h1 class="app-title__heading">{% block page_heading %}Connoisseur{% endblock %}</h1>
+        <p class="app-title__subheading">{% block page_subheading %}Oracle vector search with Vertex AI{% endblock %}
+        </p>
+      </div>
+      {% include "_nav.html.j2" %}
+    </div>
+  </header>
+  {% include "partials/_flash.html.j2" %}
+  <main class="app-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+
 </html>
