@@ -41,9 +41,7 @@ DOMAIN_CONTROLLER_ENTRYPOINTS = {
     "src/app/domain/system/controllers/_system.py": "SystemController",
     "src/app/domain/web/controllers/_pages.py": "PageController",
 }
-TEMPORARY_HOTSPOT_ALLOWLIST = {
-    "src/app/domain/chat/services/adk.py": "Chapter 4 will split ADK grounding, telemetry, history, cache, and tool helpers.",
-}
+TEMPORARY_HOTSPOT_ALLOWLIST: dict[str, str] = {}
 
 
 @dataclass(frozen=True)

@@ -114,7 +114,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/domain-source-organization_20260501/](./specs/domain-source-organization_20260501/)*
   *Beads: oracledb-vertexai-8jt.3*
 
-  ### [ ] Ch 4: adk-runner-source-organization_20260501
+  ### [x] Ch 4: adk-runner-source-organization_20260501
   *Link: [./specs/adk-runner-source-organization_20260501/](./specs/adk-runner-source-organization_20260501/)*
   *Beads: oracledb-vertexai-8jt.4*
 

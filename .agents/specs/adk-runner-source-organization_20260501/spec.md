@@ -4,7 +4,7 @@
 *Chapter 4 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.4`*
 *Depends on: `source-organization-contract_20260501`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -98,3 +98,17 @@ the exact request-scoped tool, cache, telemetry, and streaming semantics.
 - Closure-bound tools still use active request services and per-turn metrics.
 - Existing ADK behavior tests pass.
 - No chat payload or cache key behavior changes.
+
+## Implementation Notes
+
+- Product grounding, deterministic store/product route formatting, safe
+  location-context shaping, and map action formatting moved to
+  `app.domain.chat.services._adk_grounding`.
+- SQL phase, response-cache phase, vector summarization, tool SQL phase, and
+  intent-promotion helpers moved to `_adk_telemetry`.
+- ADK event text and display-history coercion moved to `_adk_history`.
+- `adk.py` now leads with `AgentToolsService`, then credential guard wiring,
+  then `ADKRunner`, while importing private helpers back under their existing
+  private names for compatibility with current tests and call sites.
+- Verification: focused ADK unit tests, focused ADK integration workflow test,
+  source organization guard, `make lint`, `make test`, and `git diff --check`.
