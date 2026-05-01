@@ -31,6 +31,16 @@ const escapeHtml = (value) => {
 
 const encodeDetail = (detail) => escapeHtml(JSON.stringify(detail))
 
+const GEOLOCATION_OPTIONS = {
+  enableHighAccuracy: false,
+  timeout: 8000,
+  maximumAge: 300000,
+}
+
+const chatLocationState = {
+  coordinates: null,
+}
+
 const scrollMessages = () => {
   const messages = document.getElementById("messages")
   if (messages) {
@@ -301,6 +311,86 @@ const clearChatError = () => {
   }
 }
 
+const locationField = (form, selector) => {
+  const field = form.querySelector(selector)
+  return field instanceof HTMLInputElement ? field : null
+}
+
+const setLocationFieldValue = (form, selector, value) => {
+  const field = locationField(form, selector)
+  if (field) {
+    field.value = value
+  }
+}
+
+const setLocationStatus = (form, message, variant = "muted") => {
+  const target = form.querySelector("[data-location-status]")
+  if (!(target instanceof HTMLElement)) {
+    return
+  }
+  target.textContent = message
+  target.classList.toggle("text-success", variant === "success")
+  target.classList.toggle("text-danger", variant === "danger")
+  target.classList.toggle("text-muted", variant === "muted")
+}
+
+const clearLocationCoordinates = (form) => {
+  chatLocationState.coordinates = null
+  setLocationFieldValue(form, "[data-location-consent]", "false")
+  setLocationFieldValue(form, "[data-location-latitude]", "")
+  setLocationFieldValue(form, "[data-location-longitude]", "")
+  setLocationFieldValue(form, "[data-location-accuracy]", "")
+}
+
+const setLocationCoordinates = (form, coordinates) => {
+  chatLocationState.coordinates = coordinates
+  setLocationFieldValue(form, "[data-location-consent]", "true")
+  setLocationFieldValue(form, "[data-location-latitude]", String(coordinates.latitude))
+  setLocationFieldValue(form, "[data-location-longitude]", String(coordinates.longitude))
+  setLocationFieldValue(form, "[data-location-accuracy]", String(Math.max(coordinates.accuracy ?? 0, 0)))
+}
+
+const locationErrorMessage = (error) => {
+  if (!error || typeof error.code !== "number") {
+    return "Location unavailable"
+  }
+  if (error.code === 1) {
+    return "Location denied"
+  }
+  if (error.code === 3) {
+    return "Location timed out"
+  }
+  return "Location unavailable"
+}
+
+const requestBrowserLocation = (form, button) => {
+  if (!("geolocation" in navigator)) {
+    clearLocationCoordinates(form)
+    setLocationStatus(form, "Location unsupported", "danger")
+    return
+  }
+
+  button.disabled = true
+  setLocationStatus(form, "Locating...", "muted")
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      setLocationCoordinates(form, {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      })
+      setLocationStatus(form, "Location ready", "success")
+      button.disabled = false
+    },
+    (error) => {
+      clearLocationCoordinates(form)
+      setLocationStatus(form, locationErrorMessage(error), "danger")
+      button.disabled = false
+    },
+    GEOLOCATION_OPTIONS,
+  )
+}
+
 const setPersona = (persona) => {
   const input = document.querySelector("[data-persona-input]")
   const buttons = document.querySelectorAll("[data-persona-option]")
@@ -440,6 +530,141 @@ const initDashboardCharts = async () => {
   }
 }
 
+const rowValue = (row, keys, fallback = "") => {
+  for (const key of keys) {
+    const value = row?.[key]
+    if (value !== undefined && value !== null && value !== "") {
+      return value
+    }
+  }
+  return fallback
+}
+
+const formatLocality = (row) =>
+  [
+    rowValue(row, ["store_city", "storeCity", "city"]),
+    [rowValue(row, ["store_state", "storeState", "state"]), rowValue(row, ["store_zip", "storeZip", "zip"])].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ")
+
+const formatHoursSummary = (hours) => {
+  if (typeof hours === "string") {
+    return hours
+  }
+  if (!hours || typeof hours !== "object") {
+    return ""
+  }
+  const monday = hours.monday ?? hours.Monday
+  if (monday) {
+    return `Mon ${monday}`
+  }
+  const first = Object.entries(hours).find(([, value]) => value)
+  return first ? `${first[0].slice(0, 3)} ${first[1]}` : ""
+}
+
+const formatDistance = (value) => {
+  const distance = Number(value)
+  if (!Number.isFinite(distance)) {
+    return ""
+  }
+  return `${distance < 10 ? distance.toFixed(1) : Math.round(distance)} mi`
+}
+
+const formatStockStatus = (value) =>
+  String(value || "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+
+const safeMapsUrl = (url) => {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === "https:" && parsed.hostname === "www.google.com" && parsed.pathname.startsWith("/maps/")) {
+      return parsed.href
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+const mapActionForRow = (row, actions) => {
+  const name = String(rowValue(row, ["store_name", "storeName", "name"], ""))
+  const action = actions.find((candidate) => candidate?.label === name) ?? actions[0]
+  const url = action ? safeMapsUrl(action.url) : null
+  return url ? { ...action, url } : null
+}
+
+const renderStoreCard = (row, action) => {
+  const name = rowValue(row, ["store_name", "storeName", "name"], "Cymbal Coffee")
+  const address = rowValue(row, ["store_address", "storeAddress", "address"])
+  const locality = formatLocality(row)
+  const phone = rowValue(row, ["phone", "store_phone", "storePhone"])
+  const hours = formatHoursSummary(rowValue(row, ["hours"], null))
+  const distance = formatDistance(rowValue(row, ["distance_miles", "distanceMiles"], null))
+  const productName = rowValue(row, ["product_name", "productName"])
+  const quantity = rowValue(row, ["quantity_available", "quantityAvailable"], null)
+  const stockStatus = rowValue(row, ["stock_status", "stockStatus"])
+  const pickupAvailable = rowValue(row, ["pickup_available", "pickupAvailable"], null)
+  const stockClass =
+    stockStatus === "IN_STOCK"
+      ? "border-success/25 bg-success/10 text-success"
+      : stockStatus === "LOW_STOCK"
+        ? "border-accent/25 bg-accent-soft text-accent-strong"
+        : "border-danger/25 bg-danger/10 text-danger"
+
+  return `<article class="mt-3 rounded-lg border border-border bg-surface-strong/60 p-3">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h3 class="text-sm font-semibold text-strong">${escapeHtml(String(name))}</h3>
+        <p class="mt-1 text-xs text-muted">${escapeHtml([address, locality].filter(Boolean).join(", "))}</p>
+      </div>
+      ${distance ? `<span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">${escapeHtml(distance)}</span>` : ""}
+    </div>
+    <div class="mt-3 grid gap-2 text-xs text-muted sm:grid-cols-2">
+      ${phone ? `<span>${escapeHtml(String(phone))}</span>` : ""}
+      ${hours ? `<span>${escapeHtml(hours)}</span>` : ""}
+      ${productName ? `<span class="font-medium text-strong">${escapeHtml(String(productName))}</span>` : ""}
+      ${quantity !== null ? `<span>${escapeHtml(String(quantity))} available</span>` : ""}
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      ${stockStatus ? `<span class="telemetry-chip ${stockClass}">${escapeHtml(formatStockStatus(stockStatus))}</span>` : ""}
+      ${
+        pickupAvailable !== null
+          ? `<span class="telemetry-chip border-border bg-surface text-muted">${pickupAvailable ? "Pickup available" : "Pickup unavailable"}</span>`
+          : ""
+      }
+      ${
+        action
+          ? `<a href="${escapeHtml(action.url)}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-accent-strong transition-colors hover:border-accent/40 hover:bg-accent-soft">Open in Google Maps</a>`
+          : ""
+      }
+    </div>
+  </article>`
+}
+
+const renderStructuredResults = (payload) => {
+  const target = document.getElementById("pending-reply-results")
+  if (!target) {
+    return
+  }
+  const inventory = Array.isArray(payload.inventory_results) ? payload.inventory_results : []
+  const stores = Array.isArray(payload.store_results) ? payload.store_results : []
+  const rows = inventory.length ? inventory : stores
+  const actions = Array.isArray(payload.map_actions) ? payload.map_actions : []
+  if (rows.length === 0) {
+    target.hidden = true
+    target.innerHTML = ""
+    return
+  }
+  target.hidden = false
+  target.innerHTML = rows
+    .slice(0, 3)
+    .map((row) => renderStoreCard(row, mapActionForRow(row, actions)))
+    .join("")
+}
+
 const appendUserAndPendingMessages = (message) => {
   const messages = document.getElementById("messages")
   if (!messages) {
@@ -466,6 +691,7 @@ const appendUserAndPendingMessages = (message) => {
         </header>
         <p id="pending-reply-text" class="mt-2 whitespace-pre-wrap text-base text-strong"></p>
         <div id="pending-reply-meta" class="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]" hidden></div>
+        <div id="pending-reply-results" class="mt-3" hidden></div>
         <div class="mt-3 flex items-center gap-1.5">
           <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
           <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
@@ -504,6 +730,7 @@ const finalizePendingReply = () => {
   const target = document.getElementById("pending-reply-text")
   pending?.querySelector(".typing-dot")?.parentElement?.remove()
   pending?.querySelector("#pending-reply-meta")?.removeAttribute("id")
+  pending?.querySelector("#pending-reply-results")?.removeAttribute("id")
   pending?.removeAttribute("id")
   target?.removeAttribute("id")
 }
@@ -533,6 +760,7 @@ const handleChatStreamEvent = ({ eventName, data }) => {
   if (eventName === "final") {
     setPendingText(payload.answer ?? "")
     renderMessageTelemetry(payload)
+    renderStructuredResults(payload)
     renderMetrics(payload)
     finalizePendingReply()
     return
@@ -622,6 +850,11 @@ document.body.addEventListener("submit", async (event) => {
 
 document.body.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) {
+    return
+  }
+  const useLocation = event.target.closest("[data-use-location]")
+  if (useLocation instanceof HTMLButtonElement && useLocation.form instanceof HTMLFormElement) {
+    requestBrowserLocation(useLocation.form, useLocation)
     return
   }
   const close = event.target.closest("[data-telemetry-close]")

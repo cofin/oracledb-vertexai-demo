@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pytest import MonkeyPatch
 
 
@@ -54,3 +57,38 @@ def test_vite_settings_wires_lifespan_flag(monkeypatch: MonkeyPatch) -> None:
     config = ViteSettings().get_config()
 
     assert config.runtime.start_dev_server is False
+
+
+def test_settings_exports_app_url_from_litestar_port(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    from app.lib.settings import Settings
+
+    Settings.from_env.cache_clear()
+    monkeypatch.delenv("APP_URL", raising=False)
+    monkeypatch.delenv("LITESTAR_PORT", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_text("LITESTAR_PORT=5006\n")
+
+    try:
+        settings = Settings.from_env(str(env_file))
+
+        assert settings.app.URL == "http://localhost:5006"
+        assert os.environ["APP_URL"] == "http://localhost:5006"
+    finally:
+        Settings.from_env.cache_clear()
+
+
+def test_settings_preserves_shell_app_url_override(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
+    from app.lib.settings import Settings
+
+    Settings.from_env.cache_clear()
+    monkeypatch.setenv("APP_URL", "http://localhost:9000")
+    env_file = tmp_path / ".env"
+    env_file.write_text("LITESTAR_PORT=5006\nAPP_URL=http://localhost:${LITESTAR_PORT}\n")
+
+    try:
+        settings = Settings.from_env(str(env_file))
+
+        assert settings.app.URL == "http://localhost:9000"
+        assert os.environ["APP_URL"] == "http://localhost:9000"
+    finally:
+        Settings.from_env.cache_clear()

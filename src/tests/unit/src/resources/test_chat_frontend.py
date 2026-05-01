@@ -3,7 +3,7 @@
 
 """Frontend chat behavior regression checks."""
 
-from tests.support.paths import RESOURCES_ROOT
+from tests.support.paths import APP_ROOT, RESOURCES_ROOT
 
 
 def test_chat_stream_form_data_is_captured_before_disabling_input() -> None:
@@ -56,3 +56,36 @@ def test_chat_frontend_exposes_clear_chat_button_handler() -> None:
     assert "Alpine" not in source
     assert "Tell me what sounds good and I'll check the Cymbal Coffee menu." in source
     assert "Welcome back. Tell me what sounds good" not in source
+
+
+def test_chat_frontend_requires_explicit_location_opt_in() -> None:
+    source = (RESOURCES_ROOT / "main.js").read_text()
+    template = (APP_ROOT / "domain/web/templates/pages/chat.html.j2").read_text()
+
+    assert "data-use-location" in template
+    assert 'name="location_consent" value="false"' in template
+    assert 'name="latitude"' in template
+    assert 'name="longitude"' in template
+    assert 'name="city"' in template
+    assert 'name="zip_code"' in template
+    assert "navigator.geolocation.getCurrentPosition" in source
+    assert "enableHighAccuracy: false" in source
+    assert "timeout: 8000" in source
+    assert "maximumAge: 300000" in source
+    assert "Location denied" in source
+    assert "Location timed out" in source
+    assert "Location unsupported" in source
+
+
+def test_chat_frontend_renders_store_cards_and_no_key_maps_links() -> None:
+    source = (RESOURCES_ROOT / "main.js").read_text()
+
+    assert "renderStructuredResults(payload)" in source
+    assert "payload.store_results" in source
+    assert "payload.inventory_results" in source
+    assert "payload.map_actions" in source
+    assert "Open in Google Maps" in source
+    assert 'https:" && parsed.hostname === "www.google.com"' in source
+    assert 'parsed.pathname.startsWith("/maps/")' in source
+    assert "pending-reply-results" in source
+    assert "<iframe" not in source

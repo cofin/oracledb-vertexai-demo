@@ -72,8 +72,28 @@ SPDX-License-Identifier: Apache-2.0
 
     <form data-chat-form="true" action="/api/chat/stream" method="post"
       class="border-t border-border bg-surface-strong/45 p-3">
+      <div class="mb-2 grid gap-2 md:grid-cols-[auto_minmax(0,1fr)_8rem] md:items-center">
+        <div class="flex items-center gap-2">
+          <button type="button" data-use-location
+            class="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent-strong">
+            Use my location
+          </button>
+          <span data-location-status class="text-xs font-medium text-muted" aria-live="polite">Location off</span>
+        </div>
+        <label class="sr-only" for="chat-city">City</label>
+        <input id="chat-city" type="text" name="city" autocomplete="address-level2" placeholder="City"
+          class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+        <label class="sr-only" for="chat-zip-code">ZIP</label>
+        <input id="chat-zip-code" type="text" name="zip_code" inputmode="numeric" autocomplete="postal-code"
+          placeholder="ZIP"
+          class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+      </div>
       <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
         <input type="hidden" name="persona" value="enthusiast" data-persona-input>
+        <input type="hidden" name="location_consent" value="false" data-location-consent>
+        <input type="hidden" name="latitude" value="" data-location-latitude>
+        <input type="hidden" name="longitude" value="" data-location-longitude>
+        <input type="hidden" name="accuracy" value="" data-location-accuracy>
         <input type="text" name="message" autocomplete="off" required placeholder="What should I drink today?"
           class="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
         <button type="submit"

@@ -260,7 +260,7 @@ class LogSettings:
 class AppSettings:
     """Application configuration"""
 
-    URL: str = field(default_factory=lambda: os.getenv("APP_URL", "http://localhost:8000"))
+    URL: str = field(default_factory=lambda: os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"))
     """The frontend base URL"""
     DEBUG: bool = field(default_factory=lambda: os.getenv("LITESTAR_DEBUG", "False") in TRUE_VALUES)
     """Run `Litestar` with `debug=True`."""
@@ -467,6 +467,7 @@ class Settings:
         """Set Litestar and Granian defaults expected by the app server."""
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
+        os.environ.setdefault("APP_URL", self.app.URL)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
         os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
 
@@ -475,13 +476,15 @@ class Settings:
     def from_env(cls, dotenv_filename: str = ".env") -> Settings:
         from litestar.cli._utils import console
 
-        env_file = Path(f"{os.curdir}/{dotenv_filename}")
+        env_file = Path(dotenv_filename)
+        if not env_file.is_absolute():
+            env_file = Path(os.curdir) / env_file
         if env_file.is_file():
             from dotenv import load_dotenv
 
             console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
 
-            load_dotenv(env_file, override=True)
+            load_dotenv(env_file, override=False)
         settings = Settings()
         settings.setup_litestar_env()
         return settings
