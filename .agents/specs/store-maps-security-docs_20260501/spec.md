@@ -1,7 +1,7 @@
 # Flow: Store Maps Security and Docs (store-maps-security-docs_20260501)
 
 *Chapter 5 of [store-location-inventory-chat_20260501](../store-location-inventory-chat_20260501/prd.md)*
-*Beads: TBD*
+*Beads: `oracledb-vertexai-f6u.5`*
 
 ---
 

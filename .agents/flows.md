@@ -16,7 +16,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/accelerator-restructure_20260429/](./specs/accelerator-restructure_20260429/)*
   *Beads: oracledb-vertexai-4d6.2*
 
-  ### [ ] Ch 3: adk2-runner_20260429
+  ### [x] Ch 3: adk2-runner_20260429
   *Link: [./specs/adk2-runner_20260429/](./specs/adk2-runner_20260429/)*
   *Beads: oracledb-vertexai-4d6.3*
 
@@ -28,21 +28,21 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
   *Beads: oracledb-vertexai-4d6.5*
 
-  ### [ ] Ch 6: vector-calculator_20260429
-  *Link: [./specs/vector-calculator_20260429/](./specs/vector-calculator_20260429/)*
+  ### [ ] Ch 6: documentation-setup_20260429
+  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
   *Beads: oracledb-vertexai-4d6.6*
 
-  ### [ ] Ch 7: documentation-setup_20260429
-  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
+  ### [ ] Ch 7: vector-calculator_20260429
+  *Link: [./specs/vector-calculator_20260429/](./specs/vector-calculator_20260429/)*
   *Beads: oracledb-vertexai-4d6.7*
 
   ### [x] Corrective PRD: test-suite-reorganization_20260501
   *Link: [./specs/test-suite-reorganization_20260501/](./specs/test-suite-reorganization_20260501/)*
   *Beads: oracledb-vertexai-4d6.9*
 
-  ### [ ] Corrective PRD: ui-regression-recovery_20260501
+  ### [x] Corrective PRD: ui-regression-recovery_20260501
   *Link: [./specs/ui-regression-recovery_20260501/](./specs/ui-regression-recovery_20260501/)*
-  *Beads: not created - draft alignment only*
+  *Beads: oracledb-vertexai-4d6.8*
 
   ---
 
@@ -68,7 +68,27 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ## [ ] PRD: store-location-inventory-chat_20260501
 *Link: [./specs/store-location-inventory-chat_20260501/](./specs/store-location-inventory-chat_20260501/)*
-*Beads: not created - review gate before implementation*
+*Beads: oracledb-vertexai-f6u*
+
+  ### [ ] Ch 1: store-data-foundation_20260501
+  *Link: [./specs/store-data-foundation_20260501/](./specs/store-data-foundation_20260501/)*
+  *Beads: oracledb-vertexai-f6u.1*
+
+  ### [ ] Ch 2: store-query-services_20260501
+  *Link: [./specs/store-query-services_20260501/](./specs/store-query-services_20260501/)*
+  *Beads: oracledb-vertexai-f6u.2*
+
+  ### [ ] Ch 3: store-intent-routing_20260501
+  *Link: [./specs/store-intent-routing_20260501/](./specs/store-intent-routing_20260501/)*
+  *Beads: oracledb-vertexai-f6u.3*
+
+  ### [ ] Ch 4: browser-location-maps-ui_20260501
+  *Link: [./specs/browser-location-maps-ui_20260501/](./specs/browser-location-maps-ui_20260501/)*
+  *Beads: oracledb-vertexai-f6u.4*
+
+  ### [ ] Ch 5: store-maps-security-docs_20260501
+  *Link: [./specs/store-maps-security-docs_20260501/](./specs/store-maps-security-docs_20260501/)*
+  *Beads: oracledb-vertexai-f6u.5*
 
 ---
 

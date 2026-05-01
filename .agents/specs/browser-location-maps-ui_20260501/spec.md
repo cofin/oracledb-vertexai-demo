@@ -1,7 +1,7 @@
 # Flow: Browser Location and Maps UI (browser-location-maps-ui_20260501)
 
 *Chapter 4 of [store-location-inventory-chat_20260501](../store-location-inventory-chat_20260501/prd.md)*
-*Beads: TBD*
+*Beads: `oracledb-vertexai-f6u.4`*
 
 ---
 

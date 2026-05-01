@@ -1,7 +1,7 @@
 # Flow: Store Data Foundation (store-data-foundation_20260501)
 
 *Chapter 1 of [store-location-inventory-chat_20260501](../store-location-inventory-chat_20260501/prd.md)*
-*Beads: TBD*
+*Beads: `oracledb-vertexai-f6u.1`*
 
 ---
 

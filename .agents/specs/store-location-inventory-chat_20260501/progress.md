@@ -20,7 +20,7 @@
 - [x] User accepted open decisions and baseline-only migration strategy.
 - [x] Reviewed all existing `.agents/specs` folders for alignment.
 - [x] Created chapter spec folders for implementation.
-- [ ] Create Beads epic/tasks after review approval.
+- [x] Create Beads epic/tasks after review approval.
 - [ ] Implement chapter 1: data model and fixtures.
 - [ ] Implement chapter 2: store/inventory services and tools.
 - [ ] Implement chapter 3: intent routing and grounded chat responses.
@@ -38,3 +38,4 @@
 - The Maps key must not reuse Gemini, Vertex, or other general Google credentials.
 - The implementation must add a Dallas-area store fixture and inventory rows so Dallas location prompts have a real local match.
 - The implementation should add `tools/scripts/create-maps-embed-key.sh` with dry-run, restricted-key safeguards, and no tracked secret writes.
+- Beads hierarchy: parent `oracledb-vertexai-f6u`; chapters `oracledb-vertexai-f6u.1` through `oracledb-vertexai-f6u.5`.

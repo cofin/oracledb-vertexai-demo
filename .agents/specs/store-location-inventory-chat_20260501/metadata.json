@@ -3,7 +3,7 @@
   "type": "prd",
   "status": "planned",
   "parent_prd": null,
-  "beads_epic_id": null,
+  "beads_epic_id": "oracledb-vertexai-f6u",
   "created_at": "2026-05-01T00:00:00Z",
   "updated_at": "2026-05-01T00:00:00Z",
   "description": "Plan store-aware chat enhancements for store locations, hours, directions, browser location opt-in, optional Google Maps integration, Dallas fixture coverage, and store-level product inventory. Schema changes modify only 0001 because the database will be dropped and recreated."

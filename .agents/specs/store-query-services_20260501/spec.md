@@ -1,7 +1,7 @@
 # Flow: Store Query Services (store-query-services_20260501)
 
 *Chapter 2 of [store-location-inventory-chat_20260501](../store-location-inventory-chat_20260501/prd.md)*
-*Beads: TBD*
+*Beads: `oracledb-vertexai-f6u.2`*
 
 ---
 

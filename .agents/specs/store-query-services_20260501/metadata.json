@@ -3,7 +3,7 @@
   "type": "feature",
   "status": "planned",
   "parent_prd": "store-location-inventory-chat_20260501",
-  "beads_epic_id": null,
+  "beads_epic_id": "oracledb-vertexai-f6u.2",
   "created_at": "2026-05-01T00:00:00Z",
   "updated_at": "2026-05-01T00:00:00Z",
   "description": "Add grounded store, hours, nearest-store, inventory, ADK tool-service, and Maps URL query primitives through named SQL and existing service boundaries."

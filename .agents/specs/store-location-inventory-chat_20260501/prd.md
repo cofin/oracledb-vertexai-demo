@@ -3,7 +3,7 @@
 *PRD ID: `store-location-inventory-chat_20260501`*
 *Created: 2026-05-01*
 *Status: Accepted - ready for implementation planning*
-*Beads: pending tracker creation*
+*Beads: `oracledb-vertexai-f6u`*
 
 ---
 
@@ -531,6 +531,8 @@ Those require more API surface, CSP, billing, and key-management work than this 
 
 ### Chapter 1 - `store-data-foundation_20260501`
 
+*Beads: `oracledb-vertexai-f6u.1`*
+
 Goal: make the local dataset capable of answering store, directions, nearest-store, and inventory questions.
 
 Deliverables:
@@ -564,6 +566,8 @@ Primary files:
 - new `src/app/db/sql/inventory.sql`
 
 ### Chapter 2 - `store-query-services_20260501`
+
+*Beads: `oracledb-vertexai-f6u.2`*
 
 Goal: expose grounded store and inventory query primitives through the service layer and ADK tool service.
 
@@ -603,6 +607,8 @@ Primary files:
 - `src/tests/unit/app/domain/chat/services/test_adk.py`
 
 ### Chapter 3 - `store-intent-routing_20260501`
+
+*Beads: `oracledb-vertexai-f6u.3`*
 
 Goal: make store and inventory intents deterministic and grounded in the current chat runner.
 
@@ -644,6 +650,8 @@ Primary files:
 
 ### Chapter 4 - `browser-location-maps-ui_20260501`
 
+*Beads: `oracledb-vertexai-f6u.4`*
+
 Goal: render store-aware chat interactions in the current HTMX/Jinja frontend.
 
 Deliverables:
@@ -683,6 +691,8 @@ Primary files:
 - browser/manual smoke tests if Playwright exists in the repo
 
 ### Chapter 5 - `store-maps-security-docs_20260501`
+
+*Beads: `oracledb-vertexai-f6u.5`*
 
 Goal: harden, document, and verify the complete store/maps feature.
 
