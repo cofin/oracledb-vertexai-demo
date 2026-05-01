@@ -98,6 +98,36 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: demo-source-organization_20260501
+*Link: [./specs/demo-source-organization_20260501/](./specs/demo-source-organization_20260501/)*
+*Beads: oracledb-vertexai-8jt*
+
+  ### [ ] Ch 1: source-organization-contract_20260501
+  *Link: [./specs/source-organization-contract_20260501/](./specs/source-organization-contract_20260501/)*
+  *Beads: oracledb-vertexai-8jt.1*
+
+  ### [ ] Ch 2: app-core-source-organization_20260501
+  *Link: [./specs/app-core-source-organization_20260501/](./specs/app-core-source-organization_20260501/)*
+  *Beads: oracledb-vertexai-8jt.2*
+
+  ### [ ] Ch 3: domain-source-organization_20260501
+  *Link: [./specs/domain-source-organization_20260501/](./specs/domain-source-organization_20260501/)*
+  *Beads: oracledb-vertexai-8jt.3*
+
+  ### [ ] Ch 4: adk-runner-source-organization_20260501
+  *Link: [./specs/adk-runner-source-organization_20260501/](./specs/adk-runner-source-organization_20260501/)*
+  *Beads: oracledb-vertexai-8jt.4*
+
+  ### [ ] Ch 5: cli-tools-source-organization_20260501
+  *Link: [./specs/cli-tools-source-organization_20260501/](./specs/cli-tools-source-organization_20260501/)*
+  *Beads: oracledb-vertexai-8jt.5*
+
+  ### [ ] Ch 6: source-organization-verification_20260501
+  *Link: [./specs/source-organization-verification_20260501/](./specs/source-organization-verification_20260501/)*
+  *Beads: oracledb-vertexai-8jt.6*
+
+---
+
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from

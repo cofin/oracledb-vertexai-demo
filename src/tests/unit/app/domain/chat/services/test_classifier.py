@@ -18,9 +18,10 @@ from app.domain.chat.services.classifier import (
 
 
 def test_intent_label_values_match_text_x_enum_pin() -> None:
-    """IntentLabel must enumerate the four labels asserted in test_adk2_surface_pin."""
+    """IntentLabel must enumerate the labels asserted in test_adk2_surface_pin."""
     assert {m.value for m in IntentLabel} == {
         "PRODUCT_RAG",
+        "PRODUCT_AVAILABILITY",
         "GENERAL_CONVERSATION",
         "STORE_LOCATION",
         "ORDER_STATUS",
@@ -69,6 +70,8 @@ async def test_classifier_passes_text_x_enum_config() -> None:
     assert "what is on the menu" in cfg.system_instruction
     assert "breakfast" in cfg.system_instruction
     assert "something bold" in cfg.system_instruction
+    assert "Where can I pick up cold brew near me" in cfg.system_instruction
+    assert "Find a store near Dallas" in cfg.system_instruction
     assert "When a coffee or menu request is ambiguous, choose PRODUCT_RAG" in cfg.system_instruction
 
 

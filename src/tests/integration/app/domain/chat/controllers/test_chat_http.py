@@ -25,6 +25,10 @@ _FAKE_REPLY: dict[str, Any] = {
     "from_cache": False,
     "embedding_cache_hit": True,
     "intent_detected": "PRODUCT_RAG",
+    "store_results": [],
+    "inventory_results": [],
+    "map_actions": [],
+    "location_context": {},
     "sql_phases": [
         {
             "label": "Oracle vector search",
@@ -98,6 +102,67 @@ async def test_non_htmx_returns_json(client: AsyncTestClient) -> None:
     payload = response.json()
     assert payload["answer"] == _FAKE_REPLY["answer"]
     assert payload["intentDetected"] == "PRODUCT_RAG"
+    assert payload["storeResults"] == []
+    assert payload["inventoryResults"] == []
+    assert payload["mapActions"] == []
+    assert payload["locationContext"] == {}
+
+
+async def test_json_location_context_requires_consent_for_coordinates(client: AsyncTestClient) -> None:
+    from app.domain.chat.services import ADKRunner
+
+    response = await client.post(
+        "/api/chat",
+        json={
+            "message": "where can I pick up cold brew near me?",
+            "persona": "enthusiast",
+            "locationConsent": False,
+            "latitude": 32.7876,
+            "longitude": -96.7994,
+            "city": "Dallas",
+        },
+    )
+
+    assert response.status_code == 201, response.text[:500]
+    call_kwargs = ADKRunner.process_request.await_args.kwargs  # type: ignore[attr-defined]
+    assert call_kwargs["location_context"] == {"city": "Dallas"}
+
+
+async def test_json_location_context_passes_consented_coordinates(client: AsyncTestClient) -> None:
+    from app.domain.chat.services import ADKRunner
+
+    response = await client.post(
+        "/api/chat",
+        json={
+            "message": "where can I pick up cold brew near me?",
+            "persona": "enthusiast",
+            "locationConsent": True,
+            "latitude": 32.7876,
+            "longitude": -96.7994,
+            "accuracy": 25,
+        },
+    )
+
+    assert response.status_code == 201, response.text[:500]
+    call_kwargs = ADKRunner.process_request.await_args.kwargs  # type: ignore[attr-defined]
+    assert call_kwargs["location_context"] == {
+        "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 25.0}
+    }
+
+
+async def test_json_location_context_rejects_invalid_consented_coordinates(client: AsyncTestClient) -> None:
+    response = await client.post(
+        "/api/chat",
+        json={
+            "message": "nearest store",
+            "persona": "enthusiast",
+            "locationConsent": True,
+            "latitude": 120,
+            "longitude": -96.7994,
+        },
+    )
+
+    assert response.status_code == 400
 
 
 async def test_non_htmx_ai_unconfigured_returns_503_without_exception_path(client: AsyncTestClient) -> None:

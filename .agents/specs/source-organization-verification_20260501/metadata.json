@@ -1,0 +1,11 @@
+{
+  "flow_id": "source-organization-verification_20260501",
+  "type": "spec",
+  "status": "planned",
+  "parent_prd": "demo-source-organization_20260501",
+  "beads_epic_id": "oracledb-vertexai-8jt.6",
+  "created_at": "2026-05-01T19:21:34Z",
+  "updated_at": "2026-05-01T19:21:34Z",
+  "synced_at": "2026-05-01T19:21:34Z",
+  "description": "Run the final source organization audit, update durable patterns, and verify aggregate repo gates."
+}

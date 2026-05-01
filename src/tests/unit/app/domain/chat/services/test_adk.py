@@ -120,6 +120,19 @@ def test_effective_intent_promotes_actual_product_lookup() -> None:
         )
         == "PRODUCT_RAG"
     )
+
+
+def test_safe_location_context_never_exposes_raw_coordinates() -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    safe = adk_module._safe_location_context(
+        {
+            "city": "Dallas",
+            "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 40.0},
+        }
+    )
+
+    assert safe == {"city": "Dallas", "has_browser_coordinates": True, "accuracy_meters": 40.0}
     assert (
         adk_module._effective_intent(
             "GENERAL_CONVERSATION",
@@ -436,6 +449,10 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
         "from_cache",
         "embedding_cache_hit",
         "sql_phases",
+        "store_results",
+        "inventory_results",
+        "map_actions",
+        "location_context",
     }
     assert set(result.keys()) == expected_keys
     assert "Yirgacheffe" in result["answer"]
@@ -447,6 +464,180 @@ async def test_process_request_returns_all_seven_keys(monkeypatch: Any) -> None:
     fake_runner.run_async.assert_not_called()
     tools_service.search_products_by_vector.assert_awaited_once_with("recommend something", 3, 0.5)
     tools_service.set_cached_chat_response.assert_awaited_once()
+
+
+async def test_store_location_route_returns_grounded_store_without_model(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-store"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.STORE_LOCATION)
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("STORE_LOCATION must be answered from grounded service data")
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.find_stores_by_location = AsyncMock(
+        return_value={
+            "stores": [
+                {
+                    "id": 13,
+                    "name": "Cymbal Coffee Seattle",
+                    "address": "654 Pike St, Seattle, WA 98101",
+                    "city": "Seattle",
+                    "state": "WA",
+                    "zip": "98101",
+                    "phone": "(206) 555-1200",
+                    "hours": {"monday": "5:30am-9pm"},
+                }
+            ],
+            "sql_phases": [{"sql_key": "find-stores-by-location"}],
+        }
+    )
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=MagicMock())
+
+    result = await runner.process_request(
+        query="Where is your Seattle store?",
+        user_id="u1",
+        session_id="sess-store",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert result["intent_detected"] == "STORE_LOCATION"
+    assert "Cymbal Coffee Seattle" in result["answer"]
+    assert "654 Pike St" in result["answer"]
+    assert "(206) 555-1200" in result["answer"]
+    assert result["store_results"][0]["city"] == "Seattle"
+    assert result["map_actions"][0]["type"] == "search"
+    tools_service.find_stores_by_location.assert_awaited_once_with(city="Seattle", state=None, zip_code=None)
+
+
+async def test_product_availability_near_me_uses_consented_coordinates_and_bypasses_cache(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-availability"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_AVAILABILITY)
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("PRODUCT_AVAILABILITY must be answered from grounded inventory data")
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock()
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.find_stores_with_product = AsyncMock(
+        return_value={
+            "availability": [
+                {
+                    "store_id": 16,
+                    "store_name": "Cymbal Coffee Dallas Arts District",
+                    "store_address": "1717 N Harwood St",
+                    "store_city": "Dallas",
+                    "store_state": "TX",
+                    "store_zip": "75201",
+                    "product_name": "Cold Brew Nitro",
+                    "quantity_available": 18,
+                    "stock_status": "IN_STOCK",
+                    "distance_miles": 0.5,
+                }
+            ],
+            "sql_phases": [
+                {"sql_key": "find-product-availability-by-query", "binds": {"origin": "<REQUEST_COORDINATES>"}}
+            ],
+        }
+    )
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=MagicMock())
+
+    result = await runner.process_request(
+        query="Where can I pick up cold brew near me?",
+        user_id="u1",
+        session_id="sess-availability",
+        persona="enthusiast",
+        tools_service=tools_service,
+        location_context={
+            "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 25.0}
+        },
+    )
+
+    assert result["intent_detected"] == "PRODUCT_AVAILABILITY"
+    assert "Cold Brew Nitro" in result["answer"]
+    assert "Cymbal Coffee Dallas Arts District" in result["answer"]
+    assert result["inventory_results"][0]["stock_status"] == "IN_STOCK"
+    assert result["location_context"] == {"has_browser_coordinates": True, "accuracy_meters": 25.0}
+    assert "32.7876" not in str(result)
+    assert "-96.7994" not in str(result)
+    tools_service.make_response_cache_key.assert_not_called()
+    tools_service.get_cached_chat_response.assert_not_called()
+    tools_service.set_cached_chat_response.assert_not_called()
+    tools_service.find_stores_with_product.assert_awaited_once_with("Cold Brew Nitro", 32.7876, -96.7994)
+
+
+async def test_order_status_route_is_explicitly_unsupported(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-order"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.ORDER_STATUS)
+
+    def fail_runner(**_kw: Any) -> Any:
+        raise AssertionError("ORDER_STATUS must not ask the model to invent order data")
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+
+    monkeypatch.setattr(adk_module, "Runner", fail_runner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=MagicMock())
+
+    result = await runner.process_request(
+        query="Where is order ABC123?",
+        user_id="u1",
+        session_id="sess-order",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    assert result["intent_detected"] == "ORDER_STATUS"
+    assert "does not include order tracking" in result["answer"]
+    assert result["store_results"] == []
+    assert result["inventory_results"] == []
 
 
 async def test_process_request_prefers_workflow_output_intent(monkeypatch: Any) -> None:
