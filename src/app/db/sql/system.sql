@@ -69,4 +69,5 @@ FROM search_metric
 WHERE created_at > :since;
 
 -- name: explain-plan-display
-SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY());
+SELECT plan_table_output
+FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, NULL, 'TYPICAL +PREDICATE +NOTE'));

@@ -253,6 +253,7 @@ class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
 
     async def record_search(self, metrics: SearchMetricsCreate) -> None:
         await self.driver.execute(sql.insert("search_metric").values(**schema_dump(metrics, wire_format=False)))
+        await self.driver.commit()
 
     async def get_performance_stats(self, hours: int = 24) -> PerformanceStats:
         since = datetime.now(UTC) - timedelta(hours=hours)

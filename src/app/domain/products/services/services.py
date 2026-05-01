@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -12,7 +13,7 @@ from sqlspec import sql
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
-from app.domain.products.schemas import ExplainPlan, Product, ProductMatch, Store
+from app.domain.products.schemas import ExplainPlan, ExplainPlanRow, Product, ProductMatch, Store
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
@@ -172,6 +173,45 @@ class OracleVectorSearchService:
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}
 
+    @staticmethod
+    def parse_plan_rows(plan_lines: list[str]) -> list[ExplainPlanRow]:
+        """Parse the operation table rows from ``DBMS_XPLAN.DISPLAY`` output."""
+        def cell(cells: list[str], index: int) -> str:
+            try:
+                return cells[index]
+            except IndexError:
+                return ""
+
+        rows: list[ExplainPlanRow] = []
+        for line in plan_lines:
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                continue
+            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+            if cells[0].lower() == "id":
+                continue
+            operation_cell = cell(cells, 1)
+            if not operation_cell:
+                continue
+            plan_id = re.sub(r"[^0-9]", "", cells[0])
+            if not plan_id:
+                continue
+            operation = re.sub(r"\s+", " ", operation_cell).strip()
+            rows.append(
+                ExplainPlanRow(
+                    id=plan_id,
+                    operation=operation,
+                    name=cell(cells, 2),
+                    rows=cell(cells, 3),
+                    bytes=cell(cells, 4),
+                    cost=cell(cells, 5),
+                    time=cell(cells, 6),
+                    raw_line=line,
+                    is_vector="VECTOR" in line.upper(),
+                )
+            )
+        return rows
+
     async def explain_search_plan(self, query: str) -> ExplainPlan:
         """Run EXPLAIN PLAN against the vector-search SQL and pull the plan.
 
@@ -191,8 +231,9 @@ class OracleVectorSearchService:
         )
         rows = await self.product_service.driver.select(db_manager.get_sql("explain-plan-display"))
         plan_lines = [str(row["plan_table_output"]) for row in rows]
+        plan_rows = self.parse_plan_rows(plan_lines)
         plan_summary = next(
-            (line.strip() for line in plan_lines if "VECTOR" in line.upper()),
-            plan_lines[0].strip() if plan_lines else "",
+            (f"{row.operation} {row.name}".strip() for row in plan_rows if row.is_vector),
+            plan_rows[0].operation if plan_rows else (plan_lines[0].strip() if plan_lines else ""),
         )
-        return ExplainPlan(plan_lines=plan_lines, plan_summary=plan_summary)
+        return ExplainPlan(plan_lines=plan_lines, plan_summary=plan_summary, plan_rows=plan_rows)

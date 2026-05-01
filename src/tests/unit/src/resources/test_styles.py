@@ -31,3 +31,12 @@ def test_app_title_text_can_wrap_on_small_screens() -> None:
     assert "@media (max-width: 47.999rem)" in source
     assert 'input[type="search"]' in source
     assert "width: calc(100vw - 4rem)" in source
+
+
+def test_chat_surface_has_avatar_and_soft_bubble_rules() -> None:
+    source = (RESOURCES_ROOT / "styles.css").read_text()
+
+    assert ".message-row" in source
+    assert ".chat-avatar" in source
+    assert "border-radius: 0.875rem" in source
+    assert "border-color: transparent" in source

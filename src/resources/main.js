@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import htmx from "htmx.org"
-import Alpine from "alpinejs"
 import ApexCharts from "apexcharts"
 import { registerHtmxExtension } from "litestar-vite-plugin/helpers"
 
 window.htmx = htmx
-window.Alpine = Alpine
 window.ApexCharts = ApexCharts
 registerHtmxExtension()
 
@@ -17,13 +15,13 @@ const processHtmxDom = () => {
   }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", processHtmxDom, { once: true })
-} else {
-  processHtmxDom()
+const onReady = (callback) => {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", callback, { once: true })
+  } else {
+    callback()
+  }
 }
-
-Alpine.start()
 
 const escapeHtml = (value) => {
   const div = document.createElement("div")
@@ -44,15 +42,18 @@ const removePendingReply = () => {
   document.getElementById("pending-reply")?.remove()
 }
 
-const welcomeMessageHtml = () => `<article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
-  <header class="flex items-center justify-between text-xs">
-    <span class="font-medium text-muted">Barista</span>
-    <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
-  </header>
-  <p class="mt-2 whitespace-pre-wrap text-base text-strong">
-    Welcome back. Tell me what sounds good and I'll check the Cymbal Coffee menu.
-  </p>
-</article>`
+const welcomeMessageHtml = () => `<div class="message-row message-row-ai">
+  <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
+  <article class="message message-ai px-4 py-3 shadow-sm">
+    <header class="flex items-center justify-between text-xs">
+      <span class="font-medium text-muted">Barista</span>
+      <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+    </header>
+    <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+      Tell me what sounds good and I'll check the Cymbal Coffee menu.
+    </p>
+  </article>
+</div>`
 
 const resetChatMessages = () => {
   const messages = document.getElementById("messages")
@@ -300,6 +301,145 @@ const clearChatError = () => {
   }
 }
 
+const setPersona = (persona) => {
+  const input = document.querySelector("[data-persona-input]")
+  const buttons = document.querySelectorAll("[data-persona-option]")
+  if (input instanceof HTMLInputElement) {
+    input.value = persona
+  }
+  for (const button of buttons) {
+    const selected = button.getAttribute("data-persona-option") === persona
+    button.setAttribute("aria-pressed", String(selected))
+    button.classList.toggle("border-accent", selected)
+    button.classList.toggle("bg-accent-soft", selected)
+    button.classList.toggle("text-accent-strong", selected)
+    button.classList.toggle("border-border", !selected)
+    button.classList.toggle("bg-surface", !selected)
+    button.classList.toggle("text-muted", !selected)
+    button.classList.toggle("hover:text-strong", !selected)
+  }
+}
+
+const initPersonaPicker = () => {
+  const picker = document.querySelector("[data-persona-picker]")
+  if (!picker) {
+    return
+  }
+  picker.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-persona-option]") : null
+    if (button instanceof HTMLButtonElement) {
+      setPersona(button.dataset.personaOption ?? "enthusiast")
+    }
+  })
+  const selected = picker.querySelector('[data-persona-option][aria-pressed="true"]')
+  setPersona(selected instanceof HTMLElement ? (selected.dataset.personaOption ?? "enthusiast") : "enthusiast")
+}
+
+const renderEmptyChart = (host, message) => {
+  host.replaceChildren()
+  const empty = document.createElement("div")
+  empty.className = "flex h-full min-h-64 items-center justify-center text-sm font-medium text-muted"
+  empty.textContent = message
+  host.appendChild(empty)
+}
+
+const initDashboardCharts = async () => {
+  const root = document.querySelector("[data-dashboard-charts]")
+  if (!(root instanceof HTMLElement) || root.dataset.chartsReady === "true") {
+    return
+  }
+  root.dataset.chartsReady = "true"
+  const responseHost = root.querySelector('[data-chart-host="response-trends"]')
+  const scatterHost = root.querySelector('[data-chart-host="vector-performance"]')
+  const breakdownHost = root.querySelector('[data-chart-host="system-breakdown"]')
+  if (!(responseHost instanceof HTMLElement) || !(scatterHost instanceof HTMLElement) || !(breakdownHost instanceof HTMLElement)) {
+    return
+  }
+
+  const data = await fetch("/api/metrics/charts").then((response) => response.json())
+  const timeSeries = data.timeSeries ?? { labels: [], series: {} }
+  const series = timeSeries.series ?? {}
+  const scatter = Array.isArray(data.scatter) ? data.scatter : []
+  const breakdown = data.breakdown ?? { labels: [], values: [] }
+  const hasTrendData = Array.isArray(timeSeries.labels) && timeSeries.labels.length > 0
+  const trendLabels = hasTrendData ? timeSeries.labels : ["No data"]
+  const totalSeries = hasTrendData ? (series.totalMs ?? []) : [0]
+  const oracleSeries = hasTrendData ? (series.oracleMs ?? []) : [0]
+  const embeddingSeries = hasTrendData ? (series.embeddingMs ?? []) : [0]
+  const breakdownValues = Array.isArray(breakdown.values) ? breakdown.values.map(Number) : []
+  const hasBreakdownData = breakdownValues.some((value) => value > 0)
+  const breakdownData = hasBreakdownData
+    ? breakdown.labels.map((label, index) => ({ x: label, y: breakdownValues[index] ?? 0 }))
+    : []
+  const charts = []
+
+  if (hasTrendData) {
+    charts.push(
+      new ApexCharts(responseHost, {
+        chart: { type: "line", height: 286, foreColor: "#77675f", toolbar: { show: false } },
+        stroke: { curve: "smooth", width: [3, 2, 2] },
+        grid: { borderColor: "rgba(143, 95, 67, 0.16)" },
+        markers: { size: 3 },
+        xaxis: { categories: trendLabels },
+        yaxis: { title: { text: "Milliseconds" } },
+        colors: ["#8f5f43", "#587487", "#6f8064"],
+        series: [
+          { name: "Total response", data: totalSeries },
+          { name: "Oracle vector", data: oracleSeries },
+          { name: "Embedding", data: embeddingSeries },
+        ],
+      }),
+    )
+  } else {
+    renderEmptyChart(responseHost, "No response metrics yet")
+  }
+
+  if (scatter.length > 0) {
+    charts.push(
+      new ApexCharts(scatterHost, {
+        chart: { type: "scatter", height: 286, foreColor: "#77675f", toolbar: { show: false } },
+        grid: { borderColor: "rgba(143, 95, 67, 0.16)" },
+        colors: ["#8f5f43"],
+        xaxis: {
+          min: 0,
+          max: 1,
+          tickAmount: 5,
+          title: { text: "Similarity score" },
+        },
+        yaxis: { title: { text: "Total ms" } },
+        series: [
+          {
+            name: "Query performance",
+            data: scatter.map((point) => ({ x: point.similarityScore, y: point.totalMs })),
+          },
+        ],
+      }),
+    )
+  } else {
+    renderEmptyChart(scatterHost, "No vector metrics yet")
+  }
+
+  if (hasBreakdownData) {
+    charts.push(
+      new ApexCharts(breakdownHost, {
+        chart: { type: "bar", height: 286, foreColor: "#77675f", toolbar: { show: false } },
+        colors: ["#8f5f43"],
+        grid: { borderColor: "rgba(143, 95, 67, 0.16)" },
+        legend: { show: false },
+        plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: "58%" } },
+        xaxis: { title: { text: "Average ms" } },
+        series: [{ name: "Average ms", data: breakdownData }],
+      }),
+    )
+  } else {
+    renderEmptyChart(breakdownHost, "No component metrics yet")
+  }
+
+  for (const chart of charts) {
+    chart.render()
+  }
+}
+
 const appendUserAndPendingMessages = (message) => {
   const messages = document.getElementById("messages")
   if (!messages) {
@@ -309,24 +449,30 @@ const appendUserAndPendingMessages = (message) => {
   removePendingReply()
   messages.insertAdjacentHTML(
     "beforeend",
-    `<article class="message message-human rounded-lg border px-4 py-3 shadow-sm">
-      <header class="flex items-center justify-between gap-3 text-xs">
-        <span class="font-medium text-muted">You</span>
-      </header>
-      <p class="mt-2 whitespace-pre-wrap text-base text-strong">${escapeHtml(message)}</p>
-    </article>
-    <article id="pending-reply" class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
-      <header class="flex items-center justify-between gap-3 text-xs">
-        <span class="font-medium text-muted">Barista</span>
-      </header>
-      <p id="pending-reply-text" class="mt-2 whitespace-pre-wrap text-base text-strong"></p>
-      <div id="pending-reply-meta" class="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]" hidden></div>
-      <div class="mt-3 flex items-center gap-1.5">
-        <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
-        <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
-        <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
-      </div>
-    </article>`,
+    `<div class="message-row message-row-human">
+      <div class="chat-avatar chat-avatar-human" data-chat-avatar="human" aria-hidden="true">Y</div>
+      <article class="message message-human px-4 py-3 shadow-sm">
+        <header class="flex items-center justify-between gap-3 text-xs">
+          <span class="font-medium text-muted">You</span>
+        </header>
+        <p class="mt-2 whitespace-pre-wrap text-base text-strong">${escapeHtml(message)}</p>
+      </article>
+    </div>
+    <div id="pending-reply" class="message-row message-row-ai">
+      <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
+      <article class="message message-ai px-4 py-3 shadow-sm">
+        <header class="flex items-center justify-between gap-3 text-xs">
+          <span class="font-medium text-muted">Barista</span>
+        </header>
+        <p id="pending-reply-text" class="mt-2 whitespace-pre-wrap text-base text-strong"></p>
+        <div id="pending-reply-meta" class="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]" hidden></div>
+        <div class="mt-3 flex items-center gap-1.5">
+          <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
+          <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
+          <span class="typing-dot h-2 w-2 rounded-full bg-accent"></span>
+        </div>
+      </article>
+    </div>`,
   )
   scrollMessages()
 }
@@ -507,4 +653,11 @@ document.body.addEventListener("click", (event) => {
     return
   }
   showTelemetryPopover(JSON.parse(raw))
+})
+
+onReady(() => {
+  processHtmxDom()
+  initPersonaPicker()
+  void initDashboardCharts()
+  scrollMessages()
 })

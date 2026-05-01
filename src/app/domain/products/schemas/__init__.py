@@ -5,6 +5,7 @@
 
 from ._products import (
     ExplainPlan,
+    ExplainPlanRow,
     Product,
     ProductMatch,
     Store,
@@ -15,6 +16,7 @@ from ._products import (
 
 __all__ = (
     "ExplainPlan",
+    "ExplainPlanRow",
     "Product",
     "ProductMatch",
     "Store",

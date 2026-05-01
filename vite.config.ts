@@ -7,6 +7,7 @@ import { defineConfig, version } from "vite"
 
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 type BundlerWarning = { code?: string; id?: string }
+const ASSET_URL = process.env.VITE_ASSET_URL || process.env.ASSET_URL || "/static/dist/"
 
 export default defineConfig({
   // Vite copies project-root publicDir into bundleDir at build time. Brand assets
@@ -18,7 +19,7 @@ export default defineConfig({
       input: ["src/resources/main.js", "src/resources/styles.css"],
       bundleDir: "src/app/domain/web/static/dist",
       hotFile: "src/app/domain/web/static/dist/hot",
-      assetUrl: "/static/dist/",
+      assetUrl: ASSET_URL,
       resourceDir: "src/resources",
     }),
   ],

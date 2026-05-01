@@ -65,6 +65,10 @@ def _payload_value(payload: Any, key: str, default: str = "") -> str:
     return str(value or default)
 
 
+def _unavailable_plan(message: str = _SERVICE_UNAVAILABLE_MESSAGE) -> ExplainPlan:
+    return ExplainPlan(plan_lines=[message], plan_summary="Plan unavailable")
+
+
 async def _vector_query_from_request(request: HTMXRequest) -> VectorQuery:
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
@@ -114,8 +118,14 @@ class VectorController(Controller):
             await logger.awarning("Vector search demo unavailable", error_type=type(exc).__name__)
             if request.htmx:
                 return HTMXTemplate(
-                    template_name="partials/search_result_list.html.j2",
-                    context={"matches": [], "query": query, "error": _SERVICE_UNAVAILABLE_MESSAGE},
+                    template_name="partials/explore_search_response.html.j2",
+                    context={
+                        "matches": [],
+                        "query": query,
+                        "error": _SERVICE_UNAVAILABLE_MESSAGE,
+                        "plan": _unavailable_plan(),
+                        "plan_oob": True,
+                    },
                 )
             return Response(
                 content={
@@ -164,9 +174,16 @@ class VectorController(Controller):
         )
 
         if request.htmx:
+            try:
+                plan = await vector_search_service.explain_search_plan(query)
+            except Exception as exc:
+                if not _is_expected_service_unavailable(exc):
+                    raise
+                await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
+                plan = _unavailable_plan()
             return HTMXTemplate(
-                template_name="partials/search_result_list.html.j2",
-                context={"matches": matches, "query": query},
+                template_name="partials/explore_search_response.html.j2",
+                context={"matches": matches, "query": query, "plan": plan, "plan_oob": True},
                 push_url=f"/explore?q={quote(query)}",
             )
 
@@ -192,7 +209,4 @@ class VectorController(Controller):
             if not _is_expected_service_unavailable(exc):
                 raise
             await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
-            return ExplainPlan(
-                plan_lines=[_SERVICE_UNAVAILABLE_MESSAGE],
-                plan_summary="Plan unavailable",
-            )
+            return _unavailable_plan()

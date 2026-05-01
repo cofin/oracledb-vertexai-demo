@@ -408,8 +408,10 @@ class ViteSettings:
     HMR marker written when ``DEV_MODE`` is true. Lives inside the ``web``
     domain peer-package so templates and bundle output stay co-located.
     """
-    ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL", "/static/dist/"))
+    ASSET_URL: str = field(default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL", "/static/dist/"))
     """Vite asset URL."""
+    TRUSTED_PROXIES: str | None = field(default_factory=lambda: os.getenv("LITESTAR_TRUSTED_PROXIES"))
+    """Trusted reverse proxies for X-Forwarded-* headers."""
 
     @property
     def set_static_files(self) -> bool:
@@ -440,7 +442,13 @@ class ViteSettings:
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
-            runtime=RuntimeConfig(executor="node", host=self.HOST, port=self.PORT),
+            runtime=RuntimeConfig(
+                executor="node",
+                host=self.HOST,
+                port=self.PORT,
+                start_dev_server=self.USE_SERVER_LIFESPAN,
+                trusted_proxies=self.TRUSTED_PROXIES,
+            ),
         )
 
 

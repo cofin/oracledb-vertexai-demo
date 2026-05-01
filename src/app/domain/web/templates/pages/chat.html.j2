@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 {% block page_subheading %}Menu-grounded recommendations with Oracle 26ai product search{% endblock %}
 
 {% block content %}
-<section x-data="{ persona: 'enthusiast' }" class="chat-shell grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
+<section class="chat-shell grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
   <aside data-ui-panel="chat-sidebar" class="ui-panel flex flex-col justify-between p-5">
     <div class="space-y-5">
       <div>
@@ -22,12 +22,14 @@ SPDX-License-Identifier: Apache-2.0
 
     <div class="mt-6 space-y-3">
       <p class="text-sm font-medium text-muted">Persona</p>
-      <div role="radiogroup" class="grid grid-cols-2 gap-2 text-sm">
-        <template x-for="value in ['novice', 'enthusiast', 'expert', 'barista']" :key="value">
-          <button type="button" x-text="value" @click="persona = value" :aria-pressed="persona === value"
-            :class="persona === value ? 'border-accent bg-accent-soft text-accent-strong' : 'border-border bg-surface text-muted hover:text-strong'"
-            class="rounded-lg border px-3 py-2 text-left capitalize transition-colors"></button>
-        </template>
+      <div role="radiogroup" data-persona-picker class="grid grid-cols-2 gap-2 text-sm">
+        {% for value in ["novice", "enthusiast", "expert", "barista"] %}
+          {% set selected = value == "enthusiast" %}
+          <button type="button" data-persona-option="{{ value }}" aria-pressed="{{ 'true' if selected else 'false' }}"
+            class="rounded-lg border px-3 py-2 text-left capitalize transition-colors {% if selected %}border-accent bg-accent-soft text-accent-strong{% else %}border-border bg-surface text-muted hover:text-strong{% endif %}">
+            {{ value }}
+          </button>
+        {% endfor %}
       </div>
     </div>
 
@@ -51,15 +53,18 @@ SPDX-License-Identifier: Apache-2.0
           {% endwith %}
         {% endfor %}
       {% else %}
-        <article class="message message-ai rounded-lg border border-border px-4 py-3 shadow-sm">
-          <header class="flex items-center justify-between text-xs">
-            <span class="font-medium text-muted">Barista</span>
-            <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
-          </header>
-          <p class="mt-2 whitespace-pre-wrap text-base text-strong">
-            Welcome back. Tell me what sounds good and I'll check the Cymbal Coffee menu.
-          </p>
-        </article>
+        <div class="message-row message-row-ai">
+          <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
+          <article class="message message-ai px-4 py-3 shadow-sm">
+            <header class="flex items-center justify-between text-xs">
+              <span class="font-medium text-muted">Barista</span>
+              <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+            </header>
+            <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+              Tell me what sounds good and I'll check the Cymbal Coffee menu.
+            </p>
+          </article>
+        </div>
       {% endif %}
     </div>
 
@@ -68,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
     <form data-chat-form="true" action="/api/chat/stream" method="post"
       class="border-t border-border bg-surface-strong/45 p-3">
       <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
-        <input type="hidden" name="persona" :value="persona">
+        <input type="hidden" name="persona" value="enthusiast" data-persona-input>
         <input type="text" name="message" autocomplete="off" required placeholder="What should I drink today?"
           class="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
         <button type="submit"

@@ -49,3 +49,10 @@ def test_chat_frontend_exposes_clear_chat_button_handler() -> None:
     assert 'fetch("/api/chat/session/clear"' in source
     assert "resetChatMessages()" in source
     assert "welcomeMessageHtml" in source
+    assert "chat-avatar" in source
+    assert 'data-chat-avatar="ai"' in source
+    assert 'data-chat-avatar="human"' in source
+    assert "initPersonaPicker" in source
+    assert "Alpine" not in source
+    assert "Tell me what sounds good and I'll check the Cymbal Coffee menu." in source
+    assert "Welcome back. Tell me what sounds good" not in source

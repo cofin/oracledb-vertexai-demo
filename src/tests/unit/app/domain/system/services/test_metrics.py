@@ -16,9 +16,13 @@ class RecordingDriver:
 
     def __init__(self) -> None:
         self.executed: list[Any] = []
+        self.committed = False
 
     async def execute(self, statement: Any) -> None:
         self.executed.append(statement)
+
+    async def commit(self) -> None:
+        self.committed = True
 
 
 @pytest.mark.anyio
@@ -39,6 +43,7 @@ async def test_record_search_uses_database_column_names() -> None:
     )
 
     assert driver.executed, "record_search must execute one insert"
+    assert driver.committed is True
     statement = str(driver.executed[0])
     assert "result_count" in statement
     assert "resultCount" not in statement

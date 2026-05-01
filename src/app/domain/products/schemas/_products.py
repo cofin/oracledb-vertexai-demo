@@ -6,6 +6,8 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003 — used in handler-visible schema; Litestar OpenAPI needs runtime ref
 from typing import Any
 
+from msgspec import field
+
 from app.lib.schema import CamelizedBaseStruct
 
 
@@ -82,8 +84,23 @@ class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
     debug_timings: dict[str, float]
 
 
+class ExplainPlanRow(CamelizedBaseStruct, omit_defaults=True):
+    """A structured operation row parsed from Oracle ``DBMS_XPLAN`` text."""
+
+    id: str
+    operation: str
+    name: str = ""
+    rows: str = ""
+    bytes: str = ""
+    cost: str = ""
+    time: str = ""
+    raw_line: str = ""
+    is_vector: bool = False
+
+
 class ExplainPlan(CamelizedBaseStruct, omit_defaults=True):
     """Oracle EXPLAIN PLAN output for the vector-search SQL (Panel 2)."""
 
     plan_lines: list[str]
     plan_summary: str
+    plan_rows: list[ExplainPlanRow] = field(default_factory=list)
