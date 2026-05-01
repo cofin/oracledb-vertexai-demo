@@ -1,0 +1,10 @@
+{
+  "flow_id": "browser-location-maps-ui_20260501",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "store-location-inventory-chat_20260501",
+  "beads_epic_id": null,
+  "created_at": "2026-05-01T00:00:00Z",
+  "updated_at": "2026-05-01T00:00:00Z",
+  "description": "Add explicit browser-location opt-in and store/inventory map result rendering to the existing HTMX/Jinja chat UI, with no-key Maps URLs required and optional embed fallback."
+}

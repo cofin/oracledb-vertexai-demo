@@ -5,26 +5,27 @@ SPDX-License-Identifier: Apache-2.0
 
 {% extends "base.html.j2" %}
 
-{% block title %}Cymbal Coffee — Explore{% endblock %}
-{% block page_kicker %}Oracle 26ai Lab{% endblock %}
-{% block page_heading %}Performance dashboard{% endblock %}
-{% block page_subheading %}Vector search, EXPLAIN PLAN, and live service telemetry{% endblock %}
+{% block title %}Cymbal Coffee — Vector Lab{% endblock %}
+{% block page_kicker %}Oracle 26ai{% endblock %}
+{% block page_heading %}Vector lab{% endblock %}
+{% block page_subheading %}Vector search, SQL plans, and telemetry{% endblock %}
 
 {% block content %}
 {% set vector_trigger = "load, keyup changed delay:300ms" if query else "keyup changed delay:300ms" %}
 {% set plan_trigger = "load, keyup changed delay:500ms" if query else "keyup changed delay:500ms" %}
 <section class="space-y-6">
-  <header class="flex items-center justify-between gap-4">
+  <header class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
-    <p class="text-xs text-muted">Live Oracle 26ai + Vertex AI instrumentation</p>
+    <p class="max-w-full text-xs text-muted sm:text-right">Live Oracle 26ai + Vertex AI instrumentation</p>
   </header>
 
-  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  <div class="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
     {# Panel 1: live vector search — server partial via HTMX #}
-    <section id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar" class="ui-panel p-4">
+    <section id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar"
+      class="ui-panel min-w-0 p-4">
       <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
       <input type="search" name="query" value="{{ query }}" placeholder="dark ethiopian pour-over" autocomplete="off"
-        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        class="min-w-0 w-full max-w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
         hx-post="/api/vector-demo" hx-trigger="{{ vector_trigger }}" hx-target="#search-results" hx-include="this"
         hx-swap="outerHTML">
       <div id="search-results" class="mt-3 min-h-28 space-y-2">
@@ -35,10 +36,10 @@ SPDX-License-Identifier: Apache-2.0
     </section>
 
     {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
-    <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel p-4">
+    <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel min-w-0 p-4">
       <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
       <input type="search" name="query" value="{{ query }}" placeholder="dark ethiopian pour-over" autocomplete="off"
-        class="w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
+        class="min-w-0 w-full max-w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong"
         hx-get="/api/explain-plan" hx-trigger="{{ plan_trigger }}" hx-target="#plan" hx-swap="json">
       <div id="plan" class="mt-3">
         <template ls-if="planSummary">
@@ -59,7 +60,7 @@ SPDX-License-Identifier: Apache-2.0
     </section>
 
     {# Panel 3: metrics summary cards — Alpine-managed JSON fetch #}
-    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel p-4 lg:col-span-2">
+    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel min-w-0 p-4 lg:col-span-2">
       <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
       <div id="metrics-summary" x-data="metricsSummary()" x-init="init()" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <template x-for="card in cards" :key="card.label">
@@ -73,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
     </section>
 
     {# Panel 4: dashboard charts — Alpine + ApexCharts #}
-    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel p-4 lg:col-span-2">
+    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel min-w-0 p-4 lg:col-span-2">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 class="mb-1 text-sm font-semibold text-strong">4 · Performance analytics</h2>

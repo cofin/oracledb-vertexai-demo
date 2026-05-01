@@ -20,3 +20,14 @@ def test_shared_cymbal_ui_primitives_are_defined() -> None:
         ".popover-surface",
     ):
         assert selector in source
+
+
+def test_app_title_text_can_wrap_on_small_screens() -> None:
+    source = (RESOURCES_ROOT / "styles.css").read_text()
+
+    assert ".app-title__subheading" in source
+    assert "overflow-wrap: break-word" in source
+    assert "min-width: 0" in source
+    assert "@media (max-width: 47.999rem)" in source
+    assert 'input[type="search"]' in source
+    assert "width: calc(100vw - 4rem)" in source

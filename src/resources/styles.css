@@ -42,10 +42,16 @@
 
   .app-header__inner {
     display: grid;
+    width: 100%;
+    min-width: 0;
     max-width: 86rem;
     margin: 0 auto;
     gap: 1rem;
     padding: 1rem;
+  }
+
+  .app-header__inner > * {
+    min-width: 0;
   }
 
   .app-brand {
@@ -79,13 +85,17 @@
 
   .app-brand__meta,
   .app-title__subheading {
+    display: block;
+    max-width: min(100%, calc(100vw - 2rem));
     color: var(--color-muted);
     font-size: 0.88rem;
     line-height: 1.4;
+    overflow-wrap: break-word;
   }
 
   .app-title {
     align-self: center;
+    min-width: 0;
   }
 
   .app-title__kicker {
@@ -247,6 +257,23 @@
 
     .app-nav {
       justify-content: flex-end;
+    }
+  }
+
+  @media (max-width: 47.999rem) {
+    .app-main {
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+
+    .ui-panel {
+      width: calc(100vw - 2rem);
+      max-width: calc(100vw - 2rem);
+    }
+
+    input[type="search"] {
+      width: calc(100vw - 4rem);
+      max-width: 100%;
     }
   }
 }

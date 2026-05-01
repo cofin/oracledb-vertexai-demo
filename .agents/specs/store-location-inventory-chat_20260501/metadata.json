@@ -1,0 +1,10 @@
+{
+  "flow_id": "store-location-inventory-chat_20260501",
+  "type": "prd",
+  "status": "planned",
+  "parent_prd": null,
+  "beads_epic_id": null,
+  "created_at": "2026-05-01T00:00:00Z",
+  "updated_at": "2026-05-01T00:00:00Z",
+  "description": "Plan store-aware chat enhancements for store locations, hours, directions, browser location opt-in, optional Google Maps integration, Dallas fixture coverage, and store-level product inventory. Schema changes modify only 0001 because the database will be dropped and recreated."
+}

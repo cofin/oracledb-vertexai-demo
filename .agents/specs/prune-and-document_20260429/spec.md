@@ -258,7 +258,7 @@ Make `oracledb-vertexai-demo` learnable cold by a new contributor in 30 minutes.
 ## Out of Scope (defer to other flows)
 
 - Multi-tenant auth, SAQ/background workers, streaming chat (PRD out-of-scope).
-- New product/store features (PRD: trim, don't add).
+- New product/store features are not part of this cleanup chapter. Follow-on PRD `store-location-inventory-chat_20260501` owns store locations, Dallas fixture coverage, inventory, browser geolocation, and Maps integration. Do not prune fixture lifecycle or store-domain documentation that PRD depends on.
 - DDL refactoring beyond Ch 1's HNSW + 3072 + INMEMORY changes.
 - Renaming `worker_container_var` for naming consistency (separate cleanup flow).
 - Docs site / GitHub Pages publishing.

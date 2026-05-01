@@ -66,6 +66,12 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: store-location-inventory-chat_20260501
+*Link: [./specs/store-location-inventory-chat_20260501/](./specs/store-location-inventory-chat_20260501/)*
+*Beads: not created - review gate before implementation*
+
+---
+
 ## Archived
 
 Archived specs are preserved under [./archive/specs/](./archive/specs/).

@@ -13,6 +13,8 @@ The published `litestar:litestar-ai-serving` and `litestar:sqlspec` skill docs *
 
 A new contributor should grok the entire app cold in 30 minutes.
 
+Follow-on scope: `store-location-inventory-chat_20260501` extends the reset result with store locations, Dallas-area fixture coverage, inventory, browser-location opt-in, and optional Maps Embed. It depends on the reset architecture; it does not replace the reset PRD.
+
 ---
 
 ## Why now
@@ -90,7 +92,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **Make it readable cold.** A new contributor should grok the entire app in 30 minutes.
 
 - Archive 23 timestamped knowledge files; keep `patterns.md` + exactly 3 guides: `architecture.md`, `oracle-vector-search.md`, `adk-patterns.md`.
-- CLI trim: keep `python manage.py init`, `python manage.py database upgrade`, `coffee load-fixtures`, `coffee run`, `coffee model-info`, `coffee clear-cache`, and Ch 3's `coffee classify-compare`. Delete `coffee bulk-embed` (folded into fixtures) and `coffee export-fixtures` from the canonical app CLI.
+- CLI trim: keep `python manage.py init`, `python manage.py database upgrade`, `coffee load-fixtures`, `coffee run`, `coffee model-info`, `coffee clear-cache`, and the fixture lifecycle commands needed for deterministic demo data. `store-location-inventory-chat_20260501` depends on fixture export/load workflows for store and inventory data.
 - Remove dead frontend test stubs.
 - Rewrite root README as 5-minute quickstart.
 - `patterns.md` final pass: drop obsolete gotchas; document HNSW+INMEMORY recipe, parallel-classification trick, ADK 2.0 runner shape, named-SQL pattern, EXPLAIN-on-explore-page idiom.
@@ -138,6 +140,7 @@ These apply to **every** chapter. Reviewers should reject PRs that violate them.
 
 - Multi-tenant auth / users (single anonymous session is fine for the demo).
 - SAQ / background workers (no async batch inference yet).
+- Store location, inventory, browser geolocation, and Maps integration are handled by follow-on PRD `store-location-inventory-chat_20260501`.
 - Streaming chat responses (the canonical doc explicitly says streaming "not yet canonical").
 - pgvector / non-Oracle vector backends (Oracle 23ai is the point).
 - Inertia.js path (HTMX is the chosen frontend story).

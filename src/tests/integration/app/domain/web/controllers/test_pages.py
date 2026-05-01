@@ -69,6 +69,8 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
     assert 'data-app-shell="true"' in body
     assert 'data-app-header="true"' in body
     assert "Powered by Oracle 26ai + Google Vertex AI" in body
+    assert "Vector lab" in body
+    assert "Performance dashboard" not in body
     for panel_id in (
         "panel-vector-search",
         "panel-explain-plan",
