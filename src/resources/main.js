@@ -217,6 +217,9 @@ document.body.addEventListener("submit", async (event) => {
     return
   }
 
+  const formData = new FormData(form)
+  formData.set("message", message)
+
   clearChatError()
   appendUserAndPendingMessages(message)
   setFormBusy(form, true)
@@ -224,7 +227,7 @@ document.body.addEventListener("submit", async (event) => {
   try {
     const response = await fetch(form.action, {
       method: "POST",
-      body: new FormData(form),
+      body: formData,
       headers: { Accept: "text/event-stream" },
     })
     if (!response.ok) {
