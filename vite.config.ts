@@ -29,6 +29,7 @@ export default defineConfig({
   ],
   server: {
     cors: true,
+    origin: process.env.APP_URL ?? "http://localhost:5006",
   },
   build: {
     [bundlerKey]: {

@@ -11,7 +11,6 @@ import rich_click as click
 from rich.console import Console
 
 from app.__metadata__ import __version__
-from app.cli._helpers.environment import setup_environment
 
 console = Console()
 
@@ -26,6 +25,18 @@ click.rich_click.STYLE_COMMANDS_PANEL_BOX = "BLANK"
 click.rich_click.STYLE_OPTIONS_PANEL_BOX = "BLANK"
 click.rich_click.STYLE_COMMANDS_PANEL_BORDER = "none"
 click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
+
+
+def _setup_environment() -> None:
+    """Configure environment variables shared by every ``coffee`` invocation."""
+    from app import config
+    from app.lib.log import set_cli_mode
+    from app.lib.settings import get_settings
+
+    config.setup_logging()
+    set_cli_mode(True)
+    settings = get_settings()
+    settings.setup_litestar_env()
 
 
 @click.group(
@@ -55,12 +66,12 @@ def cli(ctx: click.Context) -> None:
 def main() -> None:
     """Entry point exposed via ``[project.scripts] coffee = app.__main__:run_cli``.
 
-    Imports the commands sub-package (which side-effects ``@cli.command(...)``
+    Imports the commands module (which side-effects ``@cli.command(...)``
     registration), then dispatches to the click group. Errors that escape are
     logged and re-raised as a non-zero exit so subprocess callers see the
     failure cleanly.
     """
-    setup_environment()
+    _setup_environment()
 
     # Side-effect: importing app.cli.commands registers every command on `cli`.
     from app.cli import commands as _commands  # noqa: F401

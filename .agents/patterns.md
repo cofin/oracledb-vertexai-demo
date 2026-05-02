@@ -68,8 +68,9 @@
   `DBMS_XPLAN.DISPLAY()` read.
 - `coffee` is the app CLI. Keep `bulk-embed`, `export-fixtures`,
   `load-fixtures`, `clear-cache`, `model-info`, and `run` visible there.
-- Keep public CLI modules mostly declarative. Command bodies should call helpers
-  from private `app.cli._helpers` modules.
+- Keep public CLI modules mostly declarative. Large workflows belong in focused
+  private `app.cli._helpers` modules; small command-local helpers can live in
+  `commands.py`. Do not add compatibility shim or facade modules.
 
 ## Code Style
 
@@ -82,8 +83,7 @@
 - Keep demo-facing public Python modules public-first: exported controllers,
   services, settings, commands, and lifecycle entry points should appear before
   private mechanics. Move substantial helper runs into focused private sibling
-  modules or below the public API; command modules stay declarative and call
-  private helpers.
+  modules or below the public API; avoid compatibility shim or facade modules.
 - `src/app/ioc.py` must not use `from __future__ import annotations`; Dishka
   introspects provider annotations at runtime.
 - Prefer handler-argument `Inject[T]` over route-level `@inject` decorators.

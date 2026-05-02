@@ -3,24 +3,15 @@
 
 """Metadata for the Project."""
 
-import importlib.metadata
-import tomllib
-from pathlib import Path
+from importlib.metadata import PackageNotFoundError, metadata, version
 
 __all__ = ("__project__", "__version__")
 
-
-def _load_metadata() -> tuple[str, str]:
-    try:
-        project = importlib.metadata.metadata("app")
-    except importlib.metadata.PackageNotFoundError:
-        pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
-        with pyproject_path.open("rb") as pyproject_file:
-            project = tomllib.load(pyproject_file)["project"]
-        return project["name"], project["version"]
-    return project["Name"], importlib.metadata.version("app")
-
-
-__project__, __version__ = _load_metadata()
-"""Version of the project."""
-"""Name of the project."""
+try:
+    __version__ = version("app")
+    __project__ = metadata("app")["Name"]
+except PackageNotFoundError:  # pragma: no cover
+    __version__ = "0.0.1"
+    __project__ = "Cymbal Coffee"
+finally:
+    del version, PackageNotFoundError, metadata

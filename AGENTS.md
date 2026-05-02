@@ -66,16 +66,17 @@ install command; it applies migrations and loads committed fixtures. Keep raw
 SQLSpec developer commands such as downgrade/current on `python manage.py
 database ...`, not on `coffee`. Keep `bulk-embed` and `export-fixtures` on
 `coffee`; they are maintainer lifecycle commands for committed demo data. Keep
-command modules readable by putting implementation helpers under
-`app.cli._helpers`. Use `@async_inject` for async Click commands.
+large command workflows under `app.cli._helpers`; keep small command-local
+helpers in `commands.py`. Do not add compatibility shim or facade modules. Use
+`@async_inject` for async Click commands.
 
 ## Project Structure
 
 ```text
 src/app/
 ├── cli/
-│   ├── _helpers/          # private CLI implementation helpers
-│   ├── commands/          # click command declarations
+│   ├── _helpers/          # substantial private CLI workflow helpers
+│   ├── commands.py        # click command declarations
 │   ├── main.py            # coffee click group
 │   └── utils.py           # async_inject
 ├── db/
