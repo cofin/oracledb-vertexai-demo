@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Cymbal Coffee{% endblock %}</title>
-  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="{{ vite_static('favicon.ico') }}" sizes="any">
   {{ vite_hmr() | safe }}
   {{ vite(['src/resources/styles.css', 'src/resources/main.js']) | safe }}
 </head>
@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="app-header__inner">
       <a href="/" class="app-brand" aria-label="Cymbal Coffee home">
         <span class="app-brand__lockup">
-          <img src="/static/dist/cymbal-coffee-cup.svg" alt="" aria-hidden="true" class="app-brand__mark">
+          <img src="{{ vite_static('cymbal-coffee-cup.svg') }}" alt="" aria-hidden="true" class="app-brand__mark">
           <span class="app-brand__wordmark">Cymbal Coffee</span>
         </span>
         <span class="app-brand__meta">Powered by Oracle 26ai + Google Vertex AI</span>

@@ -464,7 +464,6 @@ class Settings:
         """Set Litestar and Granian defaults expected by the app server."""
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
-        os.environ.setdefault("APP_URL", self.app.URL)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
         os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
 
