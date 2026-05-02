@@ -12,12 +12,12 @@ from typing import Any
 
 import structlog
 
-from app.lib._log_filters import (
+from app.lib.log._filters import (
     SuppressADKWarningsFilter,
     SuppressAsyncioTaskExceptionFilter,
     SuppressGranianExcInfoFilter,
 )
-from app.lib._log_middleware import (
+from app.lib.log._middleware import (
     HTTP_RESPONSE_BODY,
     HTTP_RESPONSE_START,
     REQUEST_BODY_FIELD,
@@ -25,7 +25,7 @@ from app.lib._log_middleware import (
     StructlogMiddleware,
     after_exception_hook_handler,
 )
-from app.lib._log_processors import (
+from app.lib.log._processors import (
     EventFilter,
     add_google_cloud_attributes,
     add_logger_name_safe,
@@ -35,7 +35,7 @@ from app.lib._log_processors import (
     structlog_json_serializer,
     structlog_processors,
 )
-from app.lib._log_security import apply_security_headers, build_security_headers
+from app.lib.log._security import apply_security_headers, build_security_headers
 
 LOGGER = structlog.getLogger()
 

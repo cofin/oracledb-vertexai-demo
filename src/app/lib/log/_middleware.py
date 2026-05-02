@@ -20,7 +20,7 @@ from litestar.utils.empty import value_or_default
 from litestar.utils.scope.state import ScopeState
 from structlog.contextvars import bind_contextvars
 
-from app.lib._log_security import apply_security_headers
+from app.lib.log._security import apply_security_headers
 from app.lib.settings import get_settings
 
 if TYPE_CHECKING:
