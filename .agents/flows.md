@@ -106,3 +106,7 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
 
 - `demo-source-organization_20260501` (`oracledb-vertexai-8jt`) completed and
   archived locally on 2026-05-02.
+- `ruff-copyright-modernization` (`oracledb-vertexai-a0l`) completed and
+  archived locally on 2026-05-02. SPDX-FileCopyrightText migration shipped in
+  b0e9819 + aa221a8; canonical header form and tooling chain are documented in
+  `.agents/patterns.md` and `.agents/code-styleguides/python.md`.
