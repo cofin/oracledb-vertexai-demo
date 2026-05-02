@@ -4,7 +4,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
-## [ ] PRD: cymbal-coffee-reset_20260429
+## [x] PRD: cymbal-coffee-reset_20260429 — closed in Beads 2026-05-02; chapter specs retained for now
 *Link: [./specs/cymbal-coffee-reset_20260429/](./specs/cymbal-coffee-reset_20260429/)*
 *Beads: oracledb-vertexai-4d6*
 
@@ -28,9 +28,8 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
   *Beads: oracledb-vertexai-4d6.5*
 
-  ### [ ] Ch 6: documentation-setup_20260429
-  *Link: [./specs/documentation-setup/](./specs/documentation-setup/)*
-  *Beads: oracledb-vertexai-4d6.6*
+  ### [x] Ch 6: documentation-setup_20260429
+  *Beads: oracledb-vertexai-4d6.6 (closed); spec archived locally 2026-05-02*
 
   ### [x] Ch 7: vector-calculator_20260429
   *Link: [./specs/vector-calculator_20260429/](./specs/vector-calculator_20260429/)*
@@ -45,20 +44,6 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Beads: oracledb-vertexai-4d6.8*
 
   ---
-
-  ## [x] PRD: pyapp-packaging_20260429
-  *Link: [./specs/pyapp-packaging_20260429/](./specs/pyapp-packaging_20260429/)*
-  *Beads: oracledb-vertexai-7dh*
-
-  ### [x] Ch 1: pyapp-enablement_20260429
-  *Link: [./specs/pyapp-enablement_20260429/](./specs/pyapp-enablement_20260429/)*
-  *Beads: oracledb-vertexai-7dh.1*
-
-  ### [x] Ch 2: release-automation_20260429
-  *Link: [./specs/release-automation_20260429/](./specs/release-automation_20260429/)*
-  *Beads: oracledb-vertexai-7dh.2*
-
----
 
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
@@ -84,6 +69,12 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   archived locally on 2026-05-02. SPDX-FileCopyrightText migration shipped in
   b0e9819 + aa221a8; canonical header form and tooling chain are documented in
   `.agents/patterns.md` and `.agents/code-styleguides/python.md`.
+- `pyapp-packaging_20260429` (`oracledb-vertexai-7dh`) completed and archived
+  locally on 2026-05-02. Both chapters (`pyapp-enablement_20260429`,
+  `release-automation_20260429`) shipped the Bundle-Patch-Compile path,
+  cargo-zigbuild GLIBC 2.17 launchers, the distroless Dockerfile at
+  `tools/deploy/docker/Dockerfile`, and the dual-arch GitHub Releases matrix.
+  Durable guidance lives in `.agents/patterns.md`.
 - `store-location-inventory-chat_20260501` (`oracledb-vertexai-f6u`) completed
   and archived locally on 2026-05-02. All five chapters closed in Beads on
   2026-05-01 with verification on commit 8fb40b4 (12 focused maps/settings

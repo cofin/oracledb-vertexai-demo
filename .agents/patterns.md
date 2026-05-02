@@ -192,4 +192,20 @@
   `google.adk`, `google.cloud`, or `google.genai` to `autodoc_mock_imports`
   in `docs/conf.py` — they are hard deps and mocking breaks sqlspec's
   import-time `oracledb.__version__` lookup.
+- Docs information architecture is three tiers and locked: `index.md` hero +
+  `tour.md` walkthrough at the front, `concepts/{vector-search,rag,agent-flow}.md`
+  for deep dives, and `reference/{quickstart,cli,api,internals,developers}.md`
+  for the reference appendix. Concept page count is exactly 3 — not 2, not 4.
+  Use the `sphinx-immaterial` theme (not `shibuya`) with custom admonitions
+  `tour-stop`, `oracle-internals`, and `agent-detail` defined in `conf.py`.
+- Code embeds in docs use `literalinclude` with `# docs:start-<name>` /
+  `# docs:end-<name>` anchor pairs in the source file — never copy-paste a
+  snippet inline. Each embed has a one-or-two-sentence framing paragraph above
+  it that names the file/class and its role so readers know what larger thing
+  the snippet is part of.
+- Autodoc scope is intentionally narrow: `ADKRunner`, `CacheService`,
+  `MetricsService`, `ProductService`, and the three `domain/*/schemas`
+  packages. Do NOT add CLI commands, settings dataclasses, plugin wiring, or
+  IoC providers — their shapes are stable and reading the source is faster
+  than reading generated docs.
 <!-- truth: end -->

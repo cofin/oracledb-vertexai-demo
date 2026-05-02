@@ -15,6 +15,8 @@
 | Flow ID | Completed | Topics | Summary |
 |---------|-----------|--------|---------|
 | [htmx-vite-frontend_20260429](htmx-vite-frontend_20260429.md) | 2026-04-29 | htmx, vite, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan, vanilla-js, vector-calculator | Ch 4: source-tree flatten + CLI restructure + HTMX/Vite frontend rebuild — delete React, build /explore page with EXPLAIN PLAN viewer and vector calculator |
+| [pyapp-packaging_20260429](pyapp-packaging_20260429.md) | 2026-05-02 | pyapp, packaging, onefile, release, github-actions, docker, distroless, glibc, cargo-zigbuild, multi-arch | PyApp onefile (Bundle-Patch-Compile) + dual-arch GitHub Releases (linux x86_64 + aarch64) + distroless container wrapping the verified binary |
+| [documentation-setup_20260429](documentation-setup_20260429.md) | 2026-05-02 | docs, sphinx, sphinx-immaterial, mermaid, autodoc, github-pages, learning-portal | Ch 6: Sphinx learning portal — three-tier IA, locked autodoc scope, literalinclude anchor convention, GitHub Pages CI |
 
 ## Guides
 
@@ -50,3 +52,20 @@
 - **maps**: project-guide.md
 - **settings**: project-guide.md
 - **configuration**: project-guide.md
+- **pyapp**: pyapp-packaging_20260429
+- **packaging**: pyapp-packaging_20260429
+- **onefile**: pyapp-packaging_20260429
+- **release**: pyapp-packaging_20260429
+- **github-actions**: pyapp-packaging_20260429, documentation-setup_20260429
+- **docker**: pyapp-packaging_20260429
+- **distroless**: pyapp-packaging_20260429
+- **glibc**: pyapp-packaging_20260429
+- **cargo-zigbuild**: pyapp-packaging_20260429
+- **multi-arch**: pyapp-packaging_20260429
+- **docs**: documentation-setup_20260429
+- **sphinx**: documentation-setup_20260429
+- **sphinx-immaterial**: documentation-setup_20260429
+- **mermaid**: documentation-setup_20260429
+- **autodoc**: documentation-setup_20260429
+- **github-pages**: documentation-setup_20260429
+- **learning-portal**: documentation-setup_20260429
