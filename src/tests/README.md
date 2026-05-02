@@ -10,24 +10,27 @@ src/tests/
 ```
 
 Use `unit/` for tests that do not boot the Litestar app, enter app lifespan, or
-require live Oracle state. Mocked SQLSpec drivers, source-shape checks,
-controller `.fn` calls, schema checks, CLI import checks, and JavaScript source
-contract tests belong in `unit/`.
+require live Oracle state. Mocked SQLSpec drivers, controller `.fn` calls,
+settings parser checks, and pure service behavior belong in `unit/`.
 
 Use `integration/` for tests that exercise Litestar `AsyncTestClient`, app
-lifespan, real SQLSpec Oracle sessions, local infrastructure helpers, or other
-multi-module runtime wiring. HTTP contract tests live here even when expensive
-services such as ADK or Vertex AI are stubbed.
+lifespan, real SQLSpec Oracle sessions, or other multi-module runtime wiring.
+HTTP contract tests live here even when expensive services such as ADK or
+Vertex AI are stubbed.
 
 Examples:
 
 - `app.domain.chat.services.adk` -> `unit/app/domain/chat/services/test_adk.py`
 - `app.domain.products.controllers._vector` -> `unit/app/domain/products/controllers/test_vector.py`
 - `/api/chat` through `AsyncTestClient` -> `integration/app/domain/chat/controllers/test_chat_http.py`
-- `tools.oracle.database` -> `integration/tools/oracle/test_database.py`
 
 Shared test-only helpers belong under `src/tests/support/`. Keep helper modules
 private to the suite; do not add production helpers solely for tests.
+
+Do not add tests whose only subject is repository structure, documentation text,
+tool scripts, project configuration files, workflow YAML, or dependency import
+surfaces. Those belong to lint/build/smoke checks or direct tool validation,
+not the application behavior test suite.
 
 Before adding a new test file, look for the existing module-path test file and
 extend it. Prefer a new parameterized case, shared fixture, or additional

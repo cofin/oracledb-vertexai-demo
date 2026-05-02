@@ -110,9 +110,12 @@ explore page and `DBMS_XPLAN.DISPLAY()` to verify the vector access path.
 
 ## Testing And Verification
 
-Unit tests should pin public contracts and current patterns: domain layout,
-command surface, no inline SQL in services, DI provider shape, chat payload
-shape, vector telemetry, and HTMX partial behavior. Async tests use AnyIO.
+Unit tests should prove application behavior and runtime contracts: service
+logic, controller responses, settings parsing, DI resolution, SQL/data
+contracts, chat payload shape, vector telemetry, and HTMX partial behavior.
+Async tests use AnyIO. Do not grow `src/tests` with checks that only pin repo
+layout, source ordering, docs text, project config files, tool scripts, or
+third-party import surfaces.
 
 Oracle integration tests assume the repo-managed database lifecycle:
 

@@ -118,8 +118,13 @@
   existing functional sections over one-file-per-issue coverage.
 - Nested test directories are real packages with SPDX-bearing `__init__.py`
   files so repo ruff checks do not treat moved tests as implicit namespaces.
-- Unit tests should pin public contracts and local patterns: CLI command
-  presence, no inline SQL in domain services, provider shape, and domain layout.
+- Tests should prove application behavior: service logic, controller responses,
+  typed SQL/data contracts, settings parsing, DI resolution, chat payloads,
+  vector telemetry, and HTMX partial behavior.
+- Do not add tests whose only subject is repo structure, source ordering,
+  docs text, `pyproject.toml`, workflow YAML, tool scripts, or third-party
+  import surfaces. Use lint, build, smoke checks, or focused tool validation
+  for those concerns instead of growing `src/tests`.
 - `coffee upgrade` is the packaged/end-user install command and loads committed
   fixtures after migrations. Raw SQLSpec developer commands such as downgrade
   and current stay under `python manage.py database ...`; do not expose
