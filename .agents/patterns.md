@@ -73,8 +73,11 @@
 
 ## Code Style
 
-- Use SPDX headers on source files: `Copyright 2026 Google LLC` plus
-  `SPDX-License-Identifier: Apache-2.0`.
+- Use SPDX headers on source files: `SPDX-FileCopyrightText: 2026 Google LLC`
+  plus `SPDX-License-Identifier: Apache-2.0`. Ruff's `CPY001` rule enforces
+  presence; the `license-headers` prek hook (running `tools/license_headers.py`)
+  inserts them on commit. See `.agents/code-styleguides/python.md` for the
+  per-language comment forms.
 - Use PEP 604 unions (`str | None`) and typed public boundaries.
 - Keep demo-facing public Python modules public-first: exported controllers,
   services, settings, commands, and lifecycle entry points should appear before

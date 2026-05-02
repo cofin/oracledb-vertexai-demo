@@ -108,3 +108,18 @@ def test_tools_python_uses_spdx_filecopyrighttext() -> None:
 def test_sql_files_use_spdx_filecopyrighttext() -> None:
     failures = _spdx_failures("src", (".sql",)) + _spdx_failures("tools", (".sql",))
     assert not failures, "SQL files must use SPDX-FileCopyrightText header:\n" + "\n".join(failures)
+
+
+def test_patterns_doc_uses_spdx_filecopyrighttext_example() -> None:
+    text = (PROJECT_ROOT / ".agents" / "patterns.md").read_text()
+    assert "SPDX-FileCopyrightText" in text, (
+        ".agents/patterns.md must show the canonical SPDX-FileCopyrightText form, "
+        "not the legacy 'Copyright YYYY Google LLC' line."
+    )
+
+
+def test_python_styleguide_documents_license_tooling() -> None:
+    text = (PROJECT_ROOT / ".agents" / "code-styleguides" / "python.md").read_text()
+    assert "SPDX-FileCopyrightText" in text
+    assert "CPY001" in text, "styleguide must reference the Ruff rule that enforces headers"
+    assert "license_headers" in text, "styleguide must reference the prek auto-fix hook"

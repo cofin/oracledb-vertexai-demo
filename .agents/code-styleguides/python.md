@@ -6,15 +6,46 @@ Modern Python development standards with async-first patterns.
 
 ### License and Copyright Headers
 
-All Python files MUST start with concise SPDX headers. Traditional license blocks are deprecated.
+Every source-owned file MUST start with a concise two-line SPDX header.
+Traditional `Copyright YYYY Google LLC` blocks are deprecated; use
+`SPDX-FileCopyrightText:` instead.
 
 ```python
-# SPDX-FileCopyrightText: 2024 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""Module docstring."""
 ...
 ```
+
+Comment form by file type (matches `tools/license_headers.py`):
+
+| Extension / file                       | Comment form                                  |
+| :------------------------------------- | :-------------------------------------------- |
+| `.py`, `.pyi`, `.sh`, `.toml`, `.yaml` | `# SPDX-FileCopyrightText: 2026 Google LLC`   |
+| `Makefile`, `Dockerfile*`, `manage.py` | `# SPDX-FileCopyrightText: 2026 Google LLC`   |
+| `.js`, `.ts`, `.tsx`, `.mjs`, `.cjs`   | `// SPDX-FileCopyrightText: 2026 Google LLC`  |
+| `.sql`                                 | `-- SPDX-FileCopyrightText: 2026 Google LLC`  |
+| `.css`                                 | `/* SPDX-FileCopyrightText: 2026 Google LLC */` (block) |
+| `.html.j2`                             | `{# SPDX-FileCopyrightText: 2026 Google LLC #}` (block) |
+
+Header insertion rules:
+
+- Place the header at the very top, before module docstrings or imports.
+- Preserve a leading shebang (`#!/usr/bin/env ...`) or Dockerfile parser
+  directive (`# syntax=...`) on line 1; insert the header immediately after.
+- Skip generated assets (`src/resources/generated/`, `src/resources/public/`)
+  and vendored content under `node_modules/`, `dist/`, `.venv/`.
+
+Tooling enforcement:
+
+- **Ruff `CPY001`** runs in `make lint` and rejects any Python file whose first
+  five lines do not match the configured `notice-rgx` (accepts both legacy
+  `Copyright YYYY` and SPDX forms; new files MUST use SPDX).
+- **prek `license-headers` hook** runs `tools/license_headers.py --fix` before
+  Ruff on every commit, inserting headers in supported file types so CPY001
+  never has to fail because of a missing header.
+- Manual fix: `uv run python tools/license_headers.py --fix [paths...]`.
 
 ### Type Annotations
 
