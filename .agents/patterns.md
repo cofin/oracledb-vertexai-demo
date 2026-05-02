@@ -208,4 +208,29 @@
   packages. Do NOT add CLI commands, settings dataclasses, plugin wiring, or
   IoC providers — their shapes are stable and reading the source is faster
   than reading generated docs.
+- `AsyncTestClient` MUST be entered with `async with`; a bare instance never
+  runs the app lifespan, so Dishka containers (and the Oracle pools they
+  hold) leak across tests in the same process. Fixtures look like
+  `async def client(app): async with AsyncTestClient(app) as c: yield c`.
+- HTMX endpoints that also need to accept JSON (e.g. `/api/vector-demo`)
+  parse the request body directly (`await request.json()` or
+  `await request.form()`) — do NOT declare them as a typed `data:` body
+  parameter. Litestar's body-DTO path rejects HTMX form posts when the
+  route declares JSON body data.
+- `hx-ext="litestar"` belongs only on JSON-templating panels. Scope it out
+  with `ignore:litestar` on partial-HTML-swap surfaces, otherwise the
+  extension intercepts HTML responses and breaks the swap.
+- The chat form must capture `FormData` before applying any busy/disabled
+  state to inputs — disabling a control removes it from `new FormData(form)`,
+  which causes the backend to receive an empty message and stream
+  `Message cannot be empty`. Regression-check this ordering.
+- Cached chat responses store only the product-lookup `sql_phases`. At read
+  time the cache hit is wrapped in a fresh `get-cached-response` phase so
+  the UI shows both the cache hit and the original product-lookup context
+  without retaining the original cache-miss phase.
+- Streaming `/api/chat/stream` exception handling lives inside the async
+  generator: catch broadly, log with `logger.aexception()`, and yield a
+  sanitized SSE `error` event. Do not rely on Litestar exception middleware
+  for failures that occur after SSE headers have been sent — it cannot
+  intercept post-start stream errors.
 <!-- truth: end -->

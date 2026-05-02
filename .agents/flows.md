@@ -4,47 +4,6 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
-## [x] PRD: cymbal-coffee-reset_20260429 — closed in Beads 2026-05-02; chapter specs retained for now
-*Link: [./specs/cymbal-coffee-reset_20260429/](./specs/cymbal-coffee-reset_20260429/)*
-*Beads: oracledb-vertexai-4d6*
-
-  ### [x] Ch 1: foundation-bump_20260429
-  *Link: [./specs/foundation-bump_20260429/](./specs/foundation-bump_20260429/)*
-  *Beads: oracledb-vertexai-4d6.1*
-
-  ### [x] Ch 2: domain-service-restructure_20260429
-  *Link: [./specs/domain-service-restructure_20260429/](./specs/domain-service-restructure_20260429/)*
-  *Beads: oracledb-vertexai-4d6.2*
-
-  ### [x] Ch 3: adk2-runner_20260429
-  *Link: [./specs/adk2-runner_20260429/](./specs/adk2-runner_20260429/)*
-  *Beads: oracledb-vertexai-4d6.3*
-
-  ### [x] Ch 4: htmx-vite-frontend_20260429
-  *Link: [./specs/htmx-vite-frontend_20260429/](./specs/htmx-vite-frontend_20260429/)*
-  *Beads: oracledb-vertexai-4d6.4*
-
-  ### [x] Ch 5: prune-and-document_20260429
-  *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
-  *Beads: oracledb-vertexai-4d6.5*
-
-  ### [x] Ch 6: documentation-setup_20260429
-  *Beads: oracledb-vertexai-4d6.6 (closed); spec archived locally 2026-05-02*
-
-  ### [x] Ch 7: vector-calculator_20260429
-  *Link: [./specs/vector-calculator_20260429/](./specs/vector-calculator_20260429/)*
-  *Beads: oracledb-vertexai-4d6.7*
-
-  ### [x] Corrective PRD: test-suite-reorganization_20260501
-  *Link: [./specs/test-suite-reorganization_20260501/](./specs/test-suite-reorganization_20260501/)*
-  *Beads: oracledb-vertexai-4d6.9*
-
-  ### [x] Corrective PRD: ui-regression-recovery_20260501
-  *Link: [./specs/ui-regression-recovery_20260501/](./specs/ui-regression-recovery_20260501/)*
-  *Beads: oracledb-vertexai-4d6.8*
-
-  ---
-
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
@@ -82,3 +41,13 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   browser-location/maps UI, and Maps security/docs are all documented in
   `.agents/knowledge/guides/architecture.md`, `.agents/knowledge/project-guide.md`,
   and `.agents/knowledge/guides/adk-agent-patterns.md`.
+- `cymbal-coffee-reset_20260429` (`oracledb-vertexai-4d6`) — master PRD
+  closed in Beads 2026-05-02; all nine chapters complete. Knowledge entry:
+  `.agents/knowledge/cymbal-coffee-reset_20260429.md`. Per-chapter knowledge
+  entries that have their own files: htmx-vite-frontend_20260429 (Ch 4),
+  vector-calculator_20260429 (Ch 7), documentation-setup_20260429 (Ch 6),
+  ui-regression-recovery_20260501 (corrective), test-suite-reorganization_20260501
+  (corrective). Other chapters (foundation-bump, domain-service-restructure,
+  adk2-runner, prune-and-document) are summarized in the master entry; their
+  durable patterns are in `.agents/patterns.md` and
+  `.agents/knowledge/guides/`.
