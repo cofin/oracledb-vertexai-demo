@@ -34,7 +34,7 @@ Beyond version churn: the `intent_exemplar` vector lookup was added as a *speedu
 - Codebase matches the published skill docs **exactly** — file paths, function signatures, named SQL keys, provider shape.
 - Native Oracle 23ai vector indexing: HNSW + INMEMORY at full `gemini-embedding-001` quality (3072 dims).
 - ADK 2.0 graph runner replaces the manual-DI tool wrapping; intent classification runs in parallel with retrieval; perceived intent latency drops to ~0ms.
-- React + TanStack frontend deleted; replaced with HTMX + Alpine.js + ApexCharts via `litestar-vite` template mode. **Visual polish bar matches the React version, on a fraction of the code.**
+- React + TanStack frontend deleted; replaced with HTMX + vanilla Vite-bundled JavaScript + ApexCharts via `litestar-vite` template mode. **Visual polish bar matches the React version, on a fraction of the code.**
 - Knowledge base and docs collapse from 23 timestamped artifacts + 16 guides to `patterns.md` + 3 evergreen guides + a 5-minute-quickstart README.
 
 ---
@@ -76,7 +76,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **Green-field UI.** Delete React. Build a tasteful HTMX UI that's still visually rich.
 
 - Delete `src/js/` entirely (React, TanStack, generated OpenAPI client, all `.test.tsx` stubs).
-- New frontend inputs live at repo-root `vite.config.ts` / `package.json` plus `src/resources/{main.js,styles.css,public/}`. Vite runs in `mode="template"` via `litestar-vite`; bundle output lands in `src/app/domain/web/static/dist/`: Tailwind v4 + **Alpine.js** (lightweight reactivity) + **ApexCharts** (visualization).
+- New frontend inputs live at repo-root `vite.config.ts` / `package.json` plus `src/resources/{main.js,styles.css,public/}`. Vite runs in `mode="template"` via `litestar-vite`; bundle output lands in `src/app/domain/web/static/dist/`: Tailwind v4 + vanilla JavaScript modules + **ApexCharts** (visualization).
 - Wire `HTMXPlugin()` + `hx-ext="litestar"` for client-side JSON rendering on chart data.
 - Two pages, one layout:
   - `chat.html.j2` — reactive HTMX chat (incremental partial swaps, persona switcher, session-id header pattern).
@@ -92,7 +92,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **Make it readable cold.** A new contributor should grok the entire app in 30 minutes.
 
 - Archive 23 timestamped knowledge files; keep `patterns.md` + exactly 3 guides: `architecture.md`, `oracle-vector-search.md`, `adk-patterns.md`.
-- CLI trim: keep `python manage.py init`, `python manage.py database upgrade`, `coffee load-fixtures`, `coffee run`, `coffee model-info`, `coffee clear-cache`, and the fixture lifecycle commands needed for deterministic demo data. `store-location-inventory-chat_20260501` depends on fixture export/load workflows for store and inventory data.
+- CLI trim: keep `python manage.py init`, developer SQLSpec commands under `python manage.py database ...`, `coffee upgrade` as the packaged/end-user install path, and the app/fixture lifecycle commands on `coffee` (`run`, `load-fixtures`, `bulk-embed`, `export-fixtures`, `model-info`, `clear-cache`). `store-location-inventory-chat_20260501` depends on fixture export/load workflows for store and inventory data.
 - Remove dead frontend test stubs.
 - Rewrite root README as 5-minute quickstart.
 - `patterns.md` final pass: drop obsolete gotchas; document HNSW+INMEMORY recipe, parallel-classification trick, ADK 2.0 runner shape, named-SQL pattern, EXPLAIN-on-explore-page idiom.
@@ -108,7 +108,7 @@ Execution order: **1 → 2 → (3 ‖ 4 in parallel after 2 lands) → 5**
 **The utility.** Add a creative client-side widget to the Explore page for storage estimation.
 
 - 7th Panel on the Explore page: **Vector Storage Size Requirement Calculator**.
-- Pure client-side (Alpine.js) widget inside `explore.html.j2`.
+- Pure client-side vanilla Vite-bundled widget inside `explore.html.j2`.
 - Oracle 23ai specific semantics:
   - Vector formats: FLOAT32 (4B), FLOAT64 (8B), INT8 (1B), BINARY (dims/8).
   - Index overhead: HNSW adjacency lists (M * dims * 4 bytes per vector).

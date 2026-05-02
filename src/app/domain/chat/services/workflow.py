@@ -79,6 +79,7 @@ def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Wor
         return {"answer": answer, "intent": intent_label}
 
     merge = FunctionNode(func=classify_and_respond, name="classify_and_respond", rerun_on_resume=True)
+    # docs:start-workflow-fanout
     return Workflow(
         name="coffee_workflow",
         edges=[
@@ -88,6 +89,7 @@ def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Wor
         ],
         max_concurrency=2,
     )
+    # docs:end-workflow-fanout
 
 
 __all__ = ("make_coffee_node", "make_intent_node", "make_workflow")

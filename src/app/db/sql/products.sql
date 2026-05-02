@@ -33,6 +33,7 @@ SELECT id, name, description
 FROM product
 ORDER BY id;
 
+-- docs:start-vector-search-sql
 -- name: vector-search-products
 SELECT id,
        name,
@@ -43,6 +44,7 @@ FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
 ORDER BY similarity_score DESC
 FETCH FIRST :limit ROWS ONLY;
+-- docs:end-vector-search-sql
 
 -- name: explain-plan-vector-search
 EXPLAIN PLAN FOR

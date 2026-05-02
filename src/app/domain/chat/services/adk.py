@@ -368,6 +368,11 @@ class ADKRunner:
         self._classifier = classifier
         self._persona_manager = persona_manager
 
+    @staticmethod
+    def ensure_configured() -> None:
+        """Raise AIServiceUnconfigured if Vertex AI credentials are missing."""
+        _ensure_vertex_ai_backend_configured()
+
     def _make_tool_factories(self, tools_service: AgentToolsService, metric_state: dict[str, Any]) -> list[ToolUnion]:
         async def search_products_by_vector(
             query: str, limit: int = 5, similarity_threshold: float = 0.7

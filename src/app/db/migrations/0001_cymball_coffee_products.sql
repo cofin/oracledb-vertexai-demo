@@ -136,11 +136,13 @@ COMMENT ON COLUMN search_metric.similarity_score IS 'Average similarity score of
 -- Indexes for performance optimization
 
 -- Vector similarity search indexes for product embeddings (HNSW INMEMORY)
+-- docs:start-hnsw-index
 CREATE VECTOR INDEX product_embedding_idx ON product (embedding)
 ORGANIZATION INMEMORY NEIGHBOR GRAPH
 DISTANCE COSINE
 WITH TARGET ACCURACY 95
 PARAMETERS (TYPE HNSW, NEIGHBORS 40, EFCONSTRUCTION 500);
+-- docs:end-hnsw-index
 
 -- Vector similarity index for embedding cache (HNSW INMEMORY)
 CREATE VECTOR INDEX embedding_cache_embedding_idx ON embedding_cache (embedding)

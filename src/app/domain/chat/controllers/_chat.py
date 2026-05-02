@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import re
 import uuid
 from collections.abc import AsyncIterator
@@ -20,6 +19,7 @@ from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services import ADKRunner, AgentToolsService
 from app.domain.chat.session import adk_session_identity, clear_adk_session_identity
 from app.lib.di import Inject
+from app.utils.serialization import to_json
 
 logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
@@ -102,18 +102,18 @@ class CoffeeChatController(Controller):
                 location_context=location_context,
             )
         except AIServiceUnconfigured as exc:
-            await logger.awarning("AI service not configured", detail=str(exc))
+            await logger.awarning("AI service not configured", detail=exc.detail)
             if request.htmx:
                 return HTMXTemplate(
                     template_name="partials/chat_error.html.j2",
-                    context={"error": str(exc)},
+                    context={"error": exc.detail},
                     re_target="#chat-error",
                     re_swap="innerHTML",
                 )
             return Response(
                 content={
                     "status": HTTP_503_SERVICE_UNAVAILABLE,
-                    "title": str(exc),
+                    "title": exc.detail,
                     "detail": "Service Unavailable",
                 },
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
@@ -166,6 +166,7 @@ class CoffeeChatController(Controller):
             ),
         )
 
+    # docs:start-stream-handler
     @post(path="/api/chat/stream", name="chat.api.stream")
     async def stream_chat_message(
         self,
@@ -177,15 +178,20 @@ class CoffeeChatController(Controller):
 
         Returns:
             Server-sent event stream with delta, final, or error events.
+
+        Raises:
+            ValidationException: If the user message fails validation (HTTP 400).
+            AIServiceUnconfigured: If Vertex AI credentials are missing (HTTP 503).
         """
         data = await chat_form_from_request(request)
+        clean_message = self.validate_message(data.message)
+        validated_persona = self.validate_persona(data.persona)
+        location_context = location_context_from_form(data)
+        user_id, session_id = adk_session_identity(request)
+        adk_runner.ensure_configured()
 
         async def stream_events() -> AsyncIterator[dict[str, str]]:
             try:
-                clean_message = self.validate_message(data.message)
-                validated_persona = self.validate_persona(data.persona)
-                location_context = location_context_from_form(data)
-                user_id, session_id = adk_session_identity(request)
                 async for event in adk_runner.stream_request(
                     query=clean_message,
                     user_id=user_id,
@@ -195,12 +201,7 @@ class CoffeeChatController(Controller):
                     location_context=location_context,
                 ):
                     event_type = str(event.get("type", "message"))
-                    yield {"event": event_type, "data": json.dumps(event)}
-            except (AIServiceUnconfigured, ValidationException) as exc:
-                yield {
-                    "event": "error",
-                    "data": json.dumps({"type": "error", "message": str(getattr(exc, "detail", exc))}),
-                }
+                    yield {"event": event_type, "data": to_json(event, as_bytes=False)}
             except Exception as exc:  # noqa: BLE001
                 await logger.aexception(
                     "Chat stream failed after response started",
@@ -209,10 +210,11 @@ class CoffeeChatController(Controller):
                 )
                 yield {
                     "event": "error",
-                    "data": json.dumps({"type": "error", "message": _STREAM_ERROR_MESSAGE}),
+                    "data": to_json({"type": "error", "message": _STREAM_ERROR_MESSAGE}, as_bytes=False),
                 }
 
         return ServerSentEvent(stream_events(), status_code=200)
+    # docs:end-stream-handler
 
     @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)
     async def clear_chat_session(self, adk_runner: Inject[ADKRunner], request: HTMXRequest) -> Response:

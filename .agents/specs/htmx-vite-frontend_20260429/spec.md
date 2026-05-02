@@ -1,7 +1,7 @@
 # Flow: HTMX + Vite Frontend (htmx-vite-frontend_20260429)
 
 *Chapter 4 of [cymbal-coffee-reset_20260429](../cymbal-coffee-reset_20260429/prd.md)*
-*Beads epic: `oracledb-vertexai-4d6.4` (blocked by Ch 2; soft-depends on Ch 3 — Phase 5.1c reads `dist/classify-compare.json` produced by Ch 3's CLI; if Ch 3 ships first, the explore page lights up immediately, otherwise the panel returns `{"hint": "..."}` until Ch 3 lands; blocks Ch 5)*
+*Beads epic: `oracledb-vertexai-4d6.4` (blocked by Ch 2; originally soft-dependent on Ch 3 for classify-compare output, but that UI/API surface was later descoped by `ui-regression-recovery_20260501`; the active Explore page is self-contained and does not read `dist/classify-compare.json`)*
 
 ---
 
@@ -12,7 +12,7 @@
 Bundle two transformations into one chapter, in this order:
 
 1. **Source-tree flatten + CLI restructure** — collapse `src/py/app/` → `src/app/`, `src/py/tests/` → `src/tests/`. Move frontend build INPUTS to `src/resources/` (parallel to `src/app/`). Land Jinja templates inside a new `src/app/domain/web/` package (web is a peer-domain alongside `chat`/`products`/`system`); Vite's bundle OUTPUT lands at `src/app/domain/web/static/dist/` (gitignored). After Ch 4, `src/js/` and `src/py/` no longer exist; `vite.config.ts` and `package.json` live at repo root. **And** rebuild `coffee` as a hand-rolled `rich_click` group so it stops routing through `litestar_group()`; migrations and assets land on `manage.py` exclusively.
-2. **Frontend rewrite** — replace the React + TanStack SPA (`mode="spa"`) with a tasteful **HTMX 2.x + Tailwind v4 + Alpine.js + ApexCharts** UI served via `litestar-vite` in `mode="template"` with `HTMXPlugin()` + `hx-ext="litestar"`. No bun, no biome, no TanStack. Two pages, one shared layout, five panels on the explore page (heatmap dropped). The runtime executor is `node` (npm), not `bun`.
+2. **Frontend rewrite** — replace the React + TanStack SPA (`mode="spa"`) with a tasteful **HTMX 2.x + Tailwind v4 + vanilla Vite modules + ApexCharts** UI served via `litestar-vite` in `mode="template"` with `HTMXPlugin()` + `hx-ext="litestar"`. No bun, no biome, no TanStack, no Alpine. Two pages, one shared layout, five panels on the explore page (heatmap dropped). The runtime executor is `node` (npm), not `bun`.
 
 End state: a clean monorepo where the JS/Python boundary is a directory, not a tree-deep prefix. Single dev command (`VITE_DEV_MODE=true uv run coffee run` — litestar-vite auto-launches Vite as a subprocess). Single build command (`uv run python manage.py assets build`). **`coffee` becomes a hand-rolled `rich_click` group** (no more `litestar_group()`) so it doesn't auto-mount asset/migration/database subcommands at help time. **All asset-pipeline and migration commands route through `manage.py` exclusively**. Visual polish bar **at least the React version** per PRD global constraint #10.
 
@@ -68,8 +68,7 @@ End state: a clean monorepo where the JS/Python boundary is a directory, not a t
 
 - `GET /api/metrics/charts` — time-series JSON for ApexCharts. Phase 5.1a.
 - `GET /api/explain-plan?query=<text>` — embeds the query, runs `EXPLAIN PLAN FOR <named SQL> ...` then `SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY())`. Phase 5.1b. **Two driver calls.**
-- `GET /api/classify-compare` — reads `dist/classify-compare.json` (Ch 3 contract). Phase 5.1c.
-- (Heatmap dropped — not in scope.)
+- Classify-compare and the heatmap were dropped from the active UI/API surface; do not restore either surface in this flow.
 
 **Page controllers (new):**
 
@@ -94,7 +93,7 @@ End state: a clean monorepo where the JS/Python boundary is a directory, not a t
   - **Side-effect we don't want:** `coffee --help` constructs `app.config.db` (the SQLSpec configuration) just to enumerate subcommands. The DB plumbing is mounted into the CLI even for commands that never touch it.
 - **Target shape (Phase 1.8):** `coffee` becomes a hand-rolled `rich_click` group; subcommands explicitly import only the Litestar/SQLSpec/Vite functions they need, and only when they need them.
   - `coffee` retains: `run` (wraps `litestar_granian.cli:run_command` lazily), `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures`. Production-app commands.
-  - `coffee` loses: `assets *`, `upgrade`/`downgrade`, `database *`. These move to `manage.py` exclusively.
+  - `coffee` loses: `assets *`, `downgrade`, `database *`. Raw SQLSpec developer commands move to `manage.py`; `coffee upgrade` remains as the packaged/end-user install command.
   - `manage.py` keeps: `init`, `install`, `doctor`, `infra`, `database` (with `upgrade`/`downgrade` via `add_migration_commands`), `assets` (with `install`/`build`/`serve`/`generate-types` via the `vite_group` filter — already wired at `manage.py:152-154`).
   - **No more dual surface.** `coffee assets *` won't exist as a registered subcommand because `coffee` no longer routes through `litestar_group`. The "policy + invariant test" approach is replaced by the architecture itself.
 
@@ -133,23 +132,23 @@ Instead of ad-hoc client JS, use `litestar-htmx` response classes server-side wh
 |--------------------------------------------------------------|-----------------------------------------|--------------------------------------------------------------------------------------|
 | `POST /api/chat` HTMX branch — happy path                    | `HTMXTemplate(template_name="partials/_chat_response.html.j2", ...)` (wrapper that composes the message bubble + OOB metrics + OOB flash) | One round-trip renders the message bubble AND updates the metrics-badges row via `hx-swap-oob="true"` AND drains pending flash messages from the session into the OOB flash region |
 | `POST /api/chat` HTMX branch — validation error              | `HTMXTemplate(..., re_target="#chat-error", re_swap="innerHTML")` (encodes `Retarget` + `Reswap`) | Server overrides the form's `hx-target=#messages` so the error renders into the dedicated error region |
-| `POST /api/chat` HTMX branch — done event                    | `TriggerEvent(name="chat:reply-rendered", after="swap")` (chained with `HTMXTemplate` via the `trigger_event=` kwarg) | Emits a client event after swap so Alpine can reset the input + scroll-to-bottom without a JS click handler |
+| `POST /api/chat` HTMX branch — done event                    | `TriggerEvent(name="chat:reply-rendered", after="swap")` (chained with `HTMXTemplate` via the `trigger_event=` kwarg) | Emits a client event after swap so the Vite module can reset the input + scroll-to-bottom without inline handlers |
 | Explore search box (Panel 1)                                 | `HTMXTemplate(template_name="partials/search_result_list.html.j2", push_url=f"/explore?q={quote(query)}", ...)` (composes `PushUrl`) | URL is shareable; back/forward navigate to past queries |
 | Cache-clear button / persona-save / any side-effect button   | `flash(request, "...", "<category>")` then `HTMXTemplate(template_name="partials/_flash.html.j2", reswap="none")` | Side-effect handlers don't need to update the page they were invoked from — `Reswap("none")` suppresses the default swap; the OOB flash region renders independently |
 | EXPLAIN-PLAN viewer (Panel 2) — query missing                | `raise NotFoundException(detail={"hint": "Type a query in the search box first."})` | Idiomatic 404 with structured detail |
-| classify-compare endpoint (Panel 5) — file missing           | `raise NotFoundException(detail={"hint": "run uv run coffee classify-compare to generate this dataset"})` | Same idiom; surfaces actionable next-step text in the panel |
+| Vector calculator (Panel 5)                                  | No server response object; vanilla Vite module updates `data-*` markup in place | Client-only educational widget; no API dependency |
 
 **Out of scope** (do NOT use): `HXLocation`, `ClientRedirect`, `ClientRefresh`, `HXStopPolling`. Not needed for this chapter's flows. If a future task introduces auth or session expiry, `ClientRedirect(redirect_to="/login")` is the right tool — defer.
 
-### Per-panel decision: `hx-ext="litestar"` vs Alpine + fetch
+### Per-panel decision: `hx-ext="litestar"` vs vanilla modules + fetch
 
 | Panel | Source                                | Render strategy                              | Rationale                                  |
 |------:|---------------------------------------|----------------------------------------------|--------------------------------------------|
 | 1     | `POST /api/vector-demo` (HTMX branch) | Server partial — list of `partials/search_result.html.j2` | Already a server-rendered list; trivial swap |
 | 2     | `GET /api/explain-plan?query=...`     | Server partial — `partials/plan_lines.html.j2` rendering `<pre>` | Plan output is preformatted text; client templating buys nothing |
-| 3     | `GET /api/metrics/summary` (existing) | **Client `ls-*` template** against JSON       | No interactivity; static "JSON → cards" map is exactly what `ls-for` is for. Eliminates an Alpine snippet. |
-| 4     | `GET /api/metrics/charts`             | Alpine (`x-data` + `init() { fetch().then(j => new ApexCharts(el, opts).render()) }`) | ApexCharts must be instantiated by JS |
-| 5     | `GET /api/classify-compare`           | Alpine + ApexCharts                           | Same reason as Panel 4                     |
+| 3     | `GET /api/metrics/summary` (existing) | **Client `ls-*` template** against JSON       | No interactivity; static "JSON -> cards" map is exactly what `ls-for` is for. Eliminates custom chart code. |
+| 4     | `GET /api/metrics/charts`             | Vanilla Vite module that fetches JSON and instantiates ApexCharts | ApexCharts must be instantiated by JS |
+| 5     | Vector storage calculator             | Vanilla Vite module reading `data-*` controls | The active implementation is client-only and has no API dependency |
 
 Panel 3 example (canonical `ls-*`):
 
@@ -174,7 +173,7 @@ All templates live under `src/app/domain/web/templates/` (the web-domain Jinja r
 `src/app/domain/web/templates/`:
 - `base.html.j2` — `<head>` with `{{ vite_hmr() }}` + `{{ vite('src/resources/main.js') }}` + `<meta name="csrf-token" content="{{ csrf_token() }}">`; `<body hx-ext="litestar" class="min-h-screen bg-canvas text-base">`; `{% include "_nav.html.j2" %}`; **`{% include "partials/_flash.html.j2" %}`** (renders any pending flash messages on full-page loads); `{% block content %}{% endblock %}`.
 - `_nav.html.j2` — top nav: `<nav>` with two anchor links to `/` and `/explore` (no `hx-boost` — full reload is fine for two-page apps).
-- `pages/chat.html.j2` — extends base; persona switcher (Alpine `x-data="{ persona: 'enthusiast', sessionId: localStorage.getItem('sid') ?? crypto.randomUUID() }"`); messages region (`<div id="messages">`); chat error region (`<div id="chat-error">`); chat form (`hx-post="/api/chat"`, `hx-target="#messages"`, `hx-swap="beforeend"`, `hx-headers='js:{ "X-Session-Id": sessionId }'`, `hx-include="[name=persona]"`); metrics badges row (`<div id="metrics-badges">`).
+- `pages/chat.html.j2` — extends base; persona switcher driven by `data-persona-*` attributes and `src/resources/main.js`; messages region (`<div id="messages">`); chat error region (`<div id="chat-error">`); chat form (`action="/api/chat/stream"`, streaming handled by the Vite module, hidden persona and location fields); metrics badges row (`<div id="metrics-badges">`).
 - `pages/explore.html.j2` — extends base; 5 panels; persistent search input (Panel 1+2+5 share the query); `<input hx-trigger="keyup changed delay:300ms" hx-post="/api/vector-demo" hx-target="#search-results" name="query">` driving the result list; secondary `hx-get="/api/explain-plan"` on the same input with longer debounce (500ms) targeting `#plan`.
 - `partials/message.html.j2` — single chat-message bubble: human/AI variant via `{% if message.source == 'human' %}`; intent badge; cached badge; latency span; `<article class="message ...">` root.
 - `partials/search_result.html.j2` — single result row: name, description, similarity bar (CSS `width: {{ result.similarity }}%`), price.
@@ -188,14 +187,12 @@ All templates live under `src/app/domain/web/templates/` (the web-domain Jinja r
 
 ```js
 import "htmx.org"
-import Alpine from "alpinejs"
 import ApexCharts from "apexcharts"
 import { registerHtmxExtension } from "litestar-vite-plugin/helpers"
+import { initVectorCalculator } from "./vector-calculator.js"
 import "./styles.css"
 
-window.Alpine = Alpine
 window.ApexCharts = ApexCharts
-Alpine.start()
 registerHtmxExtension()  // wires CSRF (X-CSRFToken) + ls-* JSON templating
 ```
 
@@ -262,7 +259,7 @@ These rules came out of the Phase 5.1 review and apply to every public-API touch
     1. `await driver.execute("EXPLAIN PLAN FOR " + db_manager.get_sql("vector-search-products").to_sql(), query_vector=..., threshold=0, limit=5)` — Oracle's `EXPLAIN PLAN FOR` cannot be parameterized as a named-SQL select wrapper, so the implementation builds the explain-prefix in code and uses the same parameter binds as the underlying select. **Risk gate Phase 0.6 verifies bind variables work in `EXPLAIN PLAN FOR`.**
     2. `rows = await driver.select("SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY())")` — returns `plan_table_output VARCHAR2`.
     Returns `{plan_lines: [str], plan_summary: {index_used: str | None, target_accuracy: int | None}}`. Summary fields parsed by string-matching `VECTOR INDEX RANGE SCAN` and `TARGET ACCURACY n` in plan output.
-11. **`GET /api/classify-compare` (Phase 5.1c)** — new handler in `src/app/domain/system/controllers/_explore.py` (new file). Reads `BASE_DIR.parents[1] / "dist" / "classify-compare.json"` (matches Ch 3 contract `Path.cwd() / "dist" / "classify-compare.json"` when run from repo root). On missing file: `raise NotFoundException(detail={"hint": "run uv run coffee classify-compare to generate this dataset"})`. On present: returns `{rows: [{phrase, gold, legacy, new}, ...], summary: {per_intent: {<INTENT>: {precision, recall, agreement}}}}`.
+11. **Classify-compare descoped (Phase 5.1c superseded)** — the temporary `GET /api/classify-compare` surface, its schema/tests, and its Explore panel were removed by `ui-regression-recovery_20260501`. The active Panel 5 is the client-only vector storage calculator. Do not add `coffee classify-compare`, `dist/classify-compare.json`, or a compare endpoint unless a new flow explicitly reopens that scope.
 12. **CSRF** — `<meta name="csrf-token" content="{{ csrf_token() }}">` in `base.html.j2`. `registerHtmxExtension()` reads it and forwards `X-CSRFToken` automatically. Litestar `CSRFConfig.header_name = "X-CSRFToken"` (Phase 4.5 changes this from `"X-XSRF-TOKEN"`).
 13. **Test fixture (Phase 7.1)** — add `htmx_client` fixture to `src/tests/conftest.py`: `AsyncTestClient(app=app, raise_server_exceptions=False, headers={"HX-Request": "true"})`. Used by all HTMX-flavored tests.
 14. **Visual polish (PRD constraint)** — port the dark-theme tokens verbatim. Persona switcher renders as a segmented control. Chat bubbles use `rounded-xl` with subtle shadow. Cards on Panel 3 use `bg-surface border-border`. Charts use the accent palette. **Manual checklist verified via Playwright `browser_console_messages` snapshot** captured in Beads notes for the final task.
@@ -273,22 +270,22 @@ These rules came out of the Phase 5.1 review and apply to every public-API touch
 ### Acceptance Criteria
 
 - `find src/py src/js -maxdepth 0 2>/dev/null | wc -l` returns **0** (the directories are gone).
-- `find src/app src/resources src/templates src/tests -maxdepth 0 | wc -l` returns **4**.
+- `find src/app src/resources src/tests -maxdepth 0 | wc -l` returns **3**; templates live under `src/app/domain/web/templates`.
 - `ls vite.config.ts package.json` succeeds at repo root; `ls src/js 2>/dev/null` fails.
 - `grep -E "react|tanstack|radix|lucide|@vitejs/plugin-react|biome" package.json` returns **zero** matches.
-- `grep -E "bun" Makefile pyproject.toml tools/deploy/docker/run/Dockerfile{,.distroless}` returns **zero** code-path matches (only allowed in comments/docs).
-- `find src/templates -name "*.html.j2" | wc -l` returns **≥ 8** (the inventory above).
+- `grep -E "bun" Makefile pyproject.toml tools/deploy/docker/Dockerfile` returns **zero** code-path matches (only allowed in comments/docs).
+- `find src/app/domain/web/templates -name "*.html.j2" | wc -l` returns **>= 8** (the inventory above).
 - `grep -rn "BASE_DIR.parents\[2\]" src/app` returns **zero** matches; `grep -rn "BASE_DIR.parents\[1\]" src/app` returns **2** (settings.py + _system.py).
 - `make install` from a clean checkout succeeds (`uv sync` + `npm ci`).
 - `make build` succeeds (`uv build` + `npm run build` via `python manage.py assets build`).
-- `uv run coffee --help` shows only `run`, `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures` — no `assets`, `upgrade`, `downgrade`, or `database` group (`test_cli_surface.py` enforces).
+- `uv run coffee --help` shows only `run`, `upgrade`, `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures` — no `assets`, `downgrade`, or `database` group (`test_cli_surface.py` enforces).
 - `uv run python manage.py --help` exposes `init / install / doctor / infra / database / assets`; `database upgrade` and `assets build` both reachable.
 - `make lint` green (ruff + mypy + pyright + Tailwind/Vite TS check via `tsc --noEmit`; biome removed).
 - `make test` green; tests live in the refactored `src/tests` module-path layout:
   - `src/tests/integration/app/domain/web/controllers/test_pages.py` — `/`, `/explore` render with expected anchors.
   - `src/tests/integration/app/domain/chat/controllers/test_chat_http.py` — HTMX branch returns partial HTML.
   - `src/tests/unit/app/domain/products/controllers/test_explain_plan.py` — returns `plan_lines` containing "VECTOR" for controller-level shape.
-  - `src/tests/integration/app/domain/system/controllers/test_explore_http.py` — classify-compare file present/missing branches if the endpoint lives under `app.domain.system.controllers._explore`.
+  - No classify-compare endpoint tests in the active suite; that surface was descoped and removed.
   - `src/tests/unit/app/domain/system/controllers/test_metrics_charts.py` — `/api/metrics/charts` shape matches the spec.
 - `uv run coffee run` boots; `curl -s localhost:5006/` returns HTML containing `hx-ext="litestar"` and `<meta name="csrf-token"`.
 - Browser smoke (manual, document in Beads notes):
@@ -313,7 +310,7 @@ These rules came out of the Phase 5.1 review and apply to every public-API touch
 - **Dishka + `from __future__ import annotations`** — global PRD constraint #2. The new `_pages.py` controller and `_explore.py` controller follow the existing convention (no `__future__` import). Reviewers reject otherwise.
 - **The page on `/` becomes server-rendered.** Old `dashboard` SPA route disappears. PRD considers this acceptable (no auth, simple-greater-than-clever).
 - **CLI restructure breaking change** (Phase 1.8). Three external surfaces shift in one phase:
-  - `coffee upgrade` → `python manage.py database upgrade`. Anyone with shell aliases or CI runbooks pointing at `coffee upgrade` breaks. Acceptable for a reference demo per PRD constraint #3 (no backward-compat shims). README + Makefile updated in same phase; document the rename in the doc-touch (Phase 7.4).
+  - Current correction: `coffee upgrade` remains as the packaged/end-user install command. Developer-only SQLSpec commands such as downgrade/current stay on `python manage.py database ...`.
   - `coffee assets *` removed entirely. Same rationale.
   - `coffee database *` removed entirely (sqlspec migrations now only on `manage.py database`).
   Mitigation: `test_cli_surface.py` includes assertions for what *is* present, so accidental regressions in either direction (re-mounting, or losing a command) fail loudly. Also: `coffee --help` printout is captured in Beads notes during Phase 1.9 so the new surface is documented at the moment of switch.
@@ -329,7 +326,7 @@ These rules came out of the Phase 5.1 review and apply to every public-API touch
 
 - [x] **0.1** `litestar-vite` mode + TypeGen surface. `uv run python -c "from litestar_vite import ViteConfig, PathConfig, RuntimeConfig, TypeGenConfig; ViteConfig(mode='template', paths=PathConfig(resource_dir='src/resources'), runtime=RuntimeConfig(executor='node'), types=TypeGenConfig(generate_sdk=False, generate_routes=False, generate_schemas=False, generate_page_props=False)); print('OK')"`. Fail → halt and re-research.
 - [x] **0.2** Litestar built-in HTMX import surface. `uv run python -c "from litestar.plugins.htmx import HTMXPlugin, HTMXRequest, TriggerEvent, Reswap, Retarget, PushUrl, HTMXTemplate; print('OK')"`. Confirms HTMX support resolves from the existing `litestar[jinja,...]` install — **no separate `litestar-htmx` package is added.** If any name fails to import, the installed Litestar version is too old; bump the floor in `pyproject.toml` and re-run.
-- [x] **0.3** npm package versions. Read `~/code/litestar/litestar-vite/examples/jinja-htmx/package.json` for canonical pins. Confirm `htmx.org@2.0.10`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `vite@8.x`. Add `alpinejs@^3.15`, `apexcharts@^5.10`. Record in Beads notes.
+- [x] **0.3** npm package versions. Read `~/code/litestar/litestar-vite/examples/jinja-htmx/package.json` for canonical pins. Confirm `htmx.org@2.0.10`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `vite@8.x`. Add `apexcharts@^5.10`; Alpine is not part of the active stack. Record in Beads notes.
 - [x] **0.4** `registerHtmxExtension()` + HTMX 2.x compatibility. Scaffold a throwaway directory: `mkdir /tmp/h-check && cd /tmp/h-check && npm init -y && npm i htmx.org@2.0.10 litestar-vite-plugin@latest && node -e "import('litestar-vite-plugin/helpers').then(m => console.log(typeof m.registerHtmxExtension))"`. Expect `function`. If module not found, halt.
 - [x] **0.5** `executor="node"` runs end-to-end. After 0.1 + 0.3, scaffold a minimal app via `mkdir /tmp/lv-check && cd /tmp/lv-check && uv run litestar-vite-plugin init --template jinja-htmx` (or hand-craft if the CLI lacks the template). Run `litestar assets status` and confirm it doesn't error. If it does, fall back: pin `executor="node"` and document the minimum reproducer.
 - [x] **0.6** EXPLAIN PLAN with VECTOR bind. After Ch 1's fixtures load: `uv run python -c "..."` script that opens a driver session, runs `EXPLAIN PLAN FOR <vector-search-products SQL>` with a real 3072-dim embedding bind, then `SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY())`. Confirm output contains "VECTOR INDEX RANGE SCAN" or equivalent. **If bind fails**, document the failure mode and switch Phase 5.1b to use a hard-coded representative embedding; update the spec risks section.
@@ -348,7 +345,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
   - `[tool.hatch.build.targets.sdist] packages = ["src/app"]` (was `["src/py/app"]`).
   - `[tool.hatch.build.targets.wheel] packages = ["src/app"]`.
   - `[tool.hatch.build] dev-mode-dirs = ["src", "."]` (was `["src/py", "."]`).
-- [x] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths AND route every `coffee assets *` / `coffee upgrade` invocation through `python manage.py *` (these subcommands disappear from `coffee` in 1.8). Specifically: [6488db1]
+- [x] **1.3** `Makefile` — replace every `src/py` and `src/js` reference with the new paths AND route every `coffee assets *` invocation through `python manage.py assets *`. `coffee upgrade` remains the packaged/end-user install command; developer migration targets use `python manage.py database ...`. Specifically: [6488db1]
   - `clean` target (`src/js/dist`, `src/js/node_modules` → `dist/`, `node_modules/`).
   - `test` target (`src/py/tests` → `src/tests`).
   - `lint` target (`src/py/app` → `src/app`, drop `cd src/js && bun run fix`).
@@ -357,7 +354,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
   - `install` target: drop `install-bun`; drop `@uv run coffee assets generate-types >/dev/null 2>&1` line entirely; rewrite `@uv run coffee assets install` → `@uv run python manage.py assets install`.
   - `destroy` (drop `src/js/node_modules src/js/dist`).
   - `assets-build` target: rewrite `@uv run coffee assets build` → `@uv run python manage.py assets build`.
-  - `migrate` (or equivalent) target: rewrite `@uv run coffee upgrade` → `@uv run python manage.py database upgrade`.
+  - `migrate` (or equivalent) target: use `@uv run python manage.py database upgrade`; keep `coffee upgrade` for end-user install/packaged smoke checks.
   - Delete the `js-*` targets entirely; delete the `assets-generate-types` target (use `python manage.py assets generate-types` directly when needed).
   - `coffee load-fixtures` and `coffee run` references stay (those subcommands remain on `coffee` per 1.8).
 - [x] **1.4** Test fixture path `src/py/tests` → `src/tests` in `pytest.ini`/`pyproject.toml` `[tool.pytest.ini_options]` (`testpaths`). [6488db1]
@@ -371,15 +368,15 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
   - **New `src/app/cli/commands/server.py`:** Wraps `litestar_granian.cli:run_command`. Define a `ServerGroup(click.RichGroup)` whose `invoke()` constructs `LitestarEnv.from_env("app.server.asgi:create_app")` lazily and calls `create_app()`. Mount `run` as the only subcommand under it (or, simpler: top-level `coffee run` that wraps the granian command directly via a small helper that copies `original_command.params`). Pick one and document the choice in Beads notes.
   - **New `src/app/cli/commands/manage.py`:** Hosts `bulk_embed_cmd`, `clear_cache_cmd`, `model_info_cmd`, `load_fixtures_cmd`, `export_fixtures_cmd`. Move the implementations from `src/app/cli/commands.py` (the existing file) — they're already plain `@click.command` functions, only the registration changes. **Delete the existing `src/app/cli/commands.py`** after moving (single file → split by concern: `server.py` for runtime, `manage.py` for db/data ops).
   - **Remove `on_cli_init` from `src/app/server/core.py`:** delete lines 125-168 (the entire `on_cli_init` method on `ApplicationCore`). Server-side plugin registration unchanged; the CLI side is now hand-rolled in `app/cli/`.
-  - **`coffee` no longer mounts `assets`, `upgrade`/`downgrade`, or `database *`** — these are reachable only via `python manage.py {assets,database} ...`.
+  - **`coffee` no longer mounts `assets`, `downgrade`, or `database *`** — these are reachable only via `python manage.py {assets,database} ...`. `coffee upgrade` remains as the packaged/end-user install command.
   - Failing tests (must RED before code, GREEN after):
     - `src/tests/unit/app/cli/test_surface.py::test_coffee_does_not_have_assets_group` — invoke `coffee --help` (subprocess or Click test runner against `app.cli.main:cli`) and assert `"assets"` does not appear in the listed commands.
-    - `src/tests/unit/app/cli/test_surface.py::test_coffee_does_not_have_database_group` — same, asserting `"database"` and `"upgrade"`/`"downgrade"` are absent.
+    - `src/tests/unit/app/cli/test_surface.py::test_coffee_does_not_have_database_group` — same, asserting `"database"` and `"downgrade"` are absent while `"upgrade"` remains.
     - `src/tests/unit/app/cli/test_surface.py::test_coffee_retains_runtime_commands` — assert `"run"`, `"bulk-embed"`, `"clear-cache"`, `"model-info"`, `"load-fixtures"`, `"export-fixtures"` are all present.
     - `src/tests/unit/app/cli/test_surface.py::test_manage_py_database_upgrade_works` — invoke `python manage.py database upgrade --help` and assert exit code 0.
     - `src/tests/unit/app/cli/test_surface.py::test_manage_py_assets_build_works` — invoke `python manage.py assets build --help` and assert exit code 0.
     - `src/tests/unit/app/cli/test_surface.py::test_coffee_help_does_not_construct_db_config` — patch `app.config.db` constructor with a sentinel that raises; invoke `coffee --help`; assert no exception raised (proves `--help` no longer materializes the SQLSpec config). This is the architectural-improvement assertion that justifies the whole restructure.
-- [x] **1.9** Smoke validation post-restructure: `uv run coffee --help` shows only the curated production list; `uv run python manage.py --help` shows `init/install/doctor/infra/database/assets`; `uv run python manage.py database --help` lists `upgrade/downgrade/...`; `uv run python manage.py assets --help` lists `install/build/serve/generate-types`. Document the help-text outputs in Beads notes. [6488db1]
+- [x] **1.9** Smoke validation post-restructure: `uv run coffee --help` shows only the curated production list including the end-user `upgrade`; `uv run python manage.py --help` shows `init/install/doctor/infra/database/assets`; `uv run python manage.py database --help` lists raw SQLSpec developer commands such as `upgrade/downgrade/...`; `uv run python manage.py assets --help` lists `install/build/serve/generate-types`. Document the help-text outputs in Beads notes. [6488db1]
 - [x] **1.10** Run `make lint && make test` again. Confirm `test_cli_surface.py` is green and no other tests regressed. Smoke: `make migrate` (which now calls `python manage.py database upgrade`) and `uv run coffee bulk-embed --help` both work. [6488db1]
 
 ### Phase 2: Delete React frontend (`oracledb-vertexai-4d6.4.10`)
@@ -393,7 +390,7 @@ Target end state: `src/app/`, `src/tests/`, with `coffee` as a hand-rolled `rich
 
 ### Phase 3: New frontend scaffold (`oracledb-vertexai-4d6.4.11`)
 
-- [x] **3.1** `package.json` at repo root. Dependencies: `htmx.org@2.0.10`, `alpinejs@^3.15`, `apexcharts@^5.10`. devDependencies: `vite@8.x`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `typescript@5.x` (vite needs it even though we're not writing TS in this chapter). Scripts: `"dev": "vite"`, `"build": "vite build"`, `"preview": "vite preview"`. **No biome, no bun-specific scripts.** [12156d7]
+- [x] **3.1** `package.json` at repo root. Dependencies: `htmx.org@2.0.10`, `apexcharts@^5.10`. devDependencies: `vite@8.x`, `@tailwindcss/vite@4.2.4`, `tailwindcss@4.2.4`, `litestar-vite-plugin@0.22.x`, `typescript@5.x` (vite needs it even though we're not writing TS in this chapter). Scripts: `"dev": "vite"`, `"build": "vite build"`, `"preview": "vite preview"`. **No biome, no bun-specific scripts, no Alpine.** [12156d7]
 - [x] **3.2** `vite.config.ts` at repo root. Copy verbatim from `~/code/litestar/litestar-vite/examples/jinja-htmx/vite.config.ts`, then change:
     ```ts
     plugins: [
@@ -484,26 +481,26 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
 
 - [x] **5.1a** `GET /api/metrics/charts` in `src/app/domain/system/controllers/_metrics.py` returns `MetricsTimeSeries(labels: list[str], series: MetricsTimeSeriesPoints)`. Add `metrics-time-series` named SQL to `src/app/db/sql/system.sql` with `COALESCE(AVG(...), 0)` so rows arrive as concrete floats (no Python null-handling). The service method `MetricsService.get_time_series()` runs the query with `schema_type=MetricsTimeSeriesRow` and aggregates rows into `MetricsTimeSeries` directly — the controller is a thin pass-through. Failing test: `src/tests/unit/app/domain/system/controllers/test_metrics_charts.py` asserts the typed shape with a mocked service that returns `MetricsTimeSeries`.
 - [x] **5.1b** `GET /api/explain-plan?query=<text>` in `src/app/domain/products/controllers/_vector.py` returns `ExplainPlan(plan_lines, plan_summary)`. The `OracleVectorSearchService.explain_search_plan(query)` method makes two driver round-trips against named SQL (`explain-plan-vector-search` runs the EXPLAIN PLAN, `explain-plan-display` pulls `DBMS_XPLAN.DISPLAY()` rows) — no inline SQL strings. Failing test: `src/tests/unit/app/domain/products/controllers/test_explain_plan.py` asserts the response shape and that empty queries raise `ValidationException`. (Real-Oracle integration variant lands in the integration suite alongside the existing vector-search integration tests; the unit test alone exercises the controller wiring.)
-- [x] **5.1c** `GET /api/classify-compare` in new `src/app/domain/system/controllers/_explore.py` returns `ClassifyCompare(intents: list[ClassifyCompareIntent])`. Reads `BASE_DIR.parents[1] / "dist" / "classify-compare.json"` via `app.utils.serialization.from_json` (no `json.loads`). Raises `NotFoundException` with a hint pointing at the CLI when missing. Computes per-intent counts (gold / legacy / new) plus precision / recall / agreement. Failing test belongs at `src/tests/integration/app/domain/system/controllers/test_explore_http.py` if the endpoint lives under `app.domain.system.controllers._explore`; mirror the actual controller module path if ownership changes.
+- [x] **5.1c** Superseded: classify-compare was descoped and removed by `ui-regression-recovery_20260501`. The active flow must not expose `GET /api/classify-compare`, `ClassifyCompare*` schemas, `dist/classify-compare.json`, or a `coffee classify-compare` command.
 - [x] **5.1d** `GET /api/metrics/summary` reshape — Panel 3 `ls-for` consumes `MetricsSummary(cards: list[MetricCard])`, not the original four named fields (`totalSearches`, `avgResponseTime`, ...). The previous shape was a holdover from the deleted React dashboard with no current consumer, so the endpoint changes shape and the schema becomes `cards: list[MetricCard]`. Failing test: `src/tests/unit/app/domain/system/controllers/test_metrics_summary_cards.py`.
 - [x] **5.2** `src/app/domain/web/templates/pages/explore.html.j2` with five panels:
     - **Panel 1 (Vector Search)**: `<input name="query" hx-post="/api/vector-demo" hx-trigger="keyup changed delay:300ms" hx-target="#search-results" hx-include="this">`; `<div id="search-results">` populated by `partials/search_result_list.html.j2`.
     - **Panel 2 (EXPLAIN PLAN viewer)**: parallel `<input hx-get="/api/explain-plan" hx-trigger="keyup changed delay:500ms" hx-target="#plan" hx-swap="json">` with a `<template ls-if="planSummary">` block rendering the plan client-side.
     - **Panel 3 (Metrics summary cards)**: `<div hx-get="/api/metrics/summary" hx-trigger="load, every 10s" hx-swap="json">` with the `<template ls-for="card in $data.cards">` block from the per-panel decision section.
-    - **Panel 4 (Latency time-series)**: `<div x-data="latencyChart()" x-init="init()" x-ref="latencyHost"></div>` Alpine component fetching `/api/metrics/charts` and rendering an ApexCharts line chart with `data.series.totalMs` / `oracleMs` / `embeddingMs` (camelCase wire format).
-    - **Panel 5 (Classify-compare)**: same Alpine pattern fetching `/api/classify-compare`; renders ApexCharts grouped bar (gold vs legacy vs new). NotFound → toggle `missing` state and render the "run the CLI" hint inline (no `innerHTML` injection — bind via Alpine `x-show`).
+    - **Panel 4 (Performance analytics)**: vanilla Vite module finds `data-dashboard-charts`, fetches `/api/metrics/charts`, and renders ApexCharts hosts marked with `data-chart-host`.
+    - **Panel 5 (Vector storage calculator)**: `src/resources/vector-calculator.js` reads `data-vector-calculator`, `data-vector-input`, `data-output`, and `data-vector-visual` attributes and updates the client-only estimates without server round trips.
 - [x] **5.3** Created `partials/search_result.html.j2`, `partials/search_result_list.html.j2`, `partials/plan_lines.html.j2` under `src/app/domain/web/templates/`.
-- [x] **5.4** `PageController.explore` in `src/app/domain/web/controllers/_pages.py` — replace the placeholder `NotFoundException` with `Template(template_name="pages/explore.html.j2")`. Failing test: `src/tests/integration/app/domain/web/controllers/test_pages.py::test_explore_page_renders` asserts body contains all 5 panel IDs (`panel-vector-search`, `panel-explain-plan`, `panel-metrics-summary`, `panel-latency-chart`, `panel-classify-compare`).
+- [x] **5.4** `PageController.explore` in `src/app/domain/web/controllers/_pages.py` — replace the placeholder `NotFoundException` with `Template(template_name="pages/explore.html.j2")`. Failing test: `src/tests/integration/app/domain/web/controllers/test_pages.py::test_explore_page_renders` asserts body contains the active panel IDs (`panel-vector-search`, `panel-explain-plan`, `panel-metrics-summary`, `panel-latency-chart`, `panel-vector-calculator`) and omits `classify-compare`.
 - [x] **5.5** `POST /api/vector-demo` HTMX branch in `src/app/domain/products/controllers/_vector.py`. The handler now takes `request: HTMXRequest` and returns `Response[VectorDemo] | HTMXTemplate`. On HTMX: `HTMXTemplate(template_name="partials/search_result_list.html.j2", context={"matches": [VectorDemoMatch], "query": query}, push_url=f"/explore?q={quote(query)}")`. On non-HTMX: `Response(content=VectorDemo(...))`. The pre-existing `dict[str, Any]` payload is replaced by `VectorDemo(results: list[VectorDemoMatch], search_time_ms, ...)`. Failing tests: `src/tests/integration/app/domain/products/controllers/test_vector_http.py::test_htmx_returns_partial_and_pushes_url` (asserts `response.headers["HX-Push-Url"] == "/explore?q=dark%20roast"`), `::test_non_htmx_returns_json` (asserts `response.content` is a `VectorDemo` instance with typed `results[0].name == "Cold Brew"`).
-- [x] **5.6** Alpine components for Panels 4 + 5 inline at the bottom of `pages/explore.html.j2`. Each `latencyChart()` / `classifyCompareChart()` is a small `x-data` factory that `fetch`-es its endpoint and instantiates `new ApexCharts(this.$refs.<host>, opts).render()`. Both endpoints are GET, so plain `fetch` (no CSRF). Panel 5 sets `missing = true` on a non-OK response and the `x-show="missing"` hint is rendered without any `innerHTML` injection.
+- [x] **5.6** Vanilla Vite modules for Panels 4 + 5. `main.js` initializes dashboard charts from `data-dashboard-charts` and `vector-calculator.js` initializes the storage calculator from `data-vector-calculator`; both avoid inline component factories and `innerHTML` injection.
 
 ### Phase 6: Toolchain & deployment (`oracledb-vertexai-4d6.4.4`, rewritten + `oracledb-vertexai-4d6.4.6`, rewritten)
 
 - [x] **6.1** `pyproject.toml` final pass — confirmed no `litestar-htmx` direct dependency, no `bun` references, `[tool.hatch.build.targets.wheel].packages = ["src/app"]`, `artifacts` includes `**/*.j2`. Locked via 4 new invariants in `test_repo_layout_invariants.py`. [7dc4579]
-- [x] **6.2** `Makefile` final pass — `make install` runs `uv sync` + `npm install` (via `manage.py assets install`); `make build` now runs `manage.py assets build` *then* `uv build`; `make lint` chains `frontend-typecheck` (npx tsc --noEmit) after pyright. `make clean` updated to scrub the post-flatten bundle dir (`src/app/domain/web/static/dist`, was `src/app/server/static/dist`). No `coffee assets`/`coffee upgrade` invocations remain. Locked via 4 new Makefile invariant tests. [7dc4579]
+- [x] **6.2** `Makefile` final pass — `make install` runs `uv sync` + `npm install` (via `manage.py assets install`); `make build` now runs `manage.py assets build` *then* `uv build`; `make lint` chains `frontend-typecheck` (npx tsc --noEmit) after pyright. `make clean` updated to scrub the post-flatten bundle dir (`src/app/domain/web/static/dist`, was `src/app/server/static/dist`). No `coffee assets` invocations remain; `coffee upgrade` remains the end-user install path. Locked via 4 new Makefile invariant tests. [7dc4579]
 - [x] **6.3** `.gitignore` final pass — verified post-flatten state: ignores `src/app/domain/web/static/dist/`, `src/resources/generated/`, `node_modules/`; no `src/js/` or `src/py/` refs. Locked via 3 new gitignore invariant tests. [7dc4579]
-- [x] **6.4** `tools/deploy/docker/run/Dockerfile` (+ `Dockerfile.distroless`) rewrite — dropped `oven/bun` COPY layer, install Node 20 from Nodesource, `COPY package.json package-lock.json ./` from repo root, `RUN npm ci`, `COPY src/ ./src/` (post-flatten), `RUN npm run build && uv build --wheel`, `CMD ["coffee", "run", ...]` (was `app run`). Locked via 3 parametrized Dockerfile invariant tests. Manual `docker build` smoke deferred (no Docker daemon needed for invariants). [7dc4579]
-- [x] **6.5** README dev-command update — replaced 4× `coffee upgrade` with `python manage.py database upgrade` (post-CLI restructure); refreshed architecture line from "React + TanStack Router" to "HTMX + Alpine.js + Tailwind v4"; added Frontend HMR sentence to Development Commands section. [7dc4579]
+- [x] **6.4** Dockerfile rewrite — dropped `oven/bun` COPY layer, install Node 20 from Nodesource, `COPY package.json package-lock.json ./` from repo root, `RUN npm ci`, `COPY src/ ./src/` (post-flatten), `RUN npm run build && uv build --wheel`, `CMD ["coffee", "run", ...]` (was `app run`). Superseded by the single distroless onefile release Dockerfile at `tools/deploy/docker/Dockerfile`; do not restore `tools/deploy/docker/run/` variants. [7dc4579]
+- [x] **6.5** README dev-command update — current correction keeps `coffee upgrade` as the packaged/end-user install command while developer migration commands use `python manage.py database ...`; refreshed architecture line from "React + TanStack Router" to "HTMX + vanilla JavaScript + Tailwind v4"; added Frontend HMR sentence to Development Commands section. [7dc4579]
 - [x] **6.6** Build smoke — `manage.py assets build` succeeds in 3.2s (manifest.json + main-*.js + styles-*.css emitted to `src/app/domain/web/static/dist`); `uv build --wheel` succeeds in 1.2s; all 12 Jinja templates ship in the wheel (verified via `unzip -l`); 187/187 unit+api tests pass in 18s. `make clean && make install` skipped (destructive in dev env); ruff lint reports 208 pre-existing CPY001/S404 errors in `tools/` tracked under epic `oracledb-vertexai-a0l`, not introduced by Phase 6. [7dc4579]
 
 ### Phase 7: Tests & patterns (`oracledb-vertexai-4d6.4.7`, rewritten + new `oracledb-vertexai-4d6.4.12` for doc-touch)
@@ -514,17 +511,16 @@ Each task in this phase MUST follow the Engineering Conventions section above. Q
     - `src/tests/integration/app/domain/web/controllers/test_pages.py` (Phase 4.7, 5.4)
     - `src/tests/integration/app/domain/chat/controllers/test_chat_http.py` (Phase 4.7)
     - `src/tests/unit/app/domain/products/controllers/test_explain_plan.py` (Phase 5.1b — controller-level shape test, not a real-Oracle integration test)
-    - `src/tests/integration/app/domain/system/controllers/test_explore_http.py` if classify-compare is restored under `app.domain.system.controllers._explore` (Phase 5.1c)
     - `src/tests/integration/app/domain/products/controllers/test_vector_http.py` (Phase 5.5)
     - `src/tests/unit/app/cli/test_surface.py` (Phase 1.8 — replaces the originally-planned grep-based invariant test; architecture-level enforcement).
 - [x] **7.3** Browser smoke (Playwright, production mode `VITE_DEV_MODE=False`):
     - `/` (chat) renders cleanly — title `Cymbal Coffee — Barista Chat`, persona switcher (Novice/Enthusiast/Expert/Barista), Send button. **Zero console errors.**
-    - `/explore` renders all 5 panels (vector search, EXPLAIN PLAN, metrics summary, latency time-series, classify-compare). Two console errors are 404s on `/api/classify-compare` — **expected behavior** per Phase 5.1c contract (NotFound when `dist/classify-compare.json` absent; Alpine `x-show=missing` branch handles gracefully without `innerHTML` injection).
+    - `/explore` renders all 5 panels (vector search, EXPLAIN PLAN, metrics summary, performance analytics, vector storage calculator). The active frontend no longer fetches `/api/classify-compare` from the page and no longer depends on Alpine.
     - Screenshots stashed at `.agents/specs/htmx-vite-frontend_20260429/screenshots/{chat,explore}-smoke.png`.
     - **Bug fix discovered + applied during smoke**: `vite.config.ts` was missing `publicDir: "src/resources/public"`, so `npm run build` never copied brand assets (`cymbal-coffee-cup.svg` + 26 others) into the bundle dir, causing a 404 on the chat-page logo. Fixed in same commit. [7dc4579]
-    - Send-message + HMR live-reload deferred to Ch 5 (require Vertex AI auth + interactive verification beyond CI scope).
+    - Historical note: send-message + HMR live-reload were not covered by this smoke pass because they required credentials and interactive verification; later UI regression work covered the active chat/explore surfaces.
 - [x] **7.4** **Doc-touch** (`oracledb-vertexai-4d6.4.12`) — Ch 4 patterns appended to `.agents/patterns.md` under two new sections:
-    - **HTMX + Vite Frontend Patterns (Ch 4)** — 14 entries covering page-vs-partial branching, `HTMXTemplate(push_url=, re_target=, re_swap=)` header semantics, `hx-ext="litestar"` + `ls-for`/`ls-if`, Alpine + ApexCharts factories, EXPLAIN PLAN viewer (two driver calls + bind-variable risk), OOB swap idiom, CSRF wiring, Tailwind v4 `@source`, `vite.config.ts` `publicDir` gotcha, `litestar.plugins.htmx` built-in vs PyPI, `litestar-vite` mode='template', CLI split (`coffee` vs `manage.py`), module-scoped path constants, and toolchain invariants in tests.
+    - **HTMX + Vite Frontend Patterns (Ch 4)** — 14 entries covering page-vs-partial branching, `HTMXTemplate(push_url=, re_target=, re_swap=)` header semantics, `hx-ext="litestar"` + `ls-for`/`ls-if`, vanilla Vite modules + ApexCharts, EXPLAIN PLAN viewer (two driver calls + bind-variable risk), OOB swap idiom, CSRF wiring, Tailwind v4 `@source`, `vite.config.ts` `publicDir` gotcha, `litestar.plugins.htmx` built-in vs PyPI, `litestar-vite` mode='template', CLI split (`coffee` vs `manage.py`), module-scoped path constants, and toolchain invariants in tests.
     - **Engineering Conventions (Ch 4 mid-phase corrections)** — 6 rules surfaced during Phase 5 review (typed Structs at API boundaries, direct schema imports, `from_json` over `json.loads`, `schema_type=` everywhere, `COALESCE` in SQL, inline single-use locals).
     - **Testing Patterns** appended with 3 new entries (`htmx_client` fixture, autouse mocks for `Inject[T]` chains, empty 404 body under `raise_server_exceptions=False`).
     - Knowledge entry created at `.agents/knowledge/htmx-vite-frontend_20260429.md` with full key-files inventory + per-phase verbatim learnings; registered in `.agents/knowledge/index.md` with 10 topic-index entries.

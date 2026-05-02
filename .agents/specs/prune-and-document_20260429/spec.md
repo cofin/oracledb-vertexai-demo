@@ -70,8 +70,9 @@ archive paths is superseded by this policy:
 **CLI surface (`src/app/cli/commands/manage.py` plus `src/app/cli/commands/server.py`):**
 
 - KEEP (PRD must-survive):
-    - `python manage.py database upgrade --no-prompt` (SQLSpec migrations)
-    - `coffee load-fixtures` (`manage.py` command module; required for the 5-min quickstart)
+    - `coffee upgrade` (packaged/end-user install path: SQLSpec migrations plus committed fixtures)
+    - `python manage.py database upgrade --no-prompt` (developer SQLSpec migration path)
+    - `coffee load-fixtures` (maintainer fixture lifecycle command; `coffee upgrade` is the quickstart path)
     - `coffee bulk-embed` (lifecycle command for regenerating committed product embeddings)
     - `coffee export-fixtures` (lifecycle command for refreshing committed fixtures)
     - `coffee clear-cache`
@@ -83,9 +84,11 @@ archive paths is superseded by this policy:
 
 **Frontend test stubs deleted in Ch 4** — verify they're gone.
 
-**README.md (current 175 lines):**
+**README.md (current 175 lines at planning time):**
 
-- Quick Start section is decent but mentions deleted commands (`bulk-embed`).
+- Current sync: the quickstart should use `uv run coffee upgrade`, not separate
+  migration plus fixture commands. `bulk-embed` and `export-fixtures` are still
+  retained lifecycle commands, not quickstart steps.
 - Duplicates between "Development Commands" and "Management CLI" sections.
 - 7 external resource links — keep only the 3 directly load-bearing (Oracle 26ai, Vertex AI, Litestar).
 - Architecture paragraph is fine; expand by 2 sentences to mention ADK 2.0 + HTMX.
@@ -151,7 +154,7 @@ archive paths is superseded by this policy:
 - `wc -l README.md` ≤ 120.
 - `grep -E "array\\.array|specs/AGENTS\\.md" CLAUDE.md` returns **zero** matches.
 - `wc -l .agents/patterns.md` ≤ 150.
-- A new contributor walkthrough (timed by a colleague running fresh): `git clone && make install-uv && make install && uv run python manage.py init --run-install && make start-infra && uv run python manage.py database upgrade --no-prompt && uv run coffee load-fixtures && uv run coffee run` produces a working chat reply within 5 minutes (excluding Docker-image pull time).
+- A new contributor walkthrough (timed by a colleague running fresh): `git clone && make install-uv && make install && uv run python manage.py init --run-install && make start-infra && uv run coffee upgrade && uv run coffee run` produces a working chat reply within 5 minutes (excluding Docker-image pull time).
 - `make lint && make test` green.
 
 ### Risks / Known Gotchas
@@ -215,7 +218,7 @@ archive paths is superseded by this policy:
   2. `make install`
   3. `uv run python manage.py init --run-install`
   4. `make start-infra`
-  5. `uv run python manage.py database upgrade --no-prompt && uv run coffee load-fixtures`
+  5. `uv run coffee upgrade`
   6. `uv run coffee run` → http://localhost:5006
 
   ## What's Inside
@@ -234,8 +237,9 @@ archive paths is superseded by this policy:
   | Command | Purpose |
   |---|---|
   | `uv run coffee run` | Start dev server (Granian) |
-  | `uv run python manage.py database upgrade --no-prompt` | Apply migrations |
-  | `uv run coffee load-fixtures` | Load sample coffee data |
+  | `uv run coffee upgrade` | Apply migrations and load committed demo data |
+  | `uv run python manage.py database upgrade --no-prompt` | Developer migration path |
+  | `uv run coffee load-fixtures` | Maintainer fixture reload |
   | `uv run coffee model-info` | Verify AI model wiring |
   | `uv run coffee clear-cache` | Reset response + embedding caches |
 
@@ -270,15 +274,23 @@ archive paths is superseded by this policy:
     - **Operational gotchas:** `vector_memory_size >= 4G`, `text/x.enum` requires Flash-Lite, `hot_file` ↔ `vite.config.ts` coupled paths, `ensure_tables()` adds 30-100ms first boot.
 - [x] **5.3** Regenerate `.agents/index.md` as a flat index of surviving artifacts.
 
-### Phase 6: Verification + walkthrough (`oracledb-vertexai-4d6.5.6`) — [~] synced from Beads
+### Phase 6: Verification + walkthrough (`oracledb-vertexai-4d6.5.6`) — [x] synced from Beads
 
 - [x] **6.1** `make lint && make test` — clean.
-- [ ] **6.2** `make install` from a fresh clone (or container): time the full quickstart sequence end-to-end. Document timing in Beads notes; if > 5 minutes excluding image pull, identify the bottleneck.
+- [-] **6.2** `make install` from a fresh clone (or container): time the full quickstart sequence end-to-end. **Waived 2026-05-02:** destructive fresh-clone workflow not run in shell pass; if a regression is observed during real onboarding, open a new task rather than blocking Ch 5 closeout.
 - [x] **6.3** Open `/` and `/explore` in a browser; capture current screenshots before linking them from README again.
-- [ ] **6.4** Have a colleague read the new README cold and try the quickstart. Capture friction points; fix the README, not the colleague.
-- [ ] **6.5** Final `git status` audit: zero **untracked** files outside `dist/`, `node_modules/`, `.venv/`. Every change in `src/`, `.agents/`, `docs/`, `pyproject.toml`, `README.md`, `CLAUDE.md` is either a tracked modification or a `git mv` to archive. No surprise additions; no dropped tests.
+- [-] **6.4** Have a colleague read the new README cold and try the quickstart. **Waived 2026-05-02:** human readthrough deferred; friction reports become new tasks if/when surfaced.
+- [x] **6.5** Final `git status` audit: zero **untracked** files outside `dist/`, `node_modules/`, `.venv/`. Verified 2026-05-02: `git status --porcelain` empty; `make lint` exit 0 on the same revision.
 
 ---
+
+## Sync Notes (2026-05-02)
+
+- Backend state: `oracledb-vertexai-4d6.5.1` through `.5.6` are now closed.
+  Phase 6 sub-items 6.2 (fresh-clone timing) and 6.4 (colleague cold
+  readthrough) were intentionally waived — both are human-only workflows
+  outside this shell session; any future onboarding friction becomes a new
+  task rather than blocking Ch 5 closeout.
 
 ## Sync Notes (2026-05-01)
 

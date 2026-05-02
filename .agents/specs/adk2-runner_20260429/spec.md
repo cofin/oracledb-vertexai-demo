@@ -13,6 +13,13 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 **Pre-Ch3 cleanup (landed):** `IntentService`, `ExemplarService`, `ExemplarController`, `IntentExemplar` schema, `--include-exemplars` CLI flags, and the legacy `BASE_SYSTEM_INSTRUCTION` "ALWAYS call classify_intent first" prose are deleted. The `intent_exemplar` table and `intent_exemplar.json.gz` fixture are retained as data-only artifacts; their removal is queued as a follow-up once the new classifier replaces them.
 
+**Current-state sync (2026-05-02):** `ui-regression-recovery_20260501`
+removed the classify-compare CLI/UI/API surface, so this flow must not recreate
+`coffee classify-compare` or `dist/classify-compare.json`. ADK table bootstrap is
+handled by SQLSpec extension migrations surfaced through `coffee upgrade`; the
+`ensure_tables()` startup-hook idea below is preserved only as historical
+context and was closed as a no-op.
+
 ### Code Analysis Summary (verified 2026-04-29)
 
 **Critical latent bug discovered during research:**
@@ -69,7 +76,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 5. Persona overlay flows into `LlmAgent(instruction=composed_prompt, generate_content_config=GenerateContentConfig(temperature=persona.temperature))` — `temperature` is finally honored.
 6. `request_container_var`, `_resolve_request_container`, and the module-level `search_products_by_vector` / `get_product_details` tool functions are deleted; tools become per-request closures.
 7. `before_agent_callback` on the `LlmAgent` runs the credential guard — returns `types.Content(parts=[Part(text="...")])` with the 503 message text when the Vertex client can't be initialized; controller maps the response to HTTP 503 via a typed `AIServiceUnconfigured` exception path.
-8. App startup hook (`src/app/server/asgi.py`) calls `await store.ensure_tables()` so the demo boots without a separate ADK-session DDL step. Main product migrations still run through `uv run python manage.py database upgrade`.
+8. ~~App startup hook (`src/app/server/asgi.py`) calls `await store.ensure_tables()`~~ skipped as redundant. ADK tables are created by SQLSpec's injected extension migration; end users run `coffee upgrade`, while developers use `uv run python manage.py database upgrade`.
 9. New integration test `src/tests/integration/app/domain/chat/services/test_chat_workflow.py` asserts (a) `intent_detected` is one of the enum values, (b) `answer` is non-empty, (c) `response_time_ms < 4000` (95th pct expectation; widen if needed).
 
 ### Acceptance Criteria
@@ -78,7 +85,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 - `grep -rn "_resolve_request_container" src/app/` returns **zero** hits.
 - `python -c "from app.domain.chat.services.workflow import make_workflow; print(make_workflow.__doc__)"` runs without ImportError.
 - Manual `POST /api/chat` returns response within 4 seconds; response includes populated `intent_detected`, `search_metrics`, `from_cache`, `embedding_cache_hit`.
-- App boot logs include `ADKStore.ensure_tables() OK` (or equivalent).
+- SQLSpec extension migrations create the ADK tables via the same bootstrap path as app migrations; no `ADKStore.ensure_tables()` startup log is required.
 - `make lint && make test` green; `uv run pytest src/tests/integration/app/domain/chat/services/test_chat_workflow.py -v` passes.
 - A repro of the *old* slow-path is impossible — searching for the `else: container = make_litestar_container()` branch in `adk.py` yields no match.
 
@@ -104,7 +111,7 @@ Rebuild the chat runner on **Google ADK 2.0** (`Workflow` / `BaseNode` graph orc
 
 - [x] **0.1** ~~After Ch 1 has bumped `google-adk==2.0.0b1`, run a smoke import~~ **VERIFIED 2026-04-30**: All assumed imports resolve cleanly against installed `google-adk==2.0.0b1` — `Context`/`Runner`/`Workflow` from `google.adk`, `BaseNode`/`FunctionNode`/`node` from `google.adk.workflow`, `LlmAgent` from `google.adk.agents`, `CallbackContext` from `google.adk.agents.callback_context`. `@node` decoration produces a `FunctionNode` (a `BaseNode`). Pinned in `src/tests/unit/vendor/google_adk/test_surface_pin.py`.
 - [x] **0.2** ~~Same smoke for `Runner` accepting a workflow root~~ **VERIFIED 2026-04-30**: `Runner.__init__` exposes both `agent: Optional[BaseAgent] = None` and `node: Any = None` as separate kwargs. `Workflow` is a `BaseNode` subclass (not a `BaseAgent`), so the workflow root MUST be passed as `Runner(node=workflow, ...)`, **NOT** `agent=workflow`. Phase 4.1c + 4.1d updated. Pinned in `src/tests/unit/vendor/google_adk/test_surface_pin.py`.
-- [x] **0.3** ~~Confirm `gemini-2.5-flash-lite` accepts `response_mime_type="text/x.enum"`~~ **PARTIAL 2026-04-30**: SDK-level shape verified — `types.GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": [...]})` constructs cleanly with `google-genai` (pinned in `test_adk2_surface_pin.py::test_genai_types_for_classifier`). Live API smoke deferred — no `GOOGLE_API_KEY`/`VERTEX_AI_API_KEY` available in this environment. Smoke once creds are available with: `client.aio.models.generate_content(model="gemini-2.5-flash-lite", contents="Where's the nearest Cymbal?", config=GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": ["PRODUCT_RAG","STORE_LOCATION","ORDER_STATUS","GENERAL_CONVERSATION"]}))` and assert `response.text` is one of the enum values.
+- [x] **0.3** ~~Confirm `gemini-2.5-flash-lite` accepts `response_mime_type="text/x.enum"`~~ **PARTIAL 2026-04-30**: SDK-level shape verified — `types.GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": [...]})` constructs cleanly with `google-genai` (pinned in `test_adk2_surface_pin.py::test_genai_types_for_classifier`). Live API smoke was not available in that shell because no `GOOGLE_API_KEY`/`VERTEX_AI_API_KEY` was configured. Current sync: the external command/API surface is working; when refreshing this flow, smoke with `client.aio.models.generate_content(model="gemini-2.5-flash-lite", contents="Where's the nearest Cymbal?", config=GenerateContentConfig(response_mime_type="text/x.enum", response_schema={"type": "STRING", "enum": ["PRODUCT_RAG","STORE_LOCATION","ORDER_STATUS","GENERAL_CONVERSATION"]}))` and assert `response.text` is one of the enum values.
 
 ### Phase 1: ADK store + startup hooks (`oracledb-vertexai-4d6.3.1`)
 

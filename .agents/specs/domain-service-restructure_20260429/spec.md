@@ -7,9 +7,16 @@
 
 ## Specification
 
+> Current-state sync (2026-05-02): this completed chapter was written before the
+> source-tree flatten. Treat `src/py/app`, `src/py/tests`, and `uv run app ...`
+> references below as historical evidence unless the line is explicitly updated.
+> Current code lives under `src/app` and `src/tests`; run the server with
+> `uv run coffee run`; end users bootstrap with `uv run coffee upgrade`; raw
+> SQLSpec developer commands stay under `uv run python manage.py database ...`.
+
 ### Objective
 
-Reshape `src/py/app/` to the domain-service structural pattern — **without** removing Dishka. After this chapter every domain follows the same shape: `controllers/` → `services/` (subclassing `SQLSpecAsyncService`) → `db/sql/{domain}.sql` named queries → `schemas/` DTOs. All inline SQL is eliminated. The 4 scattered Dishka providers collapse to **exactly three providers**: `LitestarPersistenceProvider`, `IntegrationsProvider` (APP-singletons: Vertex client, ADKRunner, OracleAsyncADKStore, SQLSpecSessionService, FlashLiteIntentClassifier), and `DomainServiceProvider` (REQUEST-scoped domain services). List endpoints adopt `create_filter_dependencies()` so paginated responses stop being hand-rolled. The `current_price`/`price` schema-vs-query bug is fixed at the source.
+Reshape `src/app/` to the domain-service structural pattern — **without** removing Dishka. After this chapter every domain follows the same shape: `controllers/` → `services/` (subclassing `SQLSpecAsyncService`) → `db/sql/{domain}.sql` named queries → `schemas/` DTOs. All inline SQL is eliminated. The 4 scattered Dishka providers collapse to **exactly three providers**: `LitestarPersistenceProvider`, `IntegrationsProvider` (APP-singletons: Vertex client, ADKRunner, OracleAsyncADKStore, SQLSpecSessionService, FlashLiteIntentClassifier), and `DomainServiceProvider` (REQUEST-scoped domain services). List endpoints adopt `create_filter_dependencies()` so paginated responses stop being hand-rolled. The `current_price`/`price` schema-vs-query bug is fixed at the source.
 
 ### Code Analysis Summary (verified 2026-04-29)
 
@@ -42,24 +49,24 @@ Reshape `src/py/app/` to the domain-service structural pattern — **without** r
 
 ### Requirements
 
-1. `src/py/app/lib/service.py` is a re-export facade. Every existing service inherits from sqlspec's `SQLSpecAsyncService` (gains `paginate`, `get_or_404`, `exists`, `begin_transaction`).
-2. Every inline SQL string in `src/py/app/domain/` is moved to `src/py/app/db/sql/{domain}.sql` with a `-- name: <key>` directive, registered by `db_manager.load_sql_files()` at boot, and accessed via `config.db_manager.get_sql("<key>")`.
+1. `src/app/lib/service.py` is a re-export facade. Every existing service inherits from sqlspec's `SQLSpecAsyncService` (gains `paginate`, `get_or_404`, `exists`, `begin_transaction`).
+2. Every inline SQL string in `src/app/domain/` is moved to `src/app/db/sql/{domain}.sql` with a `-- name: <key>` directive, registered by `db_manager.load_sql_files()` at boot, and accessed via `config.db_manager.get_sql("<key>")`.
 3. The 4 Dishka providers collapse to **`DomainServiceProvider`** (REQUEST scope, all domain services) and **`LitestarPersistenceProvider`** (config @ APP, driver @ REQUEST). APP-singletons (`OracleAsyncADKStore`, `SQLSpecSessionService`, `ADKRunner`, `genai.Client`, `VertexAIService`) live as APP-scoped `@provide` methods on a third compact provider — `IntegrationsProvider` — so REQUEST-scoped services can depend on them via DI.
 4. Every list/search controller adopts `create_filter_dependencies(...)` and accepts `filters: list[FilterTypes] = Dependency(skip_validation=True)`. Handler bodies become `return await service.list_with_count(*filters)` or equivalent.
 5. `services.py:47` and the band-aid at `:119` are gone; the named SQL uses `price`; the response DTO uses `price`.
-6. `ApplicationCore` plugin in `src/py/app/server/core.py` follows the documented pattern: `InitPluginProtocol` registers all controllers via package-level discovery; `CLIPluginProtocol` adds the `coffee_demo_group`.
+6. `ApplicationCore` plugin in `src/app/server/core.py` follows the documented pattern: `InitPluginProtocol` registers all controllers via package-level discovery. The old `coffee_demo_group` path is gone; `coffee` is the hand-rolled app CLI and raw developer commands live on `manage.py`.
 7. Domain folder layout normalized — every domain has `controllers/`, `services/`, `schemas/` as packages (not single files).
 8. `.agents/patterns.md` rewritten to reflect post-Ch 2 reality (named SQL pattern, `Inject[T]`, `create_filter_dependencies`, single-provider-per-app pattern).
 
 ### Acceptance Criteria
 
-- `grep -rn "\"\"\"SELECT\\|\"\"\"INSERT\\|\"\"\"UPDATE\\|\"\"\"DELETE\\|\"\"\"MERGE" src/py/app/domain/` returns **zero** hits (no inline SQL in domain code).
-- `grep -rn "current_price" src/py/app/` returns **zero** hits.
-- `grep -rn "create_filter_dependencies" src/py/app/domain/` finds at least 3 callsites (products, stores, exemplars at minimum).
+- `grep -rn "\"\"\"SELECT\\|\"\"\"INSERT\\|\"\"\"UPDATE\\|\"\"\"DELETE\\|\"\"\"MERGE" src/app/domain/` returns **zero** hits (no inline SQL in domain code).
+- `grep -rn "current_price" src/app/` returns **zero** hits.
+- `grep -rn "create_filter_dependencies" src/app/domain/` finds at least 3 callsites (products, stores, exemplars at minimum).
 - `python -c "from app.ioc import make_litestar_container; c = make_litestar_container(); print(len(c._providers))"` reports exactly **3** providers (Litestar built-in not counted): `DomainServiceProvider`, `LitestarPersistenceProvider`, `IntegrationsProvider`.
-- All existing tests pass; new `tests/integration/test_named_sql_loading.py` verifies every named-SQL key referenced by services exists in `src/py/app/db/sql/*.sql`.
+- All existing tests pass; named-SQL loading tests verify every named-SQL key referenced by services exists in `src/app/db/sql/*.sql`.
 - `make lint && make test` green.
-- `uv run app run` boots; `POST /api/vector-demo` returns results with the correct `price` field; chat endpoint still answers.
+- `uv run coffee run` boots; `POST /api/vector-demo` returns results with the correct `price` field; chat endpoint still answers.
 
 ### Risks / Known Gotchas
 

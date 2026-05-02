@@ -12,7 +12,7 @@
 
 ## Frontend
 
-- **Framework:** HTMX + Jinja templates, Alpine.js
+- **Framework:** HTMX + Jinja templates with vanilla Vite-bundled JavaScript
 - **Charts:** ApexCharts
 - **Build Tool:** Vite (integrated via `litestar-vite`)
 - **Styling:** Tailwind CSS
@@ -42,7 +42,7 @@
 ## Tooling & Infrastructure
 
 - **Python Package Management:** `uv`
-- **JavaScript Package Management:** `bun`
+- **JavaScript Package Management:** `npm`
 - **Hook Management & Pre-commit:** `prek` (Rust-based fast runner)
-- **Linting & Formatting:** Ruff (Python), Biome (JavaScript/TypeScript)
+- **Linting & Formatting:** Ruff (Python), TypeScript checks for frontend code
 <!-- truth: end -->

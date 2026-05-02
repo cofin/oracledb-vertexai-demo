@@ -23,7 +23,6 @@ async def upgrade_database(revision: str, no_fixtures: bool, dry_run: bool) -> N
     console = get_console()
     console.rule("[bold blue]Database Upgrade", style="blue", align="left")
     console.print()
-
     migration_commands = cast("AsyncMigrationCommands[Any]", create_migration_commands(config=app_config.db))
     await migration_commands.upgrade(revision=revision, dry_run=dry_run)
 
@@ -40,15 +39,4 @@ async def upgrade_database(revision: str, no_fixtures: bool, dry_run: bool) -> N
             console.print("[yellow]No fixture files found to load[/yellow]")
         else:
             display_fixture_results(results)
-    console.print()
-
-
-async def downgrade_database(revision: str, dry_run: bool) -> None:
-    """Downgrade database to a specific revision."""
-    console = get_console()
-    console.rule("[bold blue]Database Downgrade", style="blue", align="left")
-    console.print()
-
-    migration_commands = cast("AsyncMigrationCommands[Any]", create_migration_commands(config=app_config.db))
-    await migration_commands.downgrade(revision=revision, dry_run=dry_run)
     console.print()

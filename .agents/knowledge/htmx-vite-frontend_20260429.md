@@ -9,7 +9,7 @@
 <!-- truth: start -->
 ## Summary
 
-Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Vite-bundled JavaScript/ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` → `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures); migrations + assets + infra moved exclusively to `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series, and vector storage calculator).
+Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Vite-bundled JavaScript/ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` -> `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (`run`, `upgrade`, `bulk-embed`, `clear-cache`, `model-info`, `load-fixtures`, `export-fixtures`). `coffee upgrade` is the packaged/end-user install path; raw SQLSpec developer commands, assets, and infra live on `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series, and vector storage calculator).
 
 Current frontend widgets do not use Alpine. Interactive Explore widgets are
 plain modules under `src/resources/` imported by `main.js` and bound to Jinja
@@ -49,7 +49,7 @@ markup through `data-*` attributes.
 - `src/tests/conftest.py` — `htmx_client` fixture
 - `src/tests/unit/test_cli_surface.py` — architectural enforcement of CLI split (8 tests including `test_coffee_help_does_not_construct_db_config`)
 - `src/tests/unit/test_repo_layout_invariants.py` — 32 invariants locking pyproject/Makefile/.gitignore/Dockerfile contracts
-- `tools/deploy/docker/run/Dockerfile{,.distroless}` — npm ci against root package.json, COPY src/, CMD ["coffee", "run", ...]
+- `tools/deploy/docker/Dockerfile` — single distroless onefile release image; the old `tools/deploy/docker/run/` variants should stay removed.
 
 ## Learnings (verbatim from spec.md learnings.md, organized by phase)
 
@@ -76,7 +76,7 @@ markup through `data-*` attributes.
 - `MetricsChart` / `scatter_data` / `breakdown_data` were unused holdovers from a React-dashboard era — replaced with Phase 5 typed Structs.
 - `test_named_sql_loading::test_no_inline_sql_strings_in_domain_services` is a real invariant — extracted EXPLAIN PLAN SQL into named queries (`explain-plan-vector-search` + `explain-plan-display`).
 - 404 body is empty under `raise_server_exceptions=False` — tests assert only `status_code == 404`; the detail string only renders in real browser responses.
-- Alpine `x-show` toggles beat imperative DOM mutation: same UX, no XSS surface.
+- Explicit vanilla-JS state toggles beat imperative HTML injection: same UX, no XSS surface, and no Alpine dependency.
 - Mid-phase user direction crystallized into 6 engineering conventions now spec'd in spec.md's Engineering Conventions section.
 
 ### Phase 6+7 (toolchain finalize + browser smoke)

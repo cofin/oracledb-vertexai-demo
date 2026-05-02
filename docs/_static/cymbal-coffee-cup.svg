@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Cymbal Coffee">
+  <title>Cymbal Coffee</title>
+  <g fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+    <path d="M22 6 q-3 6 0 12 t 0 8" opacity="0.55"/>
+    <path d="M32 4 q-3 6 0 12 t 0 10" opacity="0.85"/>
+    <path d="M42 6 q-3 6 0 12 t 0 8" opacity="0.55"/>
+  </g>
+  <path d="M10 30 h30 v12 a12 12 0 0 1 -12 12 H22 a12 12 0 0 1 -12 -12 z" fill="currentColor"/>
+  <path d="M40 33 c8 0 8 14 0 14 v-3 c5 0 5 -8 0 -8 z" fill="currentColor"/>
+  <ellipse cx="25" cy="58" rx="22" ry="2" fill="currentColor" opacity="0.4"/>
+</svg>

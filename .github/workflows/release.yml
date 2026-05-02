@@ -1,0 +1,193 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-python-package:
+    name: Build wheel and sdist
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: |
+          uv python install cpython-3.13.12-linux-x86_64-gnu
+          uv sync --python cpython-3.13.12-linux-x86_64-gnu --group build
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: uv run python manage.py assets install
+
+      - name: Build frontend assets
+        run: uv run python manage.py assets build
+
+      - name: Build wheel and sdist
+        run: uv build
+
+      - name: Upload Python package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-packages
+          path: |
+            dist/app-*.whl
+            dist/app-*.tar.gz
+          if-no-files-found: error
+
+  build-release-artifacts:
+    name: Build ${{ matrix.label }} release artifacts
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-x86_64
+            runner: ubuntu-24.04
+            python-version: cpython-3.13.12-linux-x86_64-gnu
+            rust-target: x86_64-unknown-linux-gnu
+            docker-arch: amd64
+            onefile-asset: dist/coffee-linux-x86_64
+            container-image: cymbal-coffee:release-amd64
+            container-asset: dist/coffee-image-amd64.tar
+          - label: linux-aarch64
+            runner: ubuntu-24.04-arm
+            python-version: cpython-3.13.12-linux-aarch64-gnu
+            rust-target: aarch64-unknown-linux-gnu
+            docker-arch: arm64
+            onefile-asset: dist/coffee-linux-aarch64
+            container-image: cymbal-coffee:release-arm64
+            container-asset: dist/coffee-image-arm64.tar
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: |
+          uv python install "${{ matrix.python-version }}"
+          uv sync --python "${{ matrix.python-version }}" --group build
+
+      - name: Set up Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Install cargo-zigbuild
+        run: cargo install cargo-zigbuild --locked
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install project and frontend dependencies
+        run: uv run python manage.py assets install
+
+      - name: Build frontend assets
+        run: uv run python manage.py assets build
+
+      - name: Build and verify PyApp onefile release asset
+        env:
+          PYAPP_BUILD_PYTHON: ${{ matrix.python-version }}
+          PYAPP_BUILD_TARGET: ${{ matrix.rust-target }}
+        run: |
+          make build-onefile
+          install -m 755 dist/coffee "${{ matrix.onefile-asset }}"
+          install -m 755 dist/coffee "dist/coffee-${{ matrix.docker-arch }}-linux-gnu"
+          test -s "${{ matrix.onefile-asset }}"
+          sha256sum "${{ matrix.onefile-asset }}" > "${{ matrix.onefile-asset }}.sha256"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and verify container release asset
+        run: |
+          docker buildx build --load --platform "linux/${{ matrix.docker-arch }}" \
+            -f tools/deploy/docker/Dockerfile \
+            -t "${{ matrix.container-image }}" \
+            --build-arg TARGETARCH="${{ matrix.docker-arch }}" \
+            .
+          docker run --rm "${{ matrix.container-image }}" upgrade --help
+          docker save "${{ matrix.container-image }}" -o "${{ matrix.container-asset }}"
+          test -s "${{ matrix.container-asset }}"
+          sha256sum "${{ matrix.container-asset }}" > "${{ matrix.container-asset }}.sha256"
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.docker-arch }}
+          path: |
+            ${{ matrix.onefile-asset }}
+            ${{ matrix.onefile-asset }}.sha256
+            ${{ matrix.container-asset }}
+            ${{ matrix.container-asset }}.sha256
+          if-no-files-found: error
+
+  create-release:
+    name: Create GitHub release
+    runs-on: ubuntu-24.04
+    needs:
+      - build-python-package
+      - build-release-artifacts
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download Python package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-packages
+          path: dist
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/app-*.whl
+            dist/app-*.tar.gz
+            dist/coffee-linux-x86_64
+            dist/coffee-linux-x86_64.sha256
+            dist/coffee-linux-aarch64
+            dist/coffee-linux-aarch64.sha256
+            dist/coffee-image-amd64.tar
+            dist/coffee-image-amd64.tar.sha256
+            dist/coffee-image-arm64.tar
+            dist/coffee-image-arm64.tar.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true

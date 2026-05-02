@@ -23,7 +23,7 @@ _No implementation notes yet — chapter not started._
 - **`INTENT_MODEL` is a separate setting from `CHAT_MODEL`** because Flash-Lite is purpose-fit for cheap single-call classification while `CHAT_MODEL` (`gemini-3-flash-latest`) handles tool-calling RAG. Override via `VERTEX_AI_INTENT_MODEL` env var.
 - **Test surface follows `test_adk2_surface_pin.py:80-87` exactly** — same `response_mime_type="text/x.enum"`, same `response_schema={"type": "STRING", "enum": INTENT_VALUES}` shape captured from `generate_content` kwargs.
 - **No defensive fallback for unknown enum text:** classifier raises `ValueError` if Gemini ever returns a non-enum string. Per the no-backwards-compat-shims rule + because Phase 4 controllers will wrap the runner call in `AIServiceUnconfigured` translation. Pinned by `test_classifier_raises_on_unknown_label`.
-- **Live `text/x.enum` smoke still deferred** (Phase 0.3) — needs `GOOGLE_API_KEY` or `VERTEX_AI_API_KEY` in env.
+- **Live `text/x.enum` smoke status** (Phase 0.3) — the original shell lacked `GOOGLE_API_KEY` / `VERTEX_AI_API_KEY`, so only SDK shape was pinned then. Current sync says the external surface is working; future refreshes should run the live smoke rather than treating it as blocked.
 
 ## Phase 3 (2026-04-30)
 

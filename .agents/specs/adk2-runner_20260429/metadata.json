@@ -7,5 +7,5 @@
   "created_at": "2026-04-29T01:30:00Z",
   "updated_at": "2026-04-30T20:07:21Z",
   "synced_at": "2026-04-30T20:07:21Z",
-  "description": "Rebuild ADKRunner on ADK 2.0b1 Workflow/BaseNode with parallel intent classification (Gemini 2.5 Flash-Lite enum schema) hidden behind retrieval. Delete request_container_var workaround in favor of closure-bound tools. Add classify-compare CLI feeding Ch 4 comparison chart. Add ensure_tables() startup hook. Replace string-match credential guard with typed exception."
+  "description": "Rebuild ADKRunner on ADK 2.0b1 Workflow/BaseNode with parallel intent classification (Gemini 2.5 Flash-Lite enum schema) hidden behind retrieval. Delete request_container_var workaround in favor of closure-bound tools. Replace string-match credential guard with typed exception. Later sync: classify-compare CLI/UI and ensure_tables startup hook were descoped; ADK tables are created by SQLSpec extension migrations surfaced through coffee upgrade."
 }

@@ -2,19 +2,97 @@
 
 *PRD ID: `documentation-setup_20260429`*
 *Created: 2026-04-29*
-*Status: Ready*
+*Status: Complete — closed in Beads 2026-05-02*
+*Last reviewed: 2026-05-02*
+
+---
+
+## Locked Decisions (2026-05-02)
+
+After ultrathink planning pass, the PRD's original "5 sequential chapters of
+production content" was re-shaped around a **new-user-first information
+architecture**. Beads phase IDs (6.1–6.5) are unchanged; what each phase
+*produces* is sharpened.
+
+**Front-door title + tagline (locked 2026-05-02):**
+
+- H1: `Ground Beans to Grounded Answers`
+- Hero tagline: `Building Agentic Apps with Google and Oracle.`
+
+The "grounded" wordplay is intentional and load-bearing: coffee grounds on
+one side, RAG grounding on the other. The two-line shape (short product
+arc + literal site purpose) is preserved across iterations.
+
+**Three-tier information architecture:**
+
+```
+docs/
+├── index.md              ← Tier 1 front door: hero diagram + 3-line pitch + 2 CTAs
+├── tour.md               ← Tier 1 centerpiece: a chat message, end to end
+├── concepts/             ← Tier 2: pick a concept, go deep (3 pages, locked)
+│   ├── vector-search.md  ← HNSW + 3072-dim + INMEMORY
+│   ├── rag.md            ← retrieval → grounding → response
+│   └── agent-flow.md     ← parallel intent + tool calling
+└── reference/            ← Tier 3: only when needed (autodoc lives here)
+    ├── quickstart.md
+    ├── cli.md
+    ├── api.md            ← autodoc, narrowly scoped
+    └── internals.md      ← HNSW internals, perf dashboard, latency timeline
+```
+
+**Concept page count:** 3 (vector-search / rag / agent-flow) — not 2 or 4.
+
+**Autodoc scope:** buried under `reference/api.md`, **not** a top-level nav
+item. API doc is *not* the focus of this site; it's a learning portal.
+Autodoc covers only `ADKRunner`, `CacheService`, `MetricsService`,
+`ProductService`, and the `domain/*/schemas` msgspec structs. Skip CLI,
+settings, plugin wiring.
+
+**Diagram budget (11 total):**
+- 1 hero (front door)
+- 4 tour stops (one per step in the end-to-end story)
+- 3 concept diagrams (one per concept page)
+- 3 internals (HNSW neighbor graph, parallel-vs-sequential latency timeline,
+  performance dashboard explainer)
+- Every diagram caption completes the sentence "This shows how…"
+
+**Source-stable code embeds:** every `literalinclude` block uses
+`# docs:start-<name>` / `# docs:end-<name>` anchor markers in the source so
+that refactors don't silently break docs.
+
+**Theme:** `sphinx-immaterial` (final lock 2026-05-02). Earlier Beads-side
+drift toward `shibuya` (sqlspec pattern) is reverted. Rationale:
+- This site is API-dense *and* learning-dense — Material's feature density
+  (sticky TOC, code annotations, light/dark palette toggle, dismissable
+  banners, custom admonitions) outperforms minimalist themes for scanning a
+  reference app.
+- The 3-tier IA (Tour / Concepts / Reference) is exposed via the persistent
+  left sidebar (`navigation.expand` + `navigation.sections`) rather than
+  `navigation.tabs`. Tabs were tried and dropped — the sidebar reads better
+  on smaller viewports and avoids duplicating navigation in two places.
+- Custom admonitions (`tour-stop`, `oracle-internals`, `agent-detail`) are
+  defined in `conf.py` and used as MyST `:::{tour-stop}` blocks — the tour
+  page reads as a labelled walkthrough, not a wall of text.
+- Branding: `green` primary + `amber` accent, with custom Cymbal Coffee
+  brand assets (`docs/_static/cymbal-coffee-logo.svg` for the wordmark in
+  the top bar; `docs/_static/cymbal-coffee-cup.svg` for the favicon).
+  `html_title = ""` suppresses redundant theme text next to the wordmark.
+
+**Build discipline:** `make docs` builds with `-W --keep-going` from day 1
+(warnings-as-errors). `make docs-serve` runs `sphinx-autobuild` on port 8002.
+GH Actions deploys to GitHub Pages.
 
 ---
 
 ## North Star
 
-Transform `oracledb-vertexai-demo` from a repository into a **production-grade educational platform**. The documentation should be a "learning app" in itself, providing a narrative-first experience that explains *how* Oracle 23ai Vector Search, Google ADK 2.0, and Vertex AI work together, using rich visualizations and diagrams.
+Transform `oracledb-vertexai-demo` from a repository into a **production-grade educational platform**. The documentation should be a "learning app" in itself, providing a narrative-first experience that explains *how* Oracle 26ai Vector Search, Google ADK 2.0, and Vertex AI work together, using rich visualizations and diagrams.
 
 ---
 
 ## Why now
 
-The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 and Oracle 23ai best practices. While Chapter 5 cleans up the existing markdown guides, it stops short of a professional, integrated documentation site. To be a true "reference app," we need a searchable, structured, and visually compelling portal that developers can use to learn the stack.
+The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 and Oracle 26ai best practices. While Chapter 5 cleans up the existing markdown guides, it stops short of a professional, integrated documentation site. To be a true "reference app," we need a searchable, structured, and visually compelling portal that developers can use to learn the stack.
 
 ---
 
@@ -41,7 +119,7 @@ The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 an
 ### Chapter 2 — Narrative Learning Content
 **The curriculum.** Convert and expand the "evergreen guides" from Ch 5 into narrative sections.
 
-- **Vector Search Deep Dive**: How HNSW and INMEMORY work in Oracle 23ai. Use `literalinclude` to show the SQL.
+- **Vector Search Deep Dive**: How HNSW and INMEMORY work in Oracle 26ai. Use `literalinclude` to show the SQL.
 - **RAG & Graph RAG**: Explaining the retrieval-augmented generation flow.
 - **Vertex AI Integration**: How embeddings (3072-dim) and chat models are used.
 - Move Ch 5 guides (`architecture.md`, `oracle-vector-search.md`, `adk-agent-patterns.md`) into Sphinx content.
@@ -58,15 +136,15 @@ The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 an
   - Visualize the interaction between the ADK Runner and the `AgentToolsService` (closure-bound tool pattern).
 
 ### Chapter 4 — Oracle Internals & Visuals
-**Inside the DB.** Visualizing the "Oracle EXPLAIN PLAN" and vector indexing.
+**Inside the DB.** Visualizing how vector indexing and live performance feel.
 
 - **Diagram 4.1: HNSW Neighbor Graph**:
   - Conceptual visualization of Hierarchical Navigable Small Worlds within the Oracle SGA.
   - Explain the `ORGANIZATION INMEMORY NEIGHBOR GRAPH` layout.
-- **Diagram 4.2: EXPLAIN PLAN Walkthrough**:
-  - Breakdown of a live execution plan: `VECTOR INDEX RANGE SCAN`, `VECTOR DISTANCE` filter, and base table row fetch from `INMEMORY` storage.
-- **Diagram 4.3: Intent Classification Performance**:
+- **Diagram 4.2: Intent Classification Performance**:
   - Visualize the "Parallel vs Sequential" latency delta (showing how classification time is "hidden" behind search time).
+- **Diagram 4.3: Performance Dashboard Explainer**:
+  - Annotated screenshot of `/explore` showing what each live metric measures and which Oracle/ADK call it maps to.
 
 ### Chapter 5 — API Reference & Final Polish
 **The reference.** Automated docs for the core domain.
@@ -80,23 +158,28 @@ The "Cymbal Coffee Reset" (Chapters 1–5) modernizes the codebase to ADK 2.0 an
 
 ## Tech Stack (Docs)
 
-- **Engine**: Sphinx 8.x
-- **Theme**: `shibuya` (Litestar-branded Material theme)
+- **Engine**: Sphinx 8.x (pinned `>=8.0,<9`)
+- **Theme**: `sphinx-immaterial>=0.13.0` — see Locked Decisions for rationale
+- **Theme add-ons**: `sphinx-design` (cards/grids), `sphinx-copybutton`
 - **Diagrams**: `sphinxcontrib-mermaid`
-- **Markup**: `myst-parser` (for Markdown support) + RST
-- **API Docs**: `autodoc`, `napoleon`, `sphinx-autodoc-typehints`
+- **Markup**: `myst-parser` (Markdown-first) with `attrs_block`,
+  `colon_fence`, `deflist`, `linkify`, `tasklist` extensions
+- **API Docs**: `autodoc`, `napoleon` (Google docstrings),
+  `sphinx-autodoc-typehints`
+- **Live reload**: `sphinx-autobuild` on `:8002`, watching `src/`
 - **Deployment**: GitHub Actions + GitHub Pages
-- **Environment**: `uv` + `Makefile`
+- **Environment**: `uv` (`dependency-groups.docs`) + `Makefile`
+  (`docs`, `docs-serve`, `docs-clean`)
 
 ---
 
 ## Technical Patterns (from sqlspec)
 
 ### 1. Makefile Integration
-The `Makefile` will be updated with standard doc targets to simplify local development:
-- `make docs`: Clean build of the documentation.
-- `make docs-serve`: Hot-reloading local documentation server using `sphinx-autobuild`.
-- `make docs-clean`: Remove build artifacts.
+Standard doc targets are wired in Ch 6.1:
+- `make docs`: `sphinx-build -W --keep-going -b html docs docs/_build/html`
+- `make docs-serve`: `sphinx-autobuild --port 8002 --watch src docs docs/_build/html`
+- `make docs-clean`: `rm -rf docs/_build`
 
 ### 2. CI/CD Pipeline
 A GitHub Actions workflow (`.github/workflows/docs.yml`) will automate the documentation lifecycle:
@@ -106,9 +189,32 @@ A GitHub Actions workflow (`.github/workflows/docs.yml`) will automate the docum
 - Deploys to GitHub Pages using the official `actions/deploy-pages`.
 
 ### 3. Sphinx Configuration (`conf.py`)
-- **Theme Customization**: Use the `shibuya` theme with Cymbal Coffee brand overrides (accent colors, logos).
-- **Mermaid Support**: High-fidelity diagrams with interactive features enabled.
-- **Autodoc Mocking**: Ensure `autodoc_mock_imports` handles optional or complex dependencies (e.g., `oracledb`, `vertex-ai`) to allow CI builds without a full live environment.
+- **Theme**: `sphinx-immaterial` with Cymbal Coffee branding — custom
+  `_static/cymbal-coffee-logo.svg` wordmark, `_static/cymbal-coffee-cup.svg`
+  favicon, `fontawesome/brands/github` repo icon, `green` primary + `amber`
+  accent, light/dark palette toggle, `html_title = ""`.
+- **Navigation features**: persistent sidebar via `navigation.expand` +
+  `navigation.sections` (no `navigation.tabs` — tried, dropped); `toc.follow`
+  + `toc.sticky` for the right-side TOC; `navigation.instant` for SPA-feel
+  page transitions.
+- **Repo wiring**: `repo_url` points at `cofin/oracledb-vertexai-demo`
+  (the live remote), with `edit_uri = "edit/main/docs"`.
+- **Diagrams**: `sphinxcontrib.mermaid` is the active mermaid backend;
+  `mermaid_version = "11.4.1"` loads the CDN ESM bundle.
+- **Code experience**: `content.code.annotate` + `content.code.copy`, plus
+  `sphinx_copybutton` for fallback.
+- **Custom admonitions**: `tour-stop`, `oracle-internals`, `agent-detail` —
+  defined via `sphinx_immaterial_custom_admonitions`; used as MyST
+  `:::{tour-stop}` blocks on the tour and concept pages.
+- **MyST extensions**: `attrs_block`, `colon_fence`, `deflist`, `fieldlist`,
+  `linkify`, `substitution`, `tasklist` so Markdown can express the same
+  density as RST.
+- **Autodoc mocking**: `autodoc_mock_imports = ["oracledb", "vertexai",
+  "google.adk", "google.cloud", "google.genai"]` for CI builds without
+  live credentials or Oracle.
+- **Custom CSS**: `_static/custom.css` styles the front-door hero (tagline
+  font, pill cards, mermaid centering) and adds card hover lift for
+  `sphinx-design` grids.
 
 ---
 
@@ -148,5 +254,32 @@ A GitHub Actions workflow (`.github/workflows/docs.yml`) will automate the docum
 - **Ch 1** `docs-foundation` — Scaffolding, Makefile, and CI/CD setup.
 - **Ch 2** `narrative-content` — Content migration and learning deep-dives.
 - **Ch 3** `agentic-visuals` — Mermaid mapping of ADK 2.0.
-- **Ch 4** `oracle-internals` — Vector search and execution plan visuals.
+- **Ch 4** `oracle-internals` — Vector search visuals (no EXPLAIN PLAN
+  walkthrough — replaced by performance dashboard explainer).
 - **Ch 5** `api-reference` — Autodoc and final polish.
+
+---
+
+## Implementation Status (2026-05-02)
+
+| Phase | Status | Output |
+| --- | --- | --- |
+| 6.1 Foundation | done | `conf.py`, theme, branding, Makefile, mermaid, custom admonitions, hero front door |
+| 6.2 Narrative | done | `tour.md` end-to-end + 3 concept pages + `internals.md` all live; literalincludes anchored with `docs:start-*` markers |
+| 6.3 Visuals | done | Hero + 4 tour-stop diagrams + 3 concept diagrams + 3 internals diagrams (HNSW layers, parallel-vs-sequential gantt, dashboard mapping) |
+| 6.4 Internals appendix | done | Folded into 6.2 — HNSW, latency timeline, dashboard explainer |
+| 6.5 Autodoc + CI | done | `reference/api.md` wired with autodoc for ADKRunner + 3 services + 3 schema packages; `.github/workflows/docs.yml` builds with `-W --keep-going` on push to main and deploys via `actions/deploy-pages@v4` |
+
+### Source-stable code embeds — current anchors
+
+The following `# docs:start-<name>` / `# docs:end-<name>` anchor pairs back
+the literalinclude blocks in `tour.md` and the concept pages:
+
+| Anchor | File |
+| --- | --- |
+| `docs:start-stream-handler` | `src/app/domain/chat/controllers/_chat.py` |
+| `docs:start-vertex-embedding` | `src/app/domain/products/services/services.py` |
+| `docs:start-search-by-vector` | `src/app/domain/products/services/services.py` |
+| `docs:start-vector-search-sql` | `src/app/db/sql/products.sql` |
+| `docs:start-hnsw-index` | `src/app/db/migrations/0001_cymball_coffee_products.sql` |
+| `docs:start-workflow-fanout` | `src/app/domain/chat/services/workflow.py` |

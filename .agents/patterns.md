@@ -58,8 +58,8 @@
 - Frontend pages are HTMX + Jinja + Tailwind v4 + vanilla JavaScript/ApexCharts
   through `litestar-vite` template mode, not a standalone SPA.
 - Explore-only educational calculators stay client-only in `src/resources/*.js`
-  and wire to Jinja markup through `data-*` attributes. Do not reintroduce
-  Alpine for these widgets.
+  and wire to Jinja markup through `data-*` attributes. Keep this as vanilla
+  Vite-bundled JavaScript.
 - Vector footprint estimates use raw bytes by format (`N * d * 8` for FLOAT64,
   `N * d * 4` for FLOAT32, `N * d` for INT8, `N * ceil(d / 8)` for BINARY),
   HNSW overhead as `N * M * d * 4`, IVF overhead as a FLOAT32 copy, and Vector
@@ -120,6 +120,10 @@
   files so repo ruff checks do not treat moved tests as implicit namespaces.
 - Unit tests should pin public contracts and local patterns: CLI command
   presence, no inline SQL in domain services, provider shape, and domain layout.
+- `coffee upgrade` is the packaged/end-user install command and loads committed
+  fixtures after migrations. Raw SQLSpec developer commands such as downgrade
+  and current stay under `python manage.py database ...`; do not expose
+  `coffee downgrade`.
 - Put reusable test constants and repo paths in `src/tests/support/` instead of
   hardcoding relative parent depths in moved tests.
 - Handler tests that hit `Inject[T]` must mock the full DI chain when the test
@@ -161,4 +165,31 @@
   `bd sync` because Beads does not expose that command.
 - Logging must use `app.lib.log` processors, set Litestar/Granian env defaults,
   exclude static-asset logs, and filter only known ADK/Authlib warning noise.
+- PyApp onefile releases use the custom Bundle-Patch-Compile path, not
+  `[tool.pyapp]` or `uvx pyapp build`: build assets and wheel, bundle Python
+  3.13 dependencies with `tools/bundler.py`, patch PyApp to install under the
+  XDG config path (`~/.config/cymbal-coffee` by default), and compile Linux
+  launchers with `cargo zigbuild --target <arch>-unknown-linux-gnu.2.17`.
+- `make build-onefile` must force `UV_PYTHON`/`PYAPP_BUILD_PYTHON` to the
+  explicit CPython 3.13 build interpreter because the repo-local
+  `.python-version` remains `3.12` for normal development.
+- Release containers wrap the onefile binary, not a separate Python install
+  path. Build from the single distroless Dockerfile at
+  `tools/deploy/docker/Dockerfile`,
+  allow Docker context access to `dist/coffee-*-linux-gnu`, and expose
+  `/app/wallet` with `TNS_ADMIN`/`WALLET_LOCATION` pointed there for read-only
+  Oracle wallet mounts.
+- Release CI builds onefiles and containers on native architecture runners:
+  `ubuntu-24.04` for x86_64/amd64 and `ubuntu-24.04-arm` for aarch64/arm64.
+  Cross-compilation via emulation is rejected — both arches build natively in
+  the matrix and the final GitHub Release job downloads `dist/coffee-linux-x86_64`
+  + `dist/coffee-linux-aarch64` plus checksums and attaches them with
+  `fail_on_unmatched_files: true`. Onefile and container smoke checks invoke
+  `coffee upgrade --help` (the packaged end-user command) rather than `coffee run`.
+- Docs publish via `.github/workflows/docs.yml` on push to main: builds with
+  `sphinx-build -W --keep-going`, uploads `actions/upload-pages-artifact@v3`,
+  deploys via `actions/deploy-pages@v4`. Do not add `oracledb`, `vertexai`,
+  `google.adk`, `google.cloud`, or `google.genai` to `autodoc_mock_imports`
+  in `docs/conf.py` — they are hard deps and mocking breaks sqlspec's
+  import-time `oracledb.__version__` lookup.
 <!-- truth: end -->

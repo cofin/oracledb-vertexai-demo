@@ -14,7 +14,7 @@ from __future__ import annotations
 import rich_click as click
 
 from app.cli._helpers.cache import clear_application_cache
-from app.cli._helpers.database import downgrade_database, upgrade_database
+from app.cli._helpers.database import upgrade_database
 from app.cli._helpers.embeddings import generate_product_embeddings
 from app.cli._helpers.fixtures import (
     display_available_tables,
@@ -73,15 +73,6 @@ async def upgrade_cmd(
 ) -> None:
     """Upgrade database to a specific revision and optionally load fixtures."""
     await upgrade_database(revision, no_fixtures, dry_run)
-
-
-@cli.command(name="downgrade", help="Downgrade database to a specific revision.")
-@click.option("--revision", "-r", required=True, help="Target revision to downgrade to")
-@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
-@async_inject
-async def downgrade_cmd(revision: str, dry_run: bool) -> None:
-    """Downgrade database to a specific revision."""
-    await downgrade_database(revision, dry_run)
 
 
 @cli.command(name="load-fixtures", help="Load application fixture data into the database.")

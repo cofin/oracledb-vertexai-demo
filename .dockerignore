@@ -3,7 +3,9 @@ venv
 node_modules
 __pycache__
 *.pyc
-dist/
+dist/*
+!dist/coffee-amd64-linux-gnu
+!dist/coffee-arm64-linux-gnu
 tmp/
 .git
 .env

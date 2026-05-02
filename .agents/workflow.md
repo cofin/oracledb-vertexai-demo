@@ -19,6 +19,16 @@ make typecheck
 make test
 ```
 
+### Build And Release
+```bash
+make build-onefile
+make build-onefile-container
+dist/coffee --help
+dist/coffee upgrade --help
+docker run --rm cymbal-coffee:latest upgrade --help
+readelf -Ws dist/coffee | rg -o 'GLIBC_[0-9.]+' | sort -Vu | tail
+```
+
 ## Guiding Principles
 
 1. **Beads backend is the Source of Truth:** Use official Beads (`bd`) for task state. Do not run `bd sync`; that command does not exist. When markdown views need refresh, use the Flow plugin sync workflow if available, or reconcile `.agents/specs/` and `.agents/flows.md` from Beads state explicitly.
@@ -32,6 +42,9 @@ make test
 9. **Minimal Targeted Changes:** Make the smallest coherent change set that solves the task. Do not make opportunistic cleanup edits or random unrelated modifications without approval.
 10. **No Silent Descoping:** If the task is larger or messier than expected, refine the plan or ask the user how to prioritize. Do not quietly skip work.
 11. **Test Integration Over Test Sprawl:** New coverage should extend the existing module-path test file and shared fixtures when possible. Do not create one-off issue or feature test files when the behavior belongs in an existing `src/tests/{unit,integration}/<module path>/test_*.py` module.
+12. **PyApp Release Path:** Onefile releases use the custom Bundle-Patch-Compile workflow. Keep the PyApp runtime on Python 3.13, force `UV_PYTHON`/`PYAPP_BUILD_PYTHON` during `make build-onefile`, install under the XDG config path, and require Zig/cargo-zigbuild for Linux glibc 2.17 launchers.
+13. **Release Container Path:** Release containers wrap the onefile binary using the single distroless Dockerfile at `tools/deploy/docker/Dockerfile`. Wallet-backed runs mount the wallet at `/app/wallet`; the image sets `TNS_ADMIN` and `WALLET_LOCATION` to that path.
+14. **CLI Boundary:** `coffee upgrade` is the packaged/end-user install command. Raw SQLSpec developer commands such as downgrade/current stay under `python manage.py database ...`.
 <!-- truth: end -->
 
 ## Beads Integration

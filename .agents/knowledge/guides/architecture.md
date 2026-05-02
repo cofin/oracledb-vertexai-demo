@@ -215,15 +215,18 @@ small browser helper, not for client-side routing.
 Use `coffee` for demo operations:
 
 - `coffee run`
+- `coffee upgrade`
 - `coffee load-fixtures`
 - `coffee bulk-embed`
 - `coffee export-fixtures`
 - `coffee clear-cache`
 - `coffee model-info`
 
-Use `python manage.py database ...` for SQLSpec migrations and `python manage.py
-init --run-install` for bootstrap. The Litestar SQLSpec plugin intentionally
-does not auto-mount a `db` group onto `coffee`.
+Use `coffee upgrade` as the packaged/end-user install path. It applies SQLSpec
+migrations and loads committed fixtures. Use `python manage.py database ...` for
+developer SQLSpec commands such as downgrade/current, and `python manage.py init
+--run-install` for bootstrap. The Litestar SQLSpec plugin intentionally does not
+auto-mount a `db` group onto `coffee`.
 
 ## Test Database Lifecycle
 

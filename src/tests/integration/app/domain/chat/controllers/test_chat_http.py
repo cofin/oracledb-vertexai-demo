@@ -62,6 +62,7 @@ def _stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ADKRunner, "__init__", _noop_init)
     monkeypatch.setattr(ADKRunner, "process_request", AsyncMock(return_value=_FAKE_REPLY))
     monkeypatch.setattr(ADKRunner, "stream_request", _stream_request)
+    monkeypatch.setattr(ADKRunner, "ensure_configured", staticmethod(lambda: None))
 
 
 async def test_htmx_returns_partial(htmx_client: AsyncTestClient) -> None:
@@ -192,10 +193,10 @@ async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "event: delta" in response.text
     assert "event: final" in response.text
-    assert '"intent_detected": "PRODUCT_RAG"' in response.text
-    assert '"vector_query": "ethiopian"' in response.text
-    assert '"embedding_cache_hit": true' in response.text
-    assert '"sql_key": "vector-search-products"' in response.text
+    assert '"intent_detected":"PRODUCT_RAG"' in response.text
+    assert '"vector_query":"ethiopian"' in response.text
+    assert '"embedding_cache_hit":true' in response.text
+    assert '"sql_key":"vector-search-products"' in response.text
     assert "<VECTOR[3072 FLOAT32]" in response.text
 
 

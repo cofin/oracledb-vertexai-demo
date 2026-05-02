@@ -24,7 +24,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
   *Link: [./specs/htmx-vite-frontend_20260429/](./specs/htmx-vite-frontend_20260429/)*
   *Beads: oracledb-vertexai-4d6.4*
 
-  ### [ ] Ch 5: prune-and-document_20260429
+  ### [x] Ch 5: prune-and-document_20260429
   *Link: [./specs/prune-and-document_20260429/](./specs/prune-and-document_20260429/)*
   *Beads: oracledb-vertexai-4d6.5*
 
@@ -46,15 +46,15 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
   ---
 
-  ## [ ] PRD: pyapp-packaging_20260429
+  ## [x] PRD: pyapp-packaging_20260429
   *Link: [./specs/pyapp-packaging_20260429/](./specs/pyapp-packaging_20260429/)*
   *Beads: oracledb-vertexai-7dh*
 
-  ### [ ] Ch 1: pyapp-enablement_20260429
+  ### [x] Ch 1: pyapp-enablement_20260429
   *Link: [./specs/pyapp-enablement_20260429/](./specs/pyapp-enablement_20260429/)*
   *Beads: oracledb-vertexai-7dh.1*
 
-  ### [ ] Ch 2: release-automation_20260429
+  ### [x] Ch 2: release-automation_20260429
   *Link: [./specs/release-automation_20260429/](./specs/release-automation_20260429/)*
   *Beads: oracledb-vertexai-7dh.2*
 
@@ -63,32 +63,6 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
-
----
-
-## [ ] PRD: store-location-inventory-chat_20260501
-*Link: [./specs/store-location-inventory-chat_20260501/](./specs/store-location-inventory-chat_20260501/)*
-*Beads: oracledb-vertexai-f6u*
-
-  ### [ ] Ch 1: store-data-foundation_20260501
-  *Link: [./specs/store-data-foundation_20260501/](./specs/store-data-foundation_20260501/)*
-  *Beads: oracledb-vertexai-f6u.1*
-
-  ### [ ] Ch 2: store-query-services_20260501
-  *Link: [./specs/store-query-services_20260501/](./specs/store-query-services_20260501/)*
-  *Beads: oracledb-vertexai-f6u.2*
-
-  ### [ ] Ch 3: store-intent-routing_20260501
-  *Link: [./specs/store-intent-routing_20260501/](./specs/store-intent-routing_20260501/)*
-  *Beads: oracledb-vertexai-f6u.3*
-
-  ### [ ] Ch 4: browser-location-maps-ui_20260501
-  *Link: [./specs/browser-location-maps-ui_20260501/](./specs/browser-location-maps-ui_20260501/)*
-  *Beads: oracledb-vertexai-f6u.4*
-
-  ### [ ] Ch 5: store-maps-security-docs_20260501
-  *Link: [./specs/store-maps-security-docs_20260501/](./specs/store-maps-security-docs_20260501/)*
-  *Beads: oracledb-vertexai-f6u.5*
 
 ---
 
@@ -110,3 +84,10 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   archived locally on 2026-05-02. SPDX-FileCopyrightText migration shipped in
   b0e9819 + aa221a8; canonical header form and tooling chain are documented in
   `.agents/patterns.md` and `.agents/code-styleguides/python.md`.
+- `store-location-inventory-chat_20260501` (`oracledb-vertexai-f6u`) completed
+  and archived locally on 2026-05-02. All five chapters closed in Beads on
+  2026-05-01 with verification on commit 8fb40b4 (12 focused maps/settings
+  tests + 274 full-suite tests). Store data, query services, intent routing,
+  browser-location/maps UI, and Maps security/docs are all documented in
+  `.agents/knowledge/guides/architecture.md`, `.agents/knowledge/project-guide.md`,
+  and `.agents/knowledge/guides/adk-agent-patterns.md`.

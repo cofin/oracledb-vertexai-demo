@@ -46,8 +46,7 @@ uv run python manage.py init --run-install
 
 # Local Oracle
 make start-infra
-uv run python manage.py database upgrade --no-prompt
-uv run coffee load-fixtures
+uv run coffee upgrade
 
 # App
 uv run coffee run
@@ -62,10 +61,13 @@ make test
 make coverage
 ```
 
-`coffee` is the hand-rolled app CLI. Keep `bulk-embed` and `export-fixtures` on
-that surface; they are lifecycle commands for committed demo data. Keep command
-modules readable by putting implementation helpers under `app.cli._helpers`.
-Use `@async_inject` for async Click commands.
+`coffee` is the hand-rolled app CLI. `coffee upgrade` is the packaged/end-user
+install command; it applies migrations and loads committed fixtures. Keep raw
+SQLSpec developer commands such as downgrade/current on `python manage.py
+database ...`, not on `coffee`. Keep `bulk-embed` and `export-fixtures` on
+`coffee`; they are maintainer lifecycle commands for committed demo data. Keep
+command modules readable by putting implementation helpers under
+`app.cli._helpers`. Use `@async_inject` for async Click commands.
 
 ## Project Structure
 

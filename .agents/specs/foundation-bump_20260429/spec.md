@@ -7,6 +7,13 @@
 
 ## Specification
 
+> Current-state sync (2026-05-02): this completed chapter was written before the
+> source-tree flatten and CLI split. Treat `src/py/app` references below as
+> historical evidence unless the line is explicitly updated. Current code lives
+> under `src/app`; run the app with `uv run coffee run`; end users bootstrap with
+> `uv run coffee upgrade`; raw SQLSpec developer commands stay under
+> `uv run python manage.py database ...`.
+
 ### Objective
 Lay the new substrate for everything that follows: bump deps to current, switch the schema to **3072-dim FLOAT32 vectors with HNSW INMEMORY indexes** per Oracle 23ai best practices, align the embedding service with the new dim, regenerate fixtures, and confirm sqlspec's **native vector handlers** are wired so we never write `array.array('f', ...)` again.
 
@@ -46,7 +53,7 @@ Lay the new substrate for everything that follows: bump deps to current, switch 
 - `uv lock` reflects bumped versions; `uv sync` succeeds.
 - `EXPLAIN PLAN FOR SELECT * FROM product ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST 5 ROWS ONLY` shows `VECTOR INDEX RANGE SCAN` against `product_embedding_idx` (HNSW), not full table scan or IVF.
 - `SELECT NAME, BYTES FROM V$SGAINFO WHERE NAME LIKE '%Vector%'` returns a non-zero `Vector Memory` allocation after restart.
-- `uv run app run` boots without errors, chat endpoint returns a real Vertex AI response, vector search returns ≥1 product result.
+- `uv run coffee run` boots without errors, chat endpoint returns a real Vertex AI response, vector search returns ≥1 product result.
 - A Python REPL `import sqlspec; print(sqlspec.__version__)` reports 0.46.x.
 - Fixture file sizes documented (expected ~4× larger than 768-dim originals).
 
@@ -144,28 +151,28 @@ This is a **reference app** with a single baseline migration; we modify in place
 ### Phase 5: Fixture Regeneration (`oracledb-vertexai-4d6.1.5`)
 
 - [x] **5.1** Stop and recreate the dev DB: `make stop-infra && make start-infra` (waits for Oracle to be ready). Apply the `vector_memory_size` setting from Phase 3. — `[8f77ed7]`
-- [x] **5.2** Apply migration: `uv run app db upgrade`. Confirm tables and HNSW indexes were created (query `USER_INDEXES` for `product_embedding_idx` and verify `INDEX_TYPE` mentions VECTOR). — All three vector indexes present (`PRODUCT_EMBEDDING_IDX`, `INTENT_EXEMPLAR_EMBEDDING_IDX`, `EMBEDDING_CACHE_EMBEDDING_IDX`); `INDEX_TYPE = VECTOR`.
+- [x] **5.2** Apply migration with `uv run python manage.py database upgrade --no-prompt` (or end-user `uv run coffee upgrade`). Confirm tables and HNSW indexes were created (query `USER_INDEXES` for `product_embedding_idx` and verify `INDEX_TYPE` mentions VECTOR). — All three vector indexes present (`PRODUCT_EMBEDDING_IDX`, `INTENT_EXEMPLAR_EMBEDDING_IDX`, `EMBEDDING_CACHE_EMBEDDING_IDX`); `INDEX_TYPE = VECTOR`.
 - [x] **5.3** Audit `src/py/app/utils/fixtures.py` `FixtureLoader` for column mismatch handling — when loading the existing 768-dim fixtures into a 3072 schema, the embedding column will fail. Either:
   - **Option A (preferred)**: Modify the loader to skip columns whose dim mismatches and emit a warning. Then run `bulk-embed --force` after load.
   - **Option B**: Add a `--skip-embeddings` flag to `db load-fixtures` for one-shot rebootstrap.
   Pick Option A (simpler — embeddings get re-generated unconditionally on dim change). — Implemented via `FixtureProcessor(expected_vector_dim=N)` in `[dd7e9b0]`. 5 unit tests cover the skip-with-warning behavior.
-- [x] **5.4** Load text fixtures: `uv run app db load-fixtures` (skipping embeddings). — Loaded 1156 records (15 store, 122 product, 1019 intent_exemplar); single dim-mismatch warning emitted.
-- [ ] **5.5** Regenerate product embeddings: `uv run app coffee bulk-embed --force`. Confirms 3072-dim vectors are produced and inserted. — DEFERRED: needs a real Vertex AI project; `.env` currently has `VERTEX_AI_PROJECT_ID=demo-project`. CLI is wired and ready; resume on a host with GCP credentials.
-- [x] **5.6** Regenerate intent_exemplar embeddings: extend `bulk-embed` with `--target intent_exemplar` flag, OR write a one-off `tools/regen_intent_embeddings.py` that runs the same loop on the `intent_exemplar` table. (Bias toward extending `bulk-embed` since it's the lifecycle command.) — Wired as `bulk-embed --include-exemplars` in `[dd7e9b0]`; runtime regen blocked on the same Vertex project deferral as 5.5.
-- [ ] **5.7** Export fresh fixtures: `uv run app coffee export-fixtures`. Replaces `product.json.gz` and `intent_exemplar.json.gz` with 3072-dim versions. Investigate the suspiciously large `intent_exemplar.json.gz` (7.2 MB at 768 dims — likely indented JSON or duplicate records); if it grows to >50 MB at 3072 dims, optimize export (no indenting, deduplicate). — DEFERRED: gated on 5.5 / 5.6.
-- [~] **5.8** Sanity-check fixture round-trip: drop tables, re-load fresh fixtures, query `SELECT COUNT(*), VECTOR_DIMS(embedding) FROM product;` and `intent_exemplar;` — expect `(N, 3072)` for both. — `VECTOR_DIMS = 3072` confirmed for both tables via dummy zero-vector smoke insert; full fresh-fixture round-trip deferred until 5.5/5.6/5.7 land.
-- [ ] **5.9** `git add` the new fixtures; check `git status` shows replaced files only (no schema migrations created/renamed). — DEFERRED: no new fixtures to commit yet.
+- [x] **5.4** Load text fixtures with `uv run coffee load-fixtures` (or as part of end-user `uv run coffee upgrade`). — Loaded 1156 records (15 store, 122 product, 1019 intent_exemplar); single dim-mismatch warning emitted.
+- [ ] **5.5** Regenerate product embeddings: `uv run coffee bulk-embed --force`. Confirms 3072-dim vectors are produced and inserted. Current sync: the command surface is working; run this when refreshing committed fixture embeddings.
+- [x] **5.6** Regenerate intent_exemplar embeddings: extend `bulk-embed` with `--target intent_exemplar` flag, OR write a one-off `tools/regen_intent_embeddings.py` that runs the same loop on the `intent_exemplar` table. (Bias toward extending `bulk-embed` since it's the lifecycle command.) — Wired as `bulk-embed --include-exemplars` in `[dd7e9b0]`; current sync: the command surface is working.
+- [ ] **5.7** Export fresh fixtures: `uv run coffee export-fixtures`. Replaces `product.json.gz` and `intent_exemplar.json.gz` with 3072-dim versions. Investigate the suspiciously large `intent_exemplar.json.gz` (7.2 MB at 768 dims — likely indented JSON or duplicate records); if it grows to >50 MB at 3072 dims, optimize export (no indenting, deduplicate). Run after embedding refresh.
+- [~] **5.8** Sanity-check fixture round-trip: drop tables, re-load fresh fixtures, query `SELECT COUNT(*), VECTOR_DIMS(embedding) FROM product;` and `intent_exemplar;` — expect `(N, 3072)` for both. — `VECTOR_DIMS = 3072` confirmed for both tables via dummy zero-vector smoke insert; run the full fresh-fixture round-trip after 5.5/5.6/5.7.
+- [ ] **5.9** Stage the new fixtures intentionally; check `git status` shows replaced fixture files only (no schema migrations created/renamed).
 
 ### Phase 6: Verification (`oracledb-vertexai-4d6.1.6`)
 
 - [x] **6.1** `make lint` — clean. — Pre-commit (ruff + checks) passed on all touched files.
-- [~] **6.2** `make test` — all unit + integration tests pass against the new schema. — Unit suite (10/10) green including 5 new `test_fixture_loader_dim_skip` tests. Integration suite deferred until live embeddings are available.
-- [ ] **6.3** `uv run app run` — app boots; check logs for ADK 2.0b1 startup messages and no import errors. — DEFERRED: app run currently needs the Vertex AI client to initialize; gated on 5.5.
+- [~] **6.2** `make test` — all unit + integration tests pass against the new schema. — Unit suite (10/10) green including 5 new `test_fixture_loader_dim_skip` tests; rerun integration coverage after fresh embeddings are exported.
+- [ ] **6.3** `uv run coffee run` — app boots; check logs for ADK 2.0b1 startup messages and no import errors.
 - [ ] **6.4** Manual smoke (curl or browser):
   - `POST /api/chat` → returns a real Gemini response.
   - The vector search invoked by the chat agent returns ≥1 product (chat tool path).
   - Intent classification still works (Ch 3 will replace it; for Ch 1, it must keep returning a label).
-  DEFERRED: gated on 5.5 / 5.6 (needs populated embeddings).
+  Run after 5.5 / 5.6 with populated embeddings.
 - [x] **6.5** EXPLAIN PLAN check: in sqlplus, run
   ```sql
   EXPLAIN PLAN FOR

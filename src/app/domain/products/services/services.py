@@ -70,6 +70,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
         rowcount = getattr(result, "rowcount", None)
         return bool(rowcount) if rowcount is not None else True
 
+    # docs:start-search-by-vector
     async def search_by_vector(
         self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5
     ) -> list[ProductMatch]:
@@ -80,6 +81,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
             limit=limit,
             schema_type=ProductMatch,
         )
+    # docs:end-search-by-vector
 
 # --- Store Service ---
 
@@ -235,6 +237,7 @@ class VertexAIService:
         self.embedding_dimensions = embedding_dimensions
         self.cache_service = cache_service
 
+    # docs:start-vertex-embedding
     async def get_text_embedding(
         self,
         text: str,
@@ -260,6 +263,7 @@ class VertexAIService:
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
+    # docs:end-vertex-embedding
 
 
 class OracleVectorSearchService:

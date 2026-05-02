@@ -3,8 +3,10 @@
 
 """Typed exceptions raised by the chat domain."""
 
+from litestar.exceptions import ServiceUnavailableException
 
-class AIServiceUnconfigured(Exception):
+
+class AIServiceUnconfigured(ServiceUnavailableException):
     """Raised when Vertex AI / google-genai credentials are missing or invalid."""
 
 

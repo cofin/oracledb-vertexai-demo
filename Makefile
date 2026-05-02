@@ -11,6 +11,8 @@ SHELL := /bin/bash
 .ONESHELL:
 .EXPORT_ALL_VARIABLES:
 MAKEFLAGS += --no-print-directory
+PYAPP_BUILD_PYTHON ?= cpython-3.13.12-linux-x86_64-gnu
+PYAPP_BUILD_TARGET ?=
 
 # Detect Rodete and configure public package indexes
 ifneq ($(shell grep -s -q "rodete" /etc/os-release && echo "yes"),)
@@ -115,6 +117,55 @@ build: ## Build the package (Python wheel + frontend assets)
 	@echo "${INFO} Building Python package... 📦"
 	@uv build >/dev/null 2>&1
 	@echo "${OK} Package build complete"
+
+.PHONY: build-wheel
+build-wheel: assets-build ## Build the Python wheel with bundled frontend assets
+	@echo "${INFO} Building Python wheel... 📦"
+	@uv build --wheel >/dev/null 2>&1
+	@echo "${OK} Wheel build complete"
+
+.PHONY: build-onefile
+build-onefile: ## Build the self-contained PyApp onefile
+	@set -e
+	UV_PYTHON="$(PYAPP_BUILD_PYTHON)" $(MAKE) build-wheel
+	echo "${INFO} Building onefile with Python $(PYAPP_BUILD_PYTHON)... 🔨"
+	PYAPP_BUILD_PYTHON="$(PYAPP_BUILD_PYTHON)" PYAPP_BUILD_TARGET="$(PYAPP_BUILD_TARGET)" UV_PYTHON="$(PYAPP_BUILD_PYTHON)" ./tools/scripts/build-onefile-package.sh
+	echo "${OK} Onefile build complete"
+
+.PHONY: build-onefile-container
+build-onefile-container: build-onefile ## Build the distroless container from the onefile binary
+	$(eval ARCH := $(shell uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/'))
+	@set -e
+	cp dist/coffee dist/coffee-$(ARCH)-linux-gnu
+	trap 'rm -f dist/coffee-$(ARCH)-linux-gnu' EXIT
+	echo "${INFO} Building distroless onefile container for $(ARCH)..."
+	docker build \
+		-f tools/deploy/docker/Dockerfile \
+		-t cymbal-coffee:latest \
+		-t cymbal-coffee:dev \
+		--build-arg TARGETARCH=$(ARCH) \
+		.
+	echo "${OK} Container image built: cymbal-coffee:latest"
+
+# =============================================================================
+# Documentation
+# =============================================================================
+.PHONY: docs
+docs: ## Build the Sphinx documentation site (warnings as errors)
+	@echo "${INFO} Building docs... 📚"
+	@uv run --group docs sphinx-build -W --keep-going -b html docs docs/_build/html
+	@echo "${OK} Docs built at docs/_build/html/index.html"
+
+.PHONY: docs-serve
+docs-serve: ## Serve docs with hot reload on http://localhost:8002
+	@echo "${INFO} Serving docs on http://localhost:8002 (hot reload)... 📚"
+	@uv run --group docs sphinx-autobuild --port 8002 --watch src docs docs/_build/html
+
+.PHONY: docs-clean
+docs-clean: ## Remove built documentation
+	@echo "${INFO} Cleaning docs build... 🧹"
+	@rm -rf docs/_build
+	@echo "${OK} Docs build removed"
 
 # =============================================================================
 # Cleaning and Maintenance

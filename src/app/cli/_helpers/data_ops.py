@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from app.cli._helpers.cache import clear_application_cache
-from app.cli._helpers.database import downgrade_database, upgrade_database
+from app.cli._helpers.database import upgrade_database
 from app.cli._helpers.embeddings import generate_product_embeddings
 from app.cli._helpers.fixtures import (
     display_available_tables,
@@ -26,7 +26,6 @@ __all__ = (
     "display_export_results",
     "display_fixture_list",
     "display_fixture_results",
-    "downgrade_database",
     "export_fixture_data",
     "generate_product_embeddings",
     "get_fixture_status",
