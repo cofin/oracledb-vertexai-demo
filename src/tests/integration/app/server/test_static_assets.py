@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """HTTP regression tests for the static-asset and ``/favicon.ico`` routes."""

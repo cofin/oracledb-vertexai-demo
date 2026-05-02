@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """Pin the google-adk 2.0b1 surface that the ADK 2.0 runner depends on."""

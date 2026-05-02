@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """``POST /api/vector-demo`` returns a Jinja partial for HTMX clients and JSON for SPA clients.

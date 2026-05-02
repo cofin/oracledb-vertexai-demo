@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """Tests for repository license header automation."""
@@ -24,7 +24,7 @@ def test_hash_header_inserted_after_shebang(tmp_path: Path) -> None:
     assert result.changed
     assert target.read_text() == (
         "#!/usr/bin/env python\n"
-        "# Copyright 2026 Google LLC\n"
+        "# SPDX-FileCopyrightText: 2026 Google LLC\n"
         "# SPDX-License-Identifier: Apache-2.0\n"
         "\n"
         "print('ok')\n"
@@ -40,7 +40,7 @@ def test_dockerfile_header_keeps_parser_directive_first(tmp_path: Path) -> None:
     assert result.changed
     assert target.read_text() == (
         "# syntax=docker/dockerfile:1.7\n"
-        "# Copyright 2026 Google LLC\n"
+        "# SPDX-FileCopyrightText: 2026 Google LLC\n"
         "# SPDX-License-Identifier: Apache-2.0\n"
         "\n"
         "FROM python:3.12\n"
@@ -55,7 +55,7 @@ def test_jinja_header_uses_jinja_comment(tmp_path: Path) -> None:
 
     assert result.changed
     assert target.read_text().startswith(
-        "{#\nCopyright 2026 Google LLC\nSPDX-License-Identifier: Apache-2.0\n#}\n\n"
+        "{#\nSPDX-FileCopyrightText: 2026 Google LLC\nSPDX-License-Identifier: Apache-2.0\n#}\n\n"
     )
 
 
@@ -67,7 +67,7 @@ def test_css_header_uses_block_comment(tmp_path: Path) -> None:
 
     assert result.changed
     assert target.read_text().startswith(
-        "/*\n * Copyright 2026 Google LLC\n * SPDX-License-Identifier: Apache-2.0\n */\n\n"
+        "/*\n * SPDX-FileCopyrightText: 2026 Google LLC\n * SPDX-License-Identifier: Apache-2.0\n */\n\n"
     )
 
 

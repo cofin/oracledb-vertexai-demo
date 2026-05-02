@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """Phase 4 surface for ADKRunner: 3-arg constructor, closure-bound tools, per-request workflow."""

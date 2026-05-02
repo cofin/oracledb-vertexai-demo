@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """Pin Ruff CPY001 + SPDX header configuration."""
@@ -70,3 +70,41 @@ def test_every_python_source_file_has_valid_copyright_header() -> None:
         if not pattern.search(head):
             failures.append(str(py.relative_to(PROJECT_ROOT)))
     assert not failures, "Python files missing valid copyright header:\n" + "\n".join(failures)
+
+
+SPDX_PREFIX = "SPDX-FileCopyrightText:"
+
+
+def _spdx_failures(root: str, suffixes: tuple[str, ...]) -> list[str]:
+    failures: list[str] = []
+    base = PROJECT_ROOT / root
+    if not base.exists():
+        return failures
+    for path in base.rglob("*"):
+        if not path.is_file() or path.suffix not in suffixes:
+            continue
+        if "__pycache__" in path.parts or ".venv" in path.parts:
+            continue
+        head = "".join(path.read_text().splitlines(keepends=True)[:5])
+        if SPDX_PREFIX not in head:
+            failures.append(str(path.relative_to(PROJECT_ROOT)))
+    return failures
+
+
+def test_src_python_uses_spdx_filecopyrighttext() -> None:
+    failures = _spdx_failures("src", (".py",))
+    assert not failures, (
+        "src/ Python files must use SPDX-FileCopyrightText header:\n" + "\n".join(failures)
+    )
+
+
+def test_tools_python_uses_spdx_filecopyrighttext() -> None:
+    failures = _spdx_failures("tools", (".py",))
+    assert not failures, (
+        "tools/ Python files must use SPDX-FileCopyrightText header:\n" + "\n".join(failures)
+    )
+
+
+def test_sql_files_use_spdx_filecopyrighttext() -> None:
+    failures = _spdx_failures("src", (".sql",)) + _spdx_failures("tools", (".sql",))
+    assert not failures, "SQL files must use SPDX-FileCopyrightText header:\n" + "\n".join(failures)

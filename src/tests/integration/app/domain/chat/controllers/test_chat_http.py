@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """``POST /api/chat`` returns Jinja partial HTML for HTMX clients and JSON for SPA clients.

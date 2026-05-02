@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
 """Insert and check concise license headers for source-owned files."""
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Final
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-COPYRIGHT_LINE: Final = "Copyright 2026 Google LLC"
+COPYRIGHT_LINE: Final = "SPDX-FileCopyrightText: 2026 Google LLC"
 LICENSE_LINE: Final = "SPDX-License-Identifier: Apache-2.0"
 
 HEADER_SCAN_BYTES: Final = 4096

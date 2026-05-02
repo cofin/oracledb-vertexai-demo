@@ -1,4 +1,4 @@
--- Copyright 2026 Google LLC
+-- SPDX-FileCopyrightText: 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
 -- Verify Oracle 26ai vector memory pool is allocated on every container start.
