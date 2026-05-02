@@ -33,7 +33,7 @@ Modernize license and copyright management by enabling Ruff's `CPY001` rule and 
 - [ ] Verify compliance across all languages.
 
 ### Phase 3: Automation & Verification
-- [ ] Add a pre-commit hook (e.g., `license-headers` or similar) to automatically insert headers since Ruff doesn't support fixing.
+- [x] Add a pre-commit hook (e.g., `license-headers` or similar) to automatically insert headers since Ruff doesn't support fixing. [d0b1c66]
 - [ ] Run full project validation (`make lint`) to ensure zero regressions.
 - [ ] Document the new header standard in `.agents/code-styleguides/python.md`.
 
@@ -51,5 +51,5 @@ Modernize license and copyright management by enabling Ruff's `CPY001` rule and 
 - [ ] task: Add SQL copyright comments to tools/oracle/
 - [-] task: Migrate src/js/ headers to SPDX format (obsolete — src/js deleted in Ch 4)
 - [ ] task: Research/Implement Biome GritQL plugin for JS/TS header checks
-- [ ] task: Integrate pre-commit automation for multi-language license headers
+- [x] task: Integrate pre-commit automation for multi-language license headers [d0b1c66]
 - [ ] task: Update Python styleguide with license requirements
