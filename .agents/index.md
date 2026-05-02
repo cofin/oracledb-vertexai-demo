@@ -46,13 +46,6 @@ not behind archive links.
 | Active Spec | [specs/browser-location-maps-ui_20260501/spec.md](./specs/browser-location-maps-ui_20260501/spec.md) | Browser location opt-in, store cards, and optional map rendering |
 | Active Spec | [specs/store-maps-security-docs_20260501/spec.md](./specs/store-maps-security-docs_20260501/spec.md) | Maps security headers, restricted key helper, and docs |
 | Active Spec | [specs/settings-config-consolidation_20260501/prd.md](./specs/settings-config-consolidation_20260501/prd.md) | Settings and configuration consolidation plan |
-| Active Spec | [specs/demo-source-organization_20260501/prd.md](./specs/demo-source-organization_20260501/prd.md) | Demo-first source organization master PRD |
-| Active Spec | [specs/source-organization-contract_20260501/spec.md](./specs/source-organization-contract_20260501/spec.md) | Source organization contract, audit, and guard tests |
-| Active Spec | [specs/app-core-source-organization_20260501/spec.md](./specs/app-core-source-organization_20260501/spec.md) | App core config/logging/discovery/helper organization |
-| Active Spec | [specs/domain-source-organization_20260501/spec.md](./specs/domain-source-organization_20260501/spec.md) | Domain controller and service source organization |
-| Active Spec | [specs/adk-runner-source-organization_20260501/spec.md](./specs/adk-runner-source-organization_20260501/spec.md) | ADK runner helper extraction and narrative split |
-| Active Spec | [specs/cli-tools-source-organization_20260501/spec.md](./specs/cli-tools-source-organization_20260501/spec.md) | CLI and operational tools source organization |
-| Active Spec | [specs/source-organization-verification_20260501/spec.md](./specs/source-organization-verification_20260501/spec.md) | Whole-tree organization audit and final verification |
 | Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
 | Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |
 | Plan | [plans/installation-simplification.md](./plans/installation-simplification.md) | Installation simplification notes |
