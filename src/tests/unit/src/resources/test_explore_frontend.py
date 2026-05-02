@@ -9,6 +9,7 @@ from tests.support.paths import APP_ROOT
 
 EXPLORE_TEMPLATE = APP_ROOT / "domain" / "web" / "templates" / "pages" / "explore.html.j2"
 PLAN_PARTIAL = APP_ROOT / "domain" / "web" / "templates" / "partials" / "plan_lines.html.j2"
+VECTOR_CALCULATOR_SCRIPT = APP_ROOT.parent / "resources" / "vector-calculator.js"
 
 
 def test_explore_dashboard_defines_bounded_apexcharts() -> None:
@@ -53,3 +54,43 @@ def test_explore_htmx_bootstrap_processes_existing_dom() -> None:
     source = (APP_ROOT.parent / "resources" / "main.js").read_text()
 
     assert "htmx.process(document.body)" in source
+
+
+def test_explore_vector_calculator_panel_contract() -> None:
+    template = EXPLORE_TEMPLATE.read_text()
+    panel_start = template.index('id="panel-vector-calculator"')
+    panel_end = template.index("</section>", panel_start) + len("</section>")
+    panel = template[panel_start:panel_end]
+
+    assert 'data-ui-panel="vector-calculator"' in panel
+    assert "Vector storage calculator" in panel
+    assert "data-vector-calculator" in panel
+    assert 'data-vector-input="rowCount"' in panel
+    assert 'data-vector-input="dimensions"' in panel
+    assert 'data-vector-input="format"' in panel
+    assert 'data-vector-input="indexType"' in panel
+    assert 'data-vector-input="hnswM"' in panel
+    assert 'data-preset-dimensions="3072"' in panel
+    assert 'data-preset-format="FLOAT32"' in panel
+    assert 'data-output="rawSize"' in panel
+    assert 'data-output="indexSize"' in panel
+    assert 'data-output="totalSize"' in panel
+    assert 'data-output="vectorMemory"' in panel
+    assert 'data-output="mediaComparison"' in panel
+    assert "hx-" not in panel
+    assert "x-data" not in panel
+
+
+def test_vector_calculator_client_logic_contract() -> None:
+    source = VECTOR_CALCULATOR_SCRIPT.read_text()
+    main_source = (APP_ROOT.parent / "resources" / "main.js").read_text()
+
+    assert 'import { initVectorCalculator } from "./vector-calculator.js"' in main_source
+    assert "void initVectorCalculator()" in main_source
+    assert "fetch(" not in source
+    assert "rowCount * dimensions * 4" in source
+    assert "Math.ceil(dimensions / 8)" in source
+    assert "rowCount * hnswM * dimensions * 4" in source
+    assert "formatBytes" in source
+    assert "mediaComparisonFor" in source
+    assert "Vector memory" in source

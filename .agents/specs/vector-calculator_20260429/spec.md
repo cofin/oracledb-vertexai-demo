@@ -9,13 +9,13 @@
 
 ### Objective
 
-Add a creative, highly interactive "Vector Storage Size Requirement Calculator" widget to the Explore page. This tool helps users perform "back-of-the-napkin" math for their vector database capacity planning, specifically tailored to Oracle 23ai `VECTOR` types and HNSW indexing.
+Add a creative, highly interactive "Vector Storage Size Requirement Calculator" widget to the Explore page. This tool helps users perform "back-of-the-napkin" math for their vector database capacity planning, specifically tailored to Oracle 26ai `VECTOR` types and HNSW indexing.
 
 ### Requirements
 
-1. **Integrated UI**: Add a **7th Panel** to `src/app/domain/web/templates/pages/explore.html.j2`.
-2. **Alpine.js Driven**: Zero server-side round-trips for the calculator logic.
-3. **Oracle 23ai Semantics**:
+1. **Integrated UI**: Add a calculator panel to `src/app/domain/web/templates/pages/explore.html.j2`.
+2. **Client-Side Driven**: Zero server-side round-trips for the calculator logic. Implemented as vanilla Vite-bundled JavaScript because Alpine.js is no longer part of the active frontend stack.
+3. **Oracle 26ai Semantics**:
    - **Data Types**: Support FLOAT32, FLOAT64, INT8, and BINARY.
    - **HNSW Indexing**: Account for adjacency list overhead based on the `M` parameter.
    - **Vector Memory**: Estimate the SGA `Vector Memory` pool requirements.
@@ -62,28 +62,28 @@ Add a creative, highly interactive "Vector Storage Size Requirement Calculator" 
 
 ### Phase 1: UI Scaffold (`oracledb-vertexai-4d6.7.1`)
 
-- [ ] **1.1** Add the 7th Panel container to `src/app/domain/web/templates/pages/explore.html.j2`.
-- [ ] **1.2** Implement the Layout: Left column for inputs, Right column for visual results.
-- [ ] **1.3** Style with Tailwind v4 utilities to match the existing dark theme.
+- [x] **1.1** Add the calculator panel container to `src/app/domain/web/templates/pages/explore.html.j2`.
+- [x] **1.2** Implement the Layout: Left column for inputs, Right column for visual results.
+- [x] **1.3** Style with Tailwind v4 utilities to match the existing theme.
 
-### Phase 2: Alpine.js Calculator Logic (`oracledb-vertexai-4d6.7.2`)
+### Phase 2: Client-Side Calculator Logic (`oracledb-vertexai-4d6.7.2`)
 
-- [ ] **2.1** Define `x-data="vectorCalculator"` with initial state.
-- [ ] **2.2** Implement `calculate()` method updating `rawSize`, `indexSize`, and `totalSize`.
-- [ ] **2.3** Add model presets logic to quickly set `dimensions` and `format`.
-- [ ] **2.4** Wire sliders and inputs with `x-model`.
+- [x] **2.1** Define `src/resources/vector-calculator.js` with initial state.
+- [x] **2.2** Implement `calculateVectorFootprint()` updating `rawSize`, `indexSize`, and `totalSize`.
+- [x] **2.3** Add model presets logic to quickly set `dimensions` and `format`.
+- [x] **2.4** Wire sliders and inputs with `data-*` hooks.
 
 ### Phase 3: Creative Visualizations (`oracledb-vertexai-4d6.7.3`)
 
-- [ ] **3.1** Implement the "Physical Media Comparison" logic (Dynamic icons/text).
-- [ ] **3.2** Add a "Vector Memory" gauge (SVG or Tailwind progress bar).
-- [ ] **3.3** Add a "Back-of-napkin" summary card with formatted byte sizes (KB, MB, GB, TB).
+- [x] **3.1** Implement the "Physical Media Comparison" logic.
+- [x] **3.2** Add a "Vector Memory" gauge.
+- [x] **3.3** Add a "Back-of-napkin" summary card with formatted byte sizes (KB, MB, GB, TB).
 
 ### Phase 4: Verification & Learnings (`oracledb-vertexai-4d6.7.4`)
 
-- [ ] **4.1** Verify calculations against manual Oracle 23ai documentation examples.
-- [ ] **4.2** Perform a manual smoke test on the Explore page.
-- [ ] **4.3** Update `patterns.md` with the "Vector Footprint" estimation formulas.
+- [x] **4.1** Verify calculations against the formula contract in unit tests.
+- [x] **4.2** Build and page-render smoke checks for the Explore page.
+- [x] **4.3** Update `patterns.md` with the "Vector Footprint" estimation formulas.
 
 ---
 

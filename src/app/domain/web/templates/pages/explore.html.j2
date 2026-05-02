@@ -90,6 +90,152 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
+    {# Panel 5: vector storage calculator — pure client-side Vite JS #}
+    <section id="panel-vector-calculator" data-ui-panel="vector-calculator" class="ui-panel min-w-0 p-4 lg:col-span-2">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="mb-1 text-sm font-semibold text-strong">5 · Vector storage calculator</h2>
+          <p class="text-xs text-muted">Estimate Oracle 26ai vector payload, index overhead, and Vector memory sizing.</p>
+        </div>
+        <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">client only</span>
+      </div>
+
+      <div data-vector-calculator class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="space-y-4">
+          <div class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <p class="mb-2 text-xs font-semibold uppercase text-muted">Model presets</p>
+            <div class="grid gap-2 sm:grid-cols-3">
+              <button type="button" data-vector-preset data-preset-dimensions="768" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Gemini 768
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="3072" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Gemini 3072
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="1536" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                OpenAI 1536
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="3072" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                OpenAI 3072
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="1024" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Cohere 1024
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="4096" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Cohere 4096
+              </button>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label for="vector-row-count" class="block min-w-0">
+              <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+                Rows
+                <output data-output="rowCount" class="font-mono text-accent-strong">1,000,000</output>
+              </span>
+              <input id="vector-row-count" data-vector-input="rowCount" type="range" min="1000" max="100000000"
+                step="1000" value="1000000" class="w-full accent-accent-strong">
+              <input data-vector-input="rowCount" type="number" min="1000" max="100000000" step="1000"
+                value="1000000" aria-label="Vector row count"
+                class="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+            </label>
+
+            <label for="vector-dimensions" class="block min-w-0">
+              <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+                Dimensions
+                <output data-output="dimensions" class="font-mono text-accent-strong">3,072</output>
+              </span>
+              <input id="vector-dimensions" data-vector-input="dimensions" type="range" min="1" max="4096"
+                step="1" value="3072" class="w-full accent-accent-strong">
+              <input data-vector-input="dimensions" type="number" min="1" max="4096" step="1" value="3072"
+                aria-label="Vector dimensions"
+                class="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+            </label>
+
+            <label for="vector-format" class="block min-w-0">
+              <span class="mb-1 block text-xs font-semibold uppercase text-muted">Vector format</span>
+              <select id="vector-format" data-vector-input="format"
+                class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+                <option value="FLOAT32" selected>FLOAT32</option>
+                <option value="FLOAT64">FLOAT64</option>
+                <option value="INT8">INT8</option>
+                <option value="BINARY">BINARY</option>
+              </select>
+            </label>
+
+            <label for="vector-index-type" class="block min-w-0">
+              <span class="mb-1 block text-xs font-semibold uppercase text-muted">Index type</span>
+              <select id="vector-index-type" data-vector-input="indexType"
+                class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+                <option value="HNSW" selected>HNSW</option>
+                <option value="IVF">IVF</option>
+                <option value="NONE">None</option>
+              </select>
+            </label>
+          </div>
+
+          <label for="vector-hnsw-m" data-hnsw-controls class="block min-w-0 rounded-lg border border-border bg-surface-strong/55 p-3">
+            <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+              HNSW M
+              <output data-output="hnswM" class="font-mono text-accent-strong">16</output>
+            </span>
+            <input id="vector-hnsw-m" data-vector-input="hnswM" type="range" min="8" max="128" step="1"
+              value="16" class="w-full accent-accent-strong">
+            <p class="mt-2 text-xs text-muted">Higher M improves graph connectivity and recall, with a larger memory footprint.</p>
+          </label>
+        </div>
+
+        <div class="grid gap-3">
+          <article class="metric-card p-4">
+            <p class="text-xs font-semibold uppercase text-muted">Back-of-napkin footprint</p>
+            <p data-output="totalSize" class="mt-2 text-3xl font-semibold text-strong">195 GB</p>
+            <p data-output="mediaComparison" class="mt-1 text-sm text-muted">8 Blu-ray discs</p>
+          </article>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <article class="metric-card p-3">
+              <p class="text-xs text-muted">Raw vector payload</p>
+              <p data-output="rawSize" class="mt-1 text-lg font-semibold text-strong">11 GB</p>
+            </article>
+            <article class="metric-card p-3">
+              <p class="text-xs text-muted">Index overhead</p>
+              <p data-output="indexSize" class="mt-1 text-lg font-semibold text-strong">183 GB</p>
+            </article>
+          </div>
+
+          <article class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs font-semibold uppercase text-muted">Compression savings vs FLOAT32</p>
+              <p data-output="savingsPercent" class="font-mono text-xs font-semibold text-accent-strong">0.0%</p>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface">
+              <div data-vector-visual="compression" role="progressbar" aria-label="Compression savings"
+                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                class="h-full rounded-full bg-sage transition-all duration-200" style="width: 0%"></div>
+            </div>
+          </article>
+
+          <article class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs font-semibold uppercase text-muted">Vector memory</p>
+              <p data-output="vectorMemory" class="font-mono text-xs font-semibold text-accent-strong">183 GB</p>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface">
+              <div data-vector-visual="vectorMemory" role="progressbar" aria-label="Vector memory impact"
+                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                class="h-full rounded-full bg-sky transition-all duration-200" style="width: 0%"></div>
+            </div>
+            <p data-output="memoryImpact" class="mt-2 text-xs text-muted">Capacity planning required</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
   </div>
   <div data-ui-popover-root="explore" class="popover-surface sr-only" aria-hidden="true"></div>
 </section>

@@ -14,7 +14,7 @@
 
 | Flow ID | Completed | Topics | Summary |
 |---------|-----------|--------|---------|
-| [htmx-vite-frontend_20260429](htmx-vite-frontend_20260429.md) | 2026-04-29 | htmx, vite, alpine, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan | Ch 4: source-tree flatten + CLI restructure + HTMX/Vite frontend rebuild — delete React, build /explore page with EXPLAIN PLAN viewer |
+| [htmx-vite-frontend_20260429](htmx-vite-frontend_20260429.md) | 2026-04-29 | htmx, vite, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan, vanilla-js, vector-calculator | Ch 4: source-tree flatten + CLI restructure + HTMX/Vite frontend rebuild — delete React, build /explore page with EXPLAIN PLAN viewer and vector calculator |
 
 ## Guides
 
@@ -32,7 +32,6 @@
 
 - **htmx**: htmx-vite-frontend_20260429
 - **vite**: htmx-vite-frontend_20260429
-- **alpine**: htmx-vite-frontend_20260429
 - **tailwind**: htmx-vite-frontend_20260429
 - **litestar**: htmx-vite-frontend_20260429
 - **jinja**: htmx-vite-frontend_20260429
@@ -40,6 +39,8 @@
 - **cli**: htmx-vite-frontend_20260429
 - **oracle**: htmx-vite-frontend_20260429
 - **explain-plan**: htmx-vite-frontend_20260429
+- **vanilla-js**: htmx-vite-frontend_20260429
+- **vector-calculator**: htmx-vite-frontend_20260429
 - **adk**: guides/adk-agent-patterns.md
 - **runner**: guides/adk-agent-patterns.md
 - **chat**: guides/adk-agent-patterns.md

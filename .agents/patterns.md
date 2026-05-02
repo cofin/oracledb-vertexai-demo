@@ -57,6 +57,13 @@
   request-scoped; embeds require a separate restricted Maps Embed key.
 - Frontend pages are HTMX + Jinja + Tailwind v4 + vanilla JavaScript/ApexCharts
   through `litestar-vite` template mode, not a standalone SPA.
+- Explore-only educational calculators stay client-only in `src/resources/*.js`
+  and wire to Jinja markup through `data-*` attributes. Do not reintroduce
+  Alpine for these widgets.
+- Vector footprint estimates use raw bytes by format (`N * d * 8` for FLOAT64,
+  `N * d * 4` for FLOAT32, `N * d` for INT8, `N * ceil(d / 8)` for BINARY),
+  HNSW overhead as `N * M * d * 4`, IVF overhead as a FLOAT32 copy, and Vector
+  memory as the index-resident portion.
 - EXPLAIN PLAN uses two named SQL calls: one `EXPLAIN PLAN FOR ...` and one
   `DBMS_XPLAN.DISPLAY()` read.
 - `coffee` is the app CLI. Keep `bulk-embed`, `export-fixtures`,

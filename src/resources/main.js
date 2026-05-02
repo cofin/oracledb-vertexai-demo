@@ -4,6 +4,7 @@
 import htmx from "htmx.org"
 import ApexCharts from "apexcharts"
 import { registerHtmxExtension } from "litestar-vite-plugin/helpers"
+import { initVectorCalculator } from "./vector-calculator.js"
 
 window.htmx = htmx
 window.ApexCharts = ApexCharts
@@ -892,5 +893,6 @@ onReady(() => {
   processHtmxDom()
   initPersonaPicker()
   void initDashboardCharts()
+  void initVectorCalculator()
   scrollMessages()
 })

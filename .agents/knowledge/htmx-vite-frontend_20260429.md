@@ -4,19 +4,23 @@
 - **Description:** Ch 4 — Source-tree flatten + CLI restructure + HTMX/Vite frontend rebuild (delete React, build /explore page with EXPLAIN PLAN viewer)
 - **Completed:** 2026-04-29
 - **Beads Epic:** `oracledb-vertexai-4d6.4`
-- **Topics:** htmx, vite, alpine, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan
+- **Topics:** htmx, vite, tailwind, litestar, jinja, frontend, cli, oracle, explain-plan, vanilla-js, vector-calculator
 
 <!-- truth: start -->
 ## Summary
 
-Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Alpine.js + ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` → `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures); migrations + assets + infra moved exclusively to `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series).
+Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and rebuilt it on HTMX 2.0.10 + Tailwind v4 + Vite-bundled JavaScript/ApexCharts via `litestar-vite` mode=`template` + `litestar.plugins.htmx`. In the same chapter, the source tree was flattened (`src/py/{app,tests}` → `src/{app,tests}`, `src/js/` deleted entirely, `vite.config.ts` + `package.json` move to repo root). The `coffee` CLI was restructured: it became a hand-rolled `rich_click` group exposing only production-app commands (run/bulk-embed/clear-cache/model-info/load-fixtures/export-fixtures); migrations + assets + infra moved exclusively to `manage.py`. The chapter delivered two server-rendered pages — chat (feature parity with the deleted React) and explore (vector search, EXPLAIN PLAN viewer, metrics summary, latency time-series, and vector storage calculator).
+
+Current frontend widgets do not use Alpine. Interactive Explore widgets are
+plain modules under `src/resources/` imported by `main.js` and bound to Jinja
+markup through `data-*` attributes.
 
 ## Patterns Elevated (see patterns.md for full list)
 
 - HTMX page-vs-partial branching on `request.htmx` (one endpoint, two response shapes).
 - `HTMXTemplate(push_url=, re_target=, re_swap=, trigger_event=)` writes headers at construction time — no setter API.
 - `hx-ext="litestar"` + `<template ls-for>` / `<template ls-if>` for static JSON-to-DOM mapping when interactivity isn't required.
-- Alpine + ApexCharts factories (`x-data`/`x-init`/`x-show`/`x-cloak`/`x-ref`) inline at the bottom of page templates; never imperative `innerHTML`.
+- Vanilla Vite modules own interactive widgets. Use `data-*` hooks in Jinja and keep client-only widgets free of fetch/HTMX calls unless the panel explicitly needs server data.
 - Oracle EXPLAIN PLAN viewer: two driver calls (`EXPLAIN PLAN FOR ...` + `DBMS_XPLAN.DISPLAY()`); both must be named SQL.
 - `litestar-vite` mode=`template` + `HTMXPlugin()` (built-in to Litestar 2.x; no separate PyPI dep).
 - `vite.config.ts` `publicDir` is project-root-relative — must be set explicitly to `src/resources/public` for brand assets to ship.
@@ -28,7 +32,8 @@ Ch 4 deleted the React + TanStack Router + Bun + Biome frontend wholesale and re
 - `src/app/domain/web/controllers/_pages.py` — chat + explore page routes
 - `src/app/domain/web/templates/{base,_nav}.html.j2` — Tailwind-themed shell with `hx-ext="litestar"`
 - `src/app/domain/web/templates/pages/chat.html.j2` — persona switcher + HTMX partial swap
-- `src/app/domain/web/templates/pages/explore.html.j2` — 5 panels with mixed HTMX partials, `ls-for` blocks, and inline Alpine factories
+- `src/app/domain/web/templates/pages/explore.html.j2` — 5 panels with mixed HTMX partials, `ls-for` blocks, vanilla dashboard charts, and the client-only vector storage calculator
+- `src/resources/vector-calculator.js` — client-only Oracle vector footprint estimator
 - `src/app/domain/web/templates/partials/{search_result,search_result_list,plan_lines,_chat_response,_flash,_metrics_badges,message,chat_error}.html.j2`
 - `src/app/domain/products/controllers/_vector.py` — `vector_search_demo` (HTMX/JSON branching) + `explain_plan` endpoint
 - `src/app/domain/products/services/services.py` — `OracleVectorSearchService.explain_search_plan` (two driver calls)
