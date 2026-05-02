@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
-
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "httpx>=0.28.1",
-#     "rich-click>=1.8.0",
-#     "oracledb>=2.0.0",
-#     "python-dotenv>=1.0.0",
-# ]
-# ///
 """Cymbal Coffee Infrastructure and Database Lifecycle Management.
 
 Unified DevOps CLI for the Oracle 26ai + Vertex AI demo. Mirrors the
@@ -31,28 +21,21 @@ Examples::
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import rich_click as click
 from rich.console import Console
-
-# Ensure tools/ and src/ are importable.
-SCRIPT_DIR = Path(__file__).parent
-sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "src"))
-
-from tools.cli import doctor_command, init_command, install_group  # noqa: E402
-from tools.oracle import (  # noqa: E402
+from tools.cli import doctor_command, init_command, install_group
+from tools.oracle import (
     connect_group as oracle_connect_group,
 )
-from tools.oracle import (  # noqa: E402
+from tools.oracle import (
     database_group as oracle_container_group,
 )
-from tools.oracle import (  # noqa: E402
+from tools.oracle import (
     wallet_group as oracle_wallet_group,
 )
 
-from app.__metadata__ import __version__  # noqa: E402
+from app.__metadata__ import __version__
 
 # rich-click config
 click.rich_click.USE_RICH_MARKUP = True
