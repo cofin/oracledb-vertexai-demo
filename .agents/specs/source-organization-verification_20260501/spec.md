@@ -4,7 +4,7 @@
 *Chapter 6 of [demo-source-organization_20260501](../demo-source-organization_20260501/prd.md)*
 *Beads: `oracledb-vertexai-8jt.6`*
 *Depends on: `app-core-source-organization_20260501`, `domain-source-organization_20260501`, `adk-runner-source-organization_20260501`, `cli-tools-source-organization_20260501`*
-*Status: Planned*
+*Status: Implemented*
 
 ---
 
@@ -68,3 +68,16 @@ durable source organization rule, and run the repo aggregate gates.
 - `make lint` passes.
 - `make test` passes.
 - `git diff --check` passes.
+
+## Implementation Notes
+
+- The source organization guard now scans `src/app` and `tools` with an empty
+  temporary hotspot allowlist.
+- `.agents/patterns.md` captures the durable public-first convention for
+  demo-facing modules and declarative CLI command surfaces.
+- Verification passed on 2026-05-02:
+  - `uv run pytest src/tests/unit/app/test_source_organization.py -q`
+  - focused smoke pytest for app core, domain, ADK, CLI, and Oracle tool suites
+  - `make lint`
+  - `make test`
+  - `git diff --check`

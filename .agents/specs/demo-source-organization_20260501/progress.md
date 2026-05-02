@@ -1,7 +1,7 @@
 # Progress: Demo-First Source Organization
 
 *PRD ID: `demo-source-organization_20260501`*
-*Status: Planned*
+*Status: Implemented*
 *Beads epic: `oracledb-vertexai-8jt`*
 
 ---
@@ -13,7 +13,7 @@
 - [x] `domain-source-organization_20260501` - controllers, product/store services, schemas, web, and system domain pass
 - [x] `adk-runner-source-organization_20260501` - ADK runner narrative split and focused private helper modules
 - [x] `cli-tools-source-organization_20260501` - coffee CLI helpers and operational tools
-- [ ] `source-organization-verification_20260501` - final whole-tree audit, patterns update, and aggregate gates
+- [x] `source-organization-verification_20260501` - final whole-tree audit, patterns update, and aggregate gates
 
 ## Review Notes
 
@@ -27,3 +27,6 @@
 - Chapter 3 implemented on 2026-05-01; verification passed with focused domain unit/integration tests, source organization guard, `make lint`, `make test`, and diff checks.
 - Chapter 4 implemented on 2026-05-01; verification passed with focused ADK unit/integration tests, source organization guard, `make lint`, `make test`, and diff checks.
 - Chapter 5 implemented on 2026-05-01; verification passed with CLI surface tests, Oracle tool integration tests, source organization guard, `make lint`, `make test`, and diff checks.
+- Chapter 6 implemented on 2026-05-02; final verification passed with source
+  organization guard, focused smoke suite, `make lint`, `make test`, and
+  `git diff --check`.

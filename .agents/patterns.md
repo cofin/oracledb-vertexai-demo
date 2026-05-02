@@ -69,6 +69,11 @@
 - Use SPDX headers on source files: `Copyright 2026 Google LLC` plus
   `SPDX-License-Identifier: Apache-2.0`.
 - Use PEP 604 unions (`str | None`) and typed public boundaries.
+- Keep demo-facing public Python modules public-first: exported controllers,
+  services, settings, commands, and lifecycle entry points should appear before
+  private mechanics. Move substantial helper runs into focused private sibling
+  modules or below the public API; command modules stay declarative and call
+  private helpers.
 - `src/app/ioc.py` must not use `from __future__ import annotations`; Dishka
   introspects provider annotations at runtime.
 - Prefer handler-argument `Inject[T]` over route-level `@inject` decorators.
