@@ -5,13 +5,15 @@
 
 from importlib.metadata import PackageNotFoundError, metadata, version
 
-__all__ = ("__project__", "__version__")
+__all__ = ("__project__", "__version__", "__package_date__")
 
 try:
     __version__ = version("app")
     __project__ = metadata("app")["Name"]
 except PackageNotFoundError:  # pragma: no cover
-    __version__ = "0.0.1"
+    __version__ = "0.2.0"
     __project__ = "Cymbal Coffee"
 finally:
     del version, PackageNotFoundError, metadata
+
+__package_date__ = "2026-05-03"
