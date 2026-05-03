@@ -5,7 +5,7 @@
 
 from importlib.metadata import PackageNotFoundError, metadata, version
 
-__all__ = ("__project__", "__version__", "__package_date__")
+__all__ = ("__package_date__", "__project__", "__version__")
 
 try:
     __version__ = version("app")
