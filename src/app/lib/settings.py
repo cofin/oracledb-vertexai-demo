@@ -477,7 +477,7 @@ class ViteSettings:
         _loader.read_hotfile_url = patched_read_hotfile_url  # type: ignore[attr-defined]
         from litestar_vite.plugin import _proxy as _proxy_mod
 
-        _proxy_mod.read_hotfile_url = patched_read_hotfile_url
+        _proxy_mod.read_hotfile_url = patched_read_hotfile_url  # type: ignore[attr-defined]
 
     def get_config(self) -> ViteConfig:
         """Build the Vite plugin configuration.
