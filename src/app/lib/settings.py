@@ -408,7 +408,7 @@ class ViteSettings:
     """Enable Vite dev server mode."""
     BUNDLE_DIR: Path = field(
         default_factory=lambda: Path(
-            os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static" / "dist")),
+            os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static")),
         ),
     )
     """Vite bundle directory."""
@@ -428,10 +428,10 @@ class ViteSettings:
         Returns:
             A ``ViteConfig`` whose paths match the repo-root ``vite.config.ts``.
         """
-        from litestar_vite import PathConfig, RuntimeConfig, TypeGenConfig, ViteConfig
+        from litestar_vite import PathConfig, TypeGenConfig, ViteConfig
 
         return ViteConfig(
-            mode="template",
+            mode="htmx",
             dev_mode=self.DEV_MODE,
             types=TypeGenConfig(
                 output=Path("src/resources/generated"),
@@ -446,7 +446,6 @@ class ViteSettings:
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
-            runtime=RuntimeConfig(executor="node"),
         )
 
 

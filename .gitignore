@@ -154,7 +154,7 @@ uv.toml
 # Vite build output served by litestar-vite (bundle dir lives inside the web domain).
 # See src/app/domain/web/__init__.py — `dist/` holds manifest.json + hashed bundles
 # emitted by `manage.py assets build`; `dist/hot` is the HMR marker written in dev mode.
-src/app/domain/web/static/dist/
+src/app/domain/web/static
 # Bridge file written by litestar-vite when the test app boots — captures the
 # dev server URL/port for the JS plugin to read. Always machine-generated.
 .litestar.json
