@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Container runtime abstraction for Docker and Podman.
 
 This module provides a unified interface for container operations,
@@ -8,10 +11,10 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from enum import Enum
+from enum import StrEnum
 
 
-class RuntimeType(str, Enum):
+class RuntimeType(StrEnum):
     """Container runtime types."""
 
     DOCKER = "docker"

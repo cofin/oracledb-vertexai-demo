@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """SQLcl installer module.
 
 This module downloads, extracts, and installs Oracle SQLcl command-line tool.

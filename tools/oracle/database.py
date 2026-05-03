@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Oracle database container lifecycle management.
 
-This module manages Oracle 23 Free container deployment and operations,
-replicating the behavior of docker-compose.yml.
+This module manages Oracle Database Free container deployment and operations.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ class DatabaseConfig:
     """Configuration for Oracle database container."""
 
     # Container settings
-    container_name: str = "oracle-23free-db"
+    container_name: str = "oracle-free-db"
     image: str = "gvenzl/oracle-free:latest"
     hostname: str = "db"
 
@@ -56,7 +58,8 @@ class DatabaseConfig:
         """Create configuration from environment variables.
 
         Reads from:
-        - ORACLE23AI_PORT (default: 1521)
+        - ORACLE26AI_PORT (default: 1521)
+        - ORACLE23AI_PORT (legacy fallback)
         - ORACLE_SYSTEM_PASSWORD (default: super-secret)
         - ORACLE_PASSWORD (default: super-secret)
         - ORACLE_USER (default: app)
@@ -66,9 +69,10 @@ class DatabaseConfig:
         """
         oracle_system_pw = os.getenv("ORACLE_SYSTEM_PASSWORD", "super-secret")
         oracle_user_pw = os.getenv("ORACLE_PASSWORD", "super-secret")
+        host_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
 
         return cls(
-            host_port=int(os.getenv("ORACLE23AI_PORT", "1521")),
+            host_port=int(host_port),
             oracle_system_password=oracle_system_pw,
             oracle_password=oracle_system_pw,  # Matches docker-compose behavior
             app_user_password=oracle_user_pw,
@@ -77,7 +81,7 @@ class DatabaseConfig:
 
 
 class OracleDatabase:
-    """Manage Oracle 23 Free database container lifecycle."""
+    """Manage Oracle Database Free container lifecycle."""
 
     def __init__(
         self,

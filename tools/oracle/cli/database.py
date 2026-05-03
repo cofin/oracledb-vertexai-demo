@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Database container management CLI commands."""
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ console = Console()
 def database_group() -> None:
     """Manage Oracle database container (managed mode).
 
-    Commands for deploying and managing Oracle 23ai Free container.
+    Commands for deploying and managing the Oracle 26ai demo container.
     Requires Docker or Podman to be installed.
     """
 
@@ -24,7 +27,7 @@ def database_group() -> None:
 def database_start(pull: bool, recreate: bool, env_file: str | None) -> None:
     """Start Oracle database container.
 
-    Deploys Oracle 23 Free container with configuration matching docker-compose.yml.
+    Deploys the Oracle Database Free container with local demo configuration.
     """
     from tools.oracle.container import ContainerRuntime
     from tools.oracle.database import DatabaseConfig, OracleDatabase

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Wallet configurator for Oracle Autonomous Database.
 
 This module handles wallet extraction, validation, and configuration
@@ -339,9 +342,8 @@ class WalletConfigurator:
             has_truststore=has_truststore,
             services=services,
             is_valid=len(errors) == 0,
-            validation_errors=errors if errors else None,
+            validation_errors=errors or None,
         )
-
 
     def parse_tnsnames(self, wallet_dir: Path) -> list[str]:
         """Parse tnsnames.ora for service names.

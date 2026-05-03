@@ -1,0 +1,241 @@
+{#
+SPDX-FileCopyrightText: 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html.j2" %}
+
+{% block title %}Cymbal Coffee — Vector Lab{% endblock %}
+{% block page_kicker %}Oracle 26ai{% endblock %}
+{% block page_heading %}Vector lab{% endblock %}
+{% block page_subheading %}Vector search, SQL plans, and telemetry{% endblock %}
+
+{% block content %}
+{% set search_trigger = "load, keyup changed delay:300ms" if query else "keyup changed delay:300ms" %}
+<section class="space-y-6">
+  <header class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
+    <p class="max-w-full text-xs text-muted sm:text-right">Live Oracle 26ai + Vertex AI instrumentation</p>
+  </header>
+
+  <div class="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+    {# Panel 1: live vector search — server partial via HTMX #}
+    <section id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar"
+      class="ui-panel min-w-0 p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
+      <p class="mb-3 text-xs text-muted">Search results and SQL plan update from the same query.</p>
+      <form id="explore-search-form" hx-post="/api/vector-demo" hx-trigger="{{ search_trigger }}"
+        hx-target="#search-results" hx-swap="outerHTML">
+        <label for="explore-query" class="mb-1 block text-xs font-semibold uppercase text-muted">Search the menu</label>
+        <input id="explore-query" type="search" name="query" value="{{ query }}"
+          placeholder="Search for a drink, roast, flavor, or breakfast item" autocomplete="off" required
+          class="min-w-0 w-full max-w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong">
+      </form>
+      <div id="search-results" class="mt-3 min-h-28 space-y-2">
+        <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
+          Type to search the Cymbal Coffee menu.
+        </p>
+      </div>
+    </section>
+
+    {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
+    <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel min-w-0 p-4">
+      <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
+      {% include "partials/plan_lines.html.j2" %}
+    </section>
+
+    {# Panel 3: metrics summary cards — Litestar HTMX JSON renderer #}
+    <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel min-w-0 p-4 lg:col-span-2">
+      <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
+      <div id="metrics-summary" hx-ext="litestar" hx-get="/api/metrics/summary" hx-trigger="load, every 10s"
+        hx-swap="json" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <template ls-for="card in cards" ls-key="card.label">
+          <article data-metric-card class="metric-card px-3 py-2">
+            <p class="text-xs text-muted">${card.label}</p>
+            <p class="text-base font-semibold text-strong">${card.value}</p>
+            <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'"
+              class="text-xs">${card.trendValue ?? card.trend ?? 'neutral'}</p>
+          </article>
+        </template>
+        <template ls-if="!cards || cards.length === 0">
+          <p class="col-span-full rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
+            Search metrics appear after the first menu lookup.
+          </p>
+        </template>
+      </div>
+    </section>
+
+    {# Panel 4: dashboard charts — vanilla JS + ApexCharts #}
+    <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel min-w-0 p-4 lg:col-span-2">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="mb-1 text-sm font-semibold text-strong">4 · Performance analytics</h2>
+          <p class="text-xs text-muted">Response trends, vector similarity, and component timing.</p>
+        </div>
+        <span class="telemetry-chip border-border bg-surface-strong/55 text-muted">auto refresh</span>
+      </div>
+      <div data-dashboard-charts class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="min-w-0">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">Response time trends</h3>
+          <div data-chart-host="response-trends" class="chart-host h-72 w-full"></div>
+        </div>
+        <div class="min-w-0">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">Vector search performance</h3>
+          <div data-chart-host="vector-performance" class="chart-host h-72 w-full"></div>
+        </div>
+        <div class="min-w-0 lg:col-span-2">
+          <h3 class="mb-2 text-xs font-semibold uppercase text-muted">System performance breakdown</h3>
+          <div data-chart-host="system-breakdown" class="chart-host h-72 w-full"></div>
+        </div>
+      </div>
+    </section>
+
+    {# Panel 5: vector storage calculator — pure client-side Vite JS #}
+    <section id="panel-vector-calculator" data-ui-panel="vector-calculator" class="ui-panel min-w-0 p-4 lg:col-span-2">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="mb-1 text-sm font-semibold text-strong">5 · Vector storage calculator</h2>
+          <p class="text-xs text-muted">Estimate Oracle 26ai vector payload, index overhead, and Vector memory sizing.</p>
+        </div>
+
+      </div>
+
+      <div data-vector-calculator class="mt-4 grid gap-4 lg:grid-cols-2">
+        <div class="space-y-4">
+          <div class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <p class="mb-2 text-xs font-semibold uppercase text-muted">Model presets</p>
+            <div class="grid gap-2 sm:grid-cols-3">
+              <button type="button" data-vector-preset data-preset-dimensions="768" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Gemini 768
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="3072" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Gemini 3072
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="1536" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                OpenAI 1536
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="3072" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                OpenAI 3072
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="1024" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Cohere 1024
+              </button>
+              <button type="button" data-vector-preset data-preset-dimensions="4096" data-preset-format="FLOAT32"
+                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
+                Cohere 4096
+              </button>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label for="vector-row-count" class="block min-w-0">
+              <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+                Rows
+                <output data-output="rowCount" class="font-mono text-accent-strong">1,000,000</output>
+              </span>
+              <input id="vector-row-count" data-vector-input="rowCount" type="range" min="1000" max="100000000"
+                step="1000" value="1000000" class="w-full accent-accent-strong">
+              <input data-vector-input="rowCount" type="number" min="1000" max="100000000" step="1000"
+                value="1000000" aria-label="Vector row count"
+                class="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+            </label>
+
+            <label for="vector-dimensions" class="block min-w-0">
+              <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+                Dimensions
+                <output data-output="dimensions" class="font-mono text-accent-strong">3,072</output>
+              </span>
+              <input id="vector-dimensions" data-vector-input="dimensions" type="range" min="1" max="4096"
+                step="1" value="3072" class="w-full accent-accent-strong">
+              <input data-vector-input="dimensions" type="number" min="1" max="4096" step="1" value="3072"
+                aria-label="Vector dimensions"
+                class="mt-2 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+            </label>
+
+            <label for="vector-format" class="block min-w-0">
+              <span class="mb-1 block text-xs font-semibold uppercase text-muted">Vector format</span>
+              <select id="vector-format" data-vector-input="format"
+                class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+                <option value="FLOAT32" selected>FLOAT32</option>
+                <option value="FLOAT64">FLOAT64</option>
+                <option value="INT8">INT8</option>
+                <option value="BINARY">BINARY</option>
+              </select>
+            </label>
+
+            <label for="vector-index-type" class="block min-w-0">
+              <span class="mb-1 block text-xs font-semibold uppercase text-muted">Index type</span>
+              <select id="vector-index-type" data-vector-input="indexType"
+                class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong focus:outline-none focus:ring-2 focus:ring-accent-strong">
+                <option value="HNSW" selected>HNSW</option>
+                <option value="IVF">IVF</option>
+                <option value="NONE">None</option>
+              </select>
+            </label>
+          </div>
+
+          <label for="vector-hnsw-m" data-hnsw-controls class="block min-w-0 rounded-lg border border-border bg-surface-strong/55 p-3">
+            <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
+              HNSW M
+              <output data-output="hnswM" class="font-mono text-accent-strong">16</output>
+            </span>
+            <input id="vector-hnsw-m" data-vector-input="hnswM" type="range" min="8" max="128" step="1"
+              value="16" class="w-full accent-accent-strong">
+            <p class="mt-2 text-xs text-muted">Higher M improves graph connectivity and recall, with a larger memory footprint.</p>
+          </label>
+        </div>
+
+        <div class="grid gap-3">
+          <article class="metric-card p-4">
+            <p class="text-xs font-semibold uppercase text-muted">Rough Estimate</p>
+            <p data-output="totalSize" class="mt-2 text-3xl font-semibold text-strong">195 GB</p>
+          </article>
+
+          <div class="grid gap-3 sm:grid-cols-2">
+            <article class="metric-card p-3">
+              <p class="text-xs text-muted">Raw vector payload</p>
+              <p data-output="rawSize" class="mt-1 text-lg font-semibold text-strong">11 GB</p>
+            </article>
+            <article class="metric-card p-3">
+              <p class="text-xs text-muted">Index overhead</p>
+              <p data-output="indexSize" class="mt-1 text-lg font-semibold text-strong">183 GB</p>
+            </article>
+          </div>
+
+          <article class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs font-semibold uppercase text-muted">Compression savings vs FLOAT32</p>
+              <p data-output="savingsPercent" class="font-mono text-xs font-semibold text-accent-strong">0.0%</p>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface">
+              <div data-vector-visual="compression" role="progressbar" aria-label="Compression savings"
+                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                class="h-full rounded-full bg-sage transition-all duration-200" style="width: 0%"></div>
+            </div>
+          </article>
+
+          <article class="rounded-lg border border-border bg-surface-strong/55 p-3">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-xs font-semibold uppercase text-muted">Vector memory</p>
+              <p data-output="vectorMemory" class="font-mono text-xs font-semibold text-accent-strong">183 GB</p>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface">
+              <div data-vector-visual="vectorMemory" role="progressbar" aria-label="Vector memory impact"
+                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+                class="h-full rounded-full bg-sky transition-all duration-200" style="width: 0%"></div>
+            </div>
+            <p data-output="memoryImpact" class="mt-2 text-xs text-muted">Capacity planning required</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+  </div>
+  <div data-ui-popover-root="explore" class="popover-surface sr-only" aria-hidden="true"></div>
+</section>
+{% endblock %}

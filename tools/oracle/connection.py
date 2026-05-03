@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Connection tester for Oracle databases.
 
 This module tests database connectivity across all deployment modes:
@@ -8,7 +11,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +19,7 @@ from rich.console import Console
 from rich.table import Table
 
 
-class DeploymentMode(str, Enum):
+class DeploymentMode(StrEnum):
     """Database deployment modes."""
 
     MANAGED = "managed"  # We manage a Docker container
@@ -103,7 +106,8 @@ class ConnectionConfig:
             "DATABASE_PASSWORD", os.getenv("ORACLE_PASSWORD", "super-secret" if mode == DeploymentMode.MANAGED else "")
         )
         host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
-        port = int(os.getenv("DATABASE_PORT", os.getenv("ORACLE23AI_PORT", "1521")))
+        oracle_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
+        port = int(os.getenv("DATABASE_PORT", oracle_port))
         service_name = os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1" if mode == DeploymentMode.MANAGED else "ORCL")
         dsn = os.getenv("DATABASE_DSN")
 
@@ -603,18 +607,24 @@ def get_connection_suggestions(
     # Wallet-specific suggestions (applies to any mode with wallet)
     if has_wallet:
         if "wallet" in error_lower:
-            suggestions.append("Verify WALLET_LOCATION points to valid wallet directory")
-            suggestions.append("Check TNS_ADMIN is set correctly")
+            suggestions.extend([
+                "Verify WALLET_LOCATION points to valid wallet directory",
+                "Check TNS_ADMIN is set correctly",
+            ])
         if "password" in error_lower:
             suggestions.append("Verify WALLET_PASSWORD is correct")
         if "tns" in error_lower or "service" in error_lower:
-            suggestions.append("Verify DATABASE_SERVICE_NAME matches a service in tnsnames.ora")
-            suggestions.append("Check wallet files: cwallet.sso, tnsnames.ora, sqlnet.ora")
+            suggestions.extend([
+                "Verify DATABASE_SERVICE_NAME matches a service in tnsnames.ora",
+                "Check wallet files: cwallet.sso, tnsnames.ora, sqlnet.ora",
+            ])
 
     # Mode-specific suggestions
     if mode == DeploymentMode.MANAGED:
-        suggestions.append("Check if Oracle container is running: docker ps")
-        suggestions.append("Start container: python manage.py database start")
+        suggestions.extend([
+            "Check if Oracle container is running: docker ps",
+            "Start container: python manage.py database start",
+        ])
         if "refused" in error_lower or "cannot connect" in error_lower:
             suggestions.append("Verify port mapping (default: 1521)")
         if "invalid username" in error_lower or "invalid password" in error_lower:
@@ -622,10 +632,12 @@ def get_connection_suggestions(
 
     elif mode == DeploymentMode.EXTERNAL:
         if "refused" in error_lower or "cannot connect" in error_lower:
-            suggestions.append("Verify host and port are correct")
-            suggestions.append("Check firewall rules")
-            suggestions.append("Ensure database listener is running")
-            suggestions.append("Test network connectivity: ping <host>")
+            suggestions.extend([
+                "Verify host and port are correct",
+                "Check firewall rules",
+                "Ensure database listener is running",
+                "Test network connectivity: ping <host>",
+            ])
         if "invalid username" in error_lower or "invalid password" in error_lower:
             suggestions.append("Verify DATABASE_USER and DATABASE_PASSWORD")
 

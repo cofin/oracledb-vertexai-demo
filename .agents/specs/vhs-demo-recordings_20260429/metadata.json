@@ -1,0 +1,10 @@
+{
+  "flow_id": "vhs-demo-recordings_20260429",
+  "type": "prd",
+  "status": "review",
+  "parent_prd": null,
+  "beads_epic_id": null,
+  "created_at": "2026-04-29T00:00:00Z",
+  "updated_at": "2026-04-29T20:07:12Z",
+  "description": "Plan VHS terminal demo recordings for the Oracle + Vertex AI demo, adapting sqlspec and litestar-vite docs/_tapes patterns into a prompt-gated destructive recording script, Makefile target, and ordered live tape sequence."
+}

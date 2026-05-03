@@ -1,0 +1,87 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""``coffee`` CLI entry point."""
+
+from __future__ import annotations
+
+import sys
+
+import rich_click as click
+from rich.console import Console
+
+from app.__metadata__ import __version__
+
+console = Console()
+
+
+# rich-click presentation knobs.
+click.rich_click.USE_RICH_MARKUP = True
+click.rich_click.SHOW_ARGUMENTS = True
+click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
+click.rich_click.STYLE_ERRORS_SUGGESTION = "yellow italic"
+click.rich_click.ERRORS_SUGGESTION = "Try running the '--help' flag for more information."
+click.rich_click.STYLE_COMMANDS_PANEL_BOX = "BLANK"
+click.rich_click.STYLE_OPTIONS_PANEL_BOX = "BLANK"
+click.rich_click.STYLE_COMMANDS_PANEL_BORDER = "none"
+click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
+
+
+def _setup_environment() -> None:
+    """Configure environment variables shared by every ``coffee`` invocation."""
+    from app import config
+    from app.lib.log import set_cli_mode
+    from app.lib.settings import get_settings
+
+    config.setup_logging()
+    set_cli_mode(True)
+    settings = get_settings()
+    settings.setup_litestar_env()
+
+
+@click.group(
+    name="coffee",
+    help=(
+        "[bold cyan]Cymbal Coffee[/bold cyan] — Oracle 26ai + Vertex AI demo CLI.\n\n"
+        "Production-app commands only. End users initialize the app with "
+        "[bold]coffee upgrade[/bold]. Developer database, asset, and "
+        "infrastructure commands live on [bold]python manage.py[/bold]."
+    ),
+    context_settings={"help_option_names": ["-h", "--help"]},
+    invoke_without_command=True,
+)
+@click.version_option(version=__version__, prog_name="coffee")
+@click.pass_context
+def cli(ctx: click.Context) -> None:
+    """``coffee`` top-level entry point."""
+    from app.ioc import make_container
+
+    ctx.ensure_object(dict)
+    ctx.obj["container_factory"] = make_container
+
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+def main() -> None:
+    """Entry point exposed via ``[project.scripts] coffee = app.__main__:run_cli``.
+
+    Imports the commands module (which side-effects ``@cli.command(...)``
+    registration), then dispatches to the click group. Errors that escape are
+    logged and re-raised as a non-zero exit so subprocess callers see the
+    failure cleanly.
+    """
+    _setup_environment()
+
+    # Side-effect: importing app.cli.commands registers every command on `cli`.
+    from app.cli import commands as _commands  # noqa: F401
+
+    try:
+        cli()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted by user[/yellow]")
+        sys.exit(130)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,8 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Oracle deployment and management tools.
 
 This package provides comprehensive Oracle database deployment and management:
 - Container runtime abstraction (Docker/Podman)
-- Local Oracle 23 Free container management
+- Local Oracle Database Free container management
 - Remote database connectivity
 - Autonomous Database wallet configuration
 - SQLcl installation

@@ -1,165 +1,151 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#     "httpx>=0.28.1",
-#     "rich-click>=1.8.0",
-#     "oracledb>=2.0.0",
-#     "python-dotenv>=1.0.0",
-# ]
-# ///
-"""Unified project management CLI for Oracle + Vertex AI demo.
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+"""Cymbal Coffee Infrastructure and Database Lifecycle Management.
 
-This tool provides a single interface for:
-- Project initialization and environment setup
-- Prerequisite installation (UV, SQLcl, etc.)
-- Oracle database deployment (managed container or external connection)
-- Wallet configuration and validation (auto-detected)
-- Connection testing and health checks
+Unified DevOps CLI for the Oracle 26ai + Vertex AI demo. Mirrors the
+``dma/accelerator`` layout: six top-level groups (``init``, ``install``,
+``doctor``, ``infra``, ``database``, ``assets``).
 
-IMPORTANT: This is a development tool and should not be shipped with production code.
+Examples::
 
-Usage:
-    python manage.py init                  # Initialize project
-    python manage.py install all          # Install all prerequisites
-    python manage.py doctor               # Verify setup
-    python manage.py database start       # Start Oracle container
-    python manage.py --help               # Show all commands
+    python manage.py init
+    python manage.py install all
+    python manage.py doctor
+    python manage.py infra start
+    python manage.py database upgrade
+    python manage.py database wallet locate
+    python manage.py assets build
 """
 
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import rich_click as click
 from rich.console import Console
-
-# Ensure tools package is importable
-sys.path.insert(0, str(Path(__file__).parent))
-
-# Import Oracle CLI command groups (after sys.path setup)
-# Import project management CLI commands
 from tools.cli import doctor_command, init_command, install_group
 from tools.oracle import (
     connect_group as oracle_connect_group,
 )
 from tools.oracle import (
-    database_group as oracle_database_group,
-)
-from tools.oracle import (
-    status_command as oracle_status_command,
+    database_group as oracle_container_group,
 )
 from tools.oracle import (
     wallet_group as oracle_wallet_group,
 )
 
-console = Console()
+from app.__metadata__ import __version__
 
-# Configure rich-click
+# rich-click config
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
 click.rich_click.STYLE_ERRORS_SUGGESTION = "yellow italic"
 click.rich_click.ERRORS_SUGGESTION = "Try running the '--help' flag for more information."
 
-
-# ============================================================================
-# Main CLI Group
-# ============================================================================
+console = Console()
 
 
-@click.group()
-@click.version_option(version="0.1.0", prog_name="manage")
+@click.group(
+    help="""
+    [bold cyan]Cymbal Coffee Infrastructure and Database Management[/bold cyan]
+
+    Unified DevOps CLI for the Oracle 26ai + Vertex AI demo.
+    """,
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+@click.version_option(version=__version__, prog_name="manage")
 def cli() -> None:
-    """Unified DevOps CLI for Oracle + Vertex AI Demo.
-
-    This tool manages project initialization, prerequisites, database deployment,
-    and configuration across two deployment modes:
-
-    - managed: Oracle 23ai Free container via Docker/Podman (we control it)
-    - external: Connect to existing database (auto-detects wallet for mTLS)
-
-    Common workflow:
-      1. python manage.py init              # Set up .env
-      2. python manage.py install all       # Install prerequisites
-      3. python manage.py doctor            # Verify setup
-      4. python manage.py database oracle start-local-container  # Start database (managed mode)
-
-    For help on any command:
-      python manage.py <command> --help
-    """
+    """Top-level entry point."""
 
 
-# ============================================================================
-# Register Project Management Commands
-# ============================================================================
-
-# Register init command
+# Project lifecycle
 cli.add_command(init_command, name="init")
-
-# Register install group
 cli.add_command(install_group, name="install")
-
-# Register doctor command
 cli.add_command(doctor_command, name="doctor")
 
-# Register status command (from Oracle CLI)
-cli.add_command(oracle_status_command, name="status")
+
+# =============================================================================
+# Infrastructure (flat — start/stop/restart/status/logs/wipe)
+# =============================================================================
 
 
-# ============================================================================
-# Register Oracle Database Commands
-# ============================================================================
+@cli.group(name="infra", help="Manage development infrastructure (Oracle 26ai container).")
+def infra_group() -> None:
+    """Oracle 26ai container lifecycle — flat namespace, accelerator-style."""
 
 
-@cli.group(name="database")
-def database_cli_group() -> None:
-    """Manage database operations.
-
-    Commands for database management across different providers.
-    """
-
-
-@database_cli_group.group(name="oracle")
-def oracle_cli_group() -> None:
-    """Manage Oracle database operations.
-
-    Commands for deploying and managing Oracle databases, wallets, and connections.
-    Requires Docker or Podman for managed mode.
-    """
+_INFRA_RENAME = {
+    "start": "start",
+    "stop": "stop",
+    "restart": "restart",
+    "status": "status",
+    "logs": "logs",
+    "remove": "wipe",
+}
+for src_name, dst_name in _INFRA_RENAME.items():
+    cmd = oracle_container_group.commands.get(src_name)
+    if cmd is not None:
+        infra_group.add_command(cmd, name=dst_name)
 
 
-# Register database commands under oracle_cli_group
-oracle_cli_group.add_command(oracle_database_group.commands["start"], name="start-local-container")
-oracle_cli_group.add_command(oracle_database_group.commands["stop"], name="stop-local-container")
-oracle_cli_group.add_command(oracle_database_group.commands["status"], name="status")
-oracle_cli_group.add_command(oracle_database_group.commands["logs"], name="local-container-logs")
-oracle_cli_group.add_command(oracle_database_group.commands["remove"], name="wipe-local-container")
-oracle_cli_group.add_command(oracle_database_group.commands["restart"], name="restart-local-container")
-
-# Register wallet group under oracle_cli_group
-oracle_cli_group.add_command(oracle_wallet_group, name="wallet")
-
-# Register connect group under oracle_cli_group
-oracle_cli_group.add_command(oracle_connect_group, name="connect")
+# =============================================================================
+# Database (sqlspec migrations + wallet + connect)
+# =============================================================================
 
 
-# ============================================================================
-# Main Entry Point
-# ============================================================================
+@cli.group(name="database", help="Database management — migrations, wallet, and connection tests.")
+@click.pass_context
+def database_group(ctx: click.Context) -> None:
+    """Database administration. Migration commands work against ``app.config.db``."""
+    import app.config as app_config  # mypy needs explicit submodule import (not `from app import config`).
+
+    ctx.ensure_object(dict)
+    ctx.obj["configs"] = [app_config.db]
+
+
+database_group.add_command(oracle_wallet_group, name="wallet")
+database_group.add_command(oracle_connect_group, name="connect")
+
+
+# =============================================================================
+# Assets (litestar-vite passthrough)
+# =============================================================================
+
+
+@cli.group(name="assets", help="Frontend asset pipeline (Vite via litestar-vite).")
+@click.pass_context
+def assets_group(ctx: click.Context) -> None:
+    """Wire a LitestarEnv factory onto ctx.obj for the Vite subcommands."""
+    from litestar.cli._utils import LitestarEnv
+
+    def _get_env() -> LitestarEnv:
+        return LitestarEnv.from_env("app.server.asgi:create_app")
+
+    ctx.obj = _get_env
+
+
+# =============================================================================
+# Main
+# =============================================================================
 
 
 def main() -> None:
-    """Main entry point."""
+    """Bootstrap migration + Vite subcommands then dispatch."""
+    from litestar_vite.cli import vite_group
+    from sqlspec.cli import add_migration_commands
+
+    add_migration_commands(database_group)
+    for name, command in vite_group.commands.items():
+        if name in {"install", "generate-types", "build", "serve"}:
+            assets_group.add_command(command, name=name)
+
     try:
         cli()
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
-    except Exception as e:  # noqa: BLE001
-        console.print(f"[red]Error: {e}[/red]")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

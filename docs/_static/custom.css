@@ -1,0 +1,100 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Google LLC
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Cymbal Coffee learning portal — visual polish on top of sphinx-immaterial.
+ */
+
+:root {
+  --md-tooltip-width: 600px;
+}
+
+/* sphinx-design cards: lift on hover so the front-door CTAs feel tactile */
+.sd-card {
+  border-radius: 1rem;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.sd-card:hover {
+  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  transform: translateY(-2px);
+}
+
+/* Code-block container aesthetics */
+.code-block-caption {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+pre > code {
+  border-radius: 0.4rem;
+}
+
+/* Inline tool-callout badges on the front door */
+.bdg-primary,
+.sd-bdg-primary {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Hero tagline: stylized lede above the intro paragraph */
+.hero-tagline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: 0.75rem 0 1.25rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Hero intro paragraph after the tagline */
+.md-content .hero-tagline + p {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+}
+
+/* Hero pill cards: compact tool callouts */
+.hero-pill {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem !important;
+  background: var(--md-code-bg-color);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hero-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.hero-pill .sd-card-body {
+  padding: 0 !important;
+}
+
+.hero-pill .sd-card-text {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--md-default-fg-color);
+  margin: 0;
+}
+
+/* Center mermaid diagrams within the content column */
+div.mermaid {
+  display: flex !important;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+div.mermaid > div,
+div.mermaid > svg {
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Hide the right-hand "on this page" TOC sidebar — pages are short enough
+   that the lost width matters more than the in-page jump links. */
+.md-sidebar--secondary {
+  display: none !important;
+}

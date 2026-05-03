@@ -1,0 +1,106 @@
+{#
+SPDX-FileCopyrightText: 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% extends "base.html.j2" %}
+
+{% block title %}Cymbal Coffee — Barista Chat{% endblock %}
+{% block page_kicker %}Cymbal Coffee{% endblock %}
+{% block page_heading %}Connoisseur{% endblock %}
+{% block page_subheading %}Menu-grounded recommendations with Oracle 26ai product search{% endblock %}
+
+{% block content %}
+<section class="chat-shell grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
+  <aside data-ui-panel="chat-sidebar" class="ui-panel flex flex-col justify-between p-5">
+    <div class="space-y-5">
+      <div>
+        <p class="text-xs font-semibold uppercase text-accent-strong">Connoisseur</p>
+        <h1 class="mt-1 text-3xl font-semibold text-strong">Barista chat</h1>
+      </div>
+    </div>
+
+    <div class="mt-6 space-y-3">
+      <p class="text-sm font-medium text-muted">Persona</p>
+      <div role="radiogroup" data-persona-picker class="grid grid-cols-2 gap-2 text-sm">
+        {% for value in ["novice", "enthusiast", "expert", "barista"] %}
+          {% set selected = value == "enthusiast" %}
+          <button type="button" data-persona-option="{{ value }}" aria-pressed="{{ 'true' if selected else 'false' }}"
+            class="rounded-lg border px-3 py-2 text-left capitalize transition-colors {% if selected %}border-accent bg-accent-soft text-accent-strong{% else %}border-border bg-surface text-muted hover:text-strong{% endif %}">
+            {{ value }}
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="metrics-badges" class="mt-6 flex flex-wrap items-center gap-2 text-xs" data-telemetry-chip-list="chat">
+    </div>
+
+    <div class="mt-6 border-t border-border pt-4">
+      <button type="button" data-clear-chat
+        class="w-full rounded-lg border border-danger/25 bg-danger/10 px-3 py-2 text-left text-sm font-medium text-danger transition-colors hover:bg-danger/15">
+        Clear chat
+      </button>
+    </div>
+  </aside>
+
+  <div data-ui-panel="chat-thread" class="ui-panel flex min-h-[34rem] flex-col lg:min-h-[42rem]">
+    <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="polite">
+      {% if history_messages %}
+        {% for history_message in history_messages %}
+          {% with message=history_message, intent_detected=None %}
+            {% include "partials/message.html.j2" %}
+          {% endwith %}
+        {% endfor %}
+      {% else %}
+        <div class="message-row message-row-ai">
+          <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
+          <article class="message message-ai px-4 py-3 shadow-sm">
+            <header class="flex items-center justify-between text-xs">
+              <span class="font-medium text-muted">Barista</span>
+              <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+            </header>
+            <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+              Tell me what sounds good and I'll check the Cymbal Coffee menu.
+            </p>
+          </article>
+        </div>
+      {% endif %}
+    </div>
+
+    <div id="chat-error" class="px-4 md:px-5"></div>
+
+    <form data-chat-form="true" action="/api/chat/stream" method="post"
+      class="border-t border-border bg-surface-strong/45 p-3">
+      <div class="mb-2 grid gap-2 md:grid-cols-[auto_minmax(0,1fr)_8rem] md:items-center">
+        <div class="flex items-center gap-2">
+          <button type="button" data-use-location
+            class="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent/40 hover:text-accent-strong">
+            Use my location
+          </button>
+          <span data-location-status class="text-xs font-medium text-muted" aria-live="polite">Location off</span>
+        </div>
+        <label class="sr-only" for="chat-city">City</label>
+        <input id="chat-city" type="text" name="city" autocomplete="address-level2" placeholder="City"
+          class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+        <label class="sr-only" for="chat-zip-code">ZIP</label>
+        <input id="chat-zip-code" type="text" name="zip_code" inputmode="numeric" autocomplete="postal-code"
+          placeholder="ZIP"
+          class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+      </div>
+      <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
+        <input type="hidden" name="persona" value="enthusiast" data-persona-input>
+        <input type="hidden" name="location_consent" value="false" data-location-consent>
+        <input type="hidden" name="latitude" value="" data-location-latitude>
+        <input type="hidden" name="longitude" value="" data-location-longitude>
+        <input type="hidden" name="accuracy" value="" data-location-accuracy>
+        <input type="text" name="message" autocomplete="off" required placeholder="What should I drink today?"
+          class="min-w-0 flex-1 rounded-lg bg-surface px-3 py-2 text-base text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
+        <button type="submit"
+          class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-strong disabled:cursor-wait disabled:opacity-70">Send</button>
+      </div>
+    </form>
+  </div>
+  <div data-ui-popover-root="chat" class="popover-surface sr-only" aria-hidden="true"></div>
+</section>
+{% endblock %}

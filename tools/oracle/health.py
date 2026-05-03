@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Health checker for Oracle deployment components.
 
 This module checks the health and status of all Oracle deployment
@@ -7,7 +10,7 @@ components across both modes (managed, external).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
@@ -23,7 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status levels."""
 
     HEALTHY = "healthy"
@@ -66,7 +69,7 @@ class SystemHealth:
     @property
     def unhealthy_components(self) -> list[ComponentHealth]:
         """Get list of unhealthy components."""
-        return [c for c in self.components if c.status in (HealthStatus.UNHEALTHY, HealthStatus.DEGRADED)]
+        return [c for c in self.components if c.status in {HealthStatus.UNHEALTHY, HealthStatus.DEGRADED}]
 
 
 class HealthChecker:
@@ -116,8 +119,7 @@ class HealthChecker:
 
         # Check runtime and container for MANAGED mode
         if deployment_mode == DeploymentMode.MANAGED:
-            components.append(self.check_runtime())
-            components.append(self.check_container())
+            components.extend([self.check_runtime(), self.check_container()])
 
         # Check SQLcl (optional for all modes)
         components.append(self.check_sqlcl())
@@ -138,7 +140,7 @@ class HealthChecker:
             overall_status = HealthStatus.UNHEALTHY
         elif degraded:
             overall_status = HealthStatus.DEGRADED
-        elif all(c.status in (HealthStatus.HEALTHY, HealthStatus.NOT_APPLICABLE) for c in components):
+        elif all(c.status in {HealthStatus.HEALTHY, HealthStatus.NOT_APPLICABLE} for c in components):
             overall_status = HealthStatus.HEALTHY
         else:
             overall_status = HealthStatus.UNKNOWN
