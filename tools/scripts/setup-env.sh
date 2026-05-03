@@ -13,12 +13,10 @@ OK="${GREEN}✓${NC}"
 # 1. Configure uv (Python)
 echo -e "${INFO} Configuring uv.toml..."
 cat <<EOF > uv.toml
-exclude-newer = "2026-05-03T00:00:00Z"
 build-constraint-dependencies = [
     "hatchling==1.24.2",
     "nodeenv==1.9.1"
 ]
-exclude-dependencies = ["fastapi", "uvicorn", "starlette", "sse-starlette", "sqlalchemy", "alembic", "sqlalchemy-spanner"]
 EOF
 
 # Detect if running on internal Linux (Rodete)
