@@ -470,8 +470,8 @@ class ViteSettings:
                 pass
             return _utils.read_text_file(hotfile_path).strip()
 
-        ViteAssetLoader._vite_server_url = patched_vite_server_url  # type: ignore[method-assign]
-        ViteAssetLoader._bridge_origin_patched = True  # type: ignore[attr-defined]
+        ViteAssetLoader._vite_server_url = patched_vite_server_url  # type: ignore[method-assign] # noqa: SLF001
+        ViteAssetLoader._bridge_origin_patched = True  # type: ignore[attr-defined] # noqa: SLF001
         _utils.read_hotfile_url = patched_read_hotfile_url
         # ViteProxyMiddleware imports the symbol at module load — re-bind.
         _loader.read_hotfile_url = patched_read_hotfile_url  # type: ignore[attr-defined]
