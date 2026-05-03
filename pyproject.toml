@@ -39,7 +39,7 @@ version = "0.2.0"
 coffee = "app.__main__:run_cli"
 
 [tool.app]
-package_date = "2026-05-03"
+package_date = "2026-05-03T22:10:41Z"
 
 
 
