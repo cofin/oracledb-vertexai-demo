@@ -508,6 +508,14 @@ class ADKRunner:
                 return persisted
         return _event_history_messages(getattr(session, "events", []))
 
+    async def get_history_or_empty(self, user_id: str, session_id: str) -> list[ChatMessage]:
+        """Return displayable chat history, or an empty list if loading fails."""
+        try:
+            return await self.get_history(user_id=user_id, session_id=session_id)
+        except Exception as exc:  # noqa: BLE001
+            await logger.awarning("Chat history unavailable", error_type=type(exc).__name__)
+            return []
+
     async def clear_session(self, user_id: str, session_id: str) -> None:
         """Delete the current ADK session and its event history."""
         await self._session_service.delete_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)

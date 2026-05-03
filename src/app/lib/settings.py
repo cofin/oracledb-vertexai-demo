@@ -260,7 +260,9 @@ class LogSettings:
 class AppSettings:
     """Application configuration"""
 
-    URL: str = field(default_factory=lambda: os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"))
+    URL: str = field(
+        default_factory=lambda: os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}")
+    )
     """The frontend base URL"""
     DEBUG: bool = field(default_factory=lambda: os.getenv("LITESTAR_DEBUG", "False") in TRUE_VALUES)
     """Run `Litestar` with `debug=True`."""
@@ -444,7 +446,7 @@ class ViteSettings:
                 bundle_dir=self.BUNDLE_DIR,
                 asset_url=self.ASSET_URL,
             ),
-            runtime=RuntimeConfig(executor="node"),
+            runtime=RuntimeConfig(executor="node", proxy_mode="proxy"),
         )
 
 

@@ -65,6 +65,29 @@ async def test_chat_page_renders_persisted_session_history(
     assert "Welcome back. Tell me what sounds good" not in body
 
 
+async def test_chat_page_renders_fallback_history(
+    client: AsyncTestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.domain.chat.services import ADKRunner
+
+    def _noop_init(self: object, *args: object, **kwargs: object) -> None:
+        del self, args, kwargs
+
+    async def _history_fail(self: object, *args: object, **kwargs: object) -> list:
+        del self, args, kwargs
+        raise Exception("History failure simulated")
+
+    monkeypatch.setattr(ADKRunner, "__init__", _noop_init)
+    monkeypatch.setattr(ADKRunner, "get_history", _history_fail, raising=False)
+
+    response = await client.get("/")
+
+    assert response.status_code == 200
+    body = response.text
+    assert "Tell me what sounds good and I'll check the Cymbal Coffee menu." in body
+
+
 async def test_explore_page_renders(client: AsyncTestClient) -> None:
     response = await client.get("/explore")
     assert response.status_code == 200, response.text[:500]
