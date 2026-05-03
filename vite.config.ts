@@ -13,6 +13,7 @@ type BundlerWarning = { code?: string; id?: string }
 export default defineConfig({
   clearScreen: false,
   logLevel: "warn",
+  publicDir: "src/resources/public",
   plugins: [
     tailwindcss(),
     litestar({
