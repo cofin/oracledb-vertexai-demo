@@ -38,6 +38,16 @@ version = "0.2.0"
 [project.scripts]
 coffee = "app.__main__:run_cli"
 
+[tool.app]
+package_date = "2026-05-03"
+
+[tool.uv]
+exclude-newer = "2026-05-03T00:00:00Z"
+build-constraint-dependencies = [
+    "hatchling==1.24.2",
+    "nodeenv==1.9.1"
+]
+
 [tool.bumpversion]
 current_version = "0.2.0"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
