@@ -16,6 +16,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!src/**/lib
+!tests/**/lib
 !resources/lib
 !app/lib
 lib64/

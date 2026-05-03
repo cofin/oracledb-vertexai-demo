@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 type BundlerWarning = { code?: string; id?: string }
-const ASSET_URL = process.env.VITE_ASSET_URL || process.env.ASSET_URL || "/static/dist/"
+const ASSET_URL = process.env.VITE_ASSET_URL || process.env.ASSET_URL || "/static/"
 
 export default defineConfig({
   clearScreen: false,
@@ -29,7 +29,6 @@ export default defineConfig({
   ],
   server: {
     cors: true,
-    origin: process.env.APP_URL ?? "http://localhost:5006",
   },
   build: {
     [bundlerKey]: {

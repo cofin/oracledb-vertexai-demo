@@ -411,7 +411,7 @@ class ViteSettings:
     )
     """Vite bundle directory."""
     ASSET_URL: str = field(
-        default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL") or "/static/dist/",
+        default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL") or "/static/",
     )
     """Vite asset URL."""
 
@@ -462,6 +462,7 @@ class Settings:
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""
+        os.environ.setdefault("APP_URL", self.app.URL)
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
