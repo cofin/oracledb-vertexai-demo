@@ -94,9 +94,6 @@ destroy:
 # =============================================================================
 .PHONY: upgrade
 upgrade: setup-env ## Upgrade all dependencies to latest stable versions
-	@echo "${INFO} Bumping package date and uv resolution window... 📅"
-	@uv run python -c "import re; from datetime import datetime, timezone; date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d'); dt_str = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'); text = open('pyproject.toml').read(); text = re.sub(r'package_date = \".*?\"', f'package_date = \"{dt_str}\"', text); open('pyproject.toml', 'w').write(text); text = open('uv.toml').read(); text = re.sub(r'exclude-newer = \".*?\"', f'exclude-newer = \"{dt_str}\"', text); open('uv.toml', 'w').write(text);"
-	@uv run python -c "import re; from datetime import datetime, timezone; date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d'); text = open('src/app/__metadata__.py').read(); text = re.sub(r'__package_date__ = \".*?\"', f'__package_date__ = \"{date_str}\"', text); open('src/app/__metadata__.py', 'w').write(text);"
 	@echo "${INFO} Updating all dependencies... 🔄"
 	@uv lock --upgrade
 	@echo "${INFO} Updating frontend dependencies... 🔄"

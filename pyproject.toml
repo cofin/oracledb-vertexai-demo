@@ -38,37 +38,33 @@ version = "0.2.0"
 [project.scripts]
 coffee = "app.__main__:run_cli"
 
-[tool.app]
-package_date = "2026-05-03T22:19:02Z"
-
-
 
 [tool.bumpversion]
-current_version = "0.2.0"
-parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
-serialize = ["{major}.{minor}.{patch}"]
-search = "{current_version}"
-replace = "{new_version}"
-regex = false
-ignore_missing_version = false
-tag = true
-sign_tags = false
-tag_name = "v{new_version}"
-tag_message = "bump version: {current_version} -> {new_version}"
 allow_dirty = false
 commit = true
-message = "bump version: {current_version} -> {new_version}"
 commit_args = ""
+current_version = "0.2.0"
+ignore_missing_version = false
+message = "bump version: {current_version} -> {new_version}"
+parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
+regex = false
+replace = "{new_version}"
+search = "{current_version}"
+serialize = ["{major}.{minor}.{patch}"]
+sign_tags = false
+tag = true
+tag_message = "bump version: {current_version} -> {new_version}"
+tag_name = "v{new_version}"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
-search = 'version = "{current_version}"'
 replace = 'version = "{new_version}"'
+search = 'version = "{current_version}"'
 
 [[tool.bumpversion.files]]
 filename = "package.json"
-search = '"version": "{current_version}"'
 replace = '"version": "{new_version}"'
+search = '"version": "{current_version}"'
 
 [tool.sqlspec]
 config = "app.config.db"

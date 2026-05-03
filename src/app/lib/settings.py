@@ -261,9 +261,7 @@ class AppSettings:
     """Application configuration"""
 
     URL: str = field(
-        default_factory=lambda: os.path.expandvars(
-            os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}")
-        )
+        default_factory=lambda: os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}")
     )
     """The frontend base URL"""
     DEBUG: bool = field(default_factory=lambda: os.getenv("LITESTAR_DEBUG", "False") in TRUE_VALUES)
@@ -486,6 +484,11 @@ class Settings:
             console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
 
             load_dotenv(env_file, override=False)
+
+        for k, v in list(os.environ.items()):
+            if "$" in v:
+                os.environ[k] = os.path.expandvars(v)
+
         settings = Settings()
         settings.setup_litestar_env()
         return settings
