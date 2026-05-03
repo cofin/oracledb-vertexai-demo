@@ -5,8 +5,7 @@ import tailwindcss from "@tailwindcss/vite"
 import litestar from "litestar-vite-plugin"
 import { defineConfig, version } from "vite"
 declare const process: { env: Record<string, string | undefined> }
-const ASSET_URL = process.env.DMA_ASSET_URL || process.env.ASSET_URL || "/static/"
-const BUNDLE_DIR = "src/app/domain/web/static"
+
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 type BundlerWarning = { code?: string; id?: string }
 
