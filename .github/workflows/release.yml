@@ -33,6 +33,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: src/resources/package-lock.json
 
       - name: Install frontend dependencies
         run: uv run python manage.py assets install
@@ -107,6 +108,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
+          cache-dependency-path: src/resources/package-lock.json
 
       - name: Install project and frontend dependencies
         run: uv run python manage.py assets install
