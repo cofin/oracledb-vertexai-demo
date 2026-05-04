@@ -33,7 +33,7 @@ maintainers = [{ name = "Cody Fincher", email = "cody.fincher@gmail.com" }]
 name = "app"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
-version = "0.2.1"
+version = "0.2.2"
 
 [project.scripts]
 coffee = "app.__main__:run_cli"
@@ -43,7 +43,7 @@ coffee = "app.__main__:run_cli"
 allow_dirty = true
 commit = false
 commit_args = "--no-verify"
-current_version = "0.2.1"
+current_version = "0.2.2"
 ignore_missing_files = false
 ignore_missing_version = false
 message = "chore(release): bump to `v{new_version}`"

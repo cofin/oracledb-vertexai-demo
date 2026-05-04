@@ -11,9 +11,9 @@ try:
     __version__ = version("app")
     __project__ = metadata("app")["Name"]
 except PackageNotFoundError:  # pragma: no cover
-    __version__ = "0.2.1"
+    __version__ = "0.2.2"
     __project__ = "Cymbal Coffee"
 finally:
     del version, PackageNotFoundError, metadata
 
-__package_date__ = "2026-05-04T13:29:41Z"
+__package_date__ = "2026-05-04T16:54:36Z"
