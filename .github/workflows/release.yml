@@ -44,7 +44,7 @@ jobs:
         run: uv build
 
       - name: Upload Python package artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-packages
           path: |
@@ -141,7 +141,7 @@ jobs:
           sha256sum "${{ matrix.container-asset }}" > "${{ matrix.container-asset }}.sha256"
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.docker-arch }}
           path: |
