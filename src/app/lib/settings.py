@@ -26,6 +26,11 @@ BASE_DIR: Final[Path] = module_to_os_path(DEFAULT_MODULE_NAME)
 TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
 
 
+def _default_app_url() -> str:
+    """Return the single-port Litestar URL used by litestar-vite bridge metadata."""
+    return f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"
+
+
 @dataclass
 class DatabaseSettings:
     """Oracle Database connection settings."""
@@ -260,10 +265,8 @@ class LogSettings:
 class AppSettings:
     """Application configuration"""
 
-    URL: str = field(
-        default_factory=lambda: os.getenv("APP_URL", f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}")
-    )
-    """The frontend base URL"""
+    URL: str = field(default_factory=lambda: os.getenv("APP_URL") or _default_app_url())
+    """The frontend base URL."""
     DEBUG: bool = field(default_factory=lambda: os.getenv("LITESTAR_DEBUG", "False") in TRUE_VALUES)
     """Run `Litestar` with `debug=True`."""
     SECRET_KEY: str = field(
@@ -412,72 +415,6 @@ class ViteSettings:
         ),
     )
     """Vite bundle directory."""
-    ASSET_URL: str = field(
-        default_factory=lambda: os.getenv("VITE_ASSET_URL") or os.getenv("ASSET_URL") or "/static/",
-    )
-    """Vite asset URL."""
-
-    @property
-    def set_static_files(self) -> bool:
-        """Whether to serve static files locally."""
-        return self.ASSET_URL.startswith("/")
-
-    @staticmethod
-    def _force_bridge_asset_origin() -> None:
-        """Patch litestar-vite to honor the bridge contract end-to-end.
-
-        Two complementary patches:
-
-        1. ``ViteAssetLoader._vite_server_url`` returns ``APP_URL``-anchored
-           paths so the browser only ever sees the Litestar URL (no leaks of
-           Vite's random dev-server port into rendered HTML).
-        2. ``litestar_vite.utils.read_hotfile_url`` returns Vite's *actual*
-           ``host:port`` from ``.litestar.json`` instead of the hotfile. The
-           JS plugin writes ``appUrl`` (bridge URL) into the hotfile when
-           ``proxyMode=vite``, which would make ``ViteProxyMiddleware`` proxy
-           requests to Litestar itself — an infinite loop / timeout. Reading
-           the bridge config gives us the real upstream.
-
-        Idempotent — patches once per process.
-        """
-        import json
-        from pathlib import Path
-        from urllib.parse import urljoin
-
-        from litestar_vite import loader as _loader
-        from litestar_vite import utils as _utils
-        from litestar_vite.loader import ViteAssetLoader
-
-        if getattr(ViteAssetLoader, "_bridge_origin_patched", False):
-            return
-
-        bridge_config = Path(BASE_DIR.parents[1]) / ".litestar.json"
-
-        def patched_vite_server_url(self: ViteAssetLoader, path: str | None = None) -> str:
-            bridge = os.path.expandvars(os.environ.get("APP_URL", "")).rstrip("/")
-            if not bridge:
-                bridge = f"{self._config.protocol}://{self._config.host}:{self._config.port}"
-            return urljoin(bridge + "/", urljoin(self._config.asset_url, path if path is not None else ""))
-
-        def patched_read_hotfile_url(hotfile_path: Path) -> str:
-            try:
-                bridge = json.loads(bridge_config.read_text())
-                host = bridge.get("host") or "127.0.0.1"
-                port = bridge.get("port")
-                if port:
-                    return f"http://{host}:{port}"
-            except (OSError, ValueError, KeyError):
-                pass
-            return _utils.read_text_file(hotfile_path).strip()
-
-        ViteAssetLoader._vite_server_url = patched_vite_server_url  # type: ignore[method-assign] # noqa: SLF001
-        ViteAssetLoader._bridge_origin_patched = True  # type: ignore[attr-defined] # noqa: SLF001
-        _utils.read_hotfile_url = patched_read_hotfile_url
-        # ViteProxyMiddleware imports the symbol at module load — re-bind.
-        _loader.read_hotfile_url = patched_read_hotfile_url  # type: ignore[attr-defined]
-        from litestar_vite.plugin import _proxy as _proxy_mod
-
-        _proxy_mod.read_hotfile_url = patched_read_hotfile_url  # type: ignore[attr-defined]
 
     def get_config(self) -> ViteConfig:
         """Build the Vite plugin configuration.
@@ -486,16 +423,6 @@ class ViteSettings:
             A ``ViteConfig`` whose paths match the repo-root ``vite.config.ts``.
         """
         from litestar_vite import PathConfig, TypeGenConfig, ViteConfig
-
-        # Workaround for litestar-vite #251 (fix not yet released): the JS plugin
-        # writes the ``hot`` file with Vite's actual ``host:port`` BEFORE rewriting
-        # it with the bridge URL, and the Python asset loader caches whichever value
-        # it sees first. The lazy-retry fix in #251 only kicks in when the cache is
-        # ``None`` — once it has any value, even a wrong one, it stays. Force the
-        # bridge URL by monkey-patching ``_vite_server_url`` to always join asset
-        # paths against APP_URL instead of ``_vite_base_path``.
-        if self.DEV_MODE:
-            self._force_bridge_asset_origin()
 
         return ViteConfig(
             mode="htmx",
@@ -511,7 +438,7 @@ class ViteSettings:
                 root=BASE_DIR.parents[1],
                 resource_dir=Path("src/resources"),
                 bundle_dir=self.BUNDLE_DIR,
-                asset_url=self.ASSET_URL,
+                asset_url="/static/",
             ),
         )
 

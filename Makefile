@@ -121,6 +121,37 @@ build: ## Build the package (Python wheel + frontend assets)
 	@uv build >/dev/null 2>&1
 	@echo "${OK} Package build complete"
 
+.PHONY: release
+release: ## Bump version and refresh release lockfiles (bump=major|minor|patch|pre)
+	@if [ -z "$(bump)" ]; then \
+		echo "${ERROR} Usage: make release bump=major|minor|patch|pre"; \
+		exit 1; \
+	fi
+	@echo "${INFO} Preparing release bump ($(bump))... 📦"
+	@$(MAKE) clean
+	@uv run bump-my-version bump $(bump)
+	@uv lock --upgrade-package app >/dev/null 2>&1
+	@echo "${OK} Release bump complete 🎉"
+
+.PHONY: pre-release
+pre-release: ## Start a pre-release: make pre-release version=0.3.0-alpha.1
+	@if [ -z "$(version)" ]; then \
+		echo "${ERROR} Usage: make pre-release version=X.Y.Z-alpha.N"; \
+		echo ""; \
+		echo "Pre-release workflow:"; \
+		echo "  1. Start alpha:     make pre-release version=0.3.0-alpha.1"; \
+		echo "  2. Next alpha:      make pre-release version=0.3.0-alpha.2"; \
+		echo "  3. Move to beta:    make pre-release version=0.3.0-beta.1"; \
+		echo "  4. Move to rc:      make pre-release version=0.3.0-rc.1"; \
+		echo "  5. Final release:   make release bump=pre"; \
+		exit 1; \
+	fi
+	@echo "${INFO} Preparing pre-release $(version)... 🧪"
+	@$(MAKE) clean
+	@uv run bump-my-version bump --new-version $(version) pre
+	@uv lock --upgrade-package app >/dev/null 2>&1
+	@echo "${OK} Pre-release $(version) complete 🧪"
+
 .PHONY: build-wheel
 build-wheel: assets-build ## Build the Python wheel with bundled frontend assets
 	@echo "${INFO} Building Python wheel... 📦"

@@ -19,34 +19,47 @@ SPDX-License-Identifier: Apache-2.0
   </header>
 
   <div class="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-    {# Panel 1: live vector search — server partial via HTMX #}
+    {# Live vector search and EXPLAIN PLAN are one HTMX flow. #}
     <section id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar"
-      class="ui-panel min-w-0 p-4">
-      <h2 class="mb-2 text-sm font-semibold text-strong">1 · Vector search</h2>
-      <p class="mb-3 text-xs text-muted">Search results and SQL plan update from the same query.</p>
-      <form id="explore-search-form" hx-post="/api/vector-demo" hx-trigger="{{ search_trigger }}"
-        hx-target="#search-results" hx-swap="outerHTML">
-        <label for="explore-query" class="mb-1 block text-xs font-semibold uppercase text-muted">Search the menu</label>
-        <input id="explore-query" type="search" name="query" value="{{ query }}"
-          placeholder="Search for a drink, roast, flavor, or breakfast item" autocomplete="off" required
-          class="min-w-0 w-full max-w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong">
-      </form>
-      <div id="search-results" class="mt-3 min-h-28 space-y-2">
-        <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
-          Type to search the Cymbal Coffee menu.
-        </p>
+      class="ui-panel min-w-0 p-4 lg:col-span-2">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-semibold text-strong">Vector search</h2>
+          <p class="mt-1 text-xs text-muted">Search results and SQL plan update from the same query.</p>
+        </div>
+        <span class="telemetry-chip border-accent/20 bg-accent-soft text-accent-strong">shared query</span>
+      </div>
+
+      <div class="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <div class="min-w-0 lg:pr-1">
+          <form id="explore-search-form" hx-post="/api/vector-demo" hx-trigger="{{ search_trigger }}"
+            hx-target="#search-results" hx-swap="outerHTML">
+            <label for="explore-query" class="mb-1 block text-xs font-semibold uppercase text-muted">Search the menu</label>
+            <input id="explore-query" type="search" name="query" value="{{ query }}"
+              placeholder="Search for a drink, roast, flavor, or breakfast item" autocomplete="off" required
+              class="min-w-0 w-full max-w-full rounded-lg bg-deep px-3 py-2 text-sm text-surface placeholder:text-surface/60 focus:outline-none focus:ring-2 focus:ring-accent-strong">
+          </form>
+          <div id="search-results" class="mt-3 min-h-28 space-y-2">
+            <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted">
+              Type to search the Cymbal Coffee menu.
+            </p>
+          </div>
+        </div>
+
+        <div id="panel-explain-plan" data-ui-panel="explain-plan"
+          class="min-w-0 border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 class="text-sm font-semibold text-strong">EXPLAIN PLAN viewer</h3>
+            <span class="font-mono text-[11px] uppercase tracking-normal text-muted">DBMS_XPLAN</span>
+          </div>
+          {% include "partials/plan_lines.html.j2" %}
+        </div>
       </div>
     </section>
 
-    {# Panel 2: EXPLAIN PLAN viewer — server partial via HTMX #}
-    <section id="panel-explain-plan" data-ui-panel="explain-plan" class="ui-panel min-w-0 p-4">
-      <h2 class="mb-2 text-sm font-semibold text-strong">2 · EXPLAIN PLAN viewer</h2>
-      {% include "partials/plan_lines.html.j2" %}
-    </section>
-
-    {# Panel 3: metrics summary cards — Litestar HTMX JSON renderer #}
+    {# Metrics summary cards — Litestar HTMX JSON renderer #}
     <section id="panel-metrics-summary" data-ui-panel="metrics-summary" class="ui-panel min-w-0 p-4 lg:col-span-2">
-      <h2 class="mb-2 text-sm font-semibold text-strong">3 · Metrics summary</h2>
+      <h2 class="mb-2 text-sm font-semibold text-strong">Metrics summary</h2>
       <div id="metrics-summary" hx-ext="litestar" hx-get="/api/metrics/summary" hx-trigger="load, every 10s"
         hx-swap="json" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <template ls-for="card in cards" ls-key="card.label">
@@ -65,11 +78,11 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
-    {# Panel 4: dashboard charts — vanilla JS + ApexCharts #}
+    {# Dashboard charts — vanilla JS + ApexCharts #}
     <section id="panel-latency-chart" data-ui-panel="latency-chart" class="ui-panel min-w-0 p-4 lg:col-span-2">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="mb-1 text-sm font-semibold text-strong">4 · Performance analytics</h2>
+          <h2 class="mb-1 text-sm font-semibold text-strong">Performance analytics</h2>
           <p class="text-xs text-muted">Response trends, vector similarity, and component timing.</p>
         </div>
         <span class="telemetry-chip border-border bg-surface-strong/55 text-muted">auto refresh</span>
@@ -90,12 +103,12 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </section>
 
-    {# Panel 5: vector storage calculator — pure client-side Vite JS #}
+    {# Vector storage calculator — pure client-side Vite JS #}
     <section id="panel-vector-calculator" data-ui-panel="vector-calculator" class="ui-panel min-w-0 p-4 lg:col-span-2">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 class="mb-1 text-sm font-semibold text-strong">5 · Vector storage calculator</h2>
-          <p class="text-xs text-muted">Estimate Oracle 26ai vector payload, index overhead, and Vector memory sizing.</p>
+          <h2 class="mb-1 text-sm font-semibold text-strong">Vector storage calculator</h2>
+          <p class="text-xs text-muted">Estimate Oracle 26ai vector payload, HNSW pool, and storage savings.</p>
         </div>
 
       </div>
@@ -176,24 +189,15 @@ SPDX-License-Identifier: Apache-2.0
                 <option value="IVF">IVF</option>
                 <option value="NONE">None</option>
               </select>
+              <span data-output="indexNote" class="mt-2 block text-xs text-muted">HNSW uses Oracle's rough Vector Pool estimate.</span>
             </label>
           </div>
-
-          <label for="vector-hnsw-m" data-hnsw-controls class="block min-w-0 rounded-lg border border-border bg-surface-strong/55 p-3">
-            <span class="mb-1 flex items-center justify-between gap-2 text-xs font-semibold uppercase text-muted">
-              HNSW M
-              <output data-output="hnswM" class="font-mono text-accent-strong">16</output>
-            </span>
-            <input id="vector-hnsw-m" data-vector-input="hnswM" type="range" min="8" max="128" step="1"
-              value="16" class="w-full accent-accent-strong">
-            <p class="mt-2 text-xs text-muted">Higher M improves graph connectivity and recall, with a larger memory footprint.</p>
-          </label>
         </div>
 
         <div class="grid gap-3">
           <article class="metric-card p-4">
-            <p class="text-xs font-semibold uppercase text-muted">Rough Estimate</p>
-            <p data-output="totalSize" class="mt-2 text-3xl font-semibold text-strong">195 GB</p>
+            <p class="text-xs font-semibold uppercase text-muted">Table + Vector Pool</p>
+            <p data-output="totalSize" class="mt-2 text-3xl font-semibold text-strong">26 GB</p>
           </article>
 
           <div class="grid gap-3 sm:grid-cols-2">
@@ -202,8 +206,8 @@ SPDX-License-Identifier: Apache-2.0
               <p data-output="rawSize" class="mt-1 text-lg font-semibold text-strong">11 GB</p>
             </article>
             <article class="metric-card p-3">
-              <p class="text-xs text-muted">Index overhead</p>
-              <p data-output="indexSize" class="mt-1 text-lg font-semibold text-strong">183 GB</p>
+              <p class="text-xs text-muted">Vector pool estimate</p>
+              <p data-output="indexSize" class="mt-1 text-lg font-semibold text-strong">15 GB</p>
             </article>
           </div>
 
@@ -221,15 +225,15 @@ SPDX-License-Identifier: Apache-2.0
 
           <article class="rounded-lg border border-border bg-surface-strong/55 p-3">
             <div class="flex items-center justify-between gap-3">
-              <p class="text-xs font-semibold uppercase text-muted">Vector memory</p>
-              <p data-output="vectorMemory" class="font-mono text-xs font-semibold text-accent-strong">183 GB</p>
+              <p class="text-xs font-semibold uppercase text-muted">Vector memory pool</p>
+              <p data-output="vectorMemory" class="font-mono text-xs font-semibold text-accent-strong">15 GB</p>
             </div>
             <div class="mt-2 h-2 overflow-hidden rounded-full bg-surface">
               <div data-vector-visual="vectorMemory" role="progressbar" aria-label="Vector memory impact"
                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
                 class="h-full rounded-full bg-sky transition-all duration-200" style="width: 0%"></div>
             </div>
-            <p data-output="memoryImpact" class="mt-2 text-xs text-muted">Capacity planning required</p>
+            <p data-output="memoryImpact" class="mt-2 text-xs text-muted">Plan a dedicated Vector memory pool</p>
           </article>
         </div>
       </div>

@@ -70,7 +70,7 @@ The initial Oracle 26ai schema in this project includes:
 
 Oracle 26ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
 
-Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the ~1100 vectors at 3072 dims that ship with the demo (~18 MB with HNSW overhead):
+Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the ~1100 vectors at 3072 dims that ship with the demo (~18 MB using Oracle's rough `1.3 * rows * dimensions * element size` HNSW estimate):
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE=SPFILE;
@@ -88,4 +88,4 @@ Verify the pool is allocated:
 SELECT NAME, BYTES FROM V$SGAINFO WHERE NAME LIKE '%Vector%';
 ```
 
-A non-zero `Vector Memory` row confirms the pool is live. `4G` is the project floor; bump higher if `bulk-embed` runs report `ORA-51963` (pool exhausted) — the rule of thumb is `2 × (rows × dim × 4 bytes × HNSW overhead ~1.4×)`.
+A non-zero `Vector Memory` row confirms the pool is live. `4G` is the project floor; bump higher if `bulk-embed` runs report `ORA-51963` (pool exhausted) — Oracle's rough HNSW pool estimate is `1.3 × rows × dim × element size`; use `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR` for exact sizing.

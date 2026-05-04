@@ -10,15 +10,13 @@ const ROW_MIN = 1_000
 const ROW_MAX = 100_000_000
 const DIMENSION_MIN = 1
 const DIMENSION_MAX = 4_096
-const HNSW_M_MIN = 8
-const HNSW_M_MAX = 128
+const HNSW_VECTOR_POOL_FACTOR = 1.3
 
 const DEFAULTS = {
   rowCount: 1_000_000,
   dimensions: 3_072,
   format: "FLOAT32",
   indexType: "HNSW",
-  hnswM: 16,
 }
 
 const FORMAT_BYTES = {
@@ -54,12 +52,9 @@ const rawVectorBytes = (rowCount, dimensions, format) => {
   return rowCount * dimensions * (FORMAT_BYTES[format] ?? FORMAT_BYTES.FLOAT32)
 }
 
-const indexBytes = (rowCount, dimensions, indexType, hnswM) => {
+const indexBytes = (rawSize, indexType) => {
   if (indexType === "HNSW") {
-    return rowCount * hnswM * dimensions * 4
-  }
-  if (indexType === "IVF") {
-    return rowCount * dimensions * 4
+    return Math.round(rawSize * HNSW_VECTOR_POOL_FACTOR)
   }
   return 0
 }
@@ -68,10 +63,17 @@ const vectorMemoryBytes = (indexSize, indexType) => {
   if (indexType === "HNSW") {
     return indexSize
   }
-  if (indexType === "IVF") {
-    return Math.round(indexSize * 0.2)
-  }
   return 0
+}
+
+const indexNoteFor = (indexType) => {
+  if (indexType === "HNSW") {
+    return "HNSW uses Oracle's rough 1.3x Vector Pool estimate."
+  }
+  if (indexType === "IVF") {
+    return "Use DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR for IVF partition sizing."
+  }
+  return "No vector index pool estimate is added."
 }
 
 export const formatBytes = (bytes) => {
@@ -104,7 +106,10 @@ export const mediaComparisonFor = (bytes) => {
   return `${count.toLocaleString()} ${count === 1 ? reference.label : reference.plural}`
 }
 
-const vectorMemoryImpact = (bytes) => {
+const vectorMemoryImpact = (bytes, indexType) => {
+  if (indexType === "IVF") {
+    return { percent: 0, label: "Use the DBMS_VECTOR advisor for IVF centroid memory" }
+  }
   if (bytes <= 0) {
     return { percent: 0, label: "No Vector memory pool needed" }
   }
@@ -124,23 +129,21 @@ const vectorMemoryImpact = (bytes) => {
 export const calculateVectorFootprint = (options = {}) => {
   const rowCount = toInteger(options.rowCount, DEFAULTS.rowCount, ROW_MIN, ROW_MAX)
   const dimensions = toInteger(options.dimensions, DEFAULTS.dimensions, DIMENSION_MIN, DIMENSION_MAX)
-  const hnswM = toInteger(options.hnswM, DEFAULTS.hnswM, HNSW_M_MIN, HNSW_M_MAX)
   const format = Object.prototype.hasOwnProperty.call(FORMAT_BYTES, options.format) || options.format === "BINARY" ? options.format : DEFAULTS.format
   const indexType = ["HNSW", "IVF", "NONE"].includes(options.indexType) ? options.indexType : DEFAULTS.indexType
   const rawSize = rawVectorBytes(rowCount, dimensions, format)
-  const indexSize = indexBytes(rowCount, dimensions, indexType, hnswM)
+  const indexSize = indexBytes(rawSize, indexType)
   const totalSize = rawSize + indexSize
   const baselineSize = baselineFloat32Bytes(rowCount, dimensions)
   const savingsPercent = clamp((1 - rawSize / baselineSize) * 100, 0, 100)
   const vectorMemory = vectorMemoryBytes(indexSize, indexType)
-  const memoryImpact = vectorMemoryImpact(vectorMemory)
+  const memoryImpact = vectorMemoryImpact(vectorMemory, indexType)
 
   return {
     rowCount,
     dimensions,
     format,
     indexType,
-    hnswM,
     rawSize,
     indexSize,
     totalSize,
@@ -148,6 +151,7 @@ export const calculateVectorFootprint = (options = {}) => {
     savingsPercent,
     vectorMemory,
     memoryImpact,
+    indexNote: indexNoteFor(indexType),
     mediaComparison: mediaComparisonFor(totalSize),
   }
 }
@@ -188,30 +192,15 @@ const readState = (root) => ({
   dimensions: inputFor(root, "dimensions")?.value,
   format: inputFor(root, "format")?.value,
   indexType: inputFor(root, "indexType")?.value,
-  hnswM: inputFor(root, "hnswM")?.value,
 })
-
-const setHnswControls = (root, enabled) => {
-  const controls = root.querySelector("[data-hnsw-controls]")
-  if (!(controls instanceof HTMLElement)) {
-    return
-  }
-  controls.hidden = !enabled
-  for (const input of controls.querySelectorAll("input")) {
-    input.disabled = !enabled
-  }
-}
 
 const renderCalculator = (root) => {
   const estimate = calculateVectorFootprint(readState(root))
   syncInputs(root, "rowCount", estimate.rowCount)
   syncInputs(root, "dimensions", estimate.dimensions)
-  syncInputs(root, "hnswM", estimate.hnswM)
-  setHnswControls(root, estimate.indexType === "HNSW")
 
   writeOutput(root, "rowCount", estimate.rowCount.toLocaleString())
   writeOutput(root, "dimensions", estimate.dimensions.toLocaleString())
-  writeOutput(root, "hnswM", estimate.hnswM.toLocaleString())
   writeOutput(root, "rawSize", formatBytes(estimate.rawSize))
   writeOutput(root, "indexSize", formatBytes(estimate.indexSize))
   writeOutput(root, "totalSize", formatBytes(estimate.totalSize))
@@ -219,6 +208,7 @@ const renderCalculator = (root) => {
   writeOutput(root, "savingsPercent", `${estimate.savingsPercent.toFixed(1)}%`)
   writeOutput(root, "mediaComparison", estimate.mediaComparison)
   writeOutput(root, "memoryImpact", estimate.memoryImpact.label)
+  writeOutput(root, "indexNote", estimate.indexNote)
   setVisualPercent(root, "compression", estimate.savingsPercent)
   setVisualPercent(root, "vectorMemory", estimate.memoryImpact.percent)
 }

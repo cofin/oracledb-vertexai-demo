@@ -4,7 +4,6 @@
 import tailwindcss from "@tailwindcss/vite"
 import litestar from "litestar-vite-plugin"
 import { defineConfig, version } from "vite"
-declare const process: { env: Record<string, string | undefined> }
 
 const bundlerKey = Number(version.split(".")[0]) >= 8 ? "rolldownOptions" : "rollupOptions"
 type BundlerWarning = { code?: string; id?: string }
@@ -21,7 +20,6 @@ export default defineConfig({
   ],
   server: {
     cors: true,
-    port: Number(process.env.VITE_PORT ?? 5173),
   },
   build: {
     [bundlerKey]: {

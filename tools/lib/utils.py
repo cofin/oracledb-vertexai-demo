@@ -171,13 +171,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
 
     # Development settings
     env_content += "# only in development\n"
-    env_content += "VITE_HOST=localhost\n"
-    env_content += "VITE_PORT=51745\n"
-    env_content += "VITE_HOT_RELOAD=False\n"
     env_content += "VITE_DEV_MODE=False\n"
-    env_content += "VITE_ASSET_URL=/static/dist/\n"
-    env_content += "# For controlled reverse-proxy deployments, set this to '*' or trusted proxy CIDRs.\n"
-    env_content += "LITESTAR_TRUSTED_PROXIES=127.0.0.1\n"
 
     try:
         env_path.write_text(env_content, encoding="utf-8")

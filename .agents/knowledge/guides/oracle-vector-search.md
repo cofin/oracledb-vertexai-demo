@@ -77,8 +77,11 @@ SELECT name, bytes FROM v$sgainfo WHERE name = 'Vector Memory';
 If HNSW builds exhaust the pool, use this estimate:
 
 ```text
-rows * dimensions * 4 bytes * 1.4 HNSW overhead * 2 safety factor
+1.3 * rows * dimensions * element size
 ```
+
+Use `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR` for exact HNSW/IVF sizing when
+neighbors, accuracy, or IVF partition choices matter.
 
 ## Query Shape
 

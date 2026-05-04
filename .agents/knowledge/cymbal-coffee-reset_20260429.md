@@ -68,7 +68,9 @@ main chapters.
   `src/resources/vector-calculator.js` powers the Explore page's vector
   storage estimator (FLOAT64/32/INT8/BINARY × HNSW/IVF/None). Client-only,
   no fetch/HTMX. INT8 is 4× smaller than FLOAT32; BINARY is 32× smaller.
-  HNSW overhead estimated as `M × d × 4` bytes per vector.
+  HNSW Vector Pool sizing uses Oracle's rough `1.3 * rows * dimensions *
+  element_size` estimate; exact HNSW/IVF sizing belongs to the DBMS_VECTOR
+  advisor.
 - **Ch 8 (corrective) — UI Regression Recovery:** restored shared shell,
   popovers, structured `sql_phases` telemetry, and the ApexCharts dashboard.
   Removed the descoped classify-compare panel/endpoint/schema. Vector demo

@@ -62,8 +62,10 @@
   Vite-bundled JavaScript.
 - Vector footprint estimates use raw bytes by format (`N * d * 8` for FLOAT64,
   `N * d * 4` for FLOAT32, `N * d` for INT8, `N * ceil(d / 8)` for BINARY),
-  HNSW overhead as `N * M * d * 4`, IVF overhead as a FLOAT32 copy, and Vector
-  memory as the index-resident portion.
+  and Oracle's rough HNSW Vector Pool estimate of
+  `1.3 * N * d * element_size`. Use
+  `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR` for exact HNSW/IVF sizing; do not
+  model IVF or HNSW neighbors with invented client-side overhead formulas.
 - EXPLAIN PLAN uses two named SQL calls: one `EXPLAIN PLAN FOR ...` and one
   `DBMS_XPLAN.DISPLAY()` read.
 - `coffee` is the app CLI. Keep `bulk-embed`, `export-fixtures`,
