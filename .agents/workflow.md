@@ -45,6 +45,7 @@ readelf -Ws dist/coffee | rg -o 'GLIBC_[0-9.]+' | sort -Vu | tail
 12. **PyApp Release Path:** Onefile releases use the custom Bundle-Patch-Compile workflow. Keep the PyApp runtime on Python 3.13, force `UV_PYTHON`/`PYAPP_BUILD_PYTHON` during `make build-onefile`, install under the XDG config path, and require Zig/cargo-zigbuild for Linux glibc 2.17 launchers.
 13. **Release Container Path:** Release containers wrap the onefile binary using the single distroless Dockerfile at `tools/deploy/docker/Dockerfile`. Wallet-backed runs mount the wallet at `/app/wallet`; the image sets `TNS_ADMIN` and `WALLET_LOCATION` to that path.
 14. **CLI Boundary:** `coffee upgrade` is the packaged/end-user install command. Raw SQLSpec developer commands such as downgrade/current stay under `python manage.py database ...`.
+15. **Conventional Commits:** Commit messages and pull request titles must use Conventional Commits syntax. Do not add host-specific prefixes such as `[codex]` to PR titles.
 <!-- truth: end -->
 
 ## Beads Integration
