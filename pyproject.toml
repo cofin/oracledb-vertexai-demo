@@ -19,7 +19,7 @@ dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp",
-    "sqlspec[adk,mypyc,oracledb,performance]>=0.46",
+    "sqlspec[adk,mypyc,oracledb,performance]>=0.46.3",
     "python-dotenv",
     "google-adk>=2.0.0b1",
     "numpy>=2.3.3",
