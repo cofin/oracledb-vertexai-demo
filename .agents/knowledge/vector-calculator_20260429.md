@@ -41,6 +41,6 @@ module bound to Jinja markup through `data-*` attributes.
 
 ## Validation
 
-`./node_modules/.bin/vite build` (passes with the existing large-bundle
-warning); focused Explore tests; `make lint`; `make test`.
+`cd src/resources && npm run build` (or `uv run python manage.py assets build`);
+focused Explore tests; `make lint`; `make test`.
 <!-- truth: end -->

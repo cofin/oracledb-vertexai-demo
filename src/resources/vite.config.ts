@@ -11,17 +11,20 @@ type BundlerWarning = { code?: string; id?: string }
 export default defineConfig({
   clearScreen: false,
   logLevel: "warn",
-  publicDir: "src/resources/public",
+  publicDir: "public",
   plugins: [
     tailwindcss(),
     litestar({
-      input: ["src/resources/main.js", "src/resources/styles.css"]
+      input: ["main.js", "styles.css"],
+      resourceDir: ".",
+      staticDir: "public",
     }),
   ],
   server: {
     cors: true,
   },
   build: {
+    emptyOutDir: true,
     [bundlerKey]: {
       onwarn(warning: BundlerWarning, warn: (warning: BundlerWarning) => void) {
         if (warning.code === "EVAL" && warning.id?.includes("htmx")) {

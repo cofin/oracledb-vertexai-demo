@@ -5,9 +5,9 @@ Building Agentic Apps with Google and Oracle.
 ```
 
 A working reference app that turns one chat message — *"I need something
-bold"* — into a grounded answer. The user doesn't say "coffee"; the agent
-reads the idiom, fires a vector search, and grounds the reply in real menu
-rows.
+bold"* — into a grounded answer. The user doesn't say "coffee"; the router
+recognizes the idiom, runs a vector search, and grounds the reply in real
+menu rows.
 
 ::::{grid} 1 1 3 3
 :gutter: 2
@@ -19,10 +19,10 @@ rows.
 **Oracle 26ai** HNSW index over `VECTOR`.
 :::
 
-:::{grid-item-card} {octicon}`workflow;1.2em` Agentic flow
+:::{grid-item-card} {octicon}`workflow;1.2em` Chat routing
 :class-card: hero-pill
 
-**Google ADK 2.0** runs the agent and the intent classifier in parallel.
+**Flash-Lite** routes grounded product, store, and availability turns.
 :::
 
 :::{grid-item-card} {octicon}`zap;1.2em` Vertex AI
@@ -35,19 +35,24 @@ rows.
 
 ```{mermaid}
 flowchart TD
-    U([User question]) --> S{ADK Workflow start}
-    S --> A[Coffee agent]
-    S --> I[Intent classifier]
-    A -- tool call --> O[(Oracle 26ai<br/>HNSW search)]
-    O -- matches --> A
-    A --> R[Grounded answer]
-    I -.-> R
+    U([User question]) --> C[Litestar chat controller]
+    C --> I{Flash-Lite intent}
+    I -->|PRODUCT_RAG| P[Product RAG formatter]
+    I -->|STORE_LOCATION| S[Store lookup]
+    I -->|PRODUCT_AVAILABILITY| V[Inventory lookup]
+    I -->|GENERAL_CONVERSATION| A[ADK 2.0 workflow]
+    P --> O[(Oracle 26ai<br/>HNSW search)]
+    S --> O
+    V --> O
+    A -. optional tool .-> O
+    O --> R[Grounded final event]
+    A --> R
     R --> U
 ```
 
-*Intent classification and the agent fan out from the same start node — the
-agent decides when to fire a vector search, both branches join before the
-answer streams back.*
+*Product, store, and availability turns are answered from deterministic
+service calls. General conversation falls through to the ADK workflow, where
+the model can still use the same closure-bound tools.*
 
 ## Where to go next
 
@@ -66,8 +71,8 @@ answer.
 :link: concepts/vector-search
 :link-type: doc
 
-Vectors in Oracle, RAG, and how the Google ADK agent decides what to
-retrieve.
+Vectors in Oracle, RAG, and how the chat router chooses grounded service
+calls.
 :::
 
 ::::
@@ -80,6 +85,7 @@ tour
 concepts/vector-search
 concepts/rag
 concepts/agent-flow
+maps
 ```
 
 ```{toctree}

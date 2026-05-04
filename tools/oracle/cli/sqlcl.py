@@ -68,7 +68,7 @@ def sqlcl_verify() -> None:
 
         if not installer.is_installed():
             console.print("[yellow]SQLcl is not installed[/yellow]")
-            console.print("\nInstall with: uv run python tools/oracle_deploy.py sqlcl install")
+            console.print("\nInstall with: uv run python manage.py install sqlcl")
             raise click.Abort
 
         version = installer.get_version()

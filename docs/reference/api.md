@@ -8,9 +8,9 @@ generated docs.
 
 ## ADK runner
 
-The per-request workflow runner that ties the Litestar chat controller to
-Google ADK 2.0, the Flash-Lite intent classifier, and the closure-bound
-vector-search tool.
+The per-request chat runner that ties the Litestar chat controller to
+Flash-Lite intent routing, deterministic grounded routes, Google ADK 2.0
+fallbacks, and closure-bound tools.
 
 ```{eval-rst}
 .. autoclass:: app.domain.chat.services.adk.ADKRunner

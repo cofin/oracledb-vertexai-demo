@@ -200,7 +200,7 @@ class HealthChecker:
                 name="Database Container",
                 status=HealthStatus.UNHEALTHY,
                 message="Container does not exist",
-                suggestions=["Start container: uv run python tools/oracle_deploy.py database start"],
+                suggestions=["Start container: uv run python manage.py infra start"],
             )
 
         if not self.runtime.container_running(config.container_name):
@@ -208,7 +208,7 @@ class HealthChecker:
                 name="Database Container",
                 status=HealthStatus.DEGRADED,
                 message="Container exists but not running",
-                suggestions=["Start container: uv run python tools/oracle_deploy.py database start"],
+                suggestions=["Start container: uv run python manage.py infra start"],
             )
 
         # Check health status
@@ -246,7 +246,7 @@ class HealthChecker:
                 name="SQLcl",
                 status=HealthStatus.NOT_APPLICABLE,
                 message="SQLcl not installed (optional)",
-                suggestions=["Install: uv run python tools/oracle_deploy.py sqlcl install"],
+                suggestions=["Install: uv run python manage.py install sqlcl"],
             )
 
         version = self.sqlcl_installer.get_version()
@@ -377,7 +377,7 @@ class HealthChecker:
                 name="Database Connectivity",
                 status=HealthStatus.UNHEALTHY,
                 message=f"Connection test failed: {e}",
-                suggestions=["Check configuration and try: uv run python tools/oracle_deploy.py connect test"],
+                suggestions=["Check configuration and try: uv run python manage.py database connect test"],
             )
 
     def detect_deployment_mode(self) -> DeploymentMode | None:
@@ -566,12 +566,12 @@ def get_troubleshooting_suggestions(  # noqa: PLR0911
     if "Container Runtime" in component.name:
         return ["Install Docker or Podman", "Ensure container runtime is running"]
     if "Database Container" in component.name:
-        return ["Start container: uv run python tools/oracle_deploy.py database start"]
+        return ["Start container: uv run python manage.py infra start"]
     if "SQLcl" in component.name:
-        return ["Install SQLcl: uv run python tools/oracle_deploy.py sqlcl install"]
+        return ["Install SQLcl: uv run python manage.py install sqlcl"]
     if "Wallet" in component.name:
-        return ["Configure wallet: uv run python tools/oracle_deploy.py wallet configure"]
+        return ["Configure wallet: uv run python manage.py database wallet configure"]
     if "Connectivity" in component.name:
-        return ["Test connection: uv run python tools/oracle_deploy.py connect test"]
+        return ["Test connection: uv run python manage.py database connect test"]
 
     return ["Check component configuration and try again"]

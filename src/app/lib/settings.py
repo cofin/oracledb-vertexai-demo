@@ -420,7 +420,7 @@ class ViteSettings:
         """Build the Vite plugin configuration.
 
         Returns:
-            A ``ViteConfig`` whose paths match the repo-root ``vite.config.ts``.
+            A ``ViteConfig`` whose paths match ``src/resources/vite.config.ts``.
         """
         from litestar_vite import PathConfig, TypeGenConfig, ViteConfig
 
@@ -428,16 +428,17 @@ class ViteSettings:
             mode="htmx",
             dev_mode=self.DEV_MODE,
             types=TypeGenConfig(
-                output=Path("src/resources/generated"),
+                output=Path("generated"),
                 generate_sdk=False,
                 generate_routes=False,
                 generate_schemas=False,
                 generate_page_props=False,
             ),
             paths=PathConfig(
-                root=BASE_DIR.parents[1],
-                resource_dir=Path("src/resources"),
+                root=BASE_DIR.parent / "resources",
+                resource_dir=Path(),
                 bundle_dir=self.BUNDLE_DIR,
+                static_dir=Path("public"),
                 asset_url="/static/",
             ),
         )

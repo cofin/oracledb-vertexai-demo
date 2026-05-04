@@ -57,6 +57,10 @@
   request-scoped; embeds require a separate restricted Maps Embed key.
 - Frontend pages are HTMX + Jinja + Tailwind v4 + vanilla JavaScript/ApexCharts
   through `litestar-vite` template mode, not a standalone SPA.
+- `src/resources/` is the Vite/npm project root. Keep `package.json`,
+  `package-lock.json`, `tsconfig.json`, `vite.config.ts`, `public/`,
+  generated bridge files, and `node_modules/` there; Python `ViteConfig.paths.root`
+  must point at the same directory.
 - Explore-only educational calculators stay client-only in `src/resources/*.js`
   and wire to Jinja markup through `data-*` attributes. Keep this as vanilla
   Vite-bundled JavaScript.

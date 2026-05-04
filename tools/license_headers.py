@@ -49,7 +49,6 @@ DEFAULT_TARGETS: Final = (
     ".pre-commit-config.yaml",
     "Makefile",
     "manage.py",
-    "vite.config.ts",
     "src/app",
     "src/tests",
     "src/resources",

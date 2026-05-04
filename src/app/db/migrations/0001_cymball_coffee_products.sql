@@ -130,7 +130,7 @@ COMMENT ON COLUMN search_metric.user_id IS 'User or session performing the searc
 COMMENT ON COLUMN search_metric.search_time_ms IS 'Total search time in milliseconds';
 COMMENT ON COLUMN search_metric.embedding_time_ms IS 'Vertex AI embedding generation time in milliseconds';
 COMMENT ON COLUMN search_metric.oracle_time_ms IS 'Oracle vector search time in milliseconds';
-COMMENT ON COLUMN search_metric.similarity_score IS 'Average similarity score of search results';
+COMMENT ON COLUMN search_metric.similarity_score IS 'Representative similarity score for search results';
 
 
 -- Indexes for performance optimization

@@ -160,8 +160,8 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
             console.print("[bold green]✓ All checks passed![/bold green]")
             console.print()
             console.print("[bold]Next steps:[/bold]")
-            console.print("  • Run [cyan]python manage.py connect test[/cyan] to verify database connection")
-            console.print("  • Run [cyan]uv run app run[/cyan] to start the application")
+            console.print("  • Run [cyan]uv run python manage.py database connect test[/cyan] to verify database connection")
+            console.print("  • Run [cyan]uv run coffee run[/cyan] to start the application")
         else:
             console.print("[bold red]✗ Some checks failed[/bold red]")
             console.print()

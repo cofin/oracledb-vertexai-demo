@@ -3,33 +3,36 @@
 Five minutes from clone to a running coffee chat:
 
 ```bash
-# 1. Install Python deps and pre-commit hooks
+# 1. Install Python deps, frontend deps, and built assets
 make install
 
-# 2. Bootstrap (one-time): writes .env, syncs frontend deps
-uv run python manage.py init --run-install
+# 2. Bootstrap (one-time): writes .env
+uv run python manage.py init
 
 # 3. Start the local Oracle 26ai container
 make start-infra
 
-# 4. Apply schema migrations and load committed product fixtures
+# 4. Apply schema migrations and load committed fixtures
 uv run coffee upgrade
 
 # 5. Run the app
 uv run coffee run
 ```
 
-The chat UI is at <http://localhost:8000/>. The vector search and EXPLAIN
-PLAN explorer is at <http://localhost:8000/explore>.
+The generated `.env` uses `LITESTAR_PORT=5006`, so the chat UI is at
+<http://localhost:5006/>. The vector search and EXPLAIN PLAN explorer is at
+<http://localhost:5006/explore>. Set `LITESTAR_PORT` to use a different port.
 
 ## Vertex AI credentials
 
 The app needs a Google Cloud project with Vertex AI enabled. Set
-`GOOGLE_PROJECT_ID`, `GOOGLE_LOCATION`, and either
-`GOOGLE_APPLICATION_CREDENTIALS` (service account key path) or use
-`gcloud auth application-default login`.
+`VERTEX_AI_PROJECT_ID` (or `GOOGLE_CLOUD_PROJECT`), set `VERTEX_AI_LOCATION`
+(or `GOOGLE_LOCATION`), and use either `GOOGLE_APPLICATION_CREDENTIALS`
+(service account key path) or `gcloud auth application-default login`.
+For API-key mode, leave the project ID empty and set `VERTEX_AI_API_KEY` or
+`GOOGLE_API_KEY` instead.
 
-If credentials are missing or `GOOGLE_PROJECT_ID` still looks like a
+If credentials are missing or `VERTEX_AI_PROJECT_ID` still looks like a
 placeholder, the chat endpoint returns `503 AI service unconfigured`
 rather than a stack trace.
 
@@ -50,7 +53,7 @@ rather than a stack trace.
 
 - [The walkthrough](../tour.md) — what one chat message actually does.
 - [CLI reference](cli.md) — every demo lifecycle command.
-- [For the curious](internals.md) — HNSW, the parallel-vs-sequential
-  timeline, and the live performance dashboard.
+- [For the curious](internals.md) — HNSW, deterministic routing vs ADK
+  fallback latency, and the live performance dashboard.
 - [Developers](developers.md) — raw migration commands, fixture
   regeneration, and verification.
