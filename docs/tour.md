@@ -3,6 +3,15 @@
 Follow one chat message — *"I need something bold"* — from the moment a
 user types it until the grounded reply renders in the browser.
 
+<div class="soft-backdrop-wrapper">
+
+```{image} screenshots/chat_snippet.png
+:alt: Cymbal Coffee Chat Snippet
+:align: center
+```
+
+</div>
+
 The phrase isn't an obvious coffee question. The router has to recognize that
 "bold" is an idiom for a dark roast or strong espresso, then use the
 vector-search route against the menu — that's the whole point of the demo.

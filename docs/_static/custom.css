@@ -98,3 +98,17 @@ div.mermaid > svg {
 .md-sidebar--secondary {
   display: none !important;
 }
+
+/* Soft backdrop for images */
+.soft-backdrop-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.soft-backdrop-wrapper img {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}

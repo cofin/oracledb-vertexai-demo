@@ -104,6 +104,16 @@ and feed straight into the HNSW search.
 
 The `/explore` page surfaces three timings per query:
 
+<details>
+<summary>Click to expand Explore Page Screenshot</summary>
+
+```{image} ../screenshots/explore_page.png
+:alt: Vector Lab Explore Page
+:align: center
+```
+
+</details>
+
 - **embedding_ms** — time spent generating (or hitting the cache for) the
   query vector;
 - **oracle_ms** — round-trip time for the HNSW search;

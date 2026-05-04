@@ -75,14 +75,6 @@ Vectors in Oracle, RAG, and how the chat router chooses grounded service
 calls.
 :::
 
-:::{grid-item-card} Store and Maps
-:link: maps
-:link-type: doc
-
-Store lookup, product availability, location opt-in, and no-key Google Maps
-links.
-:::
-
 ::::
 
 ```{toctree}

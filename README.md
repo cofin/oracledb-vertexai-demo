@@ -3,6 +3,10 @@
 Reference app for AI-powered product search on Oracle Database 26ai with Google
 ADK 2.0, Vertex AI, SQLSpec, Litestar, HTMX, and Vite.
 
+<div align="center">
+  <img src="docs/screenshots/chat_snippet.png" alt="Cymbal Coffee Chat Snippet" style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+</div>
+
 ## Quickstart
 
 Prerequisites: Python 3.12+, Docker or Podman-compatible local containers,
