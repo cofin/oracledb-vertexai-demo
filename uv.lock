@@ -300,7 +300,7 @@ requires-dist = [
     { name = "litestar-vite", specifier = ">=0.23.2" },
     { name = "numpy", specifier = ">=2.3.3" },
     { name = "python-dotenv" },
-    { name = "sqlspec", extras = ["adk", "mypyc", "oracledb", "performance"], specifier = ">=0.46" },
+    { name = "sqlspec", extras = ["adk", "mypyc", "oracledb", "performance"], specifier = ">=0.46.3" },
 ]
 
 [package.metadata.requires-dev]
