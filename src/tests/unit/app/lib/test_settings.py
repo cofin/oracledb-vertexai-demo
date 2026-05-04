@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -36,3 +37,24 @@ def test_oracle_adk_and_litestar_session_in_memory_default_to_true(monkeypatch: 
 
     assert config.extension_config["adk"]["in_memory"] is True
     assert config.extension_config["litestar"]["in_memory"] is True
+
+
+def test_litestar_env_defaults_app_url_from_litestar_port(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import Settings
+
+    monkeypatch.delenv("APP_URL", raising=False)
+    monkeypatch.setenv("LITESTAR_PORT", "5006")
+
+    Settings().setup_litestar_env()
+
+    assert os.environ["APP_URL"] == "http://localhost:5006"
+
+
+def test_litestar_env_preserves_explicit_app_url(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import Settings
+
+    monkeypatch.setenv("APP_URL", "https://coffee.example.test")
+
+    Settings().setup_litestar_env()
+
+    assert os.environ["APP_URL"] == "https://coffee.example.test"

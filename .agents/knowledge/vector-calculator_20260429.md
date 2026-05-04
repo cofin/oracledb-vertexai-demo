@@ -11,8 +11,8 @@
 
 The Explore page renders a full-width Vector Storage Calculator panel with
 row/dimension sliders, format selector (FLOAT64 / FLOAT32 / INT8 / BINARY),
-index selector (HNSW / IVF / None), HNSW `M` control, model presets, byte
-totals, media comparison, compression savings, and a Vector memory gauge. The
+index selector (HNSW / IVF / None), model presets, byte totals,
+compression savings, and a Vector memory gauge. The
 widget is client-only — no fetch/HTMX calls — implemented as a vanilla Vite
 module bound to Jinja markup through `data-*` attributes.
 
@@ -27,9 +27,10 @@ module bound to Jinja markup through `data-*` attributes.
 - Oracle 26ai vector formats: FLOAT64, FLOAT32, INT8, BINARY. INT8 is 4×
   smaller than FLOAT32; BINARY is 32× smaller. Both lossy compared to
   FLOAT32.
-- HNSW overhead estimated as `M × d × 4` bytes per vector (where `M` is the
-  out-degree per node, default 40). IVF overhead is generally lower —
-  centroid storage rather than per-vector graph edges.
+- HNSW Vector Pool sizing uses Oracle's documented rough estimate:
+  `1.3 * rows * dimensions * element_size`. Exact HNSW/IVF sizing belongs to
+  `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR`; the client calculator should not
+  invent neighbor-count or IVF partition overhead formulas.
 
 ## Key Files
 

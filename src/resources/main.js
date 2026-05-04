@@ -122,10 +122,11 @@ const payloadSqlPhases = (payload) => (Array.isArray(payload.sql_phases) ? paylo
 
 const phasesFor = (payload, sqlKey) => payloadSqlPhases(payload).filter((phase) => phase.sql_key === sqlKey)
 
-const telemetryDetail = (title, summary, sqlPhases = []) => ({
+const telemetryDetail = (title, summary, sqlPhases = [], options = {}) => ({
   title,
   summary,
   sqlPhases,
+  ...options,
 })
 
 const telemetryChip = (icon, label, value, variant = "neutral", detail = null) => {
@@ -173,12 +174,103 @@ const renderSqlPhase = (phase) => {
   </section>`
 }
 
+const planValue = (plan, camelKey, snakeKey, fallback = null) => plan?.[camelKey] ?? plan?.[snakeKey] ?? fallback
+
+const renderPlanRows = (rows) => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return ""
+  }
+  const body = rows
+    .map((row) => {
+      const isVector = Boolean(row.isVector ?? row.is_vector)
+      const rowClass = isVector ? "bg-accent-soft/60 text-accent-strong" : "text-strong"
+      return `<tr class="border-t border-border ${rowClass}">
+        <td class="px-3 py-2 font-mono">${escapeHtml(String(row.id ?? ""))}</td>
+        <td class="break-words px-3 py-2 font-medium">${escapeHtml(String(row.operation ?? ""))}</td>
+        <td class="break-words px-3 py-2 font-mono text-muted">${escapeHtml(String(row.name || "-"))}</td>
+        <td class="px-3 py-2 text-right font-mono text-muted">${escapeHtml(String(row.rows || "-"))}</td>
+        <td class="break-words px-3 py-2 text-right font-mono text-muted">${escapeHtml(String(row.cost || "-"))}</td>
+        <td class="break-words px-3 py-2 text-right font-mono text-muted">${escapeHtml(String(row.time || "-"))}</td>
+      </tr>`
+    })
+    .join("")
+  return `<div class="mt-3 overflow-auto border-y border-border bg-surface/45">
+    <table class="w-full table-fixed text-left text-xs">
+      <colgroup>
+        <col class="w-10">
+        <col>
+        <col class="w-24">
+        <col class="w-16">
+        <col class="w-20">
+        <col class="w-20">
+      </colgroup>
+      <thead class="bg-surface-strong text-muted">
+        <tr>
+          <th class="px-3 py-2 font-semibold">Id</th>
+          <th class="px-3 py-2 font-semibold">Operation</th>
+          <th class="px-3 py-2 font-semibold">Name</th>
+          <th class="px-3 py-2 text-right font-semibold">Rows</th>
+          <th class="px-3 py-2 text-right font-semibold">Cost</th>
+          <th class="px-3 py-2 text-right font-semibold">Time</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`
+}
+
+const renderExplainPlan = (plan) => {
+  const summary = String(planValue(plan, "planSummary", "plan_summary", "Plan unavailable") || "Plan unavailable")
+  const lines = planValue(plan, "planLines", "plan_lines", [])
+  const rows = planValue(plan, "planRows", "plan_rows", [])
+  if (summary === "Plan unavailable") {
+    const message = Array.isArray(lines) && lines.length ? lines[0] : "Plan unavailable."
+    return `<p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">${escapeHtml(
+      String(message),
+    )}</p>`
+  }
+  const rawLines = Array.isArray(lines) ? lines.join("\n") : ""
+  return `<div class="space-y-3">
+    <p class="text-xs text-muted">Top vector op: <span class="font-mono text-accent-strong">${escapeHtml(summary)}</span></p>
+    ${renderPlanRows(rows)}
+    <details class="border-b border-border bg-deep">
+      <summary class="cursor-pointer px-3 py-2 text-xs font-semibold text-surface/80">Raw DBMS_XPLAN output</summary>
+      <pre class="max-h-48 overflow-auto border-t border-border p-3 font-mono text-xs leading-relaxed text-surface">${escapeHtml(rawLines)}</pre>
+    </details>
+  </div>`
+}
+
+const loadExplainPlan = async (query) => {
+  const host = document.querySelector("[data-explain-plan-host]")
+  if (!(host instanceof HTMLElement)) {
+    return
+  }
+  try {
+    const response = await fetch(`/api/explain-plan?query=${encodeURIComponent(query)}`, {
+      headers: { Accept: "application/json" },
+    })
+    if (!response.ok) {
+      throw new Error(`Plan request failed with status ${response.status}`)
+    }
+    host.innerHTML = renderExplainPlan(await response.json())
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Plan request failed."
+    host.innerHTML = `<p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">${escapeHtml(
+      message,
+    )}</p>`
+  }
+}
+
 const showTelemetryPopover = (detail) => {
   const root = document.querySelector("[data-ui-popover-root='chat']")
   if (!root) {
     return
   }
   const sqlPhases = Array.isArray(detail.sqlPhases) ? detail.sqlPhases : []
+  const planQuery = typeof detail.planQuery === "string" && detail.planQuery.trim() ? detail.planQuery.trim() : null
+  const sqlMarkup = sqlPhases.length
+    ? sqlPhases.map(renderSqlPhase).join("")
+    : '<p class="mt-2 text-sm text-muted">No SQL was executed for this phase.</p>'
   root.hidden = false
   root.className = "popover-surface fixed bottom-4 right-4 z-50 max-h-[70vh] w-[min(34rem,calc(100vw-2rem))] overflow-auto p-4"
   root.innerHTML = `<header class="flex items-start justify-between gap-3">
@@ -188,10 +280,29 @@ const showTelemetryPopover = (detail) => {
     </div>
     <button type="button" class="icon-button" data-telemetry-close aria-label="Close telemetry detail">X</button>
   </header>
-  <div class="mt-3">
-    <h3 class="text-xs font-semibold uppercase text-muted">SQL</h3>
-    ${sqlPhases.length ? sqlPhases.map(renderSqlPhase).join("") : '<p class="mt-2 text-sm text-muted">No SQL was executed for this phase.</p>'}
-  </div>`
+  ${
+    planQuery
+      ? `<section class="mt-3 border-t border-border pt-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-strong">Oracle vector search</h3>
+            <span class="font-mono text-xs text-muted">${escapeHtml(planQuery)}</span>
+          </div>
+          <div data-explain-plan-host class="mt-3">
+            <p class="border-l-2 border-accent/40 py-1 pl-3 text-xs text-muted">Loading EXPLAIN PLAN...</p>
+          </div>
+          <div class="mt-3">
+            <h3 class="text-xs font-semibold uppercase text-muted">SQL</h3>
+            ${sqlMarkup}
+          </div>
+        </section>`
+      : `<div class="mt-3">
+          <h3 class="text-xs font-semibold uppercase text-muted">SQL</h3>
+          ${sqlMarkup}
+        </div>`
+  }`
+  if (planQuery) {
+    void loadExplainPlan(planQuery)
+  }
 }
 
 const hideTelemetryPopover = () => {
@@ -233,9 +344,10 @@ const renderMessageTelemetry = (payload) => {
           `"${vectorQuery}"`,
           "neutral",
           telemetryDetail(
-            "Product lookup query",
+            "Oracle vector search",
             `The product RAG lookup used "${vectorQuery}".`,
             phasesFor(payload, "vector-search-products"),
+            { planQuery: vectorQuery },
           ),
         )
       : null,
@@ -271,6 +383,7 @@ const renderMessageTelemetry = (payload) => {
             "Oracle vector phase",
             `Oracle vector search completed in ${formatMetricMs(metrics.oracle_ms)}.`,
             phasesFor(payload, "vector-search-products"),
+            vectorQuery ? { planQuery: vectorQuery } : {},
           ),
         )
       : null,
