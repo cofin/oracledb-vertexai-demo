@@ -77,12 +77,12 @@ replace = 'version = "{new_version}"'
 search = 'version = "{current_version}"'
 
 [[tool.bumpversion.files]]
-filename = "package.json"
+filename = "src/resources/package.json"
 replace = '"version": "{new_version}"'
 search = '"version": "{current_version}"'
 
 [[tool.bumpversion.files]]
-filename = "package-lock.json"
+filename = "src/resources/package-lock.json"
 replace = """
   "name": "cymbal-coffee",
   "version": "{new_version}",
@@ -93,7 +93,7 @@ search = """
 """
 
 [[tool.bumpversion.files]]
-filename = "package-lock.json"
+filename = "src/resources/package-lock.json"
 replace = """
       "name": "cymbal-coffee",
       "version": "{new_version}",

@@ -9,13 +9,15 @@ maintainer regeneration loop, and the verification commands.
 
 ```bash
 make install-uv      # install uv if it isn't already
-make install         # Python deps + pre-commit hooks
-uv run python manage.py init --run-install   # writes .env, syncs frontend deps
+make install         # Python deps + frontend deps + built Vite assets
+uv run python manage.py init   # writes .env
 make start-infra     # local Oracle 26ai container with vector_memory_size set
 ```
 
 `manage.py init` is what writes the development `.env`; it is not part
-of the end-user `coffee upgrade` flow. Run it once per checkout.
+of the end-user `coffee upgrade` flow. Run it once per checkout. If you want
+commit-time hooks, run `uvx prek install`; `make lint` runs the checks on
+demand either way.
 
 ## Database lifecycle (developer path)
 
@@ -44,16 +46,16 @@ uv run python manage.py database upgrade --no-prompt
 # Refresh source rows, then:
 uv run coffee bulk-embed
 uv run coffee export-fixtures
-uv run coffee load-fixtures
 ```
 
-After that, hit `/explore` and verify the EXPLAIN PLAN still mentions
-`VECTOR` rather than a full table scan.
+To validate the exported fixtures from a clean database, run
+`uv run coffee load-fixtures`. After that, hit `/explore` and verify the
+EXPLAIN PLAN still mentions `VECTOR` rather than a full table scan.
 
 ## Verification
 
 ```bash
-make lint        # ruff + mypy + pre-commit hooks
+make lint        # prek + mypy + pyright + frontend typecheck
 make test        # pytest against ephemeral Oracle (pytest-databases)
 make coverage    # pytest with coverage report
 ```
@@ -65,6 +67,6 @@ by side.
 ## Where to go next
 
 - [CLI reference](cli.md) — end-user lifecycle commands.
-- [For the curious](internals.md) — HNSW, the parallel-vs-sequential
-  timeline, and the live performance dashboard.
+- [For the curious](internals.md) — HNSW, deterministic routing vs ADK
+  fallback latency, and the live performance dashboard.
 - [API reference](api.md) — autodoc on `ADKRunner` and core services.

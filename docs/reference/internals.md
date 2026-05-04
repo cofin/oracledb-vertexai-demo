@@ -20,10 +20,9 @@ Five things make it the right fit once Oracle 26ai's `VECTOR` type and the
   the driver. That's how `:bind` parameters, dialect quirks, and rewrites
   like `EXPLAIN` work uniformly — instead of requiring per-driver string
   surgery inside service code.
-- **Many dialects, many adapters.** One API across PostgreSQL (asyncpg,
-  psycopg, psqlpy), SQLite, DuckDB, MySQL, Oracle, BigQuery, Spanner,
-  CockroachDB, and ADBC. The demo only uses Oracle, but the service /
-  plugin shape is identical for any other adapter.
+- **Adapter-neutral service shape.** The demo only uses Oracle, but SQLSpec
+  keeps the named-SQL service and Litestar plugin shape separate from the
+  driver-specific connection details.
 - **`EXPLAIN PLAN` first-class.** The same statement that runs the query
   can produce its plan — which is what `/explore` renders for every
   vector search, so you can see the HNSW path without leaving the app.
@@ -84,16 +83,19 @@ Two construction parameters set the shape:
 `WITH TARGET ACCURACY 95` lets Oracle pick the search-time `ef` that meets
 the recall target dynamically.
 
-The pool itself is configured by `vector_memory_size`. 512 MB is plenty
-for the demo's ~1100 product rows; budget roughly
-`rows × dimensions × 4 bytes × 1.4 (HNSW overhead) × 2 (safety)` for
-larger catalogs.
+The pool itself is configured by `vector_memory_size`. 512 MB is plenty for
+the demo's 122 committed product vectors plus query embeddings saved in
+`embedding_cache`; budget roughly
+`rows × dimensions × 4 bytes × 1.4 (HNSW overhead) × 2 (safety)` for larger
+catalogs.
 
-## Parallel vs sequential latency
+## Deterministic vs ADK latency
 
-The intent classifier and the LLM share `START` in the ADK workflow with
-`max_concurrency=2`. That overlap is what makes intent classification feel
-free in production:
+Product, store, availability, and unsupported order turns are routed before the
+ADK workflow is built, so they avoid speculative LLM deltas entirely. The ADK
+workflow still matters for `GENERAL_CONVERSATION`: inside that fallback path,
+the classifier and the LLM share `START` with `max_concurrency=2`. The timings
+below are illustrative; the important shape is overlap, not the exact numbers.
 
 ```{mermaid}
 gantt
@@ -108,15 +110,12 @@ gantt
     LLM + tool   :b2, 0, 1100
 ```
 
-The "LLM + tool" bar dominates because it covers the agent's reasoning,
-the closure-bound vector-search tool call, and the grounded final-event
-formatting. The classifier's ~180 ms disappears behind it instead of
-adding to it.
+The "LLM + tool" bar dominates because it covers the fallback agent's reasoning,
+any closure-bound tool call, and final-event packaging. The classifier's
+latency overlaps with that fallback path instead of adding to it.
 
-This is also why the runner's `PRODUCT_RAG` shortcut is structured the way
-it is: it skips speculative model deltas, but it still classifies (cheaply,
-in parallel with retrieval) so telemetry and downstream routing stay
-labelled.
+The deterministic `PRODUCT_RAG` route is stricter: it classifies first, runs the
+vector search directly, and formats the final answer from product rows.
 
 ## What the live dashboard measures
 
@@ -127,12 +126,12 @@ across recent searches. The fields map back to specific call sites:
 | --- | --- | --- |
 | `embedding_ms` | Wall time for `VertexAIService.get_text_embedding()`, including a cache check. | `services.py` |
 | `oracle_ms` | Round-trip for the named SQL `vector-search-products` against the HNSW index. | `services.py` |
-| `tool_ms` | Total time inside the closure-bound `search_products_by_vector` tool — embedding + Oracle + result shaping. | `_adk_runner.py` |
+| `tool_ms` | Total time inside `search_products_by_vector` — embedding + Oracle + result shaping. | `adk.py` |
 | `results_count` | Rows returned by HNSW after threshold + `FETCH FIRST :limit`. | `products.sql` |
 | `from_cache` | Response cache hit (model + persona + normalized query). | `CacheService` |
 | `embedding_cache_hit` | Hit on the Oracle-backed `embedding_cache` table. | `VertexAIService` |
-| `intent_detected` | Output of the Flash-Lite classifier (label only — *not* a routing gate). | `FlashLiteIntentClassifier` |
-| `sql_phases` | Per-phase timing collected during retrieval, used for the colored badges in the chat bubble. | `MetricsService` |
+| `intent_detected` | Output of the Flash-Lite classifier, with product lookup fallback normalized to `PRODUCT_RAG`. | `FlashLiteIntentClassifier` / `_adk_telemetry.py` |
+| `sql_phases` | Per-phase timing collected during retrieval, used for the colored badges in the chat bubble. | `_adk_telemetry.py` |
 
 If `oracle_ms` spikes:
 

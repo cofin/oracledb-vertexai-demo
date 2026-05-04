@@ -17,9 +17,9 @@ uv run coffee run
 ```
 
 `make install` bootstraps `uv` if it isn't already on your PATH, then
-installs Python and frontend dependencies. `manage.py init` walks you
-through `.env` (deployment mode, database connection, Vertex AI project)
-without re-running the install.
+installs Python and frontend dependencies and builds the Vite assets that
+Litestar serves. `manage.py init` walks you through `.env` (deployment mode,
+database connection, Vertex AI project) without re-running the install.
 
 Open <http://localhost:5006>. The chat page is `/`; the Oracle vector explorer
 is `/explore`.
@@ -30,9 +30,9 @@ Default Credentials or set `GOOGLE_API_KEY` / `VERTEX_AI_API_KEY`.
 
 ## What's Inside
 
-- 47 Cymbal Coffee products with committed `gemini-embedding-001` fixtures.
+- 122 Cymbal Coffee products, 16 stores, and committed `gemini-embedding-001` fixtures.
 - Oracle `VECTOR(3072, FLOAT32)` storage with HNSW INMEMORY indexes.
-- ADK 2.0 workflow with parallel Flash-Lite intent classification and streaming responses.
+- Deterministic product, store, and availability chat routes with an ADK 2.0 general-chat fallback.
 - HTMX + Tailwind + vanilla JavaScript pages for chat and vector-plan exploration.
 - Oracle-backed response cache, embedding cache, metrics, Litestar sessions, and ADK sessions.
 
@@ -50,7 +50,7 @@ Default Credentials or set `GOOGLE_API_KEY` / `VERTEX_AI_API_KEY`.
 The published docs site is the home for the long-form material:
 
 - **Walkthrough** — what one chat message actually does, end to end.
-- **Concepts** — vectors in Oracle, RAG, and Google ADK.
+- **Concepts** — vectors in Oracle, RAG, Google ADK, and map links.
 - **Reference** — quickstart, CLI reference, and a "for the curious" appendix.
 - **Developers** — raw migration entrypoint, fixture regeneration, and
   verification commands. Start here if you intend to modify the demo.

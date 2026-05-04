@@ -25,7 +25,6 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    "maps.md",
     "screenshots/**",
 ]
 nitpicky = False

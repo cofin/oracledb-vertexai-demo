@@ -147,6 +147,9 @@ log/*
 *.csv
 tmp/*
 node_modules/
+src/resources/node_modules/
+src/resources/.vite/
+src/resources/tsconfig.tsbuildinfo
 .astro
 .vite
 .npmrc
@@ -158,6 +161,7 @@ src/app/domain/web/static
 # Bridge file written by litestar-vite when the test app boots — captures the
 # dev server URL/port for the JS plugin to read. Always machine-generated.
 .litestar.json
+src/resources/.litestar.json
 # Generated client SDK (re-emitted by `manage.py assets generate-types`)
 src/resources/generated/
 demo.py

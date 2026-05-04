@@ -1,32 +1,33 @@
 # Walkthrough
 
 Follow one chat message — *"I need something bold"* — from the moment a
-user types it until Gemini's grounded reply renders in the browser.
+user types it until the grounded reply renders in the browser.
 
-The phrase isn't an obvious coffee question. The agent has to recognize
-that "bold" is an idiom for a dark roast or strong espresso, then decide
-to call the vector-search tool against the menu — that's the whole point
-of the demo.
+The phrase isn't an obvious coffee question. The router has to recognize that
+"bold" is an idiom for a dark roast or strong espresso, then use the
+vector-search route against the menu — that's the whole point of the demo.
 
-The path of one message:
+The path of this message:
 
 1. The browser opens an SSE stream to `/api/chat/stream`.
-2. Vertex AI embeds the question (with an Oracle-backed cache in front).
-3. Oracle 26ai's HNSW index returns the closest products.
-4. ADK 2.0 grounds the answer and streams it back.
+2. Flash-Lite classifies it as `PRODUCT_RAG`.
+3. Vertex AI embeds the question (with an Oracle-backed cache in front).
+4. Oracle 26ai's HNSW index returns the closest products.
+5. The runner formats one grounded final SSE event.
 
 ```{mermaid}
 flowchart LR
     B([Browser]) -->|POST /api/chat/stream| C[Litestar controller]
     C --> R[ADKRunner]
-    R --> V[Vertex AI<br/>embedding]
-    R --> O[(Oracle 26ai<br/>HNSW search)]
-    R --> G[Gemini]
-    G -->|SSE final| B
+    R --> I[Flash-Lite<br/>intent]
+    I --> V[Vertex AI<br/>embedding]
+    V --> O[(Oracle 26ai<br/>HNSW search)]
+    O --> F[Grounded formatter]
+    F -->|SSE final| B
 ```
 
-*The whole turn in one picture: SSE in, SSE out, with retrieval and
-generation hidden inside the runner.*
+*The whole product-RAG turn in one picture: SSE in, SSE out, with routing,
+retrieval, and answer formatting inside the runner.*
 
 ## 1. The browser opens an SSE stream
 
@@ -64,10 +65,11 @@ and the Dishka-injected `AgentToolsService`.
 
 ## 2. Vertex AI embeds the question
 
-When the runner classifies the turn as `PRODUCT_RAG`, or the agent decides
-to call its vector-search tool, the question is sent to Vertex AI's
-`gemini-embedding-001` model with `task_type="RETRIEVAL_QUERY"`. Document
-embeddings (the products themselves) are produced separately with
+When the runner classifies the turn as `PRODUCT_RAG`, the question is sent
+to Vertex AI's `gemini-embedding-001` model with
+`task_type="RETRIEVAL_QUERY"`. The general-conversation fallback can call
+the same vector-search tool, but this menu turn uses the deterministic route.
+Document embeddings (the products themselves) are produced separately with
 `RETRIEVAL_DOCUMENT` so query and document vectors share the same metric
 geometry. Repeat queries are short-circuited by the Oracle-backed embedding
 cache.
@@ -138,31 +140,28 @@ See [Oracle 26ai vector search](concepts/vector-search.md) for the HNSW
 index shape and the `vector_memory_size` knob.
 :::
 
-## 4. ADK 2.0 grounds the answer and streams it back
+## 4. The runner emits a grounded final event
 
-`ADKRunner` wraps a Google ADK 2.0 `Workflow`. From the `START` node, two
-branches fan out in parallel: a `FunctionNode` runs the Flash-Lite intent
-classifier, and an `LlmAgent` produces the conversational reply with the
-vector-search tool bound in its closure. Both branches converge in a
-`JoinNode`, then a final `FunctionNode` packages the labelled, grounded
-answer. The runner emits `ServerSentEvent` deltas for non-RAG turns and a
-single grounded final event for menu turns.
+For `PRODUCT_RAG`, the runner does not stream speculative model deltas. It
+formats the returned product rows into one grounded `final` event. Store
+location and product availability turns follow the same deterministic shape:
+classify first, query named SQL through request-scoped services, then emit a
+single grounded event with optional map actions.
 
 ```{mermaid}
 flowchart TD
-    S{ADK START} --> A[LlmAgent coffee_turn]
-    S --> I[FunctionNode intent]
-    A -- tool call --> O[(Oracle 26ai)]
-    O -- matches --> A
-    A --> J((JoinNode))
-    I --> J
-    J --> M[FunctionNode<br/>classify_and_respond]
-    M --> R[Grounded answer]
+    I{intent} -->|PRODUCT_RAG| P[Product RAG]
+    I -->|STORE_LOCATION| S[Store lookup]
+    I -->|PRODUCT_AVAILABILITY| A[Inventory lookup]
+    P --> O[(Oracle 26ai)]
+    S --> O
+    A --> O
+    O --> R[Grounded final event]
 ```
 
-`ADKRunner` builds a Google ADK 2.0 `Workflow` once per request. The fanout
-below — two edges leaving `START` and rejoining at a `JoinNode` — is what
-lets the classifier and the agent overlap on the same event loop.
+For `GENERAL_CONVERSATION`, the runner falls through to the Google ADK 2.0
+workflow. That path uses an `LlmAgent` with the same closure-bound tools and a
+parallel `FunctionNode` classifier before the workflow output is packaged.
 
 ```{literalinclude} ../src/app/domain/chat/services/workflow.py
 :language: python
@@ -172,11 +171,10 @@ lets the classifier and the agent overlap on the same event loop.
 ```
 
 :::{agent-detail}
-`max_concurrency=2` lets the classifier and the LLM run on the same start
-node without one blocking the other. The classifier's result feeds telemetry
-and the final-event payload; for `PRODUCT_RAG` turns the runner takes a
-deterministic shortcut and skips speculative model deltas so the browser
-never sees an ungrounded draft.
+The ADK workflow is still useful for general conversation and model-driven
+fallbacks, but grounded product, store, availability, and unsupported order
+routes are handled before the workflow is built. That is why menu turns never
+show an ungrounded draft that later gets overwritten.
 :::
 
 ## What's next
@@ -188,7 +186,7 @@ never sees an ungrounded draft.
 :link: concepts/vector-search
 :link-type: doc
 
-Three short pages on vectors in Oracle, RAG, and Google ADK.
+Short pages on vectors in Oracle, RAG, Google ADK, and store/map grounding.
 :::
 
 :::{grid-item-card} Reference

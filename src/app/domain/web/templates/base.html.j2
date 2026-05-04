@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
   <title>{% block title %}Cymbal Coffee{% endblock %}</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   {{ vite_hmr() | safe }}
-  {{ vite(['src/resources/styles.css', 'src/resources/main.js']) | safe }}
+  {{ vite(['styles.css', 'main.js']) | safe }}
 </head>
 
 <body hx-ext="litestar" data-app-shell="true" class="app-shell font-sans text-strong antialiased">

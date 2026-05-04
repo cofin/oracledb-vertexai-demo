@@ -9,10 +9,12 @@ SHELL := /bin/bash
 
 .DEFAULT_GOAL := help
 .ONESHELL:
+.SHELLFLAGS := -e -o pipefail -c
 .EXPORT_ALL_VARIABLES:
 MAKEFLAGS += --no-print-directory
 PYAPP_BUILD_PYTHON ?= cpython-3.13.12-linux-x86_64-gnu
 PYAPP_BUILD_TARGET ?=
+FRONTEND_DIR := src/resources
 
 # Detect Rodete and configure public package indexes
 ifneq ($(shell grep -s -q "rodete" /etc/os-release && echo "yes"),)
@@ -70,12 +72,15 @@ setup-env:                                          ## Configure local environme
 
 .PHONY: install
 install: destroy clean setup-env install-uv ## Install the project and its dependencies (pre-commit / prek hooks are NOT auto-installed — run `uvx prek install` manually if you want commit-time checks).
+	@set -e
 	@echo "${INFO} Starting fresh installation..."
 	@uv python pin 3.12 >/dev/null 2>&1
 	@uv venv >/dev/null 2>&1
 	@uv sync --all-extras --dev
 	@echo "${INFO} Installing frontend packages... 📦"
 	@uv run python manage.py assets install >/dev/null 2>&1
+	@echo "${INFO} Building frontend assets... 📦"
+	@uv run python manage.py assets build
 	@echo "${OK} Installation complete! 🎉"
 	@echo "${INFO} Tip: run \`uvx prek install\` if you want pre-commit hooks active on git commit (not required — \`make lint\` runs the full check on demand)."
 
@@ -87,6 +92,7 @@ destroy:
 	@uvx prek clean >/dev/null 2>&1 || true
 	@rm -rf .venv
 	@rm -rf node_modules
+	@rm -rf $(FRONTEND_DIR)/node_modules
 	@echo "${OK} Virtual environment destroyed 🗑️"
 
 # =============================================================================
@@ -97,8 +103,8 @@ upgrade: setup-env ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
 	@uv lock --upgrade
 	@echo "${INFO} Updating frontend dependencies... 🔄"
-	@npx --yes npm-check-updates@latest --target latest --upgrade
-	@npm install --no-fund
+	@cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade
+	@cd $(FRONTEND_DIR) && npm install --no-fund
 	@echo "${OK} Dependencies updated 🔄"
 	@uvx prek autoupdate
 	@echo "${OK} Updated prek hooks 🔄"
@@ -107,7 +113,7 @@ upgrade: setup-env ## Upgrade all dependencies to latest stable versions
 lock: ## Rebuild lockfiles from scratch
 	@echo "${INFO} Rebuilding lockfiles... 🔄"
 	@uv lock --upgrade >/dev/null 2>&1
-	@npm install --package-lock-only >/dev/null 2>&1
+	@cd $(FRONTEND_DIR) && npm install --package-lock-only >/dev/null 2>&1
 	@echo "${OK} Lockfiles updated"
 
 # =============================================================================
@@ -208,7 +214,7 @@ docs-clean: ## Remove built documentation
 clean: ## Cleanup temporary build artifacts
 	@echo "${INFO} Cleaning working directory... 🧹"
 	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache src/tests/.pytest_cache src/tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
-	@rm -rf src/app/domain/web/static/dist src/app/domain/web/static/dist/hot node_modules/.vite tsconfig.tsbuildinfo >/dev/null 2>&1
+	@rm -rf src/app/domain/web/static .litestar.json src/resources/.litestar.json node_modules/.vite tsconfig.tsbuildinfo $(FRONTEND_DIR)/.vite $(FRONTEND_DIR)/tsconfig.tsbuildinfo >/dev/null 2>&1
 	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
 	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
 	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
@@ -280,7 +286,7 @@ assets-build: ## Build assets via Litestar assets CLI
 .PHONY: frontend-typecheck
 frontend-typecheck: ## Run frontend TypeScript type checks
 	@echo "${INFO} Running frontend type checks... 🔍"
-	@npx tsc --noEmit
+	@cd $(FRONTEND_DIR) && npx tsc --noEmit
 	@echo "${OK} Frontend type checks complete ✨"
 
 # =============================================================================

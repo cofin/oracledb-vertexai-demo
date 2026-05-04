@@ -52,10 +52,10 @@ HNSW INMEMORY indexes need a non-zero `vector_memory_size` allocation
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
-`512M` is intentional for Oracle Free Edition's constrained SGA — the
-~1100 product rows in the demo come out to ~18 MB with HNSW overhead. For
-larger Oracle editions, `tools/oracle/configure_vector_memory.sql` uses a
-4G target.
+`512M` is intentional for Oracle Free Edition's constrained SGA. The committed
+demo fixture has 122 product vectors, so this is generous headroom for the
+catalog plus query embeddings saved in `embedding_cache`. For larger Oracle
+editions, `tools/oracle/configure_vector_memory.sql` uses a 4G target.
 
 Verify the pool with:
 
@@ -107,7 +107,7 @@ The `/explore` page surfaces three timings per query:
 - **embedding_ms** — time spent generating (or hitting the cache for) the
   query vector;
 - **oracle_ms** — round-trip time for the HNSW search;
-- **similarity score** — average score of the returned rows.
+- **similarity score** — the top returned row's score.
 
 If `oracle_ms` spikes, check that `vector_memory_size` is non-zero, that
 `product_embedding_idx` exists, and that the query metric still matches
@@ -117,7 +117,7 @@ If `oracle_ms` spikes, check that `vector_memory_size` is non-zero, that
 
 - **The walkthrough** stitches embedding + HNSW search into one chat
   message: see [the walkthrough](../tour.md).
-- **RAG** uses the `ProductMatch` rows returned here as Gemini's grounding
-  context: see [RAG](rag.md).
-- **The agent** decides *whether* to fire this search at all: see [The ADK
-  2.0 agent flow](agent-flow.md).
+- **RAG** uses the `ProductMatch` rows returned here as grounding context:
+  see [RAG](rag.md).
+- **Chat routing** decides *whether* to fire this search at all: see
+  [Chat routing and Google ADK](agent-flow.md).

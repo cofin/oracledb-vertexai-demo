@@ -1,8 +1,8 @@
 # CLI reference
 
-`coffee` is the demo's lifecycle CLI — a small Click group covering
-everything an end user needs to install, run, refresh, and inspect the
-app.
+`coffee` is the demo's lifecycle CLI — a small Click group covering the
+production-app commands an end user needs to upgrade, run, refresh, and
+inspect the app.
 
 | Command | Purpose |
 | --- | --- |
@@ -11,7 +11,7 @@ app.
 | `coffee load-fixtures` | Populate Oracle from the committed gzipped demo data (products, stores, embeddings). |
 | `coffee bulk-embed` | Generate `gemini-embedding-001` embeddings for any catalog rows still missing them. |
 | `coffee export-fixtures` | Dump the current database state back into committable fixture files. |
-| `coffee clear-cache` | Truncate the response cache and the embedding cache. |
+| `coffee clear-cache --force` | Truncate the response cache and the embedding cache. |
 | `coffee model-info` | Print the active Vertex AI model + dimension settings. |
 
 `bulk-embed` and `export-fixtures` live on the app CLI on purpose: they're

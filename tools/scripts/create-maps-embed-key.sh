@@ -32,7 +32,7 @@ Options:
 Examples:
   tools/scripts/create-maps-embed-key.sh \
     --project my-project \
-    --referrer "http://localhost:8000/*" \
+    --referrer "http://localhost:5006/*" \
     --referrer "https://coffee.example.com/*" \
     --reuse-existing
 EOF
