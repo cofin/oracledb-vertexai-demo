@@ -157,7 +157,7 @@ dev = [
     { include-group = "docs" },
 ]
 docs = [
-    "sphinx>=8.0,<9",
+    "sphinx>=9.0.4,<10",
     "sphinx-immaterial>=0.13.0",
     "myst-parser>=4.0",
     "sphinx-copybutton>=0.5",
