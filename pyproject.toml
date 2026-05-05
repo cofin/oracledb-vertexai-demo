@@ -164,7 +164,7 @@ docs = [
     "sphinx-design>=0.6",
     "sphinx-autobuild>=2024.10",
     "sphinx-autodoc-typehints>=3.6.1",
-    "sphinxcontrib-mermaid>=1.0",
+    "sphinxcontrib-mermaid>=2.0.2",
     "linkify-it-py>=2.0",
 ]
 extras = []
