@@ -297,7 +297,7 @@ requires-dist = [
     { name = "litestar", extras = ["jinja", "jwt", "cryptography", "structlog"] },
     { name = "litestar-granian", extras = ["uvloop"] },
     { name = "litestar-mcp" },
-    { name = "litestar-vite", specifier = ">=0.23.2" },
+    { name = "litestar-vite", specifier = ">=0.23.4" },
     { name = "numpy", specifier = ">=2.3.3" },
     { name = "python-dotenv" },
     { name = "sqlspec", extras = ["adk", "mypyc", "oracledb", "performance"], specifier = ">=0.46.3" },
@@ -2158,7 +2158,7 @@ wheels = [
 
 [[package]]
 name = "litestar-vite"
-version = "0.23.3"
+version = "0.23.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -2166,9 +2166,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/c9/f6e5d87ff71cb99e340c9d36c79ec7f9cb2531ca71b8ef0be7a2b3b09c1c/litestar_vite-0.23.3.tar.gz", hash = "sha256:8af9018fe56f5808f8c394fddb0fde82b0751c83afe7bb53f78994edf234f1ad", size = 508164, upload-time = "2026-05-04T15:57:03.419Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/38/040a000d675fd1714ffefa408e5525b36b8359c987068ee841b69d682bd8/litestar_vite-0.23.4.tar.gz", hash = "sha256:b95a02edccb27a1b302dcbe50c1a60864cddcdafb1c913f42ed6e932dd37fe3f", size = 509123, upload-time = "2026-05-06T16:17:19.039Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/b0/392c3329b6bc9b14bd8bee17e65230f2c9d5f2b5451b8ae6712026f87235/litestar_vite-0.23.3-py3-none-any.whl", hash = "sha256:e65bc335acddd6d6028ab5e8b9a3a61118805d04b80f775c419e84b9bfbcc6a6", size = 267959, upload-time = "2026-05-04T15:57:01.139Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/c4/6cf16c9542b5b01df93829ec555cad1e1cb193e655c1278caa0f085d26c9/litestar_vite-0.23.4-py3-none-any.whl", hash = "sha256:872827c34d8fbdc7f3f77432212186e6222c74d0b8287f3290a9a86267daa9c6", size = 267864, upload-time = "2026-05-06T16:17:17.291Z" },
 ]
 
 [[package]]
