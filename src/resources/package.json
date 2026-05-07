@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "apexcharts": "^5.10.6",
+    "apexcharts": "^5.11.0",
     "htmx.org": "2.0.10"
   },
   "devDependencies": {
