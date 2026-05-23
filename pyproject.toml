@@ -24,7 +24,7 @@ dependencies = [
     "google-adk>=2.0.0b1",
     "numpy>=2.3.3",
     "dishka>=1.4.2",
-    "litestar-vite>=0.23.2",
+    "litestar-vite>=0.23.4",
 ]
 description = "Reference application for Oracle 26ai and Vertex AI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
