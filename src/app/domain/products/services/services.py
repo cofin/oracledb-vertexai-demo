@@ -68,7 +68,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
             sql.update("product").set(embedding=embedding).where_eq("id", product_id),
         )
         await self.driver.commit()
-        return result.row_count > 0
+        return result.get_count() > 0
 
     # docs:start-search-by-vector
     async def search_by_vector(
@@ -81,7 +81,9 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
             limit=limit,
             schema_type=ProductMatch,
         )
+
     # docs:end-search-by-vector
+
 
 # --- Store Service ---
 
@@ -234,6 +236,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         ranked.sort(key=lambda row: row.distance_miles if row.distance_miles is not None else float("inf"))
         return ranked
 
+
 # --- Vertex AI Service ---
 
 
@@ -280,6 +283,7 @@ class VertexAIService:
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
+
     # docs:end-vertex-embedding
 
 
@@ -308,6 +312,7 @@ class OracleVectorSearchService:
     @staticmethod
     def parse_plan_rows(plan_lines: list[str]) -> list[ExplainPlanRow]:
         """Parse the operation table rows from ``DBMS_XPLAN.DISPLAY`` output."""
+
         def cell(cells: list[str], index: int) -> str:
             try:
                 return cells[index]

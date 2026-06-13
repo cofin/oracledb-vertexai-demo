@@ -27,8 +27,8 @@
   "mypy-type-checker.importStrategy": "fromEnvironment",
   "pylint.importStrategy": "fromEnvironment",
   "python.autoComplete.extraPaths": ["${workspaceFolder}"],
-  "python.terminal.activateEnvInCurrentTerminal": true,
-  "python.terminal.executeInFileDir": true,
+  "python.terminal.activateEnvInCurrentTerminal": false,
+  "python.terminal.executeInFileDir": false,
   "python.testing.pytestEnabled": true,
   "autoDocstring.guessTypes": false,
   "python.analysis.autoImportCompletions": true,
@@ -96,5 +96,11 @@
     "package.json": "package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb, tsconfig.*.json, tsconfig.json, .stylelintrc.json,angular.json,proxy.conf.json,cypress.*.ts,extra-webpack*.cjs,.eslintrc.json, tailwind.config.*, vite.config.ts, postcss.config.*, components.json, .prettierignore, .prettierrc.json, .eslintrc.cjs"
   },
   "sqltools.useNodeRuntime": true,
-  "geminicodeassist.enable": true
+  "geminicodeassist.enable": true,
+  "mypy-type-checker.preferDaemon": true,
+  "mypy-type-checker.reportingScope": "workspace",
+  "python.terminal.activateEnvironment": false,
+  "ruff.format.preview": true,
+  "ruff.configurationPreference": "filesystemFirst",
+  "ruff.lint.preview": true
 }
