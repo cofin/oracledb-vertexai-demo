@@ -335,10 +335,10 @@ class VertexAISettings:
     """Vertex AI location/region."""
     API_KEY: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001"))
+    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview"))
     """Vertex AI embedding model."""
     EMBEDDING_DIMENSIONS: int = 3072
-    """Embedding vector dimensions (gemini-embedding-001 native output)."""
+    """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
     CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
     """Vertex AI chat model."""
     INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))

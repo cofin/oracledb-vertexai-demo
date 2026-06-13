@@ -98,7 +98,7 @@ service, controller, template, and frontend rendering.
 
 ## Oracle Vector And Embeddings
 
-The only supported embedding shape is `gemini-embedding-001` at 3072 dimensions
+The only supported embedding shape is `gemini-embedding-2` at 3072 dimensions
 stored as `VECTOR(3072, FLOAT32)`. Use `RETRIEVAL_DOCUMENT` for product fixture
 embeddings and `RETRIEVAL_QUERY` for user search text. Pass Python
 `list[float]` vectors directly to SQLSpec; do not use `array.array`.

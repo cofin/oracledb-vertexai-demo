@@ -1,9 +1,9 @@
 {
   "flow_id": "inventory-grounding",
   "type": "feature",
-  "status": "planned",
+  "status": "completed",
   "parent_prd": "inventory",
   "created_at": "2026-05-04T22:47:20Z",
-  "updated_at": "2026-05-04T22:47:20Z",
+  "updated_at": "2026-06-13T19:02:08Z",
   "description": "Deterministic Availability Routing"
 }

@@ -56,19 +56,19 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
 
     async def get_products_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
         """Return (products_to_embed, total_count). force=True returns every product."""
-        query = db_manager.get_sql("list-products-for-embedding")
+        query = sql.select("id", "name", "description").from_("product")
         if not force:
             query = query.where("embedding IS NULL")
-        page = await self.paginate(query)
-        return list(page.items), page.total
+        query = query.order_by("id")
+        rows = await self.driver.select(query)
+        return [dict(row) for row in rows], len(rows)
 
     async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
         result = await self.driver.execute(
             sql.update("product").set(embedding=embedding).where_eq("id", product_id),
         )
         await self.driver.commit()
-        rowcount = getattr(result, "rowcount", None)
-        return bool(rowcount) if rowcount is not None else True
+        return result.row_count > 0
 
     # docs:start-search-by-vector
     async def search_by_vector(

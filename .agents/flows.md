@@ -23,7 +23,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 ### Chapters
 - [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)**
   *Link: [./specs/inventory-data/](./specs/inventory-data/)*
-- [ ] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)** (Active)
+- [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)**
   *Link: [./specs/inventory-grounding/](./specs/inventory-grounding/)*
 - [ ] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)**
   *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*

@@ -33,5 +33,5 @@ def test_generate_inventory(tmp_path: Path) -> None:
         assert isinstance(item["store_id"], int)
         assert isinstance(item["product_id"], int)
         assert isinstance(item["quantity_available"], int)
-        assert item["stock_status"] in ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
+        assert item["stock_status"] in {"IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"}
         assert isinstance(item["pickup_available"], bool)
