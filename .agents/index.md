@@ -30,6 +30,7 @@ not behind archive links.
 | Active Spec | [specs/inventory-grounding/spec.md](./specs/inventory-grounding/spec.md) | Deterministic availability routing (Active) |
 | Active Spec | [specs/inventory-rag/spec.md](./specs/inventory-rag/spec.md) | Inventory-aware RAG |
 | Active Spec | [specs/inventory-ui/spec.md](./specs/inventory-ui/spec.md) | Live inventory dashboard |
+| Active Spec | [specs/oracle-apex-integration/spec.md](./specs/oracle-apex-integration/spec.md) | Oracle APEX and Autonomous container migration |
 
 | Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
 | Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |

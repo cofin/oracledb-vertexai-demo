@@ -1,0 +1,15 @@
+{
+  "research_id": "research_apex_integration",
+  "topic": "Oracle APEX 26.1 and APEXlang Integration",
+  "type": "Integration",
+  "status": "complete",
+  "created_at": "2026-06-13T19:17:00Z",
+  "libraries_researched": ["oracledb", "oracle-adb-free"],
+  "files_analyzed": [
+    "src/app/lib/settings.py",
+    "src/app/config.py",
+    "tools/oracle/database.py",
+    "tools/oracle/container.py"
+  ],
+  "linked_prd": null
+}

@@ -90,28 +90,23 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
 
     env_content = "# App\n"
 
-    # Database configuration based on mode
     if mode == "managed":
-        # Managed mode: container with known defaults
         if non_interactive:
-            db_user = "app"
-            db_password = "super-secret"  # noqa: S105
-            db_host = "localhost"
-            db_port = "1521"
-            db_service = "freepdb1"
+            db_url = "oracle+oracledb://app:SuperSecret1@myatp_low"
+            wallet_password = "SuperSecret1"
+            tns_admin = ".envs/tns"
+            db_service = "myatp_low"
         else:
             console.print("[bold]Database Settings (Managed Container):[/bold]")
-            db_user = Prompt.ask("DATABASE_USER", default="app")
-            db_password = Prompt.ask("DATABASE_PASSWORD", default="super-secret")
-            db_host = Prompt.ask("DATABASE_HOST", default="localhost")
-            db_port = Prompt.ask("DATABASE_PORT", default="1521")
-            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="freepdb1")
+            db_url = Prompt.ask("DATABASE_URL", default="oracle+oracledb://app:SuperSecret1@myatp_low")
+            wallet_password = Prompt.ask("WALLET_PASSWORD", default="SuperSecret1")
+            tns_admin = Prompt.ask("TNS_ADMIN", default=".envs/tns")
+            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="myatp_low")
 
         env_content += "# Database (Managed Container)\n"
-        env_content += f"DATABASE_USER={db_user}\n"
-        env_content += f"DATABASE_PASSWORD={db_password}\n"
-        env_content += f"DATABASE_HOST={db_host}\n"
-        env_content += f"DATABASE_PORT={db_port}\n"
+        env_content += f"DATABASE_URL={db_url}\n"
+        env_content += f"WALLET_PASSWORD={wallet_password}\n"
+        env_content += f"TNS_ADMIN={tns_admin}\n"
         env_content += f"DATABASE_SERVICE_NAME={db_service}\n\n"
 
     elif non_interactive:

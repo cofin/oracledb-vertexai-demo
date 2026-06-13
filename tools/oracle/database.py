@@ -23,60 +23,53 @@ from tools.oracle.container import ContainerNotFoundError, ContainerRuntime
 class DatabaseConfig:
     """Configuration for Oracle database container."""
 
-    # Container settings
     container_name: str = "oracle-free-db"
-    image: str = "gvenzl/oracle-free:latest"
+    image: str = "container-registry.oracle.com/database/adb-free:latest-26ai"
     hostname: str = "db"
 
-    # Port mapping
     host_port: int = 1521
-    container_port: int = 1521
+    container_port: int = 1522
 
-    # Environment variables (from docker-compose.yml)
-    oracle_system_password: str = "super-secret"  # noqa: S105
-    oracle_password: str = "super-secret"  # noqa: S105
-    app_user_password: str = "super-secret"  # noqa: S105
-    app_user: str = "app"
+    host_mtls_port: int = 1522
+    container_mtls_port: int = 1522
 
-    # Volumes
-    data_volume_name: str = "oracle-db-data"
+    host_https_port: int = 8443
+    container_https_port: int = 8443
 
-    # Logging
+    host_mongo_port: int = 27017
+    container_mongo_port: int = 27017
+
+    admin_username: str = "admin"
+    admin_password: str = "SuperSecret1"
+    wallet_password: str = "SuperSecret1"
+    wallet_location: str = ".envs/tns"
+
+    data_location: str = "/var/tmp/oracle-data"
+    audit_location: str = "/var/tmp/oracle-audit"
+    oradata_location: str = "/var/tmp/oracle-oradata"
+
     log_max_size: str = "10m"
     log_max_file: str = "3"
 
-    # Health check
-    health_interval: int = 10  # seconds
-    health_timeout: int = 5  # seconds
+    health_interval: int = 10
+    health_timeout: int = 5
     health_retries: int = 10
 
-    # Restart policy
     restart_policy: str = "unless-stopped"
 
     @classmethod
     def from_env(cls) -> DatabaseConfig:
-        """Create configuration from environment variables.
-
-        Reads from:
-        - ORACLE26AI_PORT (default: 1521)
-        - ORACLE23AI_PORT (legacy fallback)
-        - ORACLE_SYSTEM_PASSWORD (default: super-secret)
-        - ORACLE_PASSWORD (default: super-secret)
-        - ORACLE_USER (default: app)
-
-        Returns:
-            DatabaseConfig: Configuration instance
-        """
-        oracle_system_pw = os.getenv("ORACLE_SYSTEM_PASSWORD", "super-secret")
-        oracle_user_pw = os.getenv("ORACLE_PASSWORD", "super-secret")
+        """Create configuration from environment variables."""
+        oracle_system_pw = os.getenv("ORACLE_SYSTEM_PASSWORD", "SuperSecret1")
+        wallet_pw = os.getenv("WALLET_PASSWORD", "SuperSecret1")
+        wallet_loc = os.getenv("TNS_ADMIN", os.getenv("WALLET_LOCATION", ".envs/tns"))
         host_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
 
         return cls(
             host_port=int(host_port),
-            oracle_system_password=oracle_system_pw,
-            oracle_password=oracle_system_pw,  # Matches docker-compose behavior
-            app_user_password=oracle_user_pw,
-            app_user=os.getenv("ORACLE_USER", "app"),
+            admin_password=oracle_system_pw,
+            wallet_password=wallet_pw,
+            wallet_location=wallet_loc,
         )
 
 
@@ -153,10 +146,6 @@ class OracleDatabase:
         if pull:
             self._pull_image()
 
-        # Create volume
-        self._create_volume(self.config.data_volume_name)
-
-        # Build run command
         run_cmd = self._build_run_command()
 
         # Start container
@@ -168,10 +157,11 @@ class OracleDatabase:
         except Exception as e:
             raise ContainerStartError(f"Failed to start container: {e}") from e
 
-        # Wait for healthy
         self.console.print("[cyan]Waiting for database to become healthy...[/cyan]")
         if self.wait_for_healthy(timeout=300):
             self.console.print("[green]✓[/green] Database is healthy and ready!")
+            self._patch_host_sqlnet_ora()
+            self.initialize_db_users()
             info = self.get_connection_info()
             self.console.print("\n[bold]Connection Info:[/bold]")
             self.console.print(f"  Host: {info['host']}")
@@ -244,10 +234,14 @@ class OracleDatabase:
         self.runtime.run_command(remove_cmd)
         self.console.print("[green]✓[/green] Container removed")
 
-        if volumes and self.runtime.volume_exists(self.config.data_volume_name):
-            self.console.print("[cyan]Removing volume...[/cyan]")
-            self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
-            self.console.print("[green]✓[/green] Volume removed")
+        if volumes:
+            for loc in (self.config.data_location, self.config.audit_location, self.config.oradata_location):
+                path = Path(loc).resolve()
+                if path.exists():
+                    self.console.print(f"[cyan]Removing directory {loc}...[/cyan]")
+                    import shutil
+                    shutil.rmtree(path, ignore_errors=True)
+                    self.console.print("[green]✓[/green] Directory removed")
 
     def logs(
         self,
@@ -387,25 +381,118 @@ class OracleDatabase:
 
         return False
 
-    def get_connection_info(self) -> dict[str, Any]:
-        """Get connection information for the database.
+    def initialize_db_users(self) -> None:
+        """Initialize the development users/schemas post container start."""
+        self.console.print("[cyan]Initializing app user and privileges...[/cyan]")
+        absolute_wallet_path = Path(self.config.wallet_location).resolve()
+        original_tns_admin = os.environ.get("TNS_ADMIN")
+        os.environ["TNS_ADMIN"] = str(absolute_wallet_path)
 
-        Returns:
-            dict: Connection details including:
-                - host: Database host
-                - port: Database port
-                - service_name: Oracle service name
-                - user: App user name
-                - password: App user password
-                - dsn: Connection DSN string
+        import oracledb
+
+        self.console.print(f"[dim]Wallet Location: {absolute_wallet_path}[/dim]")
+        self.console.print(f"[dim]TNS_ADMIN env: {os.environ.get('TNS_ADMIN')}[/dim]")
+        try:
+            self.console.print(f"[dim]Files in wallet: {[f.name for f in absolute_wallet_path.glob('*')]}[/dim]")
+        except Exception as err:
+            self.console.print(f"[dim]Error listing wallet files: {err}[/dim]")
+
+        masked_pwd = self.config.admin_password[:3] + "..." + self.config.admin_password[-1:] if self.config.admin_password else "None"
+        self.console.print(f"[dim]Connection parameters: user=ADMIN, dsn=myatp_low, pwd={masked_pwd}, pwd_len={len(self.config.admin_password)}[/dim]")
+
+        conn_params = {
+            "user": "ADMIN",
+            "password": self.config.admin_password,
+            "dsn": "myatp_low",
+            "wallet_location": str(absolute_wallet_path),
+            "wallet_password": self.config.wallet_password,
+        }
+        sql = """
+        DECLARE
+            user_exists NUMBER;
+        BEGIN
+            SELECT COUNT(*) INTO user_exists FROM dba_users WHERE username = 'APP';
+            IF user_exists = 0 THEN
+                EXECUTE IMMEDIATE 'CREATE USER app IDENTIFIED BY "SuperSecret1"';
+                EXECUTE IMMEDIATE 'GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO app';
+                EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO app';
+            END IF;
+        END;
         """
+
+        import time
+
+        max_retries = 24
+        retry_interval = 5
+        conn = None
+
+        self.console.print("[cyan]Connecting to database and creating app schema...[/cyan]")
+        for attempt in range(1, max_retries + 1):
+            try:
+                conn = oracledb.connect(**conn_params)
+                self.console.print(f"[green]✓[/green] Connected successfully on attempt {attempt}")
+                break
+            except Exception as e:
+                self.console.print(f"[dim]Connection attempt {attempt} failed: {e}. Retrying in {retry_interval}s...[/dim]")
+                time.sleep(retry_interval)
+        else:
+            self.console.print("[red]✗ Max connection retries reached. Database initialization failed.[/red]")
+            raise DatabaseNotReadyError("Database failed to become ready for connections")
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(sql)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            self.console.print(f"[red]✗ Failed to execute app user initialization: {e}[/red]")
+            raise
+        else:
+            self.console.print("[green]✓[/green] App user schema initialized successfully.")
+        finally:
+            if original_tns_admin is not None:
+                os.environ["TNS_ADMIN"] = original_tns_admin
+            else:
+                os.environ.pop("TNS_ADMIN", None)
+
+    def _patch_host_sqlnet_ora(self) -> None:
+        """Patch TNS_ADMIN placeholder in host sqlnet.ora with absolute path."""
+        wallet_dir = Path(self.config.wallet_location).resolve()
+        
+        # Grant write permission to the wallet files using a temporary container
+        try:
+            self.runtime.run_command([
+                "run",
+                "--rm",
+                "-v",
+                f"{wallet_dir}:/mnt/tns",
+                "busybox",
+                "chmod",
+                "-R",
+                "777",
+                "/mnt/tns",
+            ])
+        except Exception as e:
+            self.console.print(f"[yellow]⚠ Warning: Failed to fix wallet file permissions: {e}[/yellow]")
+
+        sqlnet_path = wallet_dir / "sqlnet.ora"
+        if sqlnet_path.exists():
+            self.console.print("[cyan]Patching host sqlnet.ora wallet directory...[/cyan]")
+            content = sqlnet_path.read_text()
+            if "$TNS_ADMIN" in content:
+                content = content.replace("$TNS_ADMIN", str(wallet_dir))
+                sqlnet_path.write_text(content)
+                self.console.print("[green]✓[/green] Patched sqlnet.ora")
+
+    def get_connection_info(self) -> dict[str, Any]:
+        """Get connection information for the database."""
         return {
             "host": "localhost",
             "port": self.config.host_port,
-            "service_name": "FREEPDB1",
-            "user": self.config.app_user,
-            "password": self.config.app_user_password,
-            "dsn": f"localhost:{self.config.host_port}/FREEPDB1",
+            "service_name": "myatp_low",
+            "user": "app",
+            "password": "SuperSecret1",
+            "dsn": f"localhost:{self.config.host_port}/myatp_low",
         }
 
     def exec_sql(self, sql: str, *, user: str = "app") -> str:
@@ -428,13 +515,12 @@ class OracleDatabase:
         if not self.is_healthy():
             raise DatabaseNotReadyError("Database is not healthy yet")
 
-        # Execute SQL via sqlplus in container
         _, stdout, _ = self.runtime.run_command([
             "exec",
             self.config.container_name,
             "sqlplus",
             "-S",
-            f"{user}/{self.config.app_user_password}@FREEPDB1",
+            f"{user}/SuperSecret1@myatp_low",
             sql,
         ])
 
@@ -445,46 +531,65 @@ class OracleDatabase:
 
         Returns:
             list[str]: Command arguments for container run
-
-        Constructs command matching docker-compose.yml:
-        - Port mapping
-        - Environment variables
-        - Volume mounts
-        - Health check
-        - Restart policy
-        - Logging options
         """
+        absolute_wallet_path = Path(self.config.wallet_location).resolve()
+        absolute_wallet_path.mkdir(parents=True, exist_ok=True)
+        absolute_wallet_path.chmod(0o777)
+
+        absolute_data_path = Path(self.config.data_location).resolve()
+        absolute_data_path.mkdir(parents=True, exist_ok=True)
+        absolute_data_path.chmod(0o777)
+
+        absolute_audit_path = Path(self.config.audit_location).resolve()
+        absolute_audit_path.mkdir(parents=True, exist_ok=True)
+        absolute_audit_path.chmod(0o777)
+
+        absolute_oradata_path = Path(self.config.oradata_location).resolve()
+        absolute_oradata_path.mkdir(parents=True, exist_ok=True)
+        absolute_oradata_path.chmod(0o777)
+
         cmd = [
             "run",
-            "-d",  # Detached
+            "-d",
             "--name",
             self.config.container_name,
+            "--shm-size",
+            "2g",
             "--hostname",
             self.config.hostname,
-            # Port mapping
             "-p",
             f"{self.config.host_port}:{self.config.container_port}",
-            # Environment variables
+            "-p",
+            f"{self.config.host_mtls_port}:{self.config.container_mtls_port}",
+            "-p",
+            f"{self.config.host_https_port}:{self.config.container_https_port}",
+            "-p",
+            f"{self.config.host_mongo_port}:{self.config.container_mongo_port}",
             "-e",
-            f"ORACLE_SYSTEM_PASSWORD={self.config.oracle_system_password}",
+            f"ADMIN_PASSWORD={self.config.admin_password}",
             "-e",
-            f"ORACLE_PASSWORD={self.config.oracle_password}",
+            f"WALLET_PASSWORD={self.config.wallet_password}",
             "-e",
-            f"APP_USER_PASSWORD={self.config.app_user_password}",
-            "-e",
-            f"APP_USER={self.config.app_user}",
-            # Data volume
+            "ENABLE_ARCHIVE_LOG=FALSE",
             "-v",
-            f"{self.config.data_volume_name}:/opt/oracle/oradata",
-            # Restart policy
+            f"{absolute_data_path}:/u01/data:z",
+            "-v",
+            f"{absolute_audit_path}:/u01/app/oracle/audit:z",
+            "-v",
+            f"{absolute_oradata_path}:/u01/app/oracle/oradata:z",
+            "-v",
+            f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z",
+            "--privileged",
+            "--cap-add",
+            "SYS_ADMIN",
+            "--device",
+            "/dev/fuse",
             "--restart",
             self.config.restart_policy,
-            # Logging
             "--log-opt",
             f"max-size={self.config.log_max_size}",
             "--log-opt",
             f"max-file={self.config.log_max_file}",
-            # Health check
             "--health-cmd",
             "healthcheck.sh",
             "--health-interval",
@@ -495,45 +600,10 @@ class OracleDatabase:
             str(self.config.health_retries),
         ]
 
-        # Mount individual files from on_init folder (run once during first DB creation)
-        # Mounted to /container-entrypoint-initdb.d (gvenzl/oracle-free standard)
-        project_root = Path(__file__).parent.parent.parent
-        on_init_dir = project_root / "tools" / "oracle" / "on_init"
-        if on_init_dir.exists():
-            for script_file in sorted(on_init_dir.glob("*.sql")) + sorted(on_init_dir.glob("*.sh")):
-                if script_file.is_file() and script_file.name != ".gitkeep":
-                    # Use :z for SELinux compatibility (works with both Docker and Podman)
-                    cmd.extend([
-                        "-v",
-                        f"{script_file.absolute()}:/container-entrypoint-initdb.d/{script_file.name}:z",
-                    ])
-
-        # Mount individual files from on_startup folder (run every time container starts)
-        # Mounted to /container-entrypoint-startdb.d (gvenzl/oracle-free standard)
-        on_startup_dir = project_root / "tools" / "oracle" / "on_startup"
-        if on_startup_dir.exists():
-            for script_file in sorted(on_startup_dir.glob("*.sql")) + sorted(on_startup_dir.glob("*.sh")):
-                if script_file.is_file() and script_file.name != ".gitkeep":
-                    # Use :z for SELinux compatibility (works with both Docker and Podman)
-                    cmd.extend([
-                        "-v",
-                        f"{script_file.absolute()}:/container-entrypoint-startdb.d/{script_file.name}:z",
-                    ])
-
-        # Image name
         cmd.append(self.config.image)
-
         return cmd
 
-    def _create_volume(self, volume_name: str) -> None:
-        """Create named volume if it doesn't exist.
 
-        Args:
-            volume_name: Name of volume to create
-        """
-        if not self.runtime.volume_exists(volume_name):
-            self.console.print(f"Creating volume [cyan]{volume_name}[/cyan]...")
-            self.runtime.run_command(["volume", "create", volume_name])
 
     def _pull_image(self) -> None:
         """Pull the Oracle database image."""

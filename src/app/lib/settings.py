@@ -43,13 +43,12 @@ class DatabaseSettings:
     WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
     """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
 
-    # Standard/Local Database fields (existing)
     USER: str = field(
         default_factory=lambda: os.getenv("DATABASE_USER", "app"),
     )
     """Oracle Database User."""
     PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "super-secret"),
+        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
     )
     """Oracle Database Password."""
     HOST: str = field(
@@ -61,13 +60,13 @@ class DatabaseSettings:
     )
     """Oracle Database Port."""
     SERVICE_NAME: str = field(
-        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1"),
+        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "myatp_low"),
     )
     """Oracle Database Service Name."""
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
-            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'FREEPDB1')}",
+            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'myatp_low')}",
         ),
     )
     """Oracle Database DSN."""
@@ -140,14 +139,25 @@ class DatabaseSettings:
                 msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
                 raise ValueError(msg)
 
-            # Set TNS_ADMIN for wallet location
-            os.environ["TNS_ADMIN"] = self.WALLET_LOCATION
+            wallet_path = Path(self.WALLET_LOCATION).resolve()
+            absolute_wallet_path = str(wallet_path)
+            os.environ["TNS_ADMIN"] = absolute_wallet_path
+
+            import ssl
+
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            pem_path = wallet_path / "ewallet.pem"
+            if pem_path.exists():
+                ssl_ctx.load_verify_locations(cafile=str(pem_path))
 
             pool_config = {
                 "user": conn_params["user"],
                 "password": conn_params["password"],
                 "dsn": conn_params["dsn"],
+                "wallet_location": absolute_wallet_path,
                 "wallet_password": conn_params["wallet_password"],
+                "ssl_context": ssl_ctx,
                 "min": self.POOL_MIN_SIZE,
                 "max": self.POOL_MAX_SIZE,
             }

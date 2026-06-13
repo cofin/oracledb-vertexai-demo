@@ -16,6 +16,12 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: oracle-apex-integration
+*Link: [./specs/oracle-apex-integration/](./specs/oracle-apex-integration/)*
+*Beads: not created - review gate before implementation*
+
+---
+
 ## [ ] PRD: inventory
 *Link: [./specs/inventory/](./specs/inventory/)*
 *Beads: flow/inventory-data (active/completed chapters)*

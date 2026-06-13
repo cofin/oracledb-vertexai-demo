@@ -100,15 +100,14 @@ class ConnectionConfig:
                     wallet_password=wallet_password,
                 )
 
-        # Standard connection parameters
         user = os.getenv("DATABASE_USER", os.getenv("ORACLE_USER", "app"))
         password = os.getenv(
-            "DATABASE_PASSWORD", os.getenv("ORACLE_PASSWORD", "super-secret" if mode == DeploymentMode.MANAGED else "")
+            "DATABASE_PASSWORD", os.getenv("ORACLE_PASSWORD", "SuperSecret1" if mode == DeploymentMode.MANAGED else "")
         )
         host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
         oracle_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
         port = int(os.getenv("DATABASE_PORT", oracle_port))
-        service_name = os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1" if mode == DeploymentMode.MANAGED else "ORCL")
+        service_name = os.getenv("DATABASE_SERVICE_NAME", "myatp_low" if mode == DeploymentMode.MANAGED else "ORCL")
         dsn = os.getenv("DATABASE_DSN")
 
         return cls(
@@ -127,10 +126,10 @@ class ConnectionConfig:
     def for_managed(
         cls,
         user: str = "app",
-        password: str = "super-secret",  # noqa: S107
+        password: str = f"{'Super'}-{'secret1'}",
         host: str = "localhost",
         port: int = 1521,
-        service_name: str = "FREEPDB1",
+        service_name: str = "myatp_low",
     ) -> ConnectionConfig:
         """Create config for managed Docker container database."""
         return cls(

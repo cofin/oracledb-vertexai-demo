@@ -71,3 +71,28 @@ def test_vite_config_uses_resources_as_frontend_root() -> None:
     assert config.paths.static_dir == Path("public")
     assert config.types is not None
     assert config.types.output == BASE_DIR.parent / "resources" / "generated"
+
+
+def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.setenv("DATABASE_URL", "oracle+oracledb://app:password@myatp_low")
+    monkeypatch.setenv("WALLET_PASSWORD", "SuperSecret1")
+    monkeypatch.setenv("TNS_ADMIN", "./.envs/tns")
+
+    settings = DatabaseSettings()
+    assert settings.WALLET_LOCATION == "./.envs/tns"
+
+    settings.create_config()
+
+    expected_path = str(Path("./.envs/tns").resolve())
+    assert os.environ["TNS_ADMIN"] == expected_path
+
+
+def test_service_name_defaults_to_myatp_low(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    # clear env to get defaults
+    monkeypatch.delenv("DATABASE_SERVICE_NAME", raising=False)
+    settings = DatabaseSettings()
+    assert settings.SERVICE_NAME == "myatp_low"
