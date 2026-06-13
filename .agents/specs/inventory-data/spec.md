@@ -34,5 +34,3 @@ The current inventory fixtures in `src/app/db/fixtures/store_product_inventory.j
 - [x] 2.1 Run the generator script to update the fixture file in `/tmp` and write it to the workspace.
 - [x] 2.2 Run `UV_CACHE_DIR=/tmp/uv_cache uv run coffee load-fixtures --tables store_product_inventory` to load the new data.
 - [x] 2.3 Verify that the database contains the expected number of rows using a simple SQL query.
-
-

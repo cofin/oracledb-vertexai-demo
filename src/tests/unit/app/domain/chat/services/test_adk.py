@@ -548,6 +548,7 @@ async def test_product_availability_near_me_uses_consented_coordinates_and_bypas
     tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
     tools_service.get_cached_chat_response = AsyncMock()
     tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.store_service.resolve_store = AsyncMock(return_value=None)
     tools_service.find_stores_with_product = AsyncMock(
         return_value={
             "availability": [

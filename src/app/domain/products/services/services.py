@@ -25,7 +25,7 @@ from app.domain.products.schemas import (
     StoreHours,
     StoreInventoryItem,
 )
-from app.domain.products.services._location import haversine_miles, location_hint_matches
+from app.domain.products.services._location import haversine_miles, store_matches_hint
 from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
 
 if TYPE_CHECKING:
@@ -162,6 +162,25 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         ranked.sort(key=lambda store: store.distance_miles)
         return ranked[:limit]
 
+    async def resolve_store(
+        self,
+        *,
+        location_hint: str | None = None,
+        coordinates: tuple[float, float] | None = None,
+    ) -> Store | None:
+        """Resolve a single store by location hint (priority) or nearest to coordinates."""
+        if location_hint:
+            stores = await self.get_all_stores()
+            for store in stores:
+                if store_matches_hint(store, location_hint):
+                    return store
+        if coordinates:
+            lat, lon = coordinates
+            nearest = await self.find_nearest_stores(lat, lon, limit=1)
+            if nearest:
+                return nearest[0]
+        return None
+
     async def get_store_inventory(self, store_id: int) -> list[StoreInventoryItem]:
         return await self.driver.select(
             db_manager.get_sql("list-store-inventory"),
@@ -195,8 +214,6 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
             product_query=query,
             schema_type=ProductAvailability,
         )
-        if location_hint:
-            rows = [row for row in rows if location_hint_matches(row, location_hint)]
         latitude, longitude = coordinates or (None, None)
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
 

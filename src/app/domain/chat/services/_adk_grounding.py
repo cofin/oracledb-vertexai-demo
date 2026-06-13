@@ -231,27 +231,97 @@ def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
     return answer
 
 
-def _format_availability_answer(rows: list[dict[str, Any]]) -> str:
-    if not rows:
-        return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
+def _is_in_stock(row: dict[str, Any]) -> bool:
+    status = row.get("stock_status")
+    qty = row.get("quantity_available")
+    if status in {"IN_STOCK", "LOW_STOCK"}:
+        return True
+    return bool(isinstance(qty, int | float) and qty > 0)
 
-    first = rows[0]
-    product = str(first.get("product_name") or "that item")
-    store = str(first.get("store_name") or "a Cymbal Coffee store")
-    status = str(first.get("stock_status") or "").replace("_", " ").title()
-    quantity = first.get("quantity_available")
-    answer = f"{product} is available at {store}"
-    if status:
-        answer += f" ({status})"
+
+def _format_in_stock_store(
+    product_name: str,
+    store_name: str,
+    quantity: Any,
+    status: str | None,
+    distance: Any,
+) -> str:
+    status_str = str(status or "").replace("_", " ").title()
+    answer = f"{product_name} is available at {store_name}"
+    if status_str:
+        answer += f" ({status_str})"
     if isinstance(quantity, int | float):
         answer += f" with {int(quantity)} on hand"
-    distance = first.get("distance_miles")
     if isinstance(distance, int | float):
         answer += f", about {float(distance):.1f} miles away"
     answer += "."
-    if len(rows) > 1:
-        answer += f" I found {len(rows)} stores with matching availability."
     return answer
+
+
+def _format_out_of_stock_store(
+    product_name: str,
+    store_name: str,
+    alternatives: list[dict[str, Any]],
+) -> str:
+    answer = f"{product_name} is out of stock at {store_name}."
+    in_stock_alts = [alt for alt in alternatives if _is_in_stock(alt)]
+    if in_stock_alts:
+        best_alt = in_stock_alts[0]
+        alt_name = best_alt.get("store_name")
+        alt_distance = best_alt.get("distance_miles")
+        answer += f" However, it is in stock at {alt_name}"
+        if isinstance(alt_distance, int | float):
+            answer += f" ({float(alt_distance):.1f} miles away)"
+        answer += "."
+    else:
+        answer += " I couldn't find any other stores with stock nearby."
+    return answer
+
+
+def _format_availability_answer(
+    target: dict[str, Any] | None,
+    alternatives: list[dict[str, Any]],
+    target_store_name: str | None = None,
+) -> str:
+    if not target and not alternatives:
+        return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
+
+    product_name = None
+    if target:
+        product_name = target.get("product_name")
+    elif alternatives:
+        product_name = alternatives[0].get("product_name")
+    if not product_name:
+        product_name = "that item"
+
+    if target or target_store_name:
+        store_name = target.get("store_name") if target else target_store_name
+        if target and _is_in_stock(target):
+            return _format_in_stock_store(
+                product_name=product_name,
+                store_name=store_name,
+                quantity=target.get("quantity_available"),
+                status=target.get("stock_status"),
+                distance=target.get("distance_miles"),
+            )
+        return _format_out_of_stock_store(
+            product_name=product_name,
+            store_name=store_name,
+            alternatives=alternatives,
+        )
+
+    first = alternatives[0]
+    store_name = first.get("store_name") or "a Cymbal Coffee store"
+    ans = _format_in_stock_store(
+        product_name=product_name,
+        store_name=store_name,
+        quantity=first.get("quantity_available"),
+        status=first.get("stock_status"),
+        distance=first.get("distance_miles"),
+    )
+    if len(alternatives) > 1:
+        ans = ans[:-1] + f". I found {len(alternatives)} stores with matching availability."
+    return ans
 
 
 def _record_product_search_result(metric_state: dict[str, Any], result: dict[str, Any], query: str) -> None:

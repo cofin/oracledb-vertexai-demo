@@ -139,7 +139,7 @@ async def test_inventory_methods_return_typed_rows_and_sort_by_coordinates(mock_
     assert mock_driver.select.await_args_list[1].kwargs["schema_type"] is ProductAvailability
 
 
-async def test_find_product_availability_filters_location_hint(mock_driver) -> None:
+async def test_find_product_availability_does_not_filter_location_hint(mock_driver) -> None:
     mock_driver.select = AsyncMock(
         return_value=[
             ProductAvailability(
@@ -176,6 +176,51 @@ async def test_find_product_availability_filters_location_hint(mock_driver) -> N
 
     result = await service.find_product_availability("Espresso Romano", location_hint="Dallas")
 
-    assert [row.store_id for row in result] == [16]
+    assert len(result) == 2
+    assert [row.store_id for row in result] == [16, 13]
     assert mock_driver.select.await_args.kwargs["product_query"] == "Espresso Romano"
     assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
+
+
+async def test_resolve_store_by_location_hint(mock_driver) -> None:
+    mock_driver.select = AsyncMock(
+        return_value=[
+            _store(13, "Cymbal Coffee Seattle", 47.6097, -122.3331, city="Seattle"),
+            _store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994),
+        ]
+    )
+    service = StoreService(mock_driver)
+
+    # 1. Direct match
+    resolved = await service.resolve_store(location_hint="Dallas Arts District")
+    assert resolved is not None
+    assert resolved.id == 16
+
+    # 2. Case-insensitive substring match
+    resolved = await service.resolve_store(location_hint="seattle")
+    assert resolved is not None
+    assert resolved.id == 13
+
+    # 3. Reverse match (store name is inside hint)
+    resolved = await service.resolve_store(location_hint="Is it in stock at Cymbal Coffee Seattle?")
+    assert resolved is not None
+    assert resolved.id == 13
+
+    # 4. No match
+    resolved = await service.resolve_store(location_hint="Chicago")
+    assert resolved is None
+
+
+async def test_resolve_store_by_coordinates(mock_driver) -> None:
+    mock_driver.select = AsyncMock(
+        return_value=[
+            _store(13, "Cymbal Coffee Seattle", 47.6097, -122.3331, city="Seattle"),
+            _store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994),
+        ]
+    )
+    service = StoreService(mock_driver)
+
+    # Near Dallas coords
+    resolved = await service.resolve_store(coordinates=(32.78, -96.8))
+    assert resolved is not None
+    assert resolved.id == 16

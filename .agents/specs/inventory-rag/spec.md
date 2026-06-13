@@ -34,4 +34,3 @@ The current `PRODUCT_RAG` flow recommends products based purely on vector simila
 ### Phase 4: Verification
 - [ ] 4.1 Create integration test `src/tests/integration/test_inventory_rag.py` to verify RAG responses are inventory-aware.
 - [ ] 4.2 Run tests with `uv run pytest src/tests/integration/test_inventory_rag.py`.
-

@@ -37,9 +37,15 @@ This flow implements deterministic stock lookup as outlined in Chapter 2 of the 
 
 ## 5.0 Implementation Plan
 
+### Phase 0: Base Grounding Setup
+- [x] **Task 5**: Define store coordinates/hours tools and grounding node logic
+
+
+
 ### Phase 1: Store Service Refinement
-- [ ] **Task 1.1**: Add `resolve_store(location_context)` to `StoreService` to resolve a single store from context (by name or nearest).
-- [ ] **Task 1.2**: Update `find_product_availability` to return all stores, and let the caller filter.
+- [x] **Task 1.1**: Add `resolve_store(location_context)` to `StoreService` to resolve a single store from context (by name or nearest).
+- [x] **Task 1.2**: Update `find_product_availability` to return all stores, and let the caller filter.
+
 
 ### Phase 2: Grounding and Formatting Updates
 - [ ] **Task 2.1**: Update `_product_availability_event` in `adk.py` to get all stores, filter to target, and find alternative `IN_STOCK` store if target is out of stock.
@@ -54,4 +60,3 @@ This flow implements deterministic stock lookup as outlined in Chapter 2 of the 
 ### Manual Verification
 - Query: "Is cold brew in stock at Dallas Arts District?" (when it is out of stock there but in stock elsewhere).
 - Verify the response suggests the alternative store.
-

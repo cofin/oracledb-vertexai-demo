@@ -7,8 +7,9 @@
 - **Framework:** Litestar
 - **Server:** Litestar-granian (ASGI server)
 - **Dependency Injection:** Dishka
-- **AI & Integrations:** Google Vertex AI, Google ADK 2.0, SQLSpec ADK session
+- **AI & Integrations:** Google Vertex AI, Google ADK 2.2.0, SQLSpec ADK session
   service
+
 
 ## Frontend
 

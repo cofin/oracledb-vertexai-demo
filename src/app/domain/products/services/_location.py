@@ -27,15 +27,34 @@ def haversine_miles(latitude: float, longitude: float, store: Store | ProductAva
     return 2 * earth_radius_miles * asin(sqrt(a))
 
 
-def location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
+def store_matches_hint(store: Store | ProductAvailability, location_hint: str) -> bool:
     normalized = location_hint.casefold().strip()
     if not normalized:
         return True
-    fields = (
-        row.store_name,
-        row.store_address,
-        row.store_city,
-        row.store_state,
-        row.store_zip,
-    )
-    return any(normalized in str(field or "").casefold() for field in fields)
+    if hasattr(store, "store_name"):
+        name = store.store_name
+        fields = (
+            store.store_name,
+            store.store_address,
+            store.store_city,
+            store.store_state,
+            store.store_zip,
+        )
+    else:
+        name = store.name
+        fields = (
+            store.name,
+            store.address,
+            store.city,
+            store.state,
+            store.zip,
+        )
+    if any(normalized in str(field or "").casefold() for field in fields):
+        return True
+    if name and len(name) > 3 and name.casefold() in normalized:
+        return True
+    return False
+
+
+def location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
+    return store_matches_hint(row, location_hint)

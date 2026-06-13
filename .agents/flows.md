@@ -18,9 +18,20 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ## [ ] PRD: inventory
 *Link: [./specs/inventory/](./specs/inventory/)*
-*Beads: not created - review gate before implementation*
+*Beads: flow/inventory-data (active/completed chapters)*
+
+### Chapters
+- [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)**
+  *Link: [./specs/inventory-data/](./specs/inventory-data/)*
+- [ ] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)** (Active)
+  *Link: [./specs/inventory-grounding/](./specs/inventory-grounding/)*
+- [ ] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)**
+  *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*
+- [ ] **Chapter 4: Live Inventory Dashboard (`inventory-ui`)**
+  *Link: [./specs/inventory-ui/](./specs/inventory-ui/)*
 
 ---
+
 
 ## Archived
 

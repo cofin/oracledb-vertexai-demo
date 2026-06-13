@@ -8,7 +8,7 @@ The application uses **Oracle Database 26ai** for semantic vector search (`VECTO
 
 ## Prerequisites & Audience Expectations
 
-- **GCP Knowledge**: None\! This lab is designed to be fully beginner-friendly for Google Cloud Platform.  
+- **GCP Knowledge**: None\! This lab is designed to be fully beginner-friendly for Google Cloud Platform.
 - **Tools Required**: A web browser and access to a Google Cloud Console account with billing or credits enabled.
 
 ---
@@ -17,8 +17,8 @@ The application uses **Oracle Database 26ai** for semantic vector search (`VECTO
 
 In this first step, you will initialize your cloud workspace and enable the necessary APIs for machine learning, maps, and virtual machines.
 
-1. Log into the **Google Cloud Console** (`https://console.cloud.google.com`) using your workshop credentials.  
-2. In the top navigation bar, click the **Activate Cloud Shell** icon (a small terminal icon `>_`). Wait a few moments for the persistent Linux terminal environment to provision and connect.  
+1. Log into the **Google Cloud Console** (`https://console.cloud.google.com`) using your workshop credentials.
+2. In the top navigation bar, click the **Activate Cloud Shell** icon (a small terminal icon `>_`). Wait a few moments for the persistent Linux terminal environment to provision and connect.
 3. Set your current active project using the following command (replace `[YOUR-PROJECT-ID]` with your actual GCP project ID shown on your console dashboard):
 
 ```shell
@@ -255,11 +255,11 @@ uv run python manage.py assets build
 uv run coffee run
 ```
 
-3. In the upper right area of your Google Cloud Shell browser screen, click the **Web Preview** button and select **Preview on port 8080**. A new tab will open displaying the beautiful chat recommendation layout\!  
-4. Visit **`http://localhost:8080/explore`** (via the same tunnel web preview) to access the interactive **Oracle Vector Explorer**. This dedicated diagnostic tool allows you to look directly under the hood of Oracle 26ai vector search operations:  
-   - **Simulate Raw Vector Queries:** Input any product description or user phrase to test vector matching without running the full LLM multi-agent conversation flow.  
-   - **Inspect Exact Query Latencies:** Review exact execution times in milliseconds to observe the high performance of modern enterprise databases processing multi-dimensional vector queries.  
-   - **Distance Comparison Strategies:** Visualize calculated vector distance scores (e.g., Cosine or Euclidean distances) between query embeddings and product row metadata.  
+3. In the upper right area of your Google Cloud Shell browser screen, click the **Web Preview** button and select **Preview on port 8080**. A new tab will open displaying the beautiful chat recommendation layout\!
+4. Visit **`http://localhost:8080/explore`** (via the same tunnel web preview) to access the interactive **Oracle Vector Explorer**. This dedicated diagnostic tool allows you to look directly under the hood of Oracle 26ai vector search operations:
+   - **Simulate Raw Vector Queries:** Input any product description or user phrase to test vector matching without running the full LLM multi-agent conversation flow.
+   - **Inspect Exact Query Latencies:** Review exact execution times in milliseconds to observe the high performance of modern enterprise databases processing multi-dimensional vector queries.
+   - **Distance Comparison Strategies:** Visualize calculated vector distance scores (e.g., Cosine or Euclidean distances) between query embeddings and product row metadata.
    - **Analyze Oracle EXPLAIN PLANS:** Click on query lines to open the raw database `DBMS_XPLAN.DISPLAY` outputs, revealing exact vector search access paths, filter operations, row count evaluations, and HNSW INMEMORY index usage hits.
 
 ---
@@ -542,11 +542,11 @@ class CoffeeChatController(Controller):
 
 **Objective:** Enrich the frontend UI by embedding a dynamic visual map whenever a customer asks for location details or nearby physical stores.
 
-* **Step A: Provision a Restricted Maps API Key** Da wir das erste Mal Google Maps in diesem Cloud-Projekt verwenden, verlangt Google vor der Schlüsselerstellung eine einmalige interaktive Initialisierung des Maps-Arbeitsbereichs im Browser, um die Verbindung mit dem Rechnungskonto abzuschließen:  
-    
-  1. Klicke auf der angezeigten **Google Maps Platform / Overview** Willkommensseite direkt auf den großen blauen Button **"Enable APIs"**. Dadurch schließt Google die Onboarding-Einrichtung ab und schaltet das linke Menü vollständig frei.  
-  2. Navigiere anschließend in der linken Leiste (oder unter **APIs & Services**) zu **Keys & Credentials** (bzw. **Credentials**).  
-  3. Klicke oben auf **Create Credentials** \-\> **API Key**.  
+* **Step A: Provision a Restricted Maps API Key** Da wir das erste Mal Google Maps in diesem Cloud-Projekt verwenden, verlangt Google vor der Schlüsselerstellung eine einmalige interaktive Initialisierung des Maps-Arbeitsbereichs im Browser, um die Verbindung mit dem Rechnungskonto abzuschließen:
+
+  1. Klicke auf der angezeigten **Google Maps Platform / Overview** Willkommensseite direkt auf den großen blauen Button **"Enable APIs"**. Dadurch schließt Google die Onboarding-Einrichtung ab und schaltet das linke Menü vollständig frei.
+  2. Navigiere anschließend in der linken Leiste (oder unter **APIs & Services**) zu **Keys & Credentials** (bzw. **Credentials**).
+  3. Klicke oben auf **Create Credentials** \-\> **API Key**.
   4. *Best Practice:* Klicke im Pop-up auf **Restrict Key** und wähle unter *API Restrictions* im Dropdown exakt die **Maps Embed API** aus, um den Schlüssel sicher abzuriegeln.
 
 
@@ -557,8 +557,8 @@ MAPS_ENABLE_EMBED=true
 GOOGLE_MAPS_EMBED_API_KEY=your_newly_created_restricted_key_here
 ```
 
-* **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller route.  
-    
+* **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller route.
+
   1. Open `src/app/domain/web/controllers/_pages.py`. To eliminate any risk of Python alignment or indentation errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
 
 ```py
@@ -592,7 +592,7 @@ class PageController(Controller):
         user_id, session_id = adk_session_identity(request)
         history_messages = await adk_runner.get_history_or_empty(user_id=user_id, session_id=session_id)
         return HTMXTemplate(
-            template_name="pages/chat.html.j2", 
+            template_name="pages/chat.html.j2",
             context={"history_messages": history_messages, "settings": get_settings()}
         )
 
@@ -604,14 +604,14 @@ class PageController(Controller):
   2. Now that `settings` is available in Jinja, pass it down to the client-side JavaScript runtime. Open `src/app/domain/web/templates/base.html.j2` and locate the `<body>` tag (line 19). Add the dataset variables:
 
 ```html
-<body hx-ext="litestar" data-app-shell="true" 
+<body hx-ext="litestar" data-app-shell="true"
       data-maps-enabled="{{ 'true' if settings.maps.embed_enabled else 'false' }}"
       data-maps-key="{{ settings.maps.EMBED_API_KEY }}"
       class="app-shell font-sans text-strong antialiased">
 ```
 
-* **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/main.js`**. Locate the `renderStoreCard(row, action)` function (around line 713).  
-    
+* **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/main.js`**. Locate the `renderStoreCard(row, action)` function (around line 713).
+
   Modify the function return statement string to query the body datasets and append the Google Maps Embed iframe container at the bottom of the store card:
 
 ```javascript
@@ -623,7 +623,7 @@ const renderStoreCard = (row, action) => {
   const lat = rowValue(row, ["latitude", "store_latitude"])
   const lng = rowValue(row, ["longitude", "store_longitude"])
 
-  const iframeMarkup = (mapsEnabled && mapsApiKey && lat && lng) 
+  const iframeMarkup = (mapsEnabled && mapsApiKey && lat && lng)
     ? `<div class="map-container mt-3 rounded-lg overflow-hidden shadow-sm border border-border">
          <iframe
            width="100%"
@@ -651,7 +651,7 @@ const renderStoreCard = (row, action) => {
       ${productName ? `<span class="font-medium text-strong">${escapeHtml(String(productName))}</span>` : ""}
       ${quantity !== null ? `<span>${escapeHtml(String(quantity))} available</span>` : ""}
     </div>
-    
+
     ${iframeMarkup}
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -687,4 +687,4 @@ Dependencies like database pools, LLM clients, and services are resolved automat
 
 ### 3\. Google ADK 2.0 Chat Engine
 
-Conversational flow planning, prompt state persistence, and agent node fallbacks are orchestrated dynamically using the **Google ADK 2.0 Workflow/BaseNode** layer. Session history is backed directly by high-performance Oracle database tables.  
+Conversational flow planning, prompt state persistence, and agent node fallbacks are orchestrated dynamically using the **Google ADK 2.0 Workflow/BaseNode** layer. Session history is backed directly by high-performance Oracle database tables.

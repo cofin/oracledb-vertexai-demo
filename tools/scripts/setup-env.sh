@@ -58,4 +58,3 @@ EOF
         echo -e "${OK} Appended registry to .npmrc."
     fi
 fi
-

@@ -714,6 +714,24 @@ class ADKRunner:
     ) -> dict[str, Any]:
         coordinates = _request_coordinates(location_context)
         product_query = _extract_product_query(query)
+
+        # Resolve target store if possible
+        location_hint = None
+        if location_context:
+            location_hint = location_context.get("store_name")
+        if not location_hint:
+            filters = _extract_location_filters(query, location_context)
+            parts = [filters[k] for k in ("city", "state", "zip_code") if filters[k]]
+            if parts:
+                location_hint = " ".join(parts)
+        if not location_hint:
+            location_hint = query
+
+        target_store = await tools_service.store_service.resolve_store(
+            location_hint=location_hint,
+            coordinates=coordinates,
+        )
+
         if coordinates:
             result = await tools_service.find_stores_with_product(product_query, coordinates[0], coordinates[1])
         else:
@@ -722,7 +740,27 @@ class ADKRunner:
         inventory = _coerce_dict_rows(result.get("availability"))
         sql_phases = _coerce_sql_phases(result.get("sql_phases"))
         elapsed_ms = (time.time() - start) * 1000
-        answer = _format_availability_answer(inventory)
+
+        target_row = None
+        alternatives = []
+        target_store_name = target_store.name if target_store else None
+
+        if target_store:
+            for row in inventory:
+                if row.get("store_id") == target_store.id:
+                    target_row = row
+                else:
+                    alternatives.append(row)
+            if not target_row:
+                alternatives = inventory
+        else:
+            alternatives = inventory
+
+        answer = _format_availability_answer(
+            target=target_row,
+            alternatives=alternatives,
+            target_store_name=target_store_name,
+        )
         await self._append_display_history(
             user_id=user_id,
             session_id=session.id,

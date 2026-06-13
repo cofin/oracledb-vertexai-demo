@@ -344,5 +344,3 @@ exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 extraPaths = ["src"]
 include = ["src/app", "src/tests"]
 reportMissingImports = "information"
-
-
