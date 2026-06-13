@@ -1,0 +1,9 @@
+{
+  "flow_id": "inventory-ui",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "inventory",
+  "created_at": "2026-05-04T22:47:40Z",
+  "updated_at": "2026-05-04T22:47:40Z",
+  "description": "Live Inventory Dashboard"
+}

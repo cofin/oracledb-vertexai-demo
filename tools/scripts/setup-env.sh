@@ -13,11 +13,30 @@ OK="${GREEN}✓${NC}"
 # 1. Configure uv (Python)
 echo -e "${INFO} Configuring uv.toml..."
 cat <<EOF > uv.toml
+required-version = ">=0.8.6"
+exclude-newer = "3 days"
+exclude-newer-package = { sqlspec = false }
 build-constraint-dependencies = [
     "hatchling==1.24.2",
     "nodeenv==1.9.1"
 ]
 EOF
+
+
+# 2. Configure npm (JavaScript)
+echo -e "${INFO} Configuring .npmrc..."
+if [ ! -f ".npmrc" ]; then
+    echo "min-release-age=3" > .npmrc
+    echo -e "${OK} .npmrc created."
+else
+    if ! grep -q "min-release-age=" .npmrc; then
+        echo "min-release-age=3" >> .npmrc
+        echo -e "${OK} Appended min-release-age to .npmrc."
+    else
+        sed -i 's/^min-release-age=.*/min-release-age=3/' .npmrc
+        echo -e "${OK} Updated min-release-age in .npmrc."
+    fi
+fi
 
 # Detect if running on internal Linux (Rodete)
 if [ -f "/etc/os-release" ] && grep -q "rodete" /etc/os-release; then
@@ -33,19 +52,10 @@ default = true
 EOF
     echo -e "${OK} uv.toml updated with public index."
 
-    # Configure npm/bun (JavaScript)
-    if [ ! -f ".npmrc" ]; then
-        echo -e "${INFO} Creating .npmrc to force public NPM registry..."
-        echo "registry=https://registry.npmjs.org" > .npmrc
-        echo -e "${OK} .npmrc created."
-    else
-        if ! grep -q "registry=https://registry.npmjs.org" .npmrc; then
-            echo "registry=https://registry.npmjs.org" >> .npmrc
-            echo -e "${OK} Appended registry to .npmrc."
-        else
-            echo -e "${INFO} .npmrc already configured. Skipping."
-        fi
+    # Append registry to .npmrc if not present
+    if ! grep -q "registry=https://registry.npmjs.org" .npmrc; then
+        echo "registry=https://registry.npmjs.org" >> .npmrc
+        echo -e "${OK} Appended registry to .npmrc."
     fi
-else
-    echo -e "${INFO} Not running on Rodete. Skipping specific env setup."
 fi
+

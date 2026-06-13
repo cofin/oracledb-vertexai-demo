@@ -19,7 +19,8 @@ dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp",
-    "sqlspec[adk,mypyc,oracledb,performance]>=0.46.3",
+    "sqlspec[adk,mypyc,oracledb,performance]==0.50.0",
+
     "python-dotenv",
     "google-adk>=2.0.0b1",
     "numpy>=2.3.3",
@@ -343,3 +344,5 @@ exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 extraPaths = ["src"]
 include = ["src/app", "src/tests"]
 reportMissingImports = "information"
+
+

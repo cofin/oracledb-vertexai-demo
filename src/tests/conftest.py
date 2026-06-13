@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from unittest.mock import MagicMock
 
 import pytest
+from sqlspec.driver._async import AsyncDriverAdapterBase
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -106,3 +108,32 @@ async def htmx_client(app: Litestar) -> AsyncIterator[AsyncTestClient]:
     async with AsyncTestClient(app=app, raise_server_exceptions=False) as test_client:
         test_client.headers["HX-Request"] = "true"
         yield test_client
+
+
+class MockOracleAsyncDriver(AsyncDriverAdapterBase):
+    """Mock driver that bypasses compiled type checks in SQLSpecServices.
+
+    Delegates all attribute access to an internal MagicMock instance, except
+    for class-level fields or parameters required by the compiled base.
+    """
+
+    def __init__(self) -> None:
+        self.__dict__["_mock"] = MagicMock()
+
+    def __getattribute__(self, name: str) -> Any:
+        if name.startswith("__") or name in {"_session", "session", "driver", "__dict__", "_mock"}:
+            return super().__getattribute__(name)
+        mock = super().__getattribute__("_mock")
+        return getattr(mock, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "_mock":
+            super().__setattr__(name, value)
+        else:
+            setattr(self._mock, name, value)
+
+
+@pytest.fixture
+def mock_driver() -> MockOracleAsyncDriver:
+    """Fixture returning a mock driver that passes type checks."""
+    return MockOracleAsyncDriver()

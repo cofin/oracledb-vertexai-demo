@@ -1,0 +1,15 @@
+{
+  "research_id": "research_inventory_options",
+  "topic": "what options do we have for enabling inventory",
+  "type": "New Feature / Enhancement",
+  "status": "complete",
+  "created_at": "2026-05-04T10:00:00Z",
+  "libraries_researched": ["Oracle 26ai", "Litestar", "ADK"],
+  "files_analyzed": [
+    "src/app/domain/products/services/services.py",
+    "src/app/domain/chat/services/adk.py",
+    "src/app/db/migrations/0001_cymball_coffee_products.sql",
+    "src/resources/main.js"
+  ],
+  "linked_prd": null
+}

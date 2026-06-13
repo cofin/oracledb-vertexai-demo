@@ -96,10 +96,22 @@ class DomainServiceProvider(Provider):
 
     scope = Scope.REQUEST
 
-    product_service = provide(ProductService)
-    store_service = provide(StoreService)
-    cache_service = provide(CacheService)
-    metrics_service = provide(MetricsService)
+    @provide
+    def provide_product_service(self, driver: OracleAsyncDriver) -> ProductService:
+        return ProductService(driver)
+
+    @provide
+    def provide_store_service(self, driver: OracleAsyncDriver) -> StoreService:
+        return StoreService(driver)
+
+    @provide
+    def provide_cache_service(self, driver: OracleAsyncDriver) -> CacheService:
+        return CacheService(driver)
+
+    @provide
+    def provide_metrics_service(self, driver: OracleAsyncDriver) -> MetricsService:
+        return MetricsService(driver)
+
     agent_tools_service = provide(AgentToolsService)
 
     @provide

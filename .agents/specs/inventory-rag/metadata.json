@@ -1,0 +1,9 @@
+{
+  "flow_id": "inventory-rag",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "inventory",
+  "created_at": "2026-05-04T22:47:30Z",
+  "updated_at": "2026-05-04T22:47:30Z",
+  "description": "Inventory-Aware RAG"
+}

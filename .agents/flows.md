@@ -16,6 +16,12 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: inventory
+*Link: [./specs/inventory/](./specs/inventory/)*
+*Beads: not created - review gate before implementation*
+
+---
+
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from

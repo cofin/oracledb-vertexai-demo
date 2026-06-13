@@ -143,7 +143,7 @@ def test_safe_location_context_never_exposes_raw_coordinates() -> None:
     )
 
 
-async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
+async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver) -> None:
     from app.domain.chat.services.adk import AgentToolsService
 
     product_service = MagicMock()
@@ -155,7 +155,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics() -> None:
     metrics_service.record_search = AsyncMock()
 
     tools_service = AgentToolsService(
-        driver=MagicMock(),
+        driver=mock_driver,
         product_service=product_service,
         metrics_service=metrics_service,
         vertex_ai_service=vertex_ai_service,
@@ -262,13 +262,13 @@ async def test_store_query_closures_delegate_and_capture_sql_phases() -> None:
     ]
 
 
-async def test_agent_tools_store_query_results_include_masked_sql_phases() -> None:
+async def test_agent_tools_store_query_results_include_masked_sql_phases(mock_driver) -> None:
     from app.domain.chat.services.adk import AgentToolsService
 
     store_service = MagicMock()
     store_service.find_nearest_stores = AsyncMock(return_value=[{"id": 16, "name": "Cymbal Coffee Dallas"}])
     tools_service = AgentToolsService(
-        driver=MagicMock(),
+        driver=mock_driver,
         product_service=MagicMock(),
         metrics_service=MagicMock(),
         vertex_ai_service=MagicMock(),

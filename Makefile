@@ -97,17 +97,17 @@ destroy:
 
 # =============================================================================
 # Dependency Management
-# =============================================================================
 .PHONY: upgrade
 upgrade: setup-env ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
+
 	@uv lock --upgrade
 	@echo "${INFO} Updating frontend dependencies... 🔄"
-	@cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade
-	@cd $(FRONTEND_DIR) && npm install --no-fund
+	@(cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade && npm install --no-fund)
 	@echo "${OK} Dependencies updated 🔄"
 	@uvx prek autoupdate
 	@echo "${OK} Updated prek hooks 🔄"
+
 
 .PHONY: lock
 lock: ## Rebuild lockfiles from scratch

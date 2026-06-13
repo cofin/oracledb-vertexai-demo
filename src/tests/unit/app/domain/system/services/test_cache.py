@@ -15,7 +15,7 @@ from app.domain.system.schemas import ResponseCache
 pytestmark = pytest.mark.anyio
 
 
-async def test_get_cached_response_is_single_typed_select() -> None:
+async def test_get_cached_response_is_single_typed_select(mock_driver) -> None:
     from app.domain.system.services.services import CacheService
 
     cached = ResponseCache(
@@ -25,31 +25,29 @@ async def test_get_cached_response_is_single_typed_select() -> None:
         created_at=datetime.now(UTC),
         expires_at=datetime.now(UTC) + timedelta(minutes=30),
     )
-    driver = MagicMock()
-    driver.select_one_or_none = AsyncMock(return_value=cached)
-    driver.execute = AsyncMock()
-    driver.commit = AsyncMock()
+    mock_driver.select_one_or_none = AsyncMock(return_value=cached)
+    mock_driver.execute = AsyncMock()
+    mock_driver.commit = AsyncMock()
 
-    result = await CacheService(driver).get_cached_response("cache-key")
+    result = await CacheService(mock_driver).get_cached_response("cache-key")
 
     assert result is cached
-    _, kwargs = driver.select_one_or_none.await_args
+    _, kwargs = mock_driver.select_one_or_none.await_args
     assert kwargs["key"] == "cache-key"
     assert kwargs["schema_type"] is ResponseCache
-    driver.execute.assert_not_awaited()
-    driver.commit.assert_not_awaited()
+    mock_driver.execute.assert_not_awaited()
+    mock_driver.commit.assert_not_awaited()
 
 
-async def test_delete_expired_responses_is_explicit_cleanup_operation() -> None:
+async def test_delete_expired_responses_is_explicit_cleanup_operation(mock_driver) -> None:
     from app.domain.system.services.services import CacheService
 
     execute_result = MagicMock(rows_affected=3)
-    driver = MagicMock()
-    driver.execute = AsyncMock(return_value=execute_result)
-    driver.commit = AsyncMock()
+    mock_driver.execute = AsyncMock(return_value=execute_result)
+    mock_driver.commit = AsyncMock()
 
-    deleted = await CacheService(driver).delete_expired_responses()
+    deleted = await CacheService(mock_driver).delete_expired_responses()
 
     assert deleted == 3
-    driver.execute.assert_awaited_once()
-    driver.commit.assert_awaited_once()
+    mock_driver.execute.assert_awaited_once()
+    mock_driver.commit.assert_awaited_once()
