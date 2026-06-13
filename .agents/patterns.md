@@ -77,6 +77,7 @@
 - Keep public CLI modules mostly declarative. Large workflows belong in focused
   private `app.cli._helpers` modules; small command-local helpers can live in
   `commands.py`. Do not add compatibility shim or facade modules.
+- `sanitize_for_json` camel-cases msgspec Struct keys for wire encoding. In the chat domain (like `ADKRunner` and grounding formatting helpers), check both snake_case and camelCase keys using `_get_field(row, snake_name)` to remain resilient to case conversion differences between unit test mocks and runtime database responses.
 
 ## Code Style
 

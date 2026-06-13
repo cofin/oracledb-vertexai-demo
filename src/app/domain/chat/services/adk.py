@@ -29,6 +29,7 @@ from app.domain.chat.services._adk_grounding import (
     _extract_product_query,
     _format_availability_answer,
     _format_store_location_answer,
+    _get_field,
     _ground_product_rag_turn,
     _has_browser_coordinates,
     _record_product_search_result,
@@ -747,7 +748,7 @@ class ADKRunner:
 
         if target_store:
             for row in inventory:
-                if row.get("store_id") == target_store.id:
+                if _get_field(row, "store_id") == target_store.id:
                     target_row = row
                 else:
                     alternatives.append(row)

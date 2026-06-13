@@ -48,9 +48,9 @@ This flow implements deterministic stock lookup as outlined in Chapter 2 of the 
 
 
 ### Phase 2: Grounding and Formatting Updates
-- [ ] **Task 2.1**: Update `_product_availability_event` in `adk.py` to get all stores, filter to target, and find alternative `IN_STOCK` store if target is out of stock.
-- [ ] **Task 2.2**: Update `_format_availability_answer` in `_adk_grounding.py` to format the message clearly (handling out of stock and alternatives).
-- [ ] **Task 2.3**: Update unit tests in `src/tests/unit/test_adk_grounding.py` to verify these formatting cases.
+- [x] **Task 2.1**: Update `_product_availability_event` in `adk.py` to get all stores, filter to target, and find alternative `IN_STOCK` store if target is out of stock.
+- [x] **Task 2.2**: Update `_format_availability_answer` in `_adk_grounding.py` to format the message clearly (handling out of stock and alternatives).
+- [x] **Task 2.3**: Update unit tests in `src/tests/unit/test_adk_grounding.py` to verify these formatting cases.
 
 ## 6.0 Verification Plan
 

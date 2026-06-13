@@ -78,6 +78,14 @@ def _coerce_dict_rows(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
+def _get_field(row: dict[str, Any], snake_name: str) -> Any:
+    if snake_name in row:
+        return row[snake_name]
+    parts = snake_name.split("_")
+    camel_name = parts[0] + "".join(p.title() for p in parts[1:])
+    return row.get(camel_name)
+
+
 def _default_route_fields(location_context: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "store_results": [],
@@ -232,8 +240,8 @@ def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
 
 
 def _is_in_stock(row: dict[str, Any]) -> bool:
-    status = row.get("stock_status")
-    qty = row.get("quantity_available")
+    status = _get_field(row, "stock_status")
+    qty = _get_field(row, "quantity_available")
     if status in {"IN_STOCK", "LOW_STOCK"}:
         return True
     return bool(isinstance(qty, int | float) and qty > 0)
@@ -267,8 +275,8 @@ def _format_out_of_stock_store(
     in_stock_alts = [alt for alt in alternatives if _is_in_stock(alt)]
     if in_stock_alts:
         best_alt = in_stock_alts[0]
-        alt_name = best_alt.get("store_name")
-        alt_distance = best_alt.get("distance_miles")
+        alt_name = _get_field(best_alt, "store_name")
+        alt_distance = _get_field(best_alt, "distance_miles")
         answer += f" However, it is in stock at {alt_name}"
         if isinstance(alt_distance, int | float):
             answer += f" ({float(alt_distance):.1f} miles away)"
@@ -288,21 +296,21 @@ def _format_availability_answer(
 
     product_name = None
     if target:
-        product_name = target.get("product_name")
+        product_name = _get_field(target, "product_name")
     elif alternatives:
-        product_name = alternatives[0].get("product_name")
+        product_name = _get_field(alternatives[0], "product_name")
     if not product_name:
         product_name = "that item"
 
     if target or target_store_name:
-        store_name = target.get("store_name") if target else target_store_name
+        store_name = _get_field(target, "store_name") if target else target_store_name
         if target and _is_in_stock(target):
             return _format_in_stock_store(
                 product_name=product_name,
                 store_name=store_name,
-                quantity=target.get("quantity_available"),
-                status=target.get("stock_status"),
-                distance=target.get("distance_miles"),
+                quantity=_get_field(target, "quantity_available"),
+                status=_get_field(target, "stock_status"),
+                distance=_get_field(target, "distance_miles"),
             )
         return _format_out_of_stock_store(
             product_name=product_name,
@@ -311,13 +319,13 @@ def _format_availability_answer(
         )
 
     first = alternatives[0]
-    store_name = first.get("store_name") or "a Cymbal Coffee store"
+    store_name = _get_field(first, "store_name") or "a Cymbal Coffee store"
     ans = _format_in_stock_store(
         product_name=product_name,
         store_name=store_name,
-        quantity=first.get("quantity_available"),
-        status=first.get("stock_status"),
-        distance=first.get("distance_miles"),
+        quantity=_get_field(first, "quantity_available"),
+        status=_get_field(first, "stock_status"),
+        distance=_get_field(first, "distance_miles"),
     )
     if len(alternatives) > 1:
         ans = ans[:-1] + f". I found {len(alternatives)} stores with matching availability."
