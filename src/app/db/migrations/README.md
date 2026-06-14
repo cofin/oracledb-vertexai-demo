@@ -61,7 +61,7 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 The initial Oracle 26ai schema in this project includes:
 
-- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2`.
+- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2-preview`.
 - `store` table for location data with `JSON`-encoded business hours.
 - `store_product_inventory` table for curated store-level product availability.
 - `response_cache`, `embedding_cache`, and `search_metric` support tables.

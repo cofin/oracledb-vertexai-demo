@@ -17,7 +17,7 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import errors as genai_errors
 from google.genai import types
-from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.adapters.oracledb import OracleAsyncDriver  # noqa: TC002
 from sqlspec.extensions.adk import SQLSpecSessionService  # noqa: TC002
 
 from app.domain.chat.exceptions import AIServiceUnconfigured
@@ -59,7 +59,7 @@ from app.domain.chat.services.workflow import make_workflow
 from app.domain.products.services import ProductService, StoreService, VertexAIService  # noqa: TC001
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, CacheService, MetricsService, PersonaManager
-from app.lib.service import SQLSpecAsyncService
+from app.lib.service import OracleAsyncService
 from app.lib.settings import get_settings
 from app.utils.serialization import sanitize_for_json
 
@@ -119,7 +119,7 @@ async def _collect_workflow_stream(
             answer_parts.append(text)
 
 
-class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
+class AgentToolsService(OracleAsyncService):
     """Business logic invoked by closure-bound ADK tools."""
 
     def __init__(

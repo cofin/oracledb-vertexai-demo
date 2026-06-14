@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from litestar.middleware.session.server_side import ServerSideSessionConfig
     from litestar.plugins.problem_details import ProblemDetailsConfig
     from litestar.plugins.structlog import StructlogConfig
+    from litestar.stores.base import Store
     from litestar.stores.registry import StoreRegistry
     from litestar.template import TemplateConfig
     from litestar_vite import ViteConfig
@@ -133,7 +134,8 @@ def _initialize() -> None:
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
 
-    store_registry = _StoreRegistry(stores={"sessions": OracleAsyncStore(config=db_cfg)})  # type: ignore[dict-item]
+    from typing import cast
+    store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
 
     structlog_config = _StructlogConfig(
         enable_middleware_logging=False,

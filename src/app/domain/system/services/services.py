@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any
 import msgspec
 import structlog
 from sqlspec import sql
-from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
 from app.domain.system.schemas import (
@@ -27,7 +26,7 @@ from app.domain.system.schemas import (
     ResponseCache,
     SearchMetricsCreate,
 )
-from app.lib.service import SQLSpecAsyncService
+from app.lib.service import OracleAsyncService
 from app.utils.serialization import schema_dump
 
 if TYPE_CHECKING:
@@ -129,7 +128,7 @@ class PersonaManager:
 # --- Cache Service ---
 
 
-class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
+class CacheService(OracleAsyncService):
     """Handles database operations for response and embedding cache."""
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
@@ -248,7 +247,7 @@ class CacheService(SQLSpecAsyncService[OracleAsyncDriver]):
 # --- Metrics Service ---
 
 
-class MetricsService(SQLSpecAsyncService[OracleAsyncDriver]):
+class MetricsService(OracleAsyncService):
     """Handles performance metrics and search logging."""
 
     async def record_search(self, metrics: SearchMetricsCreate) -> None:

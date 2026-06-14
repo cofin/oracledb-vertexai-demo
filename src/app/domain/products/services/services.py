@@ -11,7 +11,6 @@ import structlog
 from google.genai.types import EmbedContentConfig
 from msgspec.structs import asdict
 from sqlspec import sql
-from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
 from app.domain.products.schemas import (
@@ -26,14 +25,14 @@ from app.domain.products.schemas import (
     StoreInventoryItem,
 )
 from app.domain.products.services._location import haversine_miles, store_matches_hint
-from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
+from app.lib.service import FilterTypes, OffsetPagination, OracleAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
 
 logger = structlog.get_logger()
 
-GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2"
+GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2-preview"
 EMBEDDING_PURPOSE_INSTRUCTIONS = {
     "query": (
         "Task: Generate an embedding for a search query to retrieve relevant "
@@ -46,7 +45,7 @@ EMBEDDING_PURPOSE_INSTRUCTIONS = {
 }
 
 
-class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
+class ProductService(OracleAsyncService):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
@@ -80,7 +79,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
             sql.update("product").set(embedding=embedding).where_eq("id", product_id),
         )
         await self.driver.commit()
-        return result.get_count() > 0
+        return result.rows_affected > 0
 
     # docs:start-search-by-vector
     async def search_by_vector(
@@ -100,7 +99,7 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
 # --- Store Service ---
 
 
-class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
+class StoreService(OracleAsyncService):
     """Service for managing store locations."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Store]:
@@ -300,7 +299,7 @@ class VertexAIService:
 
 
 def _embedding_content(model: str, text: str, embedding_purpose: str) -> str:
-    if model != GEMINI_EMBEDDING_2_MODEL:
+    if GEMINI_EMBEDDING_2_MODEL not in model:
         return text
     instruction = EMBEDDING_PURPOSE_INSTRUCTIONS.get(embedding_purpose)
     if instruction is None:

@@ -70,7 +70,7 @@ def test_vertex_embedding_defaults_match_schema_contract(monkeypatch: MonkeyPatc
 
     settings = VertexAISettings()
 
-    assert settings.EMBEDDING_MODEL == "gemini-embedding-2"
+    assert settings.EMBEDDING_MODEL == "gemini-embedding-2-preview"
     assert settings.EMBEDDING_DIMENSIONS == 3072
 
 
