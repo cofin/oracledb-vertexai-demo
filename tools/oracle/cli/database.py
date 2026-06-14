@@ -12,9 +12,29 @@ import rich_click as click
 from rich.console import Console
 
 if TYPE_CHECKING:
+    from tools.oracle.apex_install import ApexInstaller
     from tools.oracle.database import OracleDatabase
 
 console = Console()
+
+
+def _build_apex_installer(db: OracleDatabase) -> ApexInstaller:
+    """Build an APEX installer bound to the running database container."""
+    from tools.oracle.apex_install import ApexInstallConfig, ApexInstaller
+    from tools.oracle.apex_media import ApexMedia, ApexMediaConfig
+
+    media = ApexMedia(ApexMediaConfig.from_env())
+    return ApexInstaller(db.runtime, db, media, ApexInstallConfig.from_env(), console=console)
+
+
+def _auto_install_apex(db: OracleDatabase) -> None:
+    """Install APEX after the DB is healthy when none is present (idempotent)."""
+    installer = _build_apex_installer(db)
+    if installer.installed_version() is None:
+        console.print("[cyan]APEX not detected — installing (first run can take a few minutes)...[/cyan]")
+        installer.install()
+    else:
+        console.print("[dim]APEX already present; skipping auto-install.[/dim]")
 
 
 def _load_env_file(env_file: str | None) -> None:
@@ -51,24 +71,28 @@ def database_group() -> None:
 @click.option("--pull", is_flag=True, help="Pull latest image before starting")
 @click.option("--recreate", is_flag=True, help="Remove and recreate container if exists")
 @click.option("--env-file", type=click.Path(exists=True), help="Environment file to load")
-def database_start(pull: bool, recreate: bool, env_file: str | None) -> None:
+@click.option("--skip-apex", is_flag=True, help="Do not auto-install APEX after the DB is healthy")
+def database_start(pull: bool, recreate: bool, env_file: str | None, skip_apex: bool) -> None:
     """Start Oracle database container.
 
-    Deploys the Oracle Database Free container with local demo configuration.
+    Deploys the Oracle Database Free container with local demo configuration,
+    then auto-installs APEX when it is missing (use --skip-apex to opt out).
     """
     try:
-        _database_start(pull=pull, recreate=recreate, env_file=env_file)
+        _database_start(pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex)
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
         raise click.Abort from e
 
 
-def _database_start(*, pull: bool, recreate: bool, env_file: str | None) -> None:
-    """Start the configured Oracle database."""
+def _database_start(*, pull: bool, recreate: bool, env_file: str | None, skip_apex: bool = False) -> None:
+    """Start the configured Oracle database and (unless skipped) ensure APEX."""
     _load_env_file(env_file)
     db = _database()
     console.print("[yellow]Starting Oracle database container...[/yellow]")
     db.start(pull=pull, recreate=recreate)
+    if not skip_apex:
+        _auto_install_apex(db)
     console.print("[green]✓ Database started successfully![/green]")
 
 

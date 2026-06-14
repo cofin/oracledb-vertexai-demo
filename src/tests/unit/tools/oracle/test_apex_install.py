@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from tools.oracle.apex_install import (
@@ -273,3 +273,84 @@ def test_provision_workspace_raises_on_db_error() -> None:
 
     with pytest.raises(ApexInstallError):
         installer.provision_workspace()
+
+
+# --- stage_media (docker cp) -------------------------------------------------
+
+
+def test_stage_media_copies_tree_into_container() -> None:
+    """stage_media ensures host media then docker-cps the apex/ tree into the container."""
+    installer, runtime = _installer((0, "", ""), (0, "", ""))  # mkdir, cp
+    installer.media.ensure.return_value.apex_dir = "/host/cache/26.1/apex"
+
+    installer.stage_media()
+
+    issued = [call.args[0] for call in runtime.run_command.call_args_list]
+    assert ["exec", "oracle-free-db", "mkdir", "-p", "/tmp/apex"] in issued
+    assert ["cp", "/host/cache/26.1/apex/.", "oracle-free-db:/tmp/apex"] in issued
+    installer.media.ensure.assert_called_once_with(force=False)
+
+
+def test_stage_media_force_propagates_to_ensure() -> None:
+    """Force flows through to the Ch1 media pipeline (re-download/re-extract)."""
+    installer, _ = _installer((0, "", ""), (0, "", ""))
+    installer.media.ensure.return_value.apex_dir = "/host/apex"
+
+    installer.stage_media(force=True)
+
+    installer.media.ensure.assert_called_once_with(force=True)
+
+
+# --- CLI auto-install on `infra start` --------------------------------------
+
+
+def test_auto_install_runs_when_apex_absent() -> None:
+    """Infra start installs APEX when the PDB has none."""
+    from tools.oracle.cli import database as cli_db
+
+    with patch.object(cli_db, "_build_apex_installer") as build:
+        installer = build.return_value
+        installer.installed_version.return_value = None
+        cli_db._auto_install_apex(MagicMock())
+
+    installer.install.assert_called_once()
+
+
+def test_auto_install_skips_when_apex_present() -> None:
+    """Infra start does not reinstall when APEX is already there."""
+    from tools.oracle.cli import database as cli_db
+
+    with patch.object(cli_db, "_build_apex_installer") as build:
+        installer = build.return_value
+        installer.installed_version.return_value = "26.1.0"
+        cli_db._auto_install_apex(MagicMock())
+
+    installer.install.assert_not_called()
+
+
+def test_start_skip_apex_flag_skips_autoinstall() -> None:
+    """`infra start --skip-apex` brings up the DB without touching APEX."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    with patch.object(cli_db, "_database") as mk_db, patch.object(cli_db, "_auto_install_apex") as auto:
+        mk_db.return_value = MagicMock()
+        result = runner.invoke(cli_db.database_start, ["--skip-apex"])
+
+    assert result.exit_code == 0
+    auto.assert_not_called()
+
+
+def test_start_runs_autoinstall_by_default() -> None:
+    """Plain `infra start` auto-installs APEX after the DB is healthy."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    with patch.object(cli_db, "_database") as mk_db, patch.object(cli_db, "_auto_install_apex") as auto:
+        mk_db.return_value = MagicMock()
+        result = runner.invoke(cli_db.database_start, [])
+
+    assert result.exit_code == 0
+    auto.assert_called_once()
