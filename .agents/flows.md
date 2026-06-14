@@ -35,9 +35,9 @@ revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-
 - [x] **Chapter 1: APEX media staging (`apex-media-staging`)** — done (32 tests; commits 56cb007..1c157c6)
   *Link: [./specs/apex-media-staging/](./specs/apex-media-staging/)*
   *Beads: oracledb-vertexai-apxg.1 (5/5 tasks closed)*
-- [ ] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — implementation-ready, blocked by Ch1
+- [x] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — done (29 tests; commits 31c444f..427a091; database.py untouched)
   *Link: [./specs/apex-install-upgrade/](./specs/apex-install-upgrade/)*
-  *Beads: oracledb-vertexai-apxg.2 (5 tasks)*
+  *Beads: oracledb-vertexai-apxg.2 (5/5 tasks closed)*
 - [ ] **Chapter 3: ORDS sidecar runtime via Python CLI (`apex-ords-sidecar`)** — implementation-ready, blocked by Ch1+Ch2
   *Link: [./specs/apex-ords-sidecar/](./specs/apex-ords-sidecar/)*
   *Beads: oracledb-vertexai-apxg.3 (5 tasks)*

@@ -3,7 +3,8 @@
 *Beads: `oracledb-vertexai-apxg.2` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch1 `apex-media-staging` (staged media + `ApexMedia.ensure()` / `paths()`)*
-*Status: Implementation-ready (refreshed 2026-06-14 against the landed gvenzl `database.py`)*
+*Status: Done — 5/5 tasks closed; 29 unit tests green (ruff + mypy clean); commits 31c444f..427a091;
+`database.py` lifecycle class untouched*
 
 ---
 
@@ -102,18 +103,18 @@ existing `ContainerRuntime`. `database.py` stays essentially untouched.
 
 ## 4.0 Implementation Plan (TDD)
 
-- [ ] **Task 2.1** — `ApexInstallConfig` + `_exec_sysdba()` + `installed_version()` (+ version compare).
+- [x] **Task 2.1** `[31c444f]` — `ApexInstallConfig` + `_exec_sysdba()` + `installed_version()` (+ version compare).
   Unit tests mock `ContainerRuntime.run_command` output (APEX absent → `ORA-00942` → None; `24.2.14`;
   `26.1`) and assert the `exec … sqlplus / as sysdba` argv + `ALTER SESSION SET CONTAINER=FREEPDB1`.
-- [ ] **Task 2.2** — `install()` idempotent orchestration (`apexins` + REST/admin PL/SQL),
+- [x] **Task 2.2** `[1719f11]` — `install()` idempotent orchestration (`apexins` + REST/admin PL/SQL),
   skip/install/upgrade logic, post-verify `== target`. Unit tests assert the exec sequence + skip path
   (installed == target → no exec) + fail-loud when post-verify mismatches.
-- [ ] **Task 2.3** — `provision_workspace()` (COFFEE + ADMIN dev user, ported from git history)
+- [x] **Task 2.3** `[973fadc]` — `provision_workspace()` (COFFEE + ADMIN dev user, ported from git history)
   idempotent on `apex_workspaces`. Unit tests for create vs already-exists (mock run_command).
-- [ ] **Task 2.4** — `stage_media()` (`docker cp`) + `cli/database.py` auto-install-on-start with
+- [x] **Task 2.4** `[8f77cc3]` — `stage_media()` (`docker cp`) + `cli/database.py` auto-install-on-start with
   `--skip-apex`. Unit tests: `cp` argv shape; install invoked only when `installed_version()` is None;
   `--skip-apex` skips. (No `database.py` edit.)
-- [ ] **Task 2.5** — `tools/oracle/cli/apex.py` `install|upgrade|status` + `__init__`/`manage.py` wiring.
+- [x] **Task 2.5** `[427a091]` — `tools/oracle/cli/apex.py` `install|upgrade|status` + `__init__`/`manage.py` wiring.
   Unit tests via Click `CliRunner` (mock `ApexInstaller`); assert `manage.py infra apex` resolves.
 
 ---
