@@ -361,3 +361,71 @@ def test_downloads_dir_is_gitignored() -> None:
     gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
 
     assert "tools/oracle/downloads/" in gitignore
+
+
+def _zip_bytes(members: dict[str, bytes]) -> bytes:
+    """Build an in-memory zip payload (for a fetcher that writes a real archive)."""
+    import io
+    import zipfile
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for name, data in members.items():
+            zf.writestr(name, data)
+    return buffer.getvalue()
+
+
+def _good_zip_fetcher():
+    """A fetcher that delivers a valid APEX-shaped zip (passes verify + extract)."""
+    return _recording_fetcher(_zip_bytes(_good_members()))
+
+
+def test_ensure_stages_complete_tree(tmp_path: Path) -> None:
+    """ensure() downloads, verifies, extracts, and returns resolved paths."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_good_zip_fetcher())
+
+    paths = media.ensure()
+
+    assert paths.version == "26.1"
+    assert paths.apexins.exists()
+    assert paths.images_dir.is_dir()
+    assert paths.apex_dir == config.extracted_apex_dir.resolve()
+
+
+def test_ensure_is_idempotent_no_network_second_run(tmp_path: Path) -> None:
+    """A second ensure() on a staged tree does no network or extract work."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    fetcher = _good_zip_fetcher()
+    media = ApexMedia(config, fetcher=fetcher)
+
+    first = media.ensure()
+    assert fetcher.calls == [config.url]
+
+    # Even with the cached archive gone, an already-extracted tree must not refetch.
+    config.archive_path.unlink()
+    second = media.ensure()
+
+    assert second == first
+    assert fetcher.calls == [config.url]
+
+
+def test_ensure_force_restages(tmp_path: Path) -> None:
+    """``force=True`` re-runs the full pipeline (re-download + re-extract)."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    fetcher = _good_zip_fetcher()
+    media = ApexMedia(config, fetcher=fetcher)
+
+    media.ensure()
+    media.ensure(force=True)
+
+    assert fetcher.calls == [config.url, config.url]
+
+
+def test_ensure_propagates_corrupt_download(tmp_path: Path) -> None:
+    """A corrupt download surfaces as ApexMediaError (no silent staging)."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_recording_fetcher(b"not a zip"))
+
+    with pytest.raises(ApexMediaError):
+        media.ensure()

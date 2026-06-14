@@ -224,6 +224,20 @@ class ApexMedia:
             )
         return apex_dir
 
+    def ensure(self, *, force: bool = False) -> ApexMediaPaths:
+        """Acquire, verify, and extract APEX media; return staged paths.
+
+        Idempotent: an already-extracted tree short-circuits to the staged paths
+        with no network or extract work (even if the cached zip was removed).
+        ``force`` re-runs the whole pipeline.
+        """
+        if not force and self.config.apexins_path.exists():
+            return self.paths()
+        self.download(force=force)
+        self.verify_zip()
+        self.extract(force=force)
+        return self.paths()
+
     def paths(self) -> ApexMediaPaths:
         """Return the resolved, absolute staging paths for downstream consumers."""
         return ApexMediaPaths(
