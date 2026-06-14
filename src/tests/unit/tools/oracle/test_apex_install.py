@@ -354,3 +354,60 @@ def test_start_runs_autoinstall_by_default() -> None:
 
     assert result.exit_code == 0
     auto.assert_called_once()
+
+
+# --- infra apex CLI (Task 2.5) ----------------------------------------------
+
+
+def test_apex_group_has_expected_commands() -> None:
+    """The apex_group exposes install/upgrade/status."""
+    from tools.oracle.cli.apex import apex_group
+
+    assert set(apex_group.commands) == {"install", "upgrade", "status"}
+
+
+def test_apex_group_is_reexported() -> None:
+    """apex_group is exported from both cli and the oracle package."""
+    from tools.oracle import apex_group as pkg_group
+    from tools.oracle.cli import apex_group as cli_group
+
+    assert pkg_group is cli_group
+
+
+def test_apex_install_command_invokes_installer() -> None:
+    """`infra apex install --apex-version` builds the installer and installs."""
+    from click.testing import CliRunner
+
+    from tools.oracle.cli import apex as apex_cli
+
+    runner = CliRunner()
+    with patch.object(apex_cli, "_build_installer") as build:
+        build.return_value.install.return_value = "26.1.0"
+        result = runner.invoke(apex_cli.apex_group, ["install", "--apex-version", "26.1", "--force"])
+
+    assert result.exit_code == 0
+    assert build.call_args.kwargs.get("apex_version") == "26.1"
+    build.return_value.install.assert_called_once_with(force=True)
+
+
+def test_apex_status_command_reports_versions() -> None:
+    """`infra apex status` prints installed and target versions."""
+    from click.testing import CliRunner
+
+    from tools.oracle.cli import apex as apex_cli
+
+    runner = CliRunner()
+    with patch.object(apex_cli, "_build_installer") as build:
+        build.return_value.installed_version.return_value = "26.1.0"
+        build.return_value.media.config.version = "26.1"
+        result = runner.invoke(apex_cli.apex_group, ["status"])
+
+    assert result.exit_code == 0
+    assert "26.1.0" in result.output
+
+
+def test_manage_infra_has_apex_subgroup() -> None:
+    """`manage.py infra apex` resolves (apex subgroup wired into the flat infra group)."""
+    import manage
+
+    assert "apex" in manage.infra_group.commands

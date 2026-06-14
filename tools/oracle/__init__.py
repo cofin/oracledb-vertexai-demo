@@ -34,6 +34,7 @@ __all__ = [
     "WalletConfigurator",
     "WalletInfo",
     # CLI command groups
+    "apex_group",
     "connect_group",
     "database_group",
     "sqlcl_group",
@@ -43,6 +44,7 @@ __all__ = [
 
 # Import CLI command groups
 from tools.oracle.cli import (
+    apex_group,
     connect_group,
     database_group,
     sqlcl_group,
