@@ -171,24 +171,52 @@ class ApexInstaller:
         self.runtime.run_command(["cp", f"{paths.apex_dir}/.", f"{container}:{self.config.container_apex_dir}"])
 
     def provision_workspace(self) -> None:
-        """Provision the COFFEE workspace + ADMIN dev user idempotently (see Task 2.3)."""
+        """Provision the COFFEE workspace + ADMIN dev user idempotently.
+
+        Ported from the removed ``on_init/02_create_apex_workspace.sh``; idempotency
+        is enforced in-DB via existence checks on ``apex_workspaces`` /
+        ``apex_workspace_apex_users``, so re-running is a no-op.
+        """
         workspace = self.config.workspace
         schema = self.config.primary_schema.upper()
-        # Identifiers are config-controlled demo values, not external input (S608 N/A).
-        exists_query = f"SELECT COUNT(*) INTO l_count FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
+        admin = self.config.admin_user
+        password = self.config.admin_password
+        privs = "ADMIN:CREATE:DATA_LOADER:EDIT:RUN:CONVERT"
+        # Identifiers/passwords are config-controlled demo values, not external input (S608 N/A).
+        ws_query = f"SELECT COUNT(*) INTO v_ws FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
+        id_query = f"SELECT workspace_id INTO v_sgid FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
+        user_query = f"SELECT COUNT(*) INTO v_user FROM apex_workspace_apex_users WHERE workspace_name = '{workspace}' AND user_name = '{admin}'"  # noqa: S608
         plsql = (
             "DECLARE\n"
-            "  l_count NUMBER;\n"
+            "  v_ws NUMBER; v_user NUMBER; v_sgid NUMBER;\n"
             "BEGIN\n"
-            f"  {exists_query};\n"
-            "  IF l_count = 0 THEN\n"
+            f"  {ws_query};\n"
+            "  IF v_ws = 0 THEN\n"
             "    apex_instance_admin.add_workspace(\n"
+            "      p_workspace_id   => NULL,\n"
             f"      p_workspace      => '{workspace}',\n"
             f"      p_primary_schema => '{schema}');\n"
+            "    COMMIT;\n"
+            "  END IF;\n"
+            f"  {id_query};\n"
+            "  apex_util.set_security_group_id(p_security_group_id => v_sgid);\n"
+            f"  {user_query};\n"
+            "  IF v_user = 0 THEN\n"
+            "    apex_util.create_user(\n"
+            f"      p_user_name                 => '{admin}',\n"
+            f"      p_web_password              => '{password}',\n"
+            f"      p_developer_privs           => '{privs}',\n"
+            f"      p_default_schema            => '{schema}',\n"
+            "      p_allow_app_building_yn     => 'Y',\n"
+            "      p_allow_sql_workshop_yn     => 'Y',\n"
+            "      p_allow_team_development_yn => 'Y');\n"
+            "    COMMIT;\n"
             "  END IF;\n"
             "END;\n/\n"
         )
-        self._exec_sysdba(plsql)
+        output = self._exec_sysdba(plsql)
+        if "ORA-" in output or "PLS-" in output:
+            raise ApexInstallError(f"COFFEE workspace provisioning failed: {output.strip()}")
 
     def installed_version(self) -> str | None:
         """Return the installed APEX version in the PDB, or None when absent."""

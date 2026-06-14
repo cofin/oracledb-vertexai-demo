@@ -209,3 +209,67 @@ def test_install_fails_loudly_when_target_not_reached() -> None:
 
     with pytest.raises(ApexInstallError):
         installer.install()
+
+
+def _exec_script(runtime: MagicMock) -> str:
+    """Return the single bash -c script passed to run_command."""
+    return runtime.run_command.call_args.args[0][4]
+
+
+def test_provision_workspace_issues_ported_plsql() -> None:
+    """The COFFEE workspace + ADMIN dev user PL/SQL matches the ported script."""
+    installer, runtime = _installer((0, "PL/SQL procedure successfully completed.\n", ""))
+
+    installer.provision_workspace()
+
+    script = _exec_script(runtime)
+    assert "apex_instance_admin.add_workspace" in script
+    assert "p_workspace      => 'COFFEE'" in script
+    assert "p_primary_schema => 'APP'" in script
+    assert "apex_util.set_security_group_id" in script
+    assert "apex_util.create_user" in script
+    assert "'ADMIN'" in script
+    assert "ADMIN:CREATE:DATA_LOADER:EDIT:RUN:CONVERT" in script
+
+
+def test_provision_workspace_has_idempotency_guards() -> None:
+    """Workspace and user creation are guarded by in-DB existence checks."""
+    installer, runtime = _installer((0, "ok\n", ""))
+
+    installer.provision_workspace()
+
+    script = _exec_script(runtime)
+    assert "apex_workspaces WHERE workspace = 'COFFEE'" in script
+    assert "apex_workspace_apex_users" in script
+    assert "IF v_ws = 0" in script
+    assert "IF v_user = 0" in script
+
+
+def test_provision_workspace_interpolates_config() -> None:
+    """Custom schema / workspace / admin password / user flow into the PL/SQL."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    runtime.run_command.return_value = (0, "ok\n", "")
+    db = OracleDatabase(runtime=runtime, config=DatabaseConfig())
+    config = ApexInstallConfig(
+        workspace="CYMBAL",
+        primary_schema="cymbal",
+        admin_user="DEVLEAD",
+        admin_password="Pa55w0rd!",  # noqa: S106
+    )
+    installer = ApexInstaller(runtime, db, MagicMock(), config)
+
+    installer.provision_workspace()
+
+    script = _exec_script(runtime)
+    assert "p_workspace      => 'CYMBAL'" in script
+    assert "p_primary_schema => 'CYMBAL'" in script  # schema upper-cased
+    assert "'DEVLEAD'" in script
+    assert "Pa55w0rd!" in script
+
+
+def test_provision_workspace_raises_on_db_error() -> None:
+    """An ORA-/PLS- error in the output fails loudly."""
+    installer, _ = _installer((0, "ORA-00955: name is already used by an existing object\n", ""))
+
+    with pytest.raises(ApexInstallError):
+        installer.provision_workspace()
