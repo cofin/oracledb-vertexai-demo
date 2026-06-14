@@ -104,10 +104,10 @@ def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> 
     assert config.connection_config["config_dir"] == expected_path
 
 
-def test_service_name_defaults_to_myatp_low(monkeypatch: MonkeyPatch) -> None:
+def test_service_name_defaults_to_freepdb1(monkeypatch: MonkeyPatch) -> None:
     from app.lib.settings import DatabaseSettings
 
-    # clear env to get defaults
+    # clear env to get defaults (local gvenzl/oracle-free PDB)
     monkeypatch.delenv("DATABASE_SERVICE_NAME", raising=False)
     settings = DatabaseSettings()
-    assert settings.SERVICE_NAME == "myatp_low"
+    assert settings.SERVICE_NAME == "freepdb1"

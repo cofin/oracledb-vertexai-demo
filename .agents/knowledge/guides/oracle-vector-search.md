@@ -6,7 +6,7 @@ Current guide for the Cymbal Coffee Oracle 26ai vector stack.
 
 The demo uses one embedding model and one vector shape everywhere:
 
-- Model: `gemini-embedding-2`
+- Model: `gemini-embedding-2-preview`
 - Dimensions: `3072`
 - Storage: `VECTOR(3072, FLOAT32)`
 - Query embedding input: query-purpose instruction plus user text

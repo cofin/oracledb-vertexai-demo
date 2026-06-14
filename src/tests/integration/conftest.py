@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import socket
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,7 +15,7 @@ import pytest
 from litestar.testing import AsyncTestClient
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator, Callable, Generator
 
     from litestar import Litestar
     from sqlspec.adapters.oracledb import OracleAsyncDriver
@@ -34,6 +36,106 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     marker = pytest.mark.xdist_group(name="oracle_integration")
     for item in items:
         item.add_marker(marker)
+
+
+def find_free_port() -> int:
+    """Return an OS-assigned free TCP port on the loopback interface."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture(scope="session")
+def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
+    """Start an ephemeral gvenzl/oracle-free container on a free port for the test session.
+
+    Each run creates a uniquely named container and data volume so tests never share
+    state with the repo-managed dev container (or each other). The gvenzl entrypoint
+    hooks mounted by ``OracleDatabase`` configure the vector-memory pool, so HNSW
+    INMEMORY index migrations succeed. Set ``ORACLE_TEST_REUSE_PORT`` to point at an
+    already-running container and skip the (slow) create/teardown during local iteration.
+    """
+    from tools.oracle.container import ContainerRuntime
+    from tools.oracle.database import DatabaseConfig, OracleDatabase
+
+    password = "SuperSecret1"  # noqa: S105
+    reuse_port = os.getenv("ORACLE_TEST_REUSE_PORT")
+    if reuse_port:
+        yield {
+            "host": "localhost",
+            "port": int(reuse_port),
+            "service_name": "freepdb1",
+            "user": "app",
+            "password": password,
+        }
+        return
+
+    suffix = uuid.uuid4().hex[:8]
+    port = find_free_port()
+    config = DatabaseConfig(
+        container_name=f"oracle-test-{suffix}",
+        host_port=port,
+        app_user="app",
+        app_user_password=password,
+        data_volume_name=f"oracle-test-data-{suffix}",
+    )
+    database = OracleDatabase(runtime=ContainerRuntime(), config=config)
+    database.start(pull=bool(os.getenv("ORACLE_TEST_PULL")))
+    try:
+        yield {"host": "localhost", "port": port, "service_name": "freepdb1", "user": "app", "password": password}
+    finally:
+        with contextlib.suppress(Exception):
+            database.remove(volumes=True, force=True)
+
+
+@pytest.fixture
+def test_settings(
+    oracle_test_container: dict[str, str | int],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[object, None, None]:
+    """Point the app at the ephemeral gvenzl container in local (non-wallet) mode.
+
+    Overrides the root (mocked-DB) ``test_settings`` for integration tests only, so
+    requests resolve against the per-session ephemeral Oracle rather than a shared one.
+    """
+    from app import config as app_config
+    from app.lib import settings as app_settings
+
+    test_dir = tmp_path_factory.mktemp("integration_env")
+    test_env = test_dir / ".env.testing"
+    test_env.write_text(
+        "# Integration test configuration (ephemeral gvenzl/oracle-free)\n"
+        f"DATABASE_USER={oracle_test_container['user']}\n"
+        f"DATABASE_PASSWORD={oracle_test_container['password']}\n"
+        f"DATABASE_HOST={oracle_test_container['host']}\n"
+        f"DATABASE_PORT={oracle_test_container['port']}\n"
+        f"DATABASE_SERVICE_NAME={oracle_test_container['service_name']}\n"
+        "GOOGLE_CLOUD_PROJECT=test-project\n"
+        "GOOGLE_API_KEY=test-api-key\n"
+        "LITESTAR_DEBUG=true\n"
+        "LITESTAR_HOST=127.0.0.1\n"
+        "LITESTAR_PORT=5007\n"
+        "LITESTAR_GRANIAN_IN_SUBPROCESS=false\n"
+        "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true\n"
+        "SECRET_KEY=test-secret-key-32-characters-12\n"
+        "VITE_DEV_MODE=False\n",
+        encoding="utf-8",
+    )
+
+    settings = app_settings.Settings.from_env(str(test_env))
+
+    def get_settings(dotenv_filename: str = ".env.testing") -> object:
+        return settings
+
+    monkeypatch.setattr(app_settings, "get_settings", get_settings)
+    app_settings.Settings.from_env.cache_clear()
+    app_config._reset()
+    try:
+        yield settings
+    finally:
+        app_settings.Settings.from_env.cache_clear()
+        app_config._reset()
 
 
 async def _bootstrap_test_schema(session: OracleAsyncDriver) -> None:
