@@ -9,7 +9,33 @@ from pathlib import Path
 
 import pytest
 
-from tools.oracle.apex_media import ApexMediaConfig
+from tools.oracle.apex_media import ApexMedia, ApexMediaConfig, ApexMediaError
+
+
+def _recording_fetcher(payload: bytes, declared: int | None = None):
+    """A fake fetcher that writes ``payload`` to dest and reports ``declared`` length.
+
+    ``declared=None`` means "report the real byte count" (a well-behaved server);
+    an explicit int simulates a server-declared Content-Length (or ``-1`` unknown).
+    """
+    calls: list[str] = []
+
+    def fetch(url: str, dest: Path) -> int:
+        calls.append(url)
+        dest.write_bytes(payload)
+        return len(payload) if declared is None else declared
+
+    fetch.calls = calls  # type: ignore[attr-defined]
+    return fetch
+
+
+def _exploding_fetcher():
+    """A fetcher that fails the test if it is ever called (asserts a cache hit)."""
+
+    def fetch(url: str, dest: Path) -> int:  # pragma: no cover - must not run
+        raise AssertionError("fetcher must not be called on a cache hit")
+
+    return fetch
 
 
 def test_config_defaults() -> None:
@@ -80,3 +106,84 @@ def test_from_env_defaults_to_quiet_values(monkeypatch: pytest.MonkeyPatch) -> N
     assert config.version == "26.1"
     assert config.english_only is True
     assert config.cache_root == Path("tools/oracle/downloads/apex")
+
+
+def test_download_fetches_when_absent(tmp_path: Path) -> None:
+    """A missing archive is fetched once and written to the per-version cache."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    fetcher = _recording_fetcher(b"PK\x03\x04 fake zip bytes")
+    media = ApexMedia(config, fetcher=fetcher)
+
+    archive = media.download()
+
+    assert archive == config.archive_path
+    assert archive.read_bytes() == b"PK\x03\x04 fake zip bytes"
+    assert fetcher.calls == [config.url]
+
+
+def test_download_creates_version_dir(tmp_path: Path) -> None:
+    """The per-version cache directory is created on demand."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path / "nested" / "cache")
+    media = ApexMedia(config, fetcher=_recording_fetcher(b"data"))
+
+    media.download()
+
+    assert config.version_dir.is_dir()
+
+
+def test_download_skips_when_cached(tmp_path: Path) -> None:
+    """A valid cached archive is reused without any network fetch."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    config.archive_path.parent.mkdir(parents=True)
+    config.archive_path.write_bytes(b"already here")
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    archive = media.download()
+
+    assert archive.read_bytes() == b"already here"
+
+
+def test_download_force_refetches_cached(tmp_path: Path) -> None:
+    """``force=True`` re-downloads even when a cached archive exists."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    config.archive_path.parent.mkdir(parents=True)
+    config.archive_path.write_bytes(b"stale")
+    fetcher = _recording_fetcher(b"fresh bytes")
+    media = ApexMedia(config, fetcher=fetcher)
+
+    media.download(force=True)
+
+    assert config.archive_path.read_bytes() == b"fresh bytes"
+    assert fetcher.calls == [config.url]
+
+
+def test_download_raises_on_size_mismatch(tmp_path: Path) -> None:
+    """A truncated download (declared != received) fails loudly and is removed."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_recording_fetcher(b"12345", declared=100))
+
+    with pytest.raises(ApexMediaError, match="size mismatch"):
+        media.download()
+
+    assert not config.archive_path.exists()
+
+
+def test_download_raises_on_empty(tmp_path: Path) -> None:
+    """An empty download is rejected and the zero-byte file removed."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_recording_fetcher(b"", declared=-1))
+
+    with pytest.raises(ApexMediaError, match="empty"):
+        media.download()
+
+    assert not config.archive_path.exists()
+
+
+def test_download_accepts_unknown_content_length(tmp_path: Path) -> None:
+    """A server that omits Content-Length (declared -1) is accepted when non-empty."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_recording_fetcher(b"bytes without length", declared=-1))
+
+    archive = media.download()
+
+    assert archive.read_bytes() == b"bytes without length"

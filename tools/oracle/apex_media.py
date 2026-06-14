@@ -18,10 +18,23 @@ specs that downstream chapters consume.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from rich.console import Console
+
 _FALSEY = {"0", "false", "no", "off", ""}
+_DOWNLOAD_TIMEOUT_SECONDS = 600.0
+_DOWNLOAD_CHUNK_BYTES = 1 << 20
+
+# A fetcher streams ``url`` into ``dest`` and returns the server-declared
+# Content-Length (or ``-1`` when the server omits it). Injected for testability.
+Fetcher = Callable[[str, Path], int]
+
+
+class ApexMediaError(RuntimeError):
+    """Raised when APEX media cannot be acquired, verified, or extracted."""
 
 
 @dataclass
@@ -78,3 +91,82 @@ class ApexMediaConfig:
             english_only=english,
             cache_root=Path(os.getenv("APEX_CACHE_ROOT", "tools/oracle/downloads/apex")),
         )
+
+
+def _httpx_fetch(url: str, dest: Path) -> int:
+    """Stream ``url`` into ``dest`` with a progress bar; return declared length or -1."""
+    import httpx
+    from rich.progress import (
+        BarColumn,
+        DownloadColumn,
+        Progress,
+        TextColumn,
+        TransferSpeedColumn,
+    )
+
+    declared = -1
+    with httpx.stream("GET", url, follow_redirects=True, timeout=_DOWNLOAD_TIMEOUT_SECONDS) as response:
+        response.raise_for_status()
+        length_header = response.headers.get("Content-Length")
+        declared = int(length_header) if length_header is not None else -1
+        with (
+            dest.open("wb") as handle,
+            Progress(
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+            ) as progress,
+        ):
+            total = declared if declared >= 0 else None
+            task = progress.add_task(f"APEX {dest.name}", total=total)
+            for chunk in response.iter_bytes(chunk_size=_DOWNLOAD_CHUNK_BYTES):
+                handle.write(chunk)
+                progress.update(task, advance=len(chunk))
+    return declared
+
+
+class ApexMedia:
+    """Acquire, verify, extract, and stage APEX release media on the host."""
+
+    def __init__(
+        self,
+        config: ApexMediaConfig | None = None,
+        *,
+        fetcher: Fetcher | None = None,
+        console: Console | None = None,
+    ) -> None:
+        self.config = config or ApexMediaConfig()
+        self._fetch = fetcher or _httpx_fetch
+        self.console = console or Console()
+
+    def download(self, *, force: bool = False) -> Path:
+        """Download the APEX zip into the per-version cache, idempotently.
+
+        A valid (non-empty) cached archive is reused unless ``force`` is set. A
+        truncated or empty download fails loudly and the partial file is removed.
+        """
+        archive = self.config.archive_path
+        if not force and archive.exists() and archive.stat().st_size > 0:
+            return archive
+
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        declared = self._fetch(self.config.url, archive)
+        self._validate_size(archive, declared)
+        return archive
+
+    @staticmethod
+    def _validate_size(archive: Path, declared: int) -> None:
+        """Reject empty or size-mismatched downloads, removing the bad partial."""
+        actual = archive.stat().st_size if archive.exists() else 0
+        problem: str | None = None
+        if actual == 0:
+            problem = f"Downloaded APEX archive is empty: {archive}"
+        elif declared >= 0 and actual != declared:
+            problem = (
+                f"APEX download size mismatch for {archive}: "
+                f"expected {declared} bytes, received {actual}"
+            )
+        if problem is not None:
+            archive.unlink(missing_ok=True)
+            raise ApexMediaError(problem)
