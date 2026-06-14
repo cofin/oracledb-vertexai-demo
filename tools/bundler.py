@@ -260,13 +260,8 @@ def download_with_retry(url: str, dest: Path, max_retries: int = 3) -> None:
 
     for attempt in range(max_retries):
         try:
-            console.print(f"[blue]Downloading[/] {url}...")
-            urllib.request.urlretrieve(url, dest)  # noqa: S310
-            if dest.exists() and dest.stat().st_size > 0:
-                size_mb = dest.stat().st_size / (1024 * 1024)
-                console.print(f"[green]OK[/] Downloaded {size_mb:.1f} MB")
+            if download_once(url, dest):
                 return
-            console.print("[yellow]Warning:[/] Downloaded file appears empty, retrying...")
         except urllib.error.URLError as exc:
             if attempt < max_retries - 1:
                 console.print(f"[yellow]Warning:[/] Download failed (attempt {attempt + 1}/{max_retries}): {exc}")
@@ -274,6 +269,18 @@ def download_with_retry(url: str, dest: Path, max_retries: int = 3) -> None:
             else:
                 msg = f"Failed to download after {max_retries} attempts: {exc}"
                 raise click.ClickException(msg) from exc
+
+
+def download_once(url: str, dest: Path) -> bool:
+    """Download a file once and return whether it produced non-empty output."""
+    console.print(f"[blue]Downloading[/] {url}...")
+    urllib.request.urlretrieve(url, dest)  # noqa: S310
+    if dest.exists() and dest.stat().st_size > 0:
+        size_mb = dest.stat().st_size / (1024 * 1024)
+        console.print(f"[green]OK[/] Downloaded {size_mb:.1f} MB")
+        return True
+    console.print("[yellow]Warning:[/] Downloaded file appears empty, retrying...")
+    return False
 
 
 def find_site_packages(python_root: Path, target: str, python_version: str) -> Path:

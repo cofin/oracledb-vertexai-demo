@@ -297,53 +297,7 @@ class ConnectionTester:
             )
 
         try:
-            import oracledb
-
-            # Configure TNS_ADMIN for wallet connections
-            original_tns = os.environ.get("TNS_ADMIN")
-            if config.wallet_location:
-                os.environ["TNS_ADMIN"] = str(config.wallet_location)
-
-            try:
-                dsn = config.get_dsn()
-                conn_params = {
-                    "user": config.user,
-                    "password": config.password,
-                    "dsn": dsn,
-                }
-
-                # Add wallet password if configured
-                if config.wallet_password:
-                    conn_params["wallet_password"] = config.wallet_password
-
-                with oracledb.connect(**conn_params) as connection:
-                    # Execute test query
-                    with connection.cursor() as cursor:
-                        cursor.execute("SELECT 'OK' FROM DUAL")
-                        cursor.fetchone()
-
-                    version = connection.version
-                    connection_time_ms = (time.time() - start_time) * 1000
-
-                    # Build descriptive message
-                    mode_desc = "managed container" if config.mode == DeploymentMode.MANAGED else "external database"
-                    wallet_desc = " (wallet)" if config.wallet_location else ""
-                    message = f"Successfully connected to {mode_desc}{wallet_desc}: {dsn}"
-
-                    return ConnectionTestResult(
-                        success=True,
-                        mode=config.mode,
-                        message=message,
-                        connection_time_ms=connection_time_ms,
-                        server_version=version,
-                    )
-            finally:
-                # Restore original TNS_ADMIN
-                if original_tns:
-                    os.environ["TNS_ADMIN"] = original_tns
-                elif "TNS_ADMIN" in os.environ:
-                    del os.environ["TNS_ADMIN"]
-
+            return self._run_connection_probe(config, start_time=start_time)
         except Exception as e:  # noqa: BLE001
             error_msg = str(e)
             suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
@@ -355,6 +309,65 @@ class ConnectionTester:
                 error=error_msg,
                 suggestions=suggestions,
             )
+
+    def _run_connection_probe(self, config: ConnectionConfig, *, start_time: float) -> ConnectionTestResult:
+        """Run one wallet-aware connection probe."""
+        import time
+
+        import oracledb
+
+        original_tns = os.environ.get("TNS_ADMIN")
+        if config.wallet_location:
+            os.environ["TNS_ADMIN"] = str(config.wallet_location)
+        try:
+            dsn = config.get_dsn()
+            conn_params = self._connection_params(config, dsn)
+            with oracledb.connect(**conn_params) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 'OK' FROM DUAL")
+                    cursor.fetchone()
+                connection_time_ms = (time.time() - start_time) * 1000
+                return self._successful_connection_result(config, dsn, connection.version, connection_time_ms)
+        finally:
+            if original_tns:
+                os.environ["TNS_ADMIN"] = original_tns
+            else:
+                os.environ.pop("TNS_ADMIN", None)
+
+    @staticmethod
+    def _connection_params(config: ConnectionConfig, dsn: str) -> dict[str, Any]:
+        """Build python-oracledb connection parameters."""
+        conn_params = {
+            "user": config.user,
+            "password": config.password,
+            "dsn": dsn,
+        }
+        if config.wallet_password:
+            conn_params["wallet_password"] = config.wallet_password
+        if config.wallet_location:
+            wallet_path = str(config.wallet_location)
+            conn_params["wallet_location"] = wallet_path
+            conn_params["config_dir"] = wallet_path
+        return conn_params
+
+    @staticmethod
+    def _successful_connection_result(
+        config: ConnectionConfig,
+        dsn: str,
+        version: str,
+        connection_time_ms: float,
+    ) -> ConnectionTestResult:
+        """Build a successful connection-test result."""
+        mode_desc = "managed container" if config.mode == DeploymentMode.MANAGED else "external database"
+        wallet_desc = " (wallet)" if config.wallet_location else ""
+        message = f"Successfully connected to {mode_desc}{wallet_desc}: {dsn}"
+        return ConnectionTestResult(
+            success=True,
+            mode=config.mode,
+            message=message,
+            connection_time_ms=connection_time_ms,
+            server_version=version,
+        )
 
     def get_connection_info(
         self,

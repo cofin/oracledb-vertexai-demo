@@ -25,8 +25,9 @@ This spec defines the detailed implementation plan to migrate our local developm
   * Add `host_mtls_port = 1522` and `container_mtls_port = 1522`.
   * Add `host_https_port = 8443` and `container_https_port = 8443`.
   * Add `host_mongo_port = 27017` and `container_mongo_port = 27017`.
-  * Add configuration for `admin_username = "admin"` and `admin_password = "super-secret"`.
-  * Add `wallet_password = "super-secret"`.
+  * Add configuration for `admin_username = "admin"` and `admin_password = "SuperSecret1"`.
+  * Add `wallet_password = "SuperSecret1"`.
+  * Add `app_username`/`app_password` from `DATABASE_USER`/`DATABASE_PASSWORD` for the application schema.
   * Add `wallet_location = ".envs/tns"`.
 * **`_build_run_command()`**:
   * Resolve absolute path of `.envs/tns` on the host, create it if it doesn't exist, and make sure it has full write permissions (`chmod 0o777`).
@@ -38,7 +39,8 @@ This spec defines the detailed implementation plan to migrate our local developm
   * Map environment variables: `ADMIN_PASSWORD` and `WALLET_PASSWORD` (set to `admin_password` and `wallet_password` respectively).
   * Remove environment variables `APP_USER` and `APP_USER_PASSWORD` (ADB container does not automatically initialize these).
   * Update volume mappings:
-    - `-v {volume_name}:/data`
+    - `-v {data_location}:/u01/data:z`
+    - `-v {oradata_location}:/u01/app/oracle/oradata:z`
     - `-v {absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z`
   * Add container privileges flags: `--cap-add SYS_ADMIN` and `--device /dev/fuse`.
   * Remove the directory loop mounting `/container-entrypoint-initdb.d` and `/container-entrypoint-startdb.d`.
@@ -49,9 +51,11 @@ This spec defines the detailed implementation plan to migrate our local developm
     import oracledb
     # thin-mode wallet connection
     conn = oracledb.connect(
-        user="admin",
+        user="ADMIN",
         password=self.config.admin_password,
         dsn="myatp_low",
+        wallet_location=str(absolute_wallet_path),
+        config_dir=str(absolute_wallet_path),
         wallet_password=self.config.wallet_password,
     )
     ```
@@ -62,10 +66,12 @@ This spec defines the detailed implementation plan to migrate our local developm
     BEGIN
         SELECT COUNT(*) INTO user_exists FROM dba_users WHERE username = 'APP';
         IF user_exists = 0 THEN
-            EXECUTE IMMEDIATE 'CREATE USER app IDENTIFIED BY "super-secret"';
-            EXECUTE IMMEDIATE 'GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO app';
-            EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO app';
+            EXECUTE IMMEDIATE 'CREATE USER app IDENTIFIED BY "SuperSecret1"';
+        ELSE
+            EXECUTE IMMEDIATE 'ALTER USER app IDENTIFIED BY "SuperSecret1" ACCOUNT UNLOCK';
         END IF;
+        EXECUTE IMMEDIATE 'GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO app';
+        EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO app';
     END;
     ```
 * **`start()`**:
@@ -79,8 +85,10 @@ This spec defines the detailed implementation plan to migrate our local developm
 * **`create_env_interactive()`**:
   * Modify `managed` mode environment variables:
     ```env
-    DATABASE_URL=oracle+oracledb://app:super-secret@myatp_low
-    WALLET_PASSWORD=super-secret
+    DATABASE_URL=oracle+oracledb://app:SuperSecret1@myatp_low
+    DATABASE_USER=app
+    DATABASE_PASSWORD=SuperSecret1
+    WALLET_PASSWORD=SuperSecret1
     TNS_ADMIN=.envs/tns
     DATABASE_SERVICE_NAME=myatp_low
     ```
@@ -108,26 +116,31 @@ This spec defines the detailed implementation plan to migrate our local developm
     ```python
     absolute_wallet_path = str(Path(self.WALLET_LOCATION).resolve())
     os.environ["TNS_ADMIN"] = absolute_wallet_path
+    pool_config["wallet_location"] = absolute_wallet_path
+    pool_config["config_dir"] = absolute_wallet_path
     ```
-  * Keep the existing `is_autonomous` and `pool_config` flow without any changes.
+  * Keep the existing `is_autonomous` pool flow, but set both `wallet_location` and `config_dir` for thin-mode wallet connections.
 
 ---
 
 ## 4.0 Implementation Plan
 
 ### Phase 1: Environment and Settings Setup
-* [ ] **Task 1.1**: Update `tools/lib/utils.py` to write Autonomous-compatible variables (`DATABASE_URL`, `WALLET_PASSWORD`, `TNS_ADMIN`) for `managed` mode.
-* [ ] **Task 1.2**: Update `src/app/lib/settings.py` to force-resolve `WALLET_LOCATION` to an absolute path.
-* [ ] **Task 1.3**: Validate settings parsing under multi-directory execution environments by running the unit tests:
+* [x] **Task 1.1**: Update `tools/lib/utils.py` to write Autonomous-compatible variables (`DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASSWORD`, `WALLET_PASSWORD`, `TNS_ADMIN`) for `managed` mode.
+* [x] **Task 1.2**: Update `src/app/lib/settings.py` to force-resolve `WALLET_LOCATION` to an absolute path.
+* [x] **Task 1.3**: Validate settings parsing under multi-directory execution environments by running the unit tests:
   ```bash
   uv run pytest src/tests/unit/app/lib/test_settings.py
   ```
 
 ### Phase 2: Database Container Lifecycle & Mounting
-* [ ] **Task 2.1**: Update `tools/oracle/database.py` with port mappings (1521, 1522, 8443, 27017), capabilities, volume targets, and system passwords.
-* [ ] **Task 2.2**: Add the direct directory bind mount `.envs/tns` -> `/u01/app/oracle/wallets/tls_wallet:z` within `_build_run_command()`, including absolute path resolution and permissions check.
-* [ ] **Task 2.3**: Implement `initialize_db_users()` to run user creation statements against `myatp_low` using the local wallet files written directly to disk.
-* [ ] **Task 2.4**: Update `tools/cli/doctor.py` to check for container memory requirements (8 GiB).
+* [x] **Task 2.1**: Update `tools/oracle/database.py` with port mappings (1521, 1522, 8443, 27017), capabilities, volume targets, and system passwords.
+* [x] **Task 2.2**: Add the direct directory bind mount `.envs/tns` -> `/u01/app/oracle/wallets/tls_wallet:z` within `_build_run_command()`, including absolute path resolution and permissions check.
+* [x] **Task 2.3**: Implement `initialize_db_users()` to run user creation statements against `myatp_low` using the local wallet files written directly to disk.
+* [x] **Task 2.4**: Update `tools/cli/doctor.py` to check for container memory requirements (8 GiB).
+
+### Phase 3: Runtime Verification
+* [x] **Task 3.1**: Run the ADB container verification path: `make start-infra`, wallet/app schema verification, migrations/fixtures, `make test`, `make stop-infra`, and idempotent `make wipe-infra`.
 
 ---
 
@@ -151,22 +164,25 @@ This spec defines the detailed implementation plan to migrate our local developm
      uv run python manage.py database connect test
      ```
 4. **Migrations & Fixtures Verification**:
-   * Run migrations using the wallet connection:
+   * Run migrations and load fixtures using the wallet connection:
      ```bash
-     make migrate
-     ```
-   * Load fixture data:
-     ```bash
-     make load-fixtures
+     uv run coffee upgrade
      ```
 5. **App Test Suite Validation**:
    * Run the whole test suite:
      ```bash
      make test
      ```
+6. **Infrastructure Cleanup Validation**:
+   * Stop and wipe the local container, then confirm the already-removed path is idempotent:
+     ```bash
+     make stop-infra
+     make wipe-infra
+     make wipe-infra
+     ```
 
 ### Manual Verification
 1. **Expose APEX Dashboard**:
    * Open `https://localhost:8443/ords/apex` in your browser.
    * Verify that the APEX workspace administration login page displays.
-   * Log in with username `ADMIN` and password `super-secret` to verify connection.
+   * Log in with username `ADMIN` and password `SuperSecret1` to verify connection.

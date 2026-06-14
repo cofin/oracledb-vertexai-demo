@@ -5,10 +5,37 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import rich_click as click
 from rich.console import Console
 
+if TYPE_CHECKING:
+    from tools.oracle.database import OracleDatabase
+
 console = Console()
+
+
+def _load_env_file(env_file: str | None) -> None:
+    """Load an explicit env file, or the project .env when present."""
+    env_path = Path(env_file or ".env")
+    if not env_path.exists():
+        return
+
+    from dotenv import load_dotenv
+
+    load_dotenv(env_path, override=True)
+
+
+def _database() -> OracleDatabase:
+    """Create the configured Oracle database manager."""
+    from tools.oracle.container import ContainerRuntime
+    from tools.oracle.database import DatabaseConfig, OracleDatabase
+
+    runtime = ContainerRuntime()
+    config = DatabaseConfig.from_env()
+    return OracleDatabase(runtime=runtime, config=config, console=console)
 
 
 @click.group(name="database")
@@ -29,67 +56,61 @@ def database_start(pull: bool, recreate: bool, env_file: str | None) -> None:
 
     Deploys the Oracle Database Free container with local demo configuration.
     """
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        console.print("[yellow]Starting Oracle database container...[/yellow]")
-        db.start(pull=pull, recreate=recreate)
-        console.print("[green]✓ Database started successfully![/green]")
-
+        _database_start(pull=pull, recreate=recreate, env_file=env_file)
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
         raise click.Abort from e
+
+
+def _database_start(*, pull: bool, recreate: bool, env_file: str | None) -> None:
+    """Start the configured Oracle database."""
+    _load_env_file(env_file)
+    db = _database()
+    console.print("[yellow]Starting Oracle database container...[/yellow]")
+    db.start(pull=pull, recreate=recreate)
+    console.print("[green]✓ Database started successfully![/green]")
 
 
 @database_group.command(name="stop")
 @click.option("--timeout", default=30, help="Seconds to wait before forcing stop")
 def database_stop(timeout: int) -> None:
     """Stop Oracle database container."""
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        if not db.is_running():
-            console.print("[yellow]Container is not running[/yellow]")
-            return
-
-        console.print("[yellow]Stopping Oracle database container...[/yellow]")
-        db.stop(timeout=timeout)
-        console.print("[green]✓ Database stopped[/green]")
-
+        _database_stop(timeout=timeout)
     except Exception as e:
         console.print(f"[red]✗ Failed to stop database: {e}[/red]")
         raise click.Abort from e
+
+
+def _database_stop(*, timeout: int) -> None:
+    """Stop the configured Oracle database."""
+    db = _database()
+    if not db.is_running():
+        console.print("[yellow]Container is not running[/yellow]")
+        return
+    console.print("[yellow]Stopping Oracle database container...[/yellow]")
+    db.stop(timeout=timeout)
+    console.print("[green]✓ Database stopped[/green]")
 
 
 @database_group.command(name="restart")
 @click.option("--timeout", default=30, help="Seconds to wait for stop")
 def database_restart(timeout: int) -> None:
     """Restart Oracle database container."""
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        console.print("[yellow]Restarting Oracle database container...[/yellow]")
-        db.restart(timeout=timeout)
-        console.print("[green]✓ Database restarted[/green]")
-
+        _database_restart(timeout=timeout)
     except Exception as e:
         console.print(f"[red]✗ Failed to restart database: {e}[/red]")
         raise click.Abort from e
+
+
+def _database_restart(*, timeout: int) -> None:
+    """Restart the configured Oracle database."""
+    db = _database()
+    console.print("[yellow]Restarting Oracle database container...[/yellow]")
+    db.restart(timeout=timeout)
+    console.print("[green]✓ Database restarted[/green]")
 
 
 @database_group.command(name="remove")
@@ -98,21 +119,23 @@ def database_restart(timeout: int) -> None:
 @click.confirmation_option(prompt="Are you sure you want to remove the container?")
 def database_remove(volumes: bool, force: bool) -> None:
     """Remove Oracle database container."""
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
+    from tools.oracle.container import ContainerNotFoundError
 
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        console.print("[yellow]Removing Oracle database container...[/yellow]")
-        db.remove(volumes=volumes, force=force)
-        console.print("[green]✓ Database container removed[/green]")
-
+        _database_remove(volumes=volumes, force=force)
+    except ContainerNotFoundError:
+        console.print("[yellow]Container already removed[/yellow]")
     except Exception as e:
         console.print(f"[red]✗ Failed to remove database: {e}[/red]")
         raise click.Abort from e
+
+
+def _database_remove(*, volumes: bool, force: bool) -> None:
+    """Remove the configured Oracle database."""
+    db = _database()
+    console.print("[yellow]Removing Oracle database container...[/yellow]")
+    db.remove(volumes=volumes, force=force)
+    console.print("[green]✓ Database container removed[/green]")
 
 
 @database_group.command(name="logs")
@@ -121,20 +144,8 @@ def database_remove(volumes: bool, force: bool) -> None:
 @click.option("--since", help="Show logs since timestamp/duration")
 def database_logs(follow: bool, tail: int | None, since: str | None) -> None:
     """View database container logs."""
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        if not db.is_running():
-            console.print("[yellow]Container is not running[/yellow]")
-            return
-
-        db.logs(follow=follow, tail=tail, since=since)
-
+        _database_logs(follow=follow, tail=tail, since=since)
     except KeyboardInterrupt:
         console.print("\n[dim]Stopped following logs[/dim]")
     except Exception as e:
@@ -142,36 +153,43 @@ def database_logs(follow: bool, tail: int | None, since: str | None) -> None:
         raise click.Abort from e
 
 
+def _database_logs(*, follow: bool, tail: int | None, since: str | None) -> None:
+    """Print logs for the configured Oracle database."""
+    db = _database()
+    if not db.is_running():
+        console.print("[yellow]Container is not running[/yellow]")
+        return
+    db.logs(follow=follow, tail=tail, since=since)
+
+
 @database_group.command(name="status")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed status")
 def database_status(verbose: bool) -> None:
     """Check database container status."""
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
     try:
-        runtime = ContainerRuntime()
-        config = DatabaseConfig.from_env()
-        db = OracleDatabase(runtime=runtime, config=config, console=console)
-
-        status_info = db.status()
-
-        if status_info.exists:
-            console.print(f"\n[bold]Container:[/bold] {config.container_name}")
-            console.print(f"[bold]Running:[/bold] {'Yes' if status_info.running else 'No'}")
-            console.print(f"[bold]Healthy:[/bold] {'Yes' if status_info.healthy else 'Unknown'}")
-
-            if verbose:
-                console.print(f"\n[bold]Image:[/bold] {status_info.image}")
-                if status_info.created_at:
-                    console.print(f"[bold]Created:[/bold] {status_info.created_at}")
-                if status_info.uptime:
-                    console.print(f"[bold]Uptime:[/bold] {status_info.uptime}")
-                if status_info.ports:
-                    console.print(f"[bold]Ports:[/bold] {status_info.ports}")
-        else:
-            console.print(f"[yellow]Container {config.container_name} does not exist[/yellow]")
-
+        _database_status(verbose=verbose)
     except Exception as e:
         console.print(f"[red]✗ Failed to get status: {e}[/red]")
         raise click.Abort from e
+
+
+def _database_status(*, verbose: bool) -> None:
+    """Print status for the configured Oracle database."""
+    db = _database()
+    status_info = db.status()
+    config = db.config
+    if not status_info.exists:
+        console.print(f"[yellow]Container {config.container_name} does not exist[/yellow]")
+        return
+    console.print(f"\n[bold]Container:[/bold] {config.container_name}")
+    console.print(f"[bold]Running:[/bold] {'Yes' if status_info.running else 'No'}")
+    console.print(f"[bold]Healthy:[/bold] {'Yes' if status_info.healthy else 'Unknown'}")
+    if not verbose:
+        return
+    console.print(f"\n[bold]Image:[/bold] {status_info.image}")
+    if status_info.created_at:
+        console.print(f"[bold]Created:[/bold] {status_info.created_at}")
+    if status_info.uptime:
+        console.print(f"[bold]Uptime:[/bold] {status_info.uptime}")
+    if status_info.ports:
+        console.print(f"[bold]Ports:[/bold] {status_info.ports}")

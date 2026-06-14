@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from click.testing import CliRunner
-
 from tools.cli.doctor import doctor_command
 
 if TYPE_CHECKING:
@@ -26,7 +25,7 @@ def test_doctor_managed_mode_warns_on_low_memory(
 ) -> None:
     """Verify that doctor command warns if container runtime has less than 8.5 GB allocated."""
     mock_check_env.return_value = True
-    mock_which.side_effect = lambda cmd: "/usr/bin/" + cmd if cmd in ["uv", "docker"] else None
+    mock_which.side_effect = lambda cmd: "/usr/bin/" + cmd if cmd in {"uv", "docker"} else None
 
     def run_cmd_side_effect(cmd: list[str], check: bool = False) -> tuple[int, str, str]:
         if "uv" in cmd:
@@ -54,7 +53,7 @@ def test_doctor_managed_mode_no_warning_on_sufficient_memory(
 ) -> None:
     """Verify that doctor command does not warn if container runtime has enough memory."""
     mock_check_env.return_value = True
-    mock_which.side_effect = lambda cmd: "/usr/bin/" + cmd if cmd in ["uv", "docker"] else None
+    mock_which.side_effect = lambda cmd: "/usr/bin/" + cmd if cmd in {"uv", "docker"} else None
 
     def run_cmd_side_effect(cmd: list[str], check: bool = False) -> tuple[int, str, str]:
         if "uv" in cmd:

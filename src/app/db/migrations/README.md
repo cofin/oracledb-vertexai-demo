@@ -61,11 +61,39 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 The initial Oracle 26ai schema in this project includes:
 
-- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-001`.
+- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2`.
 - `store` table for location data with `JSON`-encoded business hours.
 - `store_product_inventory` table for curated store-level product availability.
 - `response_cache`, `embedding_cache`, and `search_metric` support tables.
 - HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product` and `embedding_cache`.
+
+## Schema Annotations
+
+The baseline DDL demonstrates Oracle AI Database 26ai schema annotations
+inline in the existing `CREATE TABLE`, column definition, and supported
+`CREATE INDEX` statements. `COMMENT ON` statements remain in place for
+compatibility with older tooling; annotations carry richer application metadata
+such as embedding model, dimensions, distance metric, cache role, and the
+privacy boundary for store coordinates.
+
+Inspect the applied metadata through Oracle's annotation dictionary views:
+
+```sql
+SELECT object_name,
+       object_type,
+       column_name,
+       annotation_name,
+       annotation_value
+FROM user_annotations_usage
+WHERE object_name IN (
+    'PRODUCT',
+    'STORE',
+    'STORE_PRODUCT_INVENTORY',
+    'EMBEDDING_CACHE',
+    'PRODUCT_IN_STOCK_IDX'
+)
+ORDER BY object_name, column_name, annotation_name;
+```
 
 ## Vector Memory Pool
 

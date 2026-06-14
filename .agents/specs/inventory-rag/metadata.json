@@ -3,7 +3,9 @@
   "type": "feature",
   "status": "planned",
   "parent_prd": "inventory",
+  "beads_epic_id": "oracledb-vertexai-invrag",
   "created_at": "2026-05-04T22:47:30Z",
-  "updated_at": "2026-05-04T22:47:30Z",
+  "updated_at": "2026-06-13T20:40:04Z",
+  "synced_at": "2026-06-13T20:40:04Z",
   "description": "Inventory-Aware RAG"
 }

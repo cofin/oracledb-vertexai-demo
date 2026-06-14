@@ -41,28 +41,41 @@ def display_fixture_list() -> None:
     table.add_column("Status", ratio=2)
 
     for fixture_file in fixture_files:
-        table_name = fixture_file.name.replace(".json.gz", "").replace(".json", "")
-        try:
-            if fixture_file.suffix == ".gz":
-                with gzip.open(fixture_file, "rb") as f:
-                    data = from_json(f.read())
-            else:
-                data = from_json(fixture_file.read_text(encoding="utf-8"))
-
-            records = str(len(data)) if isinstance(data, list) else "1"
-            size_bytes = fixture_file.stat().st_size
-            size_mb = size_bytes / 1024 / 1024
-            size = f"{size_mb:.1f} MB" if size_mb > 1 else f"{size_bytes / 1024:.1f} KB"
-            status = "[green]Ready[/green]"
-        except (OSError, PermissionError, ValueError) as e:
-            records = "[dim]N/A[/dim]"
-            size = "[dim]N/A[/dim]"
-            status = f"[red]Error: {e}[/red]"
-
-        table.add_row(table_name, fixture_file.name, records, size, status)
+        table.add_row(*fixture_list_row(fixture_file))
 
     console.print(table)
     console.print()
+
+
+def fixture_list_row(fixture_file: Path) -> tuple[str, str, str, str, str]:
+    """Build one row for the fixture listing table."""
+    table_name = fixture_file.name.replace(".json.gz", "").replace(".json", "")
+    try:
+        data = read_fixture_preview(fixture_file)
+        records = str(len(data)) if isinstance(data, list) else "1"
+        size = format_file_size(fixture_file.stat().st_size)
+        status = "[green]Ready[/green]"
+    except (OSError, PermissionError, ValueError) as e:
+        records = "[dim]N/A[/dim]"
+        size = "[dim]N/A[/dim]"
+        status = f"[red]Error: {e}[/red]"
+    return table_name, fixture_file.name, records, size, status
+
+
+def read_fixture_preview(fixture_file: Path) -> Any:
+    """Read a fixture file for listing metadata."""
+    if fixture_file.suffix == ".gz":
+        with gzip.open(fixture_file, "rb") as f:
+            return from_json(f.read())
+    return from_json(fixture_file.read_text(encoding="utf-8"))
+
+
+def format_file_size(size_bytes: int) -> str:
+    """Format a byte count for CLI display."""
+    size_mb = size_bytes / 1024 / 1024
+    if size_mb > 1:
+        return f"{size_mb:.1f} MB"
+    return f"{size_bytes / 1024:.1f} KB"
 
 
 async def load_fixture_data(tables: str | None) -> None:

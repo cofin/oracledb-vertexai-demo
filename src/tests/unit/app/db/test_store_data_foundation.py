@@ -33,8 +33,27 @@ def test_store_data_foundation_stays_in_baseline_migration() -> None:
     assert "CONSTRAINT store_product_inventory_uk UNIQUE (store_id, product_id)" in migration
 
 
+def test_baseline_migration_uses_inline_schema_annotations() -> None:
+    migration = (MIGRATIONS_DIR / "0001_cymball_coffee_products.sql").read_text(encoding="utf-8")
+
+    assert "embedding VECTOR(3072, FLOAT32)\n        ANNOTATIONS (" in migration
+    assert ") INMEMORY PRIORITY HIGH\nANNOTATIONS (" in migration
+    assert ")\nANNOTATIONS (\n    Display 'Cymbal Coffee stores'" in migration
+    assert "stock_status VARCHAR2(20) NOT NULL\n        ANNOTATIONS (" in migration
+    assert "CREATE TABLE embedding_cache" in migration
+    assert "Embedding_Model 'gemini-embedding-2'" in migration
+    assert "Embedding_Purpose 'document'" in migration
+    assert "CREATE INDEX product_in_stock_idx ON product (in_stock)\nANNOTATIONS (" in migration
+    assert "ALTER TABLE product ANNOTATIONS" not in migration
+
+
 def test_fixture_table_order_loads_inventory_after_parents() -> None:
     assert COFFEE_SHOP_TABLES == ["store", "product", "store_product_inventory"]
+
+
+def test_inventory_fixture_uses_single_gzipped_load_artifact() -> None:
+    assert (FIXTURES_DIR / "store_product_inventory.json.gz").is_file()
+    assert not (FIXTURES_DIR / "store_product_inventory.json").exists()
 
 
 def test_store_fixtures_include_coordinates_timezone_and_dallas() -> None:

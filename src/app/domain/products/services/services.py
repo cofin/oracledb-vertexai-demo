@@ -33,6 +33,18 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
+GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2"
+EMBEDDING_PURPOSE_INSTRUCTIONS = {
+    "query": (
+        "Task: Generate an embedding for a search query to retrieve relevant "
+        "Cymbal Coffee menu and store availability documents."
+    ),
+    "document": (
+        "Task: Generate an embedding for a document that can be retrieved by "
+        "Cymbal Coffee customer search queries."
+    ),
+}
+
 
 class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Handles database operations for products using SQLSpec patterns."""
@@ -262,20 +274,20 @@ class VertexAIService:
         self,
         text: str,
         *,
-        task_type: str = "RETRIEVAL_DOCUMENT",
+        embedding_purpose: str = "document",
         return_cache_status: bool = False,
     ) -> Any:
         cached = await self.cache_service.get_embedding(text, self.embedding_model)
         if cached:
             return (cached, True) if return_cache_status else cached
 
+        content = _embedding_content(self.embedding_model, text, embedding_purpose)
+        config_kwargs: dict[str, Any] = {"output_dimensionality": self.embedding_dimensions}
+
         response = await self.client.aio.models.embed_content(
             model=self.embedding_model,
-            contents=text,
-            config=EmbedContentConfig(
-                task_type=task_type,
-                output_dimensionality=self.embedding_dimensions,
-            ),
+            contents=content,
+            config=EmbedContentConfig(**config_kwargs),
         )
         embedding_list = response.embeddings
         if not embedding_list or not embedding_list[0].values:
@@ -285,6 +297,15 @@ class VertexAIService:
         return (embedding, False) if return_cache_status else embedding
 
     # docs:end-vertex-embedding
+
+
+def _embedding_content(model: str, text: str, embedding_purpose: str) -> str:
+    if model != GEMINI_EMBEDDING_2_MODEL:
+        return text
+    instruction = EMBEDDING_PURPOSE_INSTRUCTIONS.get(embedding_purpose)
+    if instruction is None:
+        return text
+    return f"{instruction}\n\n{text}"
 
 
 class OracleVectorSearchService:
@@ -299,7 +320,7 @@ class OracleVectorSearchService:
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         start_time = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
-            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+            query, embedding_purpose="query", return_cache_status=True
         )
         embedding_ms = (time.time() - start_time) * 1000
 
@@ -358,7 +379,7 @@ class OracleVectorSearchService:
         hallmark for HNSW/IVF lookups).
         """
         embedding, _ = await self.vertex_ai_service.get_text_embedding(
-            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+            query, embedding_purpose="query", return_cache_status=True
         )
         await self.product_service.driver.execute(
             db_manager.get_sql("explain-plan-vector-search"),

@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from app.domain.products.schemas import ProductAvailability, Store
 
 
+MIN_LOCATION_HINT_NAME_LENGTH = 3
+
+
 def haversine_miles(latitude: float, longitude: float, store: Store | ProductAvailability) -> float:
     """Return local distance in miles without calling external Maps APIs."""
     if store.latitude is None or store.longitude is None:
@@ -31,27 +34,21 @@ def store_matches_hint(store: Store | ProductAvailability, location_hint: str) -
     normalized = location_hint.casefold().strip()
     if not normalized:
         return True
-    if hasattr(store, "store_name"):
-        name = store.store_name
-        fields = (
-            store.store_name,
-            store.store_address,
-            store.store_city,
-            store.store_state,
-            store.store_zip,
-        )
-    else:
-        name = store.name
-        fields = (
-            store.name,
-            store.address,
-            store.city,
-            store.state,
-            store.zip,
-        )
+    name = getattr(store, "store_name", getattr(store, "name", None))
+    fields = (
+        name,
+        getattr(store, "store_address", None),
+        getattr(store, "store_city", None),
+        getattr(store, "store_state", None),
+        getattr(store, "store_zip", None),
+        getattr(store, "address", None),
+        getattr(store, "city", None),
+        getattr(store, "state", None),
+        getattr(store, "zip", None),
+    )
     if any(normalized in str(field or "").casefold() for field in fields):
         return True
-    return bool(name and len(name) > 3 and name.casefold() in normalized)
+    return bool(name and len(name) > MIN_LOCATION_HINT_NAME_LENGTH and name.casefold() in normalized)
 
 
 def location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:

@@ -149,7 +149,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     product_service = MagicMock()
     product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew"}])
     vertex_ai_service = MagicMock()
-    vertex_ai_service.embedding_model = "gemini-embedding-2-preview"
+    vertex_ai_service.embedding_model = "gemini-embedding-2"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
     metrics_service = MagicMock()
     metrics_service.record_search = AsyncMock()
@@ -167,7 +167,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
 
     vertex_ai_service.get_text_embedding.assert_awaited_once_with(
         "dark roast",
-        task_type="RETRIEVAL_QUERY",
+        embedding_purpose="query",
         return_cache_status=True,
     )
     product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2)

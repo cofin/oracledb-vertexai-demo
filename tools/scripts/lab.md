@@ -2,7 +2,7 @@
 
 Welcome to the **Cymbal Coffee Hands-on Lab**. In this workshop, you will step-by-step setup, configure, ingest data into, and run a premium next-generation AI-powered coffee recommendation application. For complete background concepts and documentation material, please visit the official [Cymbal Coffee Documentation Site](https://cofin.github.io/oracledb-vertexai-demo/index.html).
 
-The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-001`) and large language model orchestration (`gemini-2.5-flash-lite`), and **Google ADK 2.0** as the multi-agent planning engine. The application frontend is built on **Litestar 2**, **HTMX**, and **Jinja templates**, managed with **Dishka Dependency Injection** and served using the high-performance **Granian** ASGI server.
+The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-2`) and large language model orchestration (`gemini-2.5-flash-lite`), and **Google ADK 2.0** as the multi-agent planning engine. The application frontend is built on **Litestar 2**, **HTMX**, and **Jinja templates**, managed with **Dishka Dependency Injection** and served using the high-performance **Granian** ASGI server.
 
 ---
 
@@ -212,7 +212,7 @@ make install
 uv run python manage.py init
 ```
 
-   *Follow the prompts to match your current environment. For deployment mode select `managed`. When prompted for `VERTEX_AI_PROJECT_ID`, enter your actual GCP project ID. Keep database passwords as `super-secret` and database user as `app`.*
+   *Follow the prompts to match your current environment. For deployment mode select `managed`. When prompted for `VERTEX_AI_PROJECT_ID`, enter your actual GCP project ID. Keep database passwords as `SuperSecret1` and database user as `app`.*
 
 ---
 

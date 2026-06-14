@@ -187,14 +187,14 @@ settings and a restricted Maps Embed key; do not reuse Gemini or Vertex keys.
 POST /api/vector-demo
   -> VectorController.validate_message()
   -> OracleVectorSearchService.similarity_search()
-  -> VertexAIService.get_text_embedding(task_type="RETRIEVAL_QUERY")
+  -> VertexAIService.get_text_embedding(embedding_purpose="query")
   -> ProductService.search_by_vector()
   -> src/app/db/sql/products.sql:vector-search-products
   -> HTMX partial or JSON response
 ```
 
 Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-001`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
+by `gemini-embedding-2`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH`.
 
 ## Frontend

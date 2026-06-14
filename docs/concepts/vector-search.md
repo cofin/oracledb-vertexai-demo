@@ -16,15 +16,29 @@ flowchart LR
 
 | Setting | Value |
 | --- | --- |
-| Embedding model | Vertex AI `gemini-embedding-001` |
+| Embedding model | Vertex AI `gemini-embedding-2` |
 | Dimensions | `3072` |
 | Storage | `VECTOR(3072, FLOAT32)` |
 | Distance metric | `COSINE` |
 | Index type | HNSW, `ORGANIZATION INMEMORY NEIGHBOR GRAPH` |
-| Query task type | `RETRIEVAL_QUERY` |
-| Document task type | `RETRIEVAL_DOCUMENT` |
+| Query embedding input | Query-purpose instruction + user text |
+| Document embedding input | Document-purpose instruction + product text |
 
 The product table and the embedding cache both use the same shape.
+
+## Schema annotations
+
+The baseline DDL also annotates the vector columns with their application
+contract: model, dimension count, embedding purpose, and distance metric. These are
+Oracle 26ai schema annotations, so they live with the database metadata and can
+be queried from `USER_ANNOTATIONS_USAGE` after `coffee upgrade`.
+
+```{literalinclude} ../../src/app/db/migrations/0001_cymball_coffee_products.sql
+:language: sql
+:start-after: docs:start-schema-annotations
+:end-before: docs:end-schema-annotations
+:caption: src/app/db/migrations/0001_cymball_coffee_products.sql
+```
 
 ## The HNSW index
 

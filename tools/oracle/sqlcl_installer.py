@@ -104,28 +104,8 @@ class SQLclInstaller:
             )
 
         try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-
-                # Download
-                zip_path = self.download(temp_path)
-
-                # Extract
-                extracted_dir = self.extract(zip_path, temp_path)
-
-                # Install
-                self.install_files(extracted_dir)
-
-                # Verify
-                if self.verify():
-                    self.console.print("\n[bold green]✓ SQLcl installation complete![/bold green]")
-                    self.console.print("\nRun [cyan]sql -V[/cyan] to verify the installation")
-
-                    if not self.is_in_path():
-                        self.console.print("\n[yellow]Add to your PATH:[/yellow]")
-                        self.console.print(self.get_path_instructions())
-
-                    return self.config.install_dir
+            if self.install_from_temporary_directory():
+                return self.config.install_dir
 
         except httpx.HTTPError as e:
             raise DownloadError(f"Download failed: {e}") from e
@@ -133,6 +113,27 @@ class SQLclInstaller:
             raise InstallationError(f"Installation failed: {e}") from e
 
         raise InstallationError("Installation verification failed")
+
+    def install_from_temporary_directory(self) -> bool:
+        """Download, extract, install, and verify SQLcl from a temporary path."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            zip_path = self.download(temp_path)
+            extracted_dir = self.extract(zip_path, temp_path)
+            self.install_files(extracted_dir)
+            if not self.verify():
+                return False
+            self.console.print("\n[bold green]✓ SQLcl installation complete![/bold green]")
+            self.console.print("\nRun [cyan]sql -V[/cyan] to verify the installation")
+            self.print_path_instructions_if_needed()
+            return True
+
+    def print_path_instructions_if_needed(self) -> None:
+        """Print PATH setup guidance when SQLcl is not on PATH."""
+        if self.is_in_path():
+            return
+        self.console.print("\n[yellow]Add to your PATH:[/yellow]")
+        self.console.print(self.get_path_instructions())
 
     def is_installed(self) -> bool:
         """Check if SQLcl is already installed.

@@ -156,6 +156,7 @@ class DatabaseSettings:
                 "password": conn_params["password"],
                 "dsn": conn_params["dsn"],
                 "wallet_location": absolute_wallet_path,
+                "config_dir": absolute_wallet_path,
                 "wallet_password": conn_params["wallet_password"],
                 "ssl_context": ssl_ctx,
                 "min": self.POOL_MIN_SIZE,
@@ -345,10 +346,10 @@ class VertexAISettings:
     """Vertex AI location/region."""
     API_KEY: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview"))
+    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2"))
     """Vertex AI embedding model."""
     EMBEDDING_DIMENSIONS: int = 3072
-    """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
+    """Embedding vector dimensions (gemini-embedding-2 native output)."""
     CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
     """Vertex AI chat model."""
     INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))

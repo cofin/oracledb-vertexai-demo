@@ -294,16 +294,16 @@ def _format_availability_answer(
     if not target and not alternatives:
         return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
 
-    product_name = None
+    product_name: str | None = None
     if target:
-        product_name = _get_field(target, "product_name")
+        product_name = str(_get_field(target, "product_name") or "")
     elif alternatives:
-        product_name = _get_field(alternatives[0], "product_name")
+        product_name = str(_get_field(alternatives[0], "product_name") or "")
     if not product_name:
         product_name = "that item"
 
     if target or target_store_name:
-        store_name = _get_field(target, "store_name") if target else target_store_name
+        store_name = str((_get_field(target, "store_name") if target else target_store_name) or "a Cymbal Coffee store")
         if target and _is_in_stock(target):
             return _format_in_stock_store(
                 product_name=product_name,
@@ -318,7 +318,17 @@ def _format_availability_answer(
             alternatives=alternatives,
         )
 
-    first = alternatives[0]
+    available_alternatives = [alt for alt in alternatives if _is_in_stock(alt)]
+    if not available_alternatives:
+        first = alternatives[0]
+        store_name = str(_get_field(first, "store_name") or "a Cymbal Coffee store")
+        return _format_out_of_stock_store(
+            product_name=product_name,
+            store_name=store_name,
+            alternatives=[],
+        )
+
+    first = available_alternatives[0]
     store_name = _get_field(first, "store_name") or "a Cymbal Coffee store"
     ans = _format_in_stock_store(
         product_name=product_name,
@@ -327,8 +337,8 @@ def _format_availability_answer(
         status=_get_field(first, "stock_status"),
         distance=_get_field(first, "distance_miles"),
     )
-    if len(alternatives) > 1:
-        ans = ans[:-1] + f". I found {len(alternatives)} stores with matching availability."
+    if len(available_alternatives) > 1:
+        ans = ans[:-1] + f". I found {len(available_alternatives)} stores with matching availability."
     return ans
 
 

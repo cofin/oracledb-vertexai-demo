@@ -12,6 +12,7 @@ NOTE: Dishka introspects @provide method annotations at runtime; this module mus
 `from __future__ import annotations`.
 """
 
+import sys
 from collections.abc import AsyncIterator
 
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
@@ -43,8 +44,18 @@ class LitestarPersistenceProvider(Provider):
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:
-        async with db_manager.provide_session(db) as driver:
+        session_context = db_manager.provide_session(db)
+        # Dishka owns async-generator provider cleanup; SQLSpec exposes only an
+        # async context manager, so entering it manually avoids yielding inside
+        # an async-with block while preserving exception-aware cleanup.
+        driver = await session_context.__aenter__()  # noqa: PLC2801
+        try:
             yield driver
+        except BaseException:
+            await session_context.__aexit__(*sys.exc_info())
+            raise
+        else:
+            await session_context.__aexit__(None, None, None)
 
 
 class IntegrationsProvider(Provider):

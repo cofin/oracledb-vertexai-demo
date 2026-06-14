@@ -75,13 +75,13 @@ and the Dishka-injected `AgentToolsService`.
 ## 2. Vertex AI embeds the question
 
 When the runner classifies the turn as `PRODUCT_RAG`, the question is sent
-to Vertex AI's `gemini-embedding-001` model with
-`task_type="RETRIEVAL_QUERY"`. The general-conversation fallback can call
-the same vector-search tool, but this menu turn uses the deterministic route.
-Document embeddings (the products themselves) are produced separately with
-`RETRIEVAL_DOCUMENT` so query and document vectors share the same metric
-geometry. Repeat queries are short-circuited by the Oracle-backed embedding
-cache.
+to Vertex AI's `gemini-embedding-2` model with a query-purpose instruction
+prepended to the text. The general-conversation fallback can call the same
+vector-search tool, but this menu turn uses the deterministic route. Document
+embeddings (the products themselves) are produced separately with a
+document-purpose instruction so query and document vectors share the same
+metric geometry. Repeat queries are short-circuited by the Oracle-backed
+embedding cache.
 
 ```{mermaid}
 flowchart TD
@@ -93,8 +93,10 @@ flowchart TD
 ```
 
 `ProductService` is a SQLSpec async service. Its `embed_text` method is the
-wrapper around Vertex AI's `gemini-embedding-001` call, with the
-Oracle-backed embedding cache check in front of it.
+wrapper around Vertex AI's `gemini-embedding-2` call, with the Oracle-backed
+embedding cache check in front of it. Gemini Embedding 2 does not use the old
+embedding `task_type` API parameter; this app encodes query-vs-document intent
+in the text sent to the embedding model.
 
 ```{literalinclude} ../src/app/domain/products/services/services.py
 :language: python
@@ -104,9 +106,9 @@ Oracle-backed embedding cache check in front of it.
 ```
 
 :::{agent-detail}
-`task_type` is not cosmetic — Vertex returns embeddings tuned for the role
-of the text. `RETRIEVAL_QUERY` for the user's question, `RETRIEVAL_DOCUMENT`
-for the product fixture. Mixing them quietly degrades similarity scores.
+Query/document purpose is not cosmetic. The user question and product fixture
+text are embedded with different instructions so Oracle compares vectors
+generated for compatible retrieval roles.
 :::
 
 ## 3. Oracle 26ai finds matching products

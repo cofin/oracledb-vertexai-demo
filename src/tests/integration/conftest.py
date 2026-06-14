@@ -164,8 +164,9 @@ async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient, None]:
 
 
 @pytest.fixture
-def app() -> Litestar:
+def app(test_settings: object) -> Litestar:
     """Create test app instance."""
+    del test_settings
     from app.server.asgi import create_app
 
     return create_app()
@@ -205,13 +206,14 @@ def unique_test_id() -> str:
 
 
 @pytest.fixture
-async def oracle_seed_data() -> None:
+async def oracle_seed_data(test_settings: object) -> None:
     """Ensure shared Oracle schema and fixture data are ready for this worker.
 
     The repo-managed Oracle container and migrations must already be available.
     This fixture only performs expensive DDL/truncate/fixture loading once per
     pytest worker; function-scoped driver sessions depend on the prepared data.
     """
+    del test_settings
     from app.config import db, db_manager
 
     try:

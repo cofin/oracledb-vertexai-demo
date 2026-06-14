@@ -42,7 +42,7 @@ rather than a stack trace.
   managed container in `make start-infra` configures `512M` automatically
   on first init; if you bypassed that, see
   `tools/oracle/configure_vector_memory.sql`.
-- **`gemini-embedding-001` 404** — the project is missing Vertex AI
+- **`gemini-embedding-2` 404** — the project is missing Vertex AI
   permissions or the location doesn't host the embedding model. Try
   `us-central1`.
 - **Empty chat replies on first start** — products haven't been embedded

@@ -17,7 +17,7 @@ The current inventory fixtures in `src/app/db/fixtures/store_product_inventory.j
 
 ### Code Analysis Summary
 *   Fixtures are located in `src/app/db/fixtures/`.
-*   We use uncompressed `store_product_inventory.json` to allow writing via agent tools (bypassing sandbox read-only limits on shell commands).
+*   We use the gzipped load artifact `store_product_inventory.json.gz` so `coffee upgrade` and `coffee load-fixtures --tables store_product_inventory` load the intended table fixture without a shadowing plain JSON copy.
 *   `src/app/db/utils.py` defines the loading order: `store`, `product`, `store_product_inventory`.
 *   `FixtureLoader` handles reading and upserting the data, joining on `id`.
 
@@ -27,8 +27,8 @@ The current inventory fixtures in `src/app/db/fixtures/store_product_inventory.j
 - [x] 1.1 Create a Python script at `tools/scripts/generate_inventory_fixtures.py` to generate full inventory fixtures.
 - [x] 1.2 The script must read `store.json.gz` and `product.json.gz` to get valid IDs.
 - [x] 1.3 Generate non-trivial inventory rows for all stores, including sequential `id` values.
-- [x] 1.4 Save the output to `src/app/db/fixtures/store_product_inventory.json` (uncompressed).
-- [x] 1.5 Create a unit test at `src/tests/unit/test_generate_inventory_fixtures.py` to validate generated data structure.
+- [x] 1.4 Save the output to `src/app/db/fixtures/store_product_inventory.json.gz`.
+- [x] 1.5 Create a unit test at `src/tests/unit/tools/scripts/test_generate_inventory_fixtures.py` to validate generated data structure.
 
 ### Phase 2: Verification
 - [x] 2.1 Run the generator script to update the fixture file in `/tmp` and write it to the workspace.

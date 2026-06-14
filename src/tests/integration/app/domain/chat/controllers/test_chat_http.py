@@ -17,7 +17,7 @@ import pytest
 if TYPE_CHECKING:
     from litestar.testing import AsyncTestClient
 
-pytestmark = pytest.mark.anyio
+pytestmark = [pytest.mark.anyio, pytest.mark.usefixtures("stub_adk_runner")]
 
 _FAKE_REPLY: dict[str, Any] = {
     "answer": "A pour-over Ethiopian Yirgacheffe brews bright and floral.",
@@ -43,8 +43,8 @@ _FAKE_REPLY: dict[str, Any] = {
 }
 
 
-@pytest.fixture(autouse=True)
-def _stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture
+def stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace ``ADKRunner.__init__`` + ``process_request`` so DI never touches
     the real ADK ``Runner`` (which would require an Oracle session_service).
     """

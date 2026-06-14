@@ -83,3 +83,25 @@ def test_format_availability_no_target_fallback() -> None:
     ]
     ans = _format_availability_answer(None, alts)
     assert ans == "Nitro Cold Brew is available at Dallas Uptown (In Stock) with 15 on hand, about 2.5 miles away. I found 2 stores with matching availability."
+
+
+def test_format_availability_no_target_all_out_of_stock_uses_unavailable_wording() -> None:
+    alts = [
+        {
+            "store_name": "Dallas Arts District",
+            "product_name": "Nitro Cold Brew",
+            "stock_status": "OUT_OF_STOCK",
+            "quantity_available": 0,
+        },
+        {
+            "store_name": "Dallas Uptown",
+            "product_name": "Nitro Cold Brew",
+            "stock_status": "OUT_OF_STOCK",
+            "quantity_available": 0,
+        },
+    ]
+
+    ans = _format_availability_answer(None, alts)
+
+    assert ans == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
+    assert "is available" not in ans

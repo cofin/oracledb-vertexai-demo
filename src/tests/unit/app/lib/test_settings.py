@@ -61,6 +61,19 @@ def test_litestar_env_preserves_explicit_app_url(monkeypatch: MonkeyPatch) -> No
     assert os.environ["APP_URL"] == "https://coffee.example.test"
 
 
+def test_vertex_embedding_defaults_match_schema_contract(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import VertexAISettings
+
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("VERTEX_AI_EMBEDDING_MODEL", raising=False)
+    monkeypatch.delenv("VERTEX_AI_PROJECT_ID", raising=False)
+
+    settings = VertexAISettings()
+
+    assert settings.EMBEDDING_MODEL == "gemini-embedding-2"
+    assert settings.EMBEDDING_DIMENSIONS == 3072
+
+
 def test_vite_config_uses_resources_as_frontend_root() -> None:
     from app.lib.settings import BASE_DIR, ViteSettings
 
@@ -83,10 +96,12 @@ def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> 
     settings = DatabaseSettings()
     assert settings.WALLET_LOCATION == "./.envs/tns"
 
-    settings.create_config()
+    config = settings.create_config()
 
     expected_path = str(Path("./.envs/tns").resolve())
     assert os.environ["TNS_ADMIN"] == expected_path
+    assert config.connection_config["wallet_location"] == expected_path
+    assert config.connection_config["config_dir"] == expected_path
 
 
 def test_service_name_defaults_to_myatp_low(monkeypatch: MonkeyPatch) -> None:

@@ -137,7 +137,7 @@ async def bulk_embed_cmd(
     product_service: ProductService,
     vertex_ai_service: VertexAIService,
 ) -> None:
-    """Generate ``RETRIEVAL_DOCUMENT`` embeddings for product rows."""
+    """Generate document-purpose embeddings for product rows."""
     await generate_product_embeddings(batch_size, force, product_service, vertex_ai_service)
 
 

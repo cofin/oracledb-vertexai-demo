@@ -5,10 +5,17 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-from unittest.mock import MagicMock
-from tools.oracle.database import DatabaseConfig, OracleDatabase
+from unittest.mock import MagicMock, call
+
+import pytest
+from click.testing import CliRunner
+from tools.oracle.cli.database import database_remove, database_start
 from tools.oracle.container import ContainerRuntime
+from tools.oracle.database import ContainerNotFoundError, ContainerStartError, DatabaseConfig, OracleDatabase
+
+DEMO_PASSWORD = "SuperSecret1"  # noqa: S105
 
 
 def test_database_config_defaults() -> None:
@@ -24,9 +31,14 @@ def test_database_config_defaults() -> None:
     assert config.host_mongo_port == 27017
     assert config.container_mongo_port == 27017
     assert config.admin_username == "admin"
-    assert config.admin_password == "SuperSecret1"
-    assert config.wallet_password == "SuperSecret1"
+    assert config.admin_password == DEMO_PASSWORD
+    assert config.wallet_password == DEMO_PASSWORD
+    assert config.app_username == "app"
+    assert config.app_password == DEMO_PASSWORD
     assert config.wallet_location == ".envs/tns"
+    assert config.data_location == "/dev/shm/oracle-data"
+    assert config.audit_location is None
+    assert config.oradata_location == "/dev/shm/oracle-oradata"
 
 
 def test_build_run_command_contains_correct_flags() -> None:
@@ -46,22 +58,22 @@ def test_build_run_command_contains_correct_flags() -> None:
     assert "--shm-size" in cmd
     assert "2g" in cmd
 
-    absolute_data_path = str(Path("/var/tmp/oracle-data").resolve())
+    absolute_data_path = str(Path("/dev/shm/oracle-data").resolve())
     assert f"{absolute_data_path}:/u01/data:z" in cmd
-
-    absolute_audit_path = str(Path("/var/tmp/oracle-audit").resolve())
-    assert f"{absolute_audit_path}:/u01/app/oracle/audit:z" in cmd
-
-    absolute_oradata_path = str(Path("/var/tmp/oracle-oradata").resolve())
+    absolute_oradata_path = str(Path("/dev/shm/oracle-oradata").resolve())
     assert f"{absolute_oradata_path}:/u01/app/oracle/oradata:z" in cmd
     absolute_wallet_path = str(Path(".envs/tns").resolve())
     assert f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z" in cmd
 
-    assert "ADMIN_PASSWORD=SuperSecret1" in cmd
-    assert "WALLET_PASSWORD=SuperSecret1" in cmd
+    assert "WORKLOAD_TYPE=ATP" in cmd
+    assert f"ADMIN_PASSWORD={DEMO_PASSWORD}" in cmd
+    assert f"WALLET_PASSWORD={DEMO_PASSWORD}" in cmd
     assert not any("APP_USER" in part for part in cmd)
 
-    assert "--privileged" in cmd
+    health_index = cmd.index("--health-cmd")
+    assert cmd[health_index + 1] == "lsnrctl status | grep -qi 'myatp_low.adb.oraclecloud.com'"
+
+    assert "--privileged" not in cmd
     assert "--cap-add" in cmd
     assert "SYS_ADMIN" in cmd
     assert "--device" in cmd
@@ -69,3 +81,91 @@ def test_build_run_command_contains_correct_flags() -> None:
 
     assert not any("container-entrypoint-initdb.d" in part for part in cmd)
     assert not any("container-entrypoint-startdb.d" in part for part in cmd)
+
+
+def test_database_remove_is_idempotent_when_container_missing(monkeypatch: object) -> None:
+    """The wipe command should succeed when the container has already been removed."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    db = MagicMock(spec=OracleDatabase)
+    db.remove.side_effect = ContainerNotFoundError("Container 'oracle-free-db' does not exist")
+
+    monkeypatch.setattr("tools.oracle.container.ContainerRuntime", lambda: runtime)
+    monkeypatch.setattr("tools.oracle.database.DatabaseConfig.from_env", DatabaseConfig)
+    monkeypatch.setattr("tools.oracle.database.OracleDatabase", lambda **_: db)
+
+    result = CliRunner().invoke(database_remove, ["--volumes", "--force", "--yes"])
+
+    assert result.exit_code == 0
+    assert "already removed" in result.output
+
+
+def test_database_start_loads_env_file(monkeypatch: object, tmp_path: Path) -> None:
+    """The infra start command should honor the env file before reading config."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("DATABASE_PASSWORD=env-secret\n", encoding="utf-8")
+    runtime = MagicMock(spec=ContainerRuntime)
+    db = MagicMock(spec=OracleDatabase)
+    captured_password: dict[str, str | None] = {}
+
+    def from_env() -> DatabaseConfig:
+        import os
+
+        captured_password["value"] = os.environ.get("DATABASE_PASSWORD")
+        return DatabaseConfig()
+
+    monkeypatch.setattr("tools.oracle.container.ContainerRuntime", lambda: runtime)
+    monkeypatch.setattr("tools.oracle.database.DatabaseConfig.from_env", from_env)
+    monkeypatch.setattr("tools.oracle.database.OracleDatabase", lambda **_: db)
+
+    result = CliRunner().invoke(database_start, ["--env-file", str(env_file)])
+
+    assert result.exit_code == 0
+    assert captured_password["value"] == "env-secret"
+    db.start.assert_called_once_with(pull=False, recreate=False)
+
+
+def test_start_raises_when_health_check_times_out(tmp_path: Path) -> None:
+    """Startup should fail if the container never becomes ready."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    runtime.container_running.return_value = False
+    runtime.container_exists.return_value = False
+    runtime.run_command.return_value = (0, "abcdef1234567890\n", "")
+    config = DatabaseConfig(
+        data_location=str(tmp_path / "oracle-data"),
+        wallet_location=str(tmp_path / "tns"),
+    )
+    db = OracleDatabase(runtime=runtime, config=config)
+    db.wait_for_healthy = MagicMock(return_value=False)  # type: ignore[method-assign]
+
+    with pytest.raises(ContainerStartError, match="health check timed out"):
+        db.start()
+
+
+def test_initialize_db_users_uses_configured_app_credentials(monkeypatch: object, tmp_path: Path) -> None:
+    """The managed container should create the same app credentials the app uses."""
+    cursor = MagicMock()
+    cursor.fetchone.return_value = [0]
+    cursor_context = MagicMock()
+    cursor_context.__enter__.return_value = cursor
+    conn = MagicMock()
+    conn.cursor.return_value = cursor_context
+    oracledb = MagicMock()
+    oracledb.connect.return_value = conn
+    monkeypatch.setitem(sys.modules, "oracledb", oracledb)
+
+    config = DatabaseConfig(
+        app_username="demo_app",
+        app_password=DEMO_PASSWORD,
+        wallet_location=str(tmp_path / "tns"),
+    )
+    db = OracleDatabase(runtime=MagicMock(spec=ContainerRuntime), config=config)
+
+    db.initialize_db_users()
+
+    cursor.execute.assert_has_calls([
+        call("SELECT COUNT(*) FROM dba_users WHERE username = :username", username="DEMO_APP"),
+        call(f'CREATE USER demo_app IDENTIFIED BY "{DEMO_PASSWORD}"'),
+        call("GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO demo_app"),
+        call("GRANT UNLIMITED TABLESPACE TO demo_app"),
+    ])
+    conn.commit.assert_called_once_with()

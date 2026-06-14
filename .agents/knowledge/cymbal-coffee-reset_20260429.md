@@ -39,7 +39,7 @@ main chapters.
 ## Per-Chapter Highlights (knowledge already in patterns.md / guides)
 
 - **Ch 1 — Foundation Bump:** sqlspec 0.46 + ADK 2.0b1 + 3072-dim HNSW INMEMORY
-  schema rewrite + Vertex `gemini-embedding-001` with `task_type` discipline.
+  schema rewrite + Vertex `gemini-embedding-2` with query/document embedding instructions.
 - **Ch 2 — Domain/Service Restructure:** `lib/service.py` is a re-export of
   `SQLSpecAsyncService`; named SQL files for everything that benefits from
   `.where(...)` chaining or non-trivial SELECT shape; 3 Dishka providers

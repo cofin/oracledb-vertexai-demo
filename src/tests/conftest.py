@@ -10,7 +10,7 @@ import pytest
 from sqlspec.driver._async import AsyncDriverAdapterBase
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterator
 
     from litestar import Litestar
     from litestar.testing import AsyncTestClient
@@ -33,8 +33,8 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture(autouse=True)
-def _patch_settings(monkeypatch: MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+@pytest.fixture
+def test_settings(monkeypatch: MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> Iterator[app_settings.Settings]:
     """Patch the settings with test configuration.
 
     Creates a temporary test .env file with safe test values.
@@ -68,11 +68,21 @@ VITE_DEV_MODE=False
         return settings
 
     monkeypatch.setattr(app_settings, "get_settings", get_settings)
+    app_settings.Settings.from_env.cache_clear()
+    from app import config as app_config
+
+    app_config._reset()
+    try:
+        yield settings
+    finally:
+        app_settings.Settings.from_env.cache_clear()
+        app_config._reset()
 
 
 @pytest.fixture
-def app() -> Litestar:
+def app(test_settings: app_settings.Settings) -> Litestar:
     """Create test app instance."""
+    del test_settings
     from app.server.asgi import create_app
 
     return create_app()

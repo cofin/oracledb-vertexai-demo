@@ -98,6 +98,27 @@ _CHAT_RESULT_KEYS: tuple[str, ...] = (
 )
 
 
+async def _collect_workflow_stream(
+    events: AsyncIterator[Any],
+    *,
+    workflow_output: dict[str, Any],
+    answer_parts: list[str],
+    partial_answer_parts: list[str],
+) -> AsyncIterator[dict[str, str]]:
+    """Collect ADK workflow output while yielding streaming deltas."""
+    async for event in events:
+        if isinstance(event.output, dict) and "intent" in event.output:
+            workflow_output.update(event.output)
+        text = _event_content_text(event)
+        if not text:
+            continue
+        if event.partial:
+            partial_answer_parts.append(text)
+            yield {"type": "delta", "text": text}
+        else:
+            answer_parts.append(text)
+
+
 class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     """Business logic invoked by closure-bound ADK tools."""
 
@@ -123,7 +144,7 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         embedding_start = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query,
-            task_type="RETRIEVAL_QUERY",
+            embedding_purpose="query",
             return_cache_status=True,
         )
         embedding_ms = (time.time() - embedding_start) * 1000
@@ -722,7 +743,7 @@ class ADKRunner:
             location_hint = location_context.get("store_name")
         if not location_hint:
             filters = _extract_location_filters(query, location_context)
-            parts = [filters[k] for k in ("city", "state", "zip_code") if filters[k]]
+            parts = [str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]]
             if parts:
                 location_hint = " ".join(parts)
         if not location_hint:
@@ -900,7 +921,7 @@ class ADKRunner:
             )
         return None
 
-    async def stream_request(  # noqa: PLR0914, PLR0915
+    async def stream_request(  # noqa: PLR0914
         self,
         query: str,
         user_id: str,
@@ -974,17 +995,13 @@ class ADKRunner:
         partial_answer_parts: list[str] = []
         workflow_output: dict[str, Any] = {}
         try:
-            async for event in events:
-                if isinstance(event.output, dict) and "intent" in event.output:
-                    workflow_output.update(event.output)
-                text = _event_content_text(event)
-                if not text:
-                    continue
-                if event.partial:
-                    partial_answer_parts.append(text)
-                    yield {"type": "delta", "text": text}
-                else:
-                    answer_parts.append(text)
+            async for delta in _collect_workflow_stream(
+                events,
+                workflow_output=workflow_output,
+                answer_parts=answer_parts,
+                partial_answer_parts=partial_answer_parts,
+            ):
+                yield delta
         except (genai_errors.ClientError, ValueError) as exc:
             if _is_credential_error(exc):
                 raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc

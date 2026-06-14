@@ -9,8 +9,8 @@ The demo uses one embedding model and one vector shape everywhere:
 - Model: `gemini-embedding-2`
 - Dimensions: `3072`
 - Storage: `VECTOR(3072, FLOAT32)`
-- Query task type: `RETRIEVAL_QUERY`
-- Product/document task type: `RETRIEVAL_DOCUMENT`
+- Query embedding input: query-purpose instruction plus user text
+- Product/document embedding input: document-purpose instruction plus product text
 - Similarity formula: `1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE)`
 
 Do not reintroduce 768-dimensional examples. The committed product fixtures,
@@ -124,17 +124,16 @@ response = await self.client.aio.models.embed_content(
     model=self.embedding_model,
     contents=text,
     config=EmbedContentConfig(
-        task_type=task_type,
         output_dimensionality=self.embedding_dimensions,
     ),
 )
 ```
 
-Use task types deliberately:
+Use embedding purposes deliberately:
 
-- Product fixture embeddings: `RETRIEVAL_DOCUMENT`
-- User search queries: `RETRIEVAL_QUERY`
-- One-off semantic cache lookups: use the same task type as the text role
+- Product fixture embeddings: document-purpose instruction plus product text
+- User search queries: query-purpose instruction plus user text
+- One-off semantic cache lookups: use the same purpose as the text role
 
 Embeddings are cached by text hash and model in the Oracle `embedding_cache`
 table. The cache table stores vectors too, so the same vector-memory rules apply.

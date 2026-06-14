@@ -9,6 +9,8 @@ This module manages Oracle Database Free container deployment and operations.
 from __future__ import annotations
 
 import os
+import re
+import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,7 +18,18 @@ from typing import Any
 
 from rich.console import Console
 
-from tools.oracle.container import ContainerNotFoundError, ContainerRuntime
+from tools.oracle.container import ContainerNotFoundError, ContainerRuntime, ContainerRuntimeError
+
+
+@dataclass(frozen=True)
+class _AppUserStatements:
+    """Validated SQL statements for the configured application user."""
+
+    username_upper: str
+    create_user: str
+    alter_user: str
+    grant_developer: str
+    grant_tablespace: str
 
 
 @dataclass
@@ -40,13 +53,16 @@ class DatabaseConfig:
     container_mongo_port: int = 27017
 
     admin_username: str = "admin"
-    admin_password: str = "SuperSecret1"
-    wallet_password: str = "SuperSecret1"
+    admin_password: str = "SuperSecret1"  # noqa: S105
+    wallet_password: str = "SuperSecret1"  # noqa: S105
+    app_username: str = "app"
+    app_password: str = "SuperSecret1"  # noqa: S105
     wallet_location: str = ".envs/tns"
+    workload_type: str = "ATP"
 
-    data_location: str = "/var/tmp/oracle-data"
-    audit_location: str = "/var/tmp/oracle-audit"
-    oradata_location: str = "/var/tmp/oracle-oradata"
+    data_location: str = "/dev/shm/oracle-data"  # noqa: S108
+    audit_location: str | None = None
+    oradata_location: str | None = "/dev/shm/oracle-oradata"  # noqa: S108
 
     log_max_size: str = "10m"
     log_max_file: str = "3"
@@ -69,7 +85,12 @@ class DatabaseConfig:
             host_port=int(host_port),
             admin_password=oracle_system_pw,
             wallet_password=wallet_pw,
+            app_username=os.getenv("DATABASE_USER", "app"),
+            app_password=os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
             wallet_location=wallet_loc,
+            workload_type=os.getenv("WORKLOAD_TYPE", "ATP"),
+            data_location=os.getenv("ORACLE_DATA_LOCATION", "/dev/shm/oracle-data"),  # noqa: S108
+            oradata_location=os.getenv("ORACLE_ORADATA_LOCATION", "/dev/shm/oracle-oradata"),  # noqa: S108
         )
 
 
@@ -170,9 +191,9 @@ class OracleDatabase:
             self.console.print(f"  User: {info['user']}")
             self.console.print(f"  DSN: {info['dsn']}")
         else:
-            self.console.print("[yellow]⚠[/yellow] Container started but health check timed out")
-            self.console.print(
-                f"  Check logs with: {self.runtime.get_runtime_command()} logs {self.config.container_name}"
+            logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
+            raise ContainerStartError(
+                f"Container started but health check timed out. Check logs with: {logs_hint}"
             )
 
     def stop(self, *, timeout: int = 30) -> None:
@@ -236,6 +257,8 @@ class OracleDatabase:
 
         if volumes:
             for loc in (self.config.data_location, self.config.audit_location, self.config.oradata_location):
+                if loc is None:
+                    continue
                 path = Path(loc).resolve()
                 if path.exists():
                     self.console.print(f"[cyan]Removing directory {loc}...[/cyan]")
@@ -387,78 +410,96 @@ class OracleDatabase:
         absolute_wallet_path = Path(self.config.wallet_location).resolve()
         original_tns_admin = os.environ.get("TNS_ADMIN")
         os.environ["TNS_ADMIN"] = str(absolute_wallet_path)
+        conn = None
 
         import oracledb
 
         self.console.print(f"[dim]Wallet Location: {absolute_wallet_path}[/dim]")
         self.console.print(f"[dim]TNS_ADMIN env: {os.environ.get('TNS_ADMIN')}[/dim]")
-        try:
-            self.console.print(f"[dim]Files in wallet: {[f.name for f in absolute_wallet_path.glob('*')]}[/dim]")
-        except Exception as err:
-            self.console.print(f"[dim]Error listing wallet files: {err}[/dim]")
+        self.console.print(f"[dim]Files in wallet: {[f.name for f in absolute_wallet_path.glob('*')]}[/dim]")
 
         masked_pwd = self.config.admin_password[:3] + "..." + self.config.admin_password[-1:] if self.config.admin_password else "None"
         self.console.print(f"[dim]Connection parameters: user=ADMIN, dsn=myatp_low, pwd={masked_pwd}, pwd_len={len(self.config.admin_password)}[/dim]")
 
-        conn_params = {
-            "user": "ADMIN",
-            "password": self.config.admin_password,
-            "dsn": "myatp_low",
-            "wallet_location": str(absolute_wallet_path),
-            "wallet_password": self.config.wallet_password,
-        }
-        sql = """
-        DECLARE
-            user_exists NUMBER;
-        BEGIN
-            SELECT COUNT(*) INTO user_exists FROM dba_users WHERE username = 'APP';
-            IF user_exists = 0 THEN
-                EXECUTE IMMEDIATE 'CREATE USER app IDENTIFIED BY "SuperSecret1"';
-                EXECUTE IMMEDIATE 'GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO app';
-                EXECUTE IMMEDIATE 'GRANT UNLIMITED TABLESPACE TO app';
-            END IF;
-        END;
-        """
-
-        import time
-
-        max_retries = 24
-        retry_interval = 5
-        conn = None
-
-        self.console.print("[cyan]Connecting to database and creating app schema...[/cyan]")
-        for attempt in range(1, max_retries + 1):
-            try:
-                conn = oracledb.connect(**conn_params)
-                self.console.print(f"[green]✓[/green] Connected successfully on attempt {attempt}")
-                break
-            except Exception as e:
-                self.console.print(f"[dim]Connection attempt {attempt} failed: {e}. Retrying in {retry_interval}s...[/dim]")
-                time.sleep(retry_interval)
-        else:
-            self.console.print("[red]✗ Max connection retries reached. Database initialization failed.[/red]")
-            raise DatabaseNotReadyError("Database failed to become ready for connections")
+        conn_params = self._build_admin_conn_params(absolute_wallet_path)
+        statements = self._build_app_user_statements()
 
         try:
-            with conn.cursor() as cursor:
-                cursor.execute(sql)
-            conn.commit()
-            conn.close()
-        except Exception as e:
+            conn = self._connect_admin(oracledb, conn_params)
+            self._execute_app_user_statements(conn, statements)
+        except oracledb.Error as e:
             self.console.print(f"[red]✗ Failed to execute app user initialization: {e}[/red]")
             raise
         else:
             self.console.print("[green]✓[/green] App user schema initialized successfully.")
         finally:
+            if conn is not None:
+                conn.close()
             if original_tns_admin is not None:
                 os.environ["TNS_ADMIN"] = original_tns_admin
             else:
                 os.environ.pop("TNS_ADMIN", None)
 
+    def _build_admin_conn_params(self, absolute_wallet_path: Path) -> dict[str, str]:
+        """Build admin connection parameters for wallet-based ADB access."""
+        return {
+            "user": "ADMIN",
+            "password": self.config.admin_password,
+            "dsn": "myatp_low",
+            "wallet_location": str(absolute_wallet_path),
+            "config_dir": str(absolute_wallet_path),
+            "wallet_password": self.config.wallet_password,
+        }
+
+    def _build_app_user_statements(self) -> _AppUserStatements:
+        """Build validated app user DDL statements."""
+        app_username = self.config.app_username
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", app_username):
+            msg = "DATABASE_USER must be a simple Oracle identifier"
+            raise ValueError(msg)
+        app_username_upper = app_username.upper()
+        app_password = self.config.app_password.replace('"', '""')
+
+        return _AppUserStatements(
+            username_upper=app_username_upper,
+            create_user=f'CREATE USER {app_username} IDENTIFIED BY "{app_password}"',
+            alter_user=f'ALTER USER {app_username} IDENTIFIED BY "{app_password}" ACCOUNT UNLOCK',
+            grant_developer=f"GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO {app_username}",
+            grant_tablespace=f"GRANT UNLIMITED TABLESPACE TO {app_username}",
+        )
+
+    def _connect_admin(self, oracledb: Any, conn_params: dict[str, str]) -> Any:
+        """Connect to ADMIN with retries while ADB finishes opening services."""
+        max_retries = 24
+        retry_interval = 5
+        self.console.print("[cyan]Connecting to database and creating app schema...[/cyan]")
+        for attempt in range(1, max_retries + 1):
+            try:
+                conn = oracledb.connect(**conn_params)
+                self.console.print(f"[green]✓[/green] Connected successfully on attempt {attempt}")
+                return conn
+            except oracledb.Error as e:
+                self.console.print(f"[dim]Connection attempt {attempt} failed: {e}. Retrying in {retry_interval}s...[/dim]")
+                time.sleep(retry_interval)
+
+        self.console.print("[red]✗ Max connection retries reached. Database initialization failed.[/red]")
+        raise DatabaseNotReadyError("Database failed to become ready for connections")
+
+    @staticmethod
+    def _execute_app_user_statements(conn: Any, statements: _AppUserStatements) -> None:
+        """Create or update the app user and reapply required grants."""
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM dba_users WHERE username = :username", username=statements.username_upper)
+            user_exists = cursor.fetchone()[0]
+            cursor.execute(statements.alter_user if user_exists else statements.create_user)
+            cursor.execute(statements.grant_developer)
+            cursor.execute(statements.grant_tablespace)
+        conn.commit()
+
     def _patch_host_sqlnet_ora(self) -> None:
         """Patch TNS_ADMIN placeholder in host sqlnet.ora with absolute path."""
         wallet_dir = Path(self.config.wallet_location).resolve()
-        
+
         # Grant write permission to the wallet files using a temporary container
         try:
             self.runtime.run_command([
@@ -472,7 +513,7 @@ class OracleDatabase:
                 "777",
                 "/mnt/tns",
             ])
-        except Exception as e:
+        except (ContainerRuntimeError, subprocess.SubprocessError, OSError) as e:
             self.console.print(f"[yellow]⚠ Warning: Failed to fix wallet file permissions: {e}[/yellow]")
 
         sqlnet_path = wallet_dir / "sqlnet.ora"
@@ -490,8 +531,8 @@ class OracleDatabase:
             "host": "localhost",
             "port": self.config.host_port,
             "service_name": "myatp_low",
-            "user": "app",
-            "password": "SuperSecret1",
+            "user": self.config.app_username,
+            "password": self.config.app_password,
             "dsn": f"localhost:{self.config.host_port}/myatp_low",
         }
 
@@ -520,7 +561,7 @@ class OracleDatabase:
             self.config.container_name,
             "sqlplus",
             "-S",
-            f"{user}/SuperSecret1@myatp_low",
+            f"{user}/{self.config.app_password}@myatp_low",
             sql,
         ])
 
@@ -540,13 +581,11 @@ class OracleDatabase:
         absolute_data_path.mkdir(parents=True, exist_ok=True)
         absolute_data_path.chmod(0o777)
 
-        absolute_audit_path = Path(self.config.audit_location).resolve()
-        absolute_audit_path.mkdir(parents=True, exist_ok=True)
-        absolute_audit_path.chmod(0o777)
-
-        absolute_oradata_path = Path(self.config.oradata_location).resolve()
-        absolute_oradata_path.mkdir(parents=True, exist_ok=True)
-        absolute_oradata_path.chmod(0o777)
+        absolute_oradata_path: Path | None = None
+        if self.config.oradata_location is not None:
+            absolute_oradata_path = Path(self.config.oradata_location).resolve()
+            absolute_oradata_path.mkdir(parents=True, exist_ok=True)
+            absolute_oradata_path.chmod(0o777)
 
         cmd = [
             "run",
@@ -566,6 +605,8 @@ class OracleDatabase:
             "-p",
             f"{self.config.host_mongo_port}:{self.config.container_mongo_port}",
             "-e",
+            f"WORKLOAD_TYPE={self.config.workload_type}",
+            "-e",
             f"ADMIN_PASSWORD={self.config.admin_password}",
             "-e",
             f"WALLET_PASSWORD={self.config.wallet_password}",
@@ -573,13 +614,13 @@ class OracleDatabase:
             "ENABLE_ARCHIVE_LOG=FALSE",
             "-v",
             f"{absolute_data_path}:/u01/data:z",
-            "-v",
-            f"{absolute_audit_path}:/u01/app/oracle/audit:z",
-            "-v",
-            f"{absolute_oradata_path}:/u01/app/oracle/oradata:z",
+        ]
+        if absolute_oradata_path is not None:
+            cmd.extend(["-v", f"{absolute_oradata_path}:/u01/app/oracle/oradata:z"])
+
+        cmd.extend([
             "-v",
             f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z",
-            "--privileged",
             "--cap-add",
             "SYS_ADMIN",
             "--device",
@@ -591,19 +632,17 @@ class OracleDatabase:
             "--log-opt",
             f"max-file={self.config.log_max_file}",
             "--health-cmd",
-            "healthcheck.sh",
+            "lsnrctl status | grep -qi 'myatp_low.adb.oraclecloud.com'",
             "--health-interval",
             f"{self.config.health_interval}s",
             "--health-timeout",
             f"{self.config.health_timeout}s",
             "--health-retries",
             str(self.config.health_retries),
-        ]
+        ])
 
         cmd.append(self.config.image)
         return cmd
-
-
 
     def _pull_image(self) -> None:
         """Pull the Oracle database image."""

@@ -15,7 +15,6 @@ from google.genai import types
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db
 from app.domain.chat.services.adk import ADKRunner, AgentToolsService
 from app.domain.chat.services.classifier import IntentLabel
 from app.domain.products.services import ProductService, StoreService
@@ -71,10 +70,10 @@ class FakeVertexAIService:
         self,
         text: str,
         *,
-        task_type: str = "RETRIEVAL_DOCUMENT",
+        embedding_purpose: str = "document",
         return_cache_status: bool = False,
     ) -> Any:
-        del text, task_type
+        del text, embedding_purpose
         embedding = _seed_embedding()
         return (embedding, True) if return_cache_status else embedding
 
@@ -123,6 +122,8 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         )
     )
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
+
+    from app.config import db
 
     store = OracleAsyncADKStore(config=db)
     await store.ensure_tables()

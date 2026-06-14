@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for generate_inventory_fixtures script."""
+"""Unit tests for the inventory fixture generator script."""
+
+from __future__ import annotations
 
 import gzip
 import json
@@ -10,18 +12,18 @@ from pathlib import Path
 from tools.scripts.generate_inventory_fixtures import generate_inventory
 
 
-def test_generate_inventory(tmp_path: Path) -> None:
-    """Test that generate_inventory creates a valid fixture file."""
-    output_file = tmp_path / "test_inventory.json.gz"
+def test_generate_inventory_writes_gzipped_load_fixture_name(tmp_path: Path) -> None:
+    output_file = tmp_path / "store_product_inventory.json.gz"
+
     generate_inventory(output_file=output_file)
 
-    assert output_file.exists()
+    assert output_file.is_file()
 
-    with gzip.open(output_file, "rb") as f:
-        data = json.load(f)
+    with gzip.open(output_file, "rt", encoding="utf-8") as fixture:
+        data = json.load(fixture)
 
     assert isinstance(data, list)
-    assert len(data) > 0
+    assert data
 
     for item in data:
         assert "store_id" in item
