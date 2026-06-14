@@ -38,6 +38,16 @@ class ApexMediaError(RuntimeError):
     """Raised when APEX media cannot be acquired, verified, or extracted."""
 
 
+@dataclass(frozen=True)
+class ApexMediaPaths:
+    """Resolved, absolute host paths for staged APEX media (consumed downstream)."""
+
+    version: str
+    apex_dir: Path
+    images_dir: Path
+    apexins: Path
+
+
 @dataclass
 class ApexMediaConfig:
     """Configuration for acquiring and staging APEX release media."""
@@ -213,3 +223,32 @@ class ApexMedia:
                 f"APEX archive {archive} did not yield {self.config.apexins_path} after extraction"
             )
         return apex_dir
+
+    def paths(self) -> ApexMediaPaths:
+        """Return the resolved, absolute staging paths for downstream consumers."""
+        return ApexMediaPaths(
+            version=self.config.version,
+            apex_dir=self.config.extracted_apex_dir.resolve(),
+            images_dir=self.config.images_dir.resolve(),
+            apexins=self.config.apexins_path.resolve(),
+        )
+
+    def container_mounts(
+        self,
+        *,
+        db_target: str | None = None,
+        ords_images_target: str | None = None,
+    ) -> list[str]:
+        """Return ``host:container`` bind-mount specs for Ch2 install / Ch3 ORDS.
+
+        Pure data: this never starts a container. ``db_target`` mounts the whole
+        ``apex/`` tree (so ``apexins.sql`` is reachable inside the DB container);
+        ``ords_images_target`` mounts only ``images/`` for ORDS to serve at ``/i/``.
+        Callers prepend ``-v`` and may append ``:ro`` as needed.
+        """
+        mounts: list[str] = []
+        if db_target:
+            mounts.append(f"{self.config.extracted_apex_dir.resolve()}:{db_target}")
+        if ords_images_target:
+            mounts.append(f"{self.config.images_dir.resolve()}:{ords_images_target}")
+        return mounts

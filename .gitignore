@@ -182,3 +182,7 @@ todo
 # Flow archive history is disposable local context; durable guidance belongs in
 # tracked .agents/knowledge and .agents/patterns docs.
 .agents/archive/
+
+# Cached/extracted Oracle APEX release media (downloaded on demand by
+# tools/oracle/apex_media.py); never commit the large binary zips or trees.
+tools/oracle/downloads/

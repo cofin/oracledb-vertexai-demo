@@ -283,3 +283,81 @@ def test_extract_raises_when_apexins_absent_after(tmp_path: Path) -> None:
 
     with pytest.raises(ApexMediaError):
         media.extract()
+
+
+def test_paths_returns_resolved_absolute_paths(tmp_path: Path) -> None:
+    """paths() exposes resolved, absolute host paths plus the version string."""
+    config = ApexMediaConfig(version="26.1", cache_root=Path("tools/oracle/downloads/apex"))
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    paths = media.paths()
+
+    assert paths.version == "26.1"
+    assert paths.apex_dir.is_absolute()
+    assert paths.images_dir.is_absolute()
+    assert paths.apexins.is_absolute()
+    assert paths.apex_dir == config.extracted_apex_dir.resolve()
+    assert paths.images_dir == config.images_dir.resolve()
+    assert paths.apexins == config.apexins_path.resolve()
+
+
+def test_paths_is_frozen(tmp_path: Path) -> None:
+    """ApexMediaPaths is immutable so the staging contract can't be mutated."""
+    from dataclasses import FrozenInstanceError
+
+    media = ApexMedia(ApexMediaConfig(cache_root=tmp_path), fetcher=_exploding_fetcher())
+    paths = media.paths()
+
+    with pytest.raises(FrozenInstanceError):
+        paths.version = "99.9"  # type: ignore[misc]
+
+
+def test_container_mounts_db_target(tmp_path: Path) -> None:
+    """A db_target maps the apex/ tree to an absolute host:container spec."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    mounts = media.container_mounts(db_target="/opt/oracle/apex")
+
+    assert mounts == [f"{config.extracted_apex_dir.resolve()}:/opt/oracle/apex"]
+
+
+def test_container_mounts_ords_images_target(tmp_path: Path) -> None:
+    """An ords_images_target maps images/ to the ORDS /i/ location."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    mounts = media.container_mounts(ords_images_target="/opt/oracle/apex/images")
+
+    assert mounts == [f"{config.images_dir.resolve()}:/opt/oracle/apex/images"]
+
+
+def test_container_mounts_both_targets_in_order(tmp_path: Path) -> None:
+    """Both targets produce both mounts (db first, then ords images)."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    mounts = media.container_mounts(
+        db_target="/opt/oracle/apex",
+        ords_images_target="/opt/oracle/apex/images",
+    )
+
+    assert mounts == [
+        f"{config.extracted_apex_dir.resolve()}:/opt/oracle/apex",
+        f"{config.images_dir.resolve()}:/opt/oracle/apex/images",
+    ]
+
+
+def test_container_mounts_empty_without_targets(tmp_path: Path) -> None:
+    """No targets means no mounts (pure data contract, nothing applied)."""
+    media = ApexMedia(ApexMediaConfig(cache_root=tmp_path), fetcher=_exploding_fetcher())
+
+    assert media.container_mounts() == []
+
+
+def test_downloads_dir_is_gitignored() -> None:
+    """The host media cache must never be committed."""
+    repo_root = Path(__file__).resolve().parents[5]
+    gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
+
+    assert "tools/oracle/downloads/" in gitignore
