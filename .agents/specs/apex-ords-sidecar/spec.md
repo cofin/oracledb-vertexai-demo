@@ -3,7 +3,7 @@
 *Beads: `oracledb-vertexai-apxg.3` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch1 (staged `apex/images`), Ch2 (APEX schema + REST users in `FREEPDB1`)*
-*Status: Drafted — needs full refresh before implementation (see contract update)*
+*Status: Refreshed 2026-06-14 (host-gateway, freepdb1, no database.py edit) — implementation-ready*
 
 ---
 
@@ -46,45 +46,51 @@ brings up DB + ORDS together.
 
 ---
 
-## 3.0 Proposed Changes
+## 3.0 Proposed Changes (refreshed to host-gateway; no `database.py` edit)
 
 ### Component: ORDS sidecar (`tools/oracle/`)
 
 #### [CREATE] `tools/oracle/ords.py`
-- `@dataclass OrdsConfig`: `image` (official `database/ords` tag pinned for 26.1),
-  `container_name = "oracle-ords"`, `network = "oracle-net"`, `db_container`, `pdb = "FREEPDB1"`,
-  `host_https_port = 8443`, `host_http_port = 8080`, `apex_images_path` (from Ch1 `images_dir`),
-  connection user/password (APEX_PUBLIC_USER/ORDS_PUBLIC_USER from Ch2). `from_env()` for overrides.
-- `class OrdsSidecar(runtime, config)`:
-  - `ensure_network()` — create the shared docker network if absent (idempotent).
-  - `start(*, recreate=False)` — `docker run -d` the ORDS image on the network, env/args for the DB
-    connection, bind-mount `apex/images` to the ORDS `/i/` location, expose ports, health-cmd.
-  - `stop()`, `remove()`, `status()`, `logs()` — mirror `OracleDatabase` lifecycle ergonomics.
-  - `wait_for_healthy()` — poll `/ords/` until ready.
+- `@dataclass OrdsConfig`: `image` (official `container-registry.oracle.com/database/ords:latest`,
+  overridable via `ORDS_IMAGE`), `container_name = "oracle-ords"`, `db_container = "oracle-free-db"`,
+  `service_name = "freepdb1"`, `db_host = "host.docker.internal"`, `db_port = 1521`,
+  `host_https_port = 8443`, `host_http_port = 8181`, `apex_images_path` (host path from Ch1
+  `ApexMedia.paths().images_dir`), `images_url_path = "/i/"`, connection user/password (app/ORDS pool).
+  `from_env()` for overrides.
+- `class OrdsSidecar(runtime, config, console=None)`:
+  - `_build_run_command()` — `docker run -d --name oracle-ords --add-host=host.docker.internal:host-gateway`
+    (DB reachable over the published host port — **no shared network, no DB recreate**), `-p` HTTPS/HTTP,
+    `-v {images_dir}:{container images dir}:z` for `/i/`, ORDS connection env, the image. Returns argv.
+  - `start(*, recreate=False)`, `stop()`, `remove()`, `status()`, `logs()` — mirror `OracleDatabase`
+    lifecycle ergonomics using `ContainerRuntime`.
+  - `wait_for_healthy()` — poll `/ords/` readiness.
 
-### Component: infra lifecycle integration (`tools/oracle/`)
+### Component: infra lifecycle integration (`tools/oracle/cli/`)
 
-#### [MODIFY] `tools/oracle/database.py`
-- Join the DB container to the shared `oracle-net` network (so ORDS can reach it) in `_build_run_command()`.
+> **No `tools/oracle/database.py` change.** ORDS reaches the DB via `host.docker.internal:1521/freepdb1`
+> (host gateway), so the lifecycle class stays untouched, consistent with Ch2.
 
-#### [MODIFY] `tools/oracle/cli/database.py` (+ `manage.py infra` wiring)
-- `infra start` → after DB healthy + APEX installed (Ch2), `OrdsSidecar.start()`.
-- `infra stop` / `infra remove` / `infra status` → include the ORDS container.
-- Add `infra ords start | stop | status | logs` for direct control.
+#### [MODIFY] `tools/oracle/cli/database.py`
+- After `db.start()` + `_auto_install_apex()` (unless `--skip-apex`), start the ORDS sidecar (add
+  `--skip-ords`). `infra wipe`/`stop`/`status` also act on the ORDS container.
+
+#### [CREATE] `tools/oracle/cli/ords.py` (+ `__init__`/`manage.py` wiring)
+- `ords_group` with `start | stop | status | logs`; mounted as `infra ords …` (like `infra apex`).
 
 ---
 
 ## 4.0 Implementation Plan (TDD)
 
-- [ ] **Task 3.1** — `OrdsConfig` + `OrdsSidecar` run-command builder (image, network, ports, env,
-  image bind-mount). Unit tests assert the `docker run` argv shape.
-- [ ] **Task 3.2** — ORDS configured against `FREEPDB1` with Ch2 REST users; `/i/` served from Ch1
-  `images_dir`. Unit tests assert connection args + image mount.
-- [ ] **Task 3.3** — `ensure_network()` + DB↔ORDS connectivity + `wait_for_healthy()` polling.
-  Unit tests for network-create idempotency + health poll (mock runtime).
-- [ ] **Task 3.4** — Integrate ORDS into `infra start/stop/remove/status`. Unit tests assert ORDS is
-  started after DB+APEX and torn down with the DB.
-- [ ] **Task 3.5** — `infra ords` direct CLI commands. Unit tests via Click runner (mock `OrdsSidecar`).
+- [ ] **Task 3.1** — `OrdsConfig` + `OrdsSidecar._build_run_command()` (image, `--add-host` gateway,
+  ports, `/i/` image bind-mount, ORDS env). Unit tests assert the `docker run` argv shape.
+- [ ] **Task 3.2** — ORDS connection against `freepdb1` over the host gateway + `/i/` served from Ch1
+  `images_dir`. Unit tests assert connection env + image mount (`:z`).
+- [ ] **Task 3.3** — `start/stop/remove/status/logs` lifecycle + `wait_for_healthy()` poll.
+  Unit tests for idempotent start (already-running) + health poll (mock runtime).
+- [ ] **Task 3.4** — Integrate ORDS into `infra start` (after APEX) + `stop`/`wipe`/`status`
+  (`--skip-ords`). Unit tests assert ORDS started after APEX and torn down with the DB.
+- [ ] **Task 3.5** — `tools/oracle/cli/ords.py` `infra ords start|stop|status|logs` + wiring.
+  Unit tests via Click `CliRunner` (mock `OrdsSidecar`).
 
 ---
 
