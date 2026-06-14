@@ -14,6 +14,7 @@ host media staged in Chapter 1.
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -99,6 +100,74 @@ class OrdsSidecar:
             cmd.extend(["-v", f"{c.apex_images_path}:{c.container_images_path}:z"])
         cmd.append(c.image)
         return cmd
+
+    def is_running(self) -> bool:
+        """True when the ORDS container is running."""
+        return self.runtime.container_running(self.config.container_name)
+
+    def start(self, *, recreate: bool = False) -> None:
+        """Start the ORDS sidecar, idempotently."""
+        name = self.config.container_name
+        if self.runtime.container_running(name):
+            if not recreate:
+                self.console.print("[green]✓[/green] ORDS sidecar already running")
+                return
+            self.remove(force=True)
+        elif self.runtime.container_exists(name):
+            if recreate:
+                self.remove(force=True)
+            else:
+                self.console.print("[cyan]Starting existing ORDS sidecar...[/cyan]")
+                self.runtime.run_command(["start", name])
+                return
+        self.console.print("[cyan]Creating ORDS sidecar...[/cyan]")
+        self.runtime.run_command(self._build_run_command())
+
+    def stop(self, *, timeout: int = 30) -> None:
+        """Stop the ORDS sidecar if it exists."""
+        if self.runtime.container_exists(self.config.container_name):
+            self.runtime.run_command(["stop", "-t", str(timeout), self.config.container_name])
+
+    def remove(self, *, force: bool = False) -> None:
+        """Remove the ORDS sidecar container if it exists."""
+        if not self.runtime.container_exists(self.config.container_name):
+            return
+        cmd = ["rm"]
+        if force:
+            cmd.append("-f")
+        cmd.append(self.config.container_name)
+        self.runtime.run_command(cmd)
+
+    def status(self) -> dict[str, str] | None:
+        """Return container status details, or None when it does not exist."""
+        if not self.runtime.container_exists(self.config.container_name):
+            return None
+        return self.runtime.get_container_status(self.config.container_name)
+
+    def logs(self, *, follow: bool = False, tail: int | None = None) -> None:
+        """Stream ORDS container logs."""
+        if not self.runtime.container_exists(self.config.container_name):
+            return
+        cmd = ["logs"]
+        if follow:
+            cmd.append("-f")
+        if tail:
+            cmd.extend(["--tail", str(tail)])
+        cmd.append(self.config.container_name)
+        self.runtime.run_command(cmd, capture_output=False)
+
+    def wait_for_healthy(self, timeout: int = 120, *, interval: int = 5) -> bool:
+        """Poll until the ORDS container is up, or the timeout elapses.
+
+        Container readiness is the deterministic signal here; a real ``/ords/``
+        HTTP probe is validated in the integration smoke (Chapter 5).
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if self.is_running():
+                return True
+            time.sleep(interval)
+        return False
 
 
 def build_ords_sidecar(

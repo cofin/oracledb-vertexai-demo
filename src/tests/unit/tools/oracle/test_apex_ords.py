@@ -93,3 +93,71 @@ def test_build_ords_sidecar_wires_ch1_images() -> None:
     joined = " ".join(sidecar._build_run_command())
     assert "/cache/26.1/apex/images:/opt/oracle/apex/images:z" in joined
     assert "DBSERVICENAME=freepdb1" in joined
+
+
+def test_start_runs_container_when_absent() -> None:
+    """start() issues docker run when no ORDS container exists."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = False
+    runtime.container_exists.return_value = False
+
+    sidecar.start()
+
+    assert runtime.run_command.call_args.args[0][0] == "run"
+
+
+def test_start_is_idempotent_when_running() -> None:
+    """start() is a no-op when ORDS is already running."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = True
+
+    sidecar.start()
+
+    runtime.run_command.assert_not_called()
+
+
+def test_start_starts_existing_stopped_container() -> None:
+    """start() restarts an existing (stopped) ORDS container instead of recreating."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = False
+    runtime.container_exists.return_value = True
+
+    sidecar.start()
+
+    assert runtime.run_command.call_args.args[0] == ["start", "oracle-ords"]
+
+
+def test_stop_stops_existing() -> None:
+    """stop() stops the container when it exists."""
+    sidecar, runtime = _sidecar()
+    runtime.container_exists.return_value = True
+
+    sidecar.stop()
+
+    assert runtime.run_command.call_args.args[0] == ["stop", "-t", "30", "oracle-ords"]
+
+
+def test_remove_force() -> None:
+    """remove(force=True) force-removes the container."""
+    sidecar, runtime = _sidecar()
+    runtime.container_exists.return_value = True
+
+    sidecar.remove(force=True)
+
+    assert runtime.run_command.call_args.args[0] == ["rm", "-f", "oracle-ords"]
+
+
+def test_wait_for_healthy_true_when_running() -> None:
+    """wait_for_healthy returns True promptly once the container is running."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = True
+
+    assert sidecar.wait_for_healthy(timeout=10) is True
+
+
+def test_wait_for_healthy_times_out() -> None:
+    """wait_for_healthy returns False when readiness never arrives."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = False
+
+    assert sidecar.wait_for_healthy(timeout=0) is False
