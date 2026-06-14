@@ -20,6 +20,9 @@ from rich.console import Console
 
 from tools.oracle.container import ContainerNotFoundError, ContainerRuntime, ContainerRuntimeError
 
+ADB_PASSWORD_MIN_LENGTH = 12
+ADB_PASSWORD_MAX_LENGTH = 30
+
 
 @dataclass(frozen=True)
 class _AppUserStatements:
@@ -141,6 +144,7 @@ class OracleDatabase:
             ContainerAlreadyRunningError: If container is already running
             ContainerStartError: If container fails to start
         """
+        self._validate_app_password()
         self.console.rule("[bold blue]Starting Oracle Database Container")
 
         # Check if already running
@@ -468,6 +472,33 @@ class OracleDatabase:
             grant_developer=f"GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO {app_username}",
             grant_tablespace=f"GRANT UNLIMITED TABLESPACE TO {app_username}",
         )
+
+    def _validate_app_password(self) -> None:
+        """Validate the managed app password before mutating the container."""
+        password = self.config.app_password
+        missing_requirements: list[str] = []
+        if not ADB_PASSWORD_MIN_LENGTH <= len(password) <= ADB_PASSWORD_MAX_LENGTH:
+            missing_requirements.append(f"{ADB_PASSWORD_MIN_LENGTH} to {ADB_PASSWORD_MAX_LENGTH} characters")
+        if not any(char.isupper() for char in password):
+            missing_requirements.append("one uppercase character")
+        if not any(char.islower() for char in password):
+            missing_requirements.append("one lowercase character")
+        if not any(char.isdigit() for char in password):
+            missing_requirements.append("one numeric character")
+        if self.config.app_username and self.config.app_username.lower() in password.lower():
+            missing_requirements.append("cannot contain DATABASE_USER")
+        if '"' in password:
+            missing_requirements.append("no double quote characters")
+
+        if missing_requirements:
+            requirements = ", ".join(missing_requirements)
+            msg = (
+                "DATABASE_PASSWORD does not satisfy the Oracle mandatory profile "
+                f"for the managed ADB container. It must satisfy: {requirements}. "
+                "Use SuperSecret1 for the local demo or update DATABASE_PASSWORD "
+                "and DATABASE_URL together."
+            )
+            raise ContainerStartError(msg)
 
     def _connect_admin(self, oracledb: Any, conn_params: dict[str, str]) -> Any:
         """Connect to ADMIN with retries while ADB finishes opening services."""

@@ -16,6 +16,7 @@ from tools.oracle.container import ContainerRuntime
 from tools.oracle.database import ContainerNotFoundError, ContainerStartError, DatabaseConfig, OracleDatabase
 
 DEMO_PASSWORD = "SuperSecret1"  # noqa: S105
+INVALID_ORACLE_PROFILE_VALUE = "secret1"
 
 
 def test_database_config_defaults() -> None:
@@ -150,6 +151,53 @@ def test_start_raises_when_health_check_times_out(tmp_path: Path) -> None:
 
     with pytest.raises(ContainerStartError, match="health check timed out"):
         db.start()
+
+
+def test_start_validates_app_password_before_recreating_container(tmp_path: Path) -> None:
+    """Invalid app passwords should fail before mutating an existing container."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    runtime.container_running.return_value = True
+    config = DatabaseConfig(
+        app_password=INVALID_ORACLE_PROFILE_VALUE,
+        data_location=str(tmp_path / "oracle-data"),
+        wallet_location=str(tmp_path / "tns"),
+    )
+    db = OracleDatabase(runtime=runtime, config=config)
+
+    with pytest.raises(ContainerStartError, match=r"DATABASE_PASSWORD.*uppercase"):
+        db.start(recreate=True)
+
+    runtime.run_command.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("app_password", "message"),
+    [
+        ("Secret1a", "12 to 30"),
+        ("AppPassword1", "cannot contain DATABASE_USER"),
+        ('SuperSecret1"', "double quote"),
+    ],
+)
+def test_start_validates_app_password_against_autonomous_profile(
+    app_password: str,
+    message: str,
+    tmp_path: Path,
+) -> None:
+    """Managed ADB app passwords should satisfy the cloud password profile."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    runtime.container_running.return_value = False
+    runtime.container_exists.return_value = False
+    config = DatabaseConfig(
+        app_password=app_password,
+        data_location=str(tmp_path / "oracle-data"),
+        wallet_location=str(tmp_path / "tns"),
+    )
+    db = OracleDatabase(runtime=runtime, config=config)
+
+    with pytest.raises(ContainerStartError, match=message):
+        db.start()
+
+    runtime.run_command.assert_not_called()
 
 
 def test_initialize_db_users_uses_configured_app_credentials(monkeypatch: object, tmp_path: Path) -> None:
