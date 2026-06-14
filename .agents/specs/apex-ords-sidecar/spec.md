@@ -3,9 +3,24 @@
 *Beads: `oracledb-vertexai-apxg.3` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch1 (staged `apex/images`), Ch2 (APEX schema + REST users in `FREEPDB1`)*
-*Status: Implementation-ready*
+*Status: Drafted — needs full refresh before implementation (see contract update)*
 
 ---
+
+> **⚠ Contract update (2026-06-14) — refresh fully before implementing.**
+> Written against the `adb-free` draft; the landed gvenzl base changes several assumptions. Apply these
+> when this chapter comes up (after Ch2):
+> - **Service/PDB:** `freepdb1` (gvenzl `PDB_SERVICE_NAME`), container `oracle-free-db`, DB port `1521`.
+> - **DB↔ORDS connectivity (avoid a `database.py` edit):** prefer ORDS reaching the DB via the host
+>   gateway (`--add-host=host.docker.internal:host-gateway`, connect `host.docker.internal:1521/freepdb1`)
+>   instead of adding `--network oracle-net` to `_build_run_command()` (which would re-touch the
+>   just-reverted lifecycle class and require a DB recreate). If a shared network is preferred, treat the
+>   `database.py` `--network` edit as an explicit, separate decision.
+> - **Images at `/i/`:** bind-mount Ch1 `ApexMedia.paths().images_dir` into the ORDS container (the ORDS
+>   container, not the DB) — `container_mounts(ords_images_target=…)` returns the spec.
+> - **REST users** come from Ch2's non-interactive PL/SQL (no interactive `apex_rest_config.sql`).
+> - **Lifecycle integration** belongs in `cli/database.py` (the flat `infra` group in `manage.py`), not
+>   in `OracleDatabase`. Add `infra ords …` as its own subgroup like `infra apex`.
 
 ## 1.0 Context
 

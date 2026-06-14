@@ -3,9 +3,14 @@
 *Beads: `oracledb-vertexai-apxg.4` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch2 (APEX 26.1 in `FREEPDB1`), Ch3 (running ORDS/APEX)*
-*Status: Implementation-ready*
+*Status: Drafted — minor refresh before implementation (see contract update)*
 
 ---
+
+> **⚠ Contract update (2026-06-14).** Largely intact (SQLcl-based), but align connection details to the
+> landed gvenzl base when implementing: PDB/service `freepdb1` on `localhost:1521`, app/COFFEE schema with
+> the gvenzl app-user credentials from `DatabaseConfig`. `apex_group` already exists from Ch2 in
+> `tools/oracle/cli/apex.py` (export/import commands attach there). No `database.py` interaction.
 
 ## 1.0 Context
 

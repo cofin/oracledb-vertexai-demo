@@ -4,7 +4,8 @@
 *Beads: `oracledb-vertexai-apxg` (master epic)*
 *Research: [../../research/research_apex_upgrade/](../../research/research_apex_upgrade/)*
 *Created: 2026-06-14*
-*Status: Draft — all 5 chapters specced & implementation-ready (25 Beads tasks)*
+*Status: In progress — Ch1 shipped (32 tests). gvenzl revert landed; Ch2 spec refreshed to the real
+contract; Ch3–Ch5 carry contract-update banners pending their turn.*
 
 ---
 
@@ -43,7 +44,7 @@ is a **precondition consumer**, not the owner of that revert).
 | Decision | Choice | Rationale |
 |---|---|---|
 | Deliverable scope | **Infra + APEXlang tooling** (no app authoring) | Unblocks everything; app can be built interactively later |
-| Install method | **Runtime management command** (`manage.py infra apex …`), SYSDBA `apexins`, idempotent, auto-run on `infra start` when APEX missing | No image build; "upgrade" = re-run; controllable |
+| Install method | **`manage.py infra apex …`** runtime command; **installer-owned `docker exec … sqlplus / as sysdba`** (gvenzl OS-auth), media staged into the container via **`docker cp`**, idempotent, auto-run from `cli/database.py` on `infra start` when APEX missing (`--skip-apex` opts out) | No image build; "upgrade" = re-run; **keeps `database.py` untouched** (revert-safe) |
 | ORDS runtime | **Sidecar launched by the Python CLI** (official `database/ords` image) | Matches prod topology; honors "CLI owns infra, not compose" |
 | Version pinning | **Parameterized `--apex-version`, default `26.1`**, per-version host cache | Same command serves future upgrades |
 
@@ -51,10 +52,18 @@ is a **precondition consumer**, not the owner of that revert).
 
 ## Reviewed Sources
 
-- **`tools/oracle/database.py`** (branch) — `adb-free` config; `_exec_sysdba_sql()` (`:467`) assumes SYS
-  (false on adb-free); `initialize_db_users()` (`:478`) ADMIN-via-wallet pattern. The gvenzl base
-  (image `gvenzl/oracle-free:latest`, port 1521, `/container-entrypoint-initdb.d` + `-startdb.d` hook
-  mounts) is being restored by the concurrent revert (see `git show main:tools/oracle/database.py`).
+- **`tools/oracle/database.py`** (HEAD, gvenzl — **revert landed 2026-06-14**) — `DEFAULT_IMAGE =
+  gvenzl/oracle-free:latest`, `PDB_SERVICE_NAME = "freepdb1"`, container `oracle-free-db`, port 1521.
+  `OracleDatabase(runtime, config, console)`; `exec_sql(sql, *, user=None)` runs as the **app user**
+  (no SYSDBA helper — `_exec_sysdba_sql` was removed). `_build_run_command()` mounts `on_init` →
+  `/container-entrypoint-initdb.d` and `on_startup` → `/container-entrypoint-startdb.d` (run as SYSDBA).
+  SYSDBA for APEX = installer-owned `docker exec … sqlplus / as sysdba` (OS-auth); the lifecycle class
+  is **not** modified by this PRD.
+- **`tools/oracle/container.py`** — `ContainerRuntime.run_command(args, *, capture_output, check,
+  timeout)`; generic enough for `["cp", …]` and `["exec", container, "bash", "-c", …]`.
+- **`tools/oracle/cli/database.py`** + **`manage.py`** — `infra` is a **flat** group remapping
+  `database_group` (start/stop/restart/status/logs/remove→wipe); add `apex` (and later `ords`) as
+  subgroups; auto-install hooks into `_database_start()`.
 - **`tools/oracle/cli/database.py`** (`:42–176`) — `infra` lifecycle command group (start/stop/restart/
   remove/logs/status); the home for new `infra apex` verbs.
 - **`tools/oracle/cli/sqlcl.py`** + **`tools/oracle/sqlcl_installer.py`** — SQLcl already integrated

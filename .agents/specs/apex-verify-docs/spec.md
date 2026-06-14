@@ -3,9 +3,20 @@
 *Beads: `oracledb-vertexai-apxg.5` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch2 (install engine), Ch4 (APEXlang) — exercises the whole stack*
-*Status: Implementation-ready*
+*Status: Drafted — refresh before implementation (see contract update)*
 
 ---
+
+> **⚠ Contract update (2026-06-14).** The gvenzl revert already realigned app connection settings (it owns
+> `settings.py` / `tools/lib/utils.py`). So this chapter's settings work shrinks to **verification +
+> reconciliation**, not authoring:
+> - Confirm the app connects to gvenzl **`freepdb1`** on `localhost:1521` with the gvenzl app user and
+>   **no wallet/mTLS** (the revert sets this; do not re-edit settings the revert owns — verify only).
+> - Smoke target asserts `SELECT version FROM apex_release` (in `freepdb1`) `== 26.1.x`, COFFEE workspace
+>   exists, `/ords/apex` reachable, APEXlang export round-trip is stable.
+> - Docs to update: `quickstart`, `architecture`, `oracle-vector-search`, `CLAUDE.md`. **Exclude `lab.md`**
+>   (owned by the concurrent `adb-podman-lab-hardening` effort).
+> - The aggregate `make lint` / `make test` gate runs here, once the whole APEX stack + revert have settled.
 
 ## 1.0 Context
 
