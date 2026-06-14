@@ -51,6 +51,21 @@ def test_database_config_reads_audit_location_from_env(monkeypatch: pytest.Monke
     assert config.audit_location == "/tmp/oracle-audit"
 
 
+def test_database_config_reads_ports_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The database container config should load host ports from environment variables."""
+    monkeypatch.setenv("ORACLE26AI_PORT", "1234")
+    monkeypatch.setenv("ORACLE_MTLS_PORT", "2345")
+    monkeypatch.setenv("ORACLE_HTTPS_PORT", "3456")
+    monkeypatch.setenv("ORACLE_MONGO_PORT", "4567")
+
+    config = DatabaseConfig.from_env()
+
+    assert config.host_port == 1234
+    assert config.host_mtls_port == 2345
+    assert config.host_https_port == 3456
+    assert config.host_mongo_port == 4567
+
+
 def test_build_run_command_contains_correct_flags() -> None:
     """Verify built docker/podman command contains required ADB parameters."""
     runtime = MagicMock(spec=ContainerRuntime)
@@ -95,7 +110,7 @@ def test_build_run_command_contains_correct_flags() -> None:
     assert not any("container-entrypoint-startdb.d" in part for part in cmd)
 
 
-def test_database_remove_is_idempotent_when_container_missing(monkeypatch: object) -> None:
+def test_database_remove_is_idempotent_when_container_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """The wipe command should succeed when the container has already been removed."""
     runtime = MagicMock(spec=ContainerRuntime)
     db = MagicMock(spec=OracleDatabase)
@@ -111,7 +126,7 @@ def test_database_remove_is_idempotent_when_container_missing(monkeypatch: objec
     assert "already removed" in result.output
 
 
-def test_database_start_loads_env_file(monkeypatch: object, tmp_path: Path) -> None:
+def test_database_start_loads_env_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """The infra start command should honor the env file before reading config."""
     env_file = tmp_path / ".env"
     env_file.write_text("DATABASE_PASSWORD=env-secret\n", encoding="utf-8")
@@ -200,7 +215,7 @@ def test_start_validates_app_password_against_autonomous_profile(
     runtime.run_command.assert_not_called()
 
 
-def test_initialize_db_users_uses_configured_app_credentials(monkeypatch: object, tmp_path: Path) -> None:
+def test_initialize_db_users_uses_configured_app_credentials(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """The managed container should create the same app credentials the app uses."""
     cursor = MagicMock()
     cursor.fetchone.return_value = [0]

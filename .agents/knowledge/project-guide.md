@@ -62,6 +62,9 @@ The store-aware chat PRD owns five linked components:
   availability lookups behind named SQL and product-domain service methods.
   Nearest-store ranking may use seeded coordinates plus Haversine; do not call
   Google geocoding, Places, Distance Matrix, or Routes APIs from chat.
+  Availability queries resolve target products using exact match, falling back
+  to pronoun resolution from session state, and finally using Vertex AI vector
+  search to match partial or imprecise names.
 - ADK tools and intent routing: add deterministic `STORE_LOCATION` and
   `PRODUCT_AVAILABILITY` routes that gather store/product/inventory facts before
   answering. Keep `ORDER_STATUS` explicit but unsupported until order data
@@ -89,8 +92,10 @@ and bridge keys, not products, metrics, response cache, or embedding cache.
 
 `ADKRunner` is app-scoped and receives request-scoped `AgentToolsService`
 instances for database-backed work. Product RAG is classifier-first and emits a
-single grounded final event from returned Cymbal Coffee products. Non-RAG turns
-may stream model deltas through ADK Workflow.
+single grounded final event from returned Cymbal Coffee products. It also
+persists the names of recommended products in the ADK session state under
+`last_products` to support subsequent context-aware availability queries.
+Non-RAG turns may stream model deltas through ADK Workflow.
 
 Final chat responses must preserve intent, vector query, product/store result
 context, timing phases, response-cache state, and embedding-cache state through

@@ -38,8 +38,9 @@
   the separate SQLSpec Litestar session table (`app_session`).
 - Chat uses classifier-first ADK 2 orchestration. `ADKRunner` checks response
   cache, classifies intent, sends `PRODUCT_RAG` turns through direct menu
-  grounding, and uses the ADK Workflow/BaseNode graph for non-RAG streamed model
-  conversation.
+  grounding (storing recommended products in session state under `last_products`
+  for subsequent pronoun resolution), and uses the ADK Workflow/BaseNode graph
+  for non-RAG streamed model conversation.
 - ADK tools are closure-bound per request inside `ADKRunner`; they must use the
   active Dishka request services, not module globals.
 - `/api/chat/stream` is an SSE endpoint. Streaming runs ADK with
@@ -84,6 +85,8 @@
   private `app.cli._helpers` modules; small command-local helpers can live in
   `commands.py`. Do not add compatibility shim or facade modules.
 - `sanitize_for_json` camel-cases msgspec Struct keys for wire encoding. In the chat domain (like `ADKRunner` and grounding formatting helpers), check both snake_case and camelCase keys using `_get_field(row, snake_name)` to remain resilient to case conversion differences between unit test mocks and runtime database responses.
+- Product availability lookups (`PRODUCT_AVAILABILITY`) resolve product names via exact match first, falling back to pronoun resolution from `last_products` in session history, and finally using Vertex AI vector search to resolve partial/imprecise product names (e.g. 'Gemini' -> 'Gemini Rush') before checking store inventory.
+
 
 ## Code Style
 

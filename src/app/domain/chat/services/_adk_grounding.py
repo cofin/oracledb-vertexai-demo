@@ -155,20 +155,21 @@ def _extract_location_filters(query: str, location_context: dict[str, Any] | Non
     return filters
 
 
-def _extract_product_query(query: str) -> str:
+def _extract_product_query(query: str) -> str | None:
     query_text = query.casefold()
     for needle, product_name in _PRODUCT_QUERY_ALIASES:
         if needle in query_text:
             return product_name
 
     cleaned = re.sub(
-        r"\b(where|can|i|pick|up|near|me|is|are|available|availability|which|cafe|store|has|have|in|at|do|you|the|a|an)\b",
+        r"\b(where|can|i|pick|up|near|me|is|are|available|availability|which|cafe|store|has|have|in|at|do|you|the|a|an|that|this|it|them|those|stock|nearby|here|there)\b",
         " ",
         query_text,
     )
     cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
     cleaned = " ".join(cleaned.split())
-    return cleaned.title() if cleaned else query
+    return cleaned.title() if cleaned else None
+
 
 
 def _store_query_parts(row: dict[str, Any]) -> tuple[str, str]:

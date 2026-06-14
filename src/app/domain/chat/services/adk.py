@@ -301,17 +301,49 @@ class AgentToolsService(OracleAsyncService):
     ) -> dict[str, Any]:
         started = time.time()
         coordinates = (latitude, longitude) if latitude is not None and longitude is not None else None
+        
+        # 1. Try exact match first
         availability = await self.store_service.find_product_availability(product_query, coordinates=coordinates)
-        binds: dict[str, Any] = {"product_query": product_query}
+        sql_key = "find-product-availability-by-query"
+        binds = {"product_query": product_query}
+        
+        # 2. If no exact match, try vector search fallback
+        if not availability:
+            query_embedding = await self.vertex_ai_service.get_text_embedding(
+                product_query,
+                embedding_purpose="query",
+            )
+            matches = await self.product_service.search_by_vector(
+                query_embedding,
+                similarity_threshold=0.6,
+                limit=1,
+            )
+            if matches:
+                resolved_product = matches[0]
+                availability = await self.store_service.find_stores_with_product(
+                    resolved_product.id,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+                sql_key = "find-stores-with-product-inventory"
+                binds = {"product_id": resolved_product.id}
+                await logger.ainfo(
+                    "Resolved product query via vector search",
+                    query=product_query,
+                    resolved_name=resolved_product.name,
+                    similarity=resolved_product.similarity_score,
+                )
+
         if coordinates:
             binds["origin"] = "<REQUEST_COORDINATES>"
+            
         return {
             "availability": sanitize_for_json(availability),
             "results_count": len(availability),
             "sql_phases": [
                 _sql_phase(
                     label="Product availability lookup",
-                    sql_key="find-product-availability-by-query",
+                    sql_key=sql_key,
                     binds=binds,
                     row_count=len(availability),
                     runtime_ms=(time.time() - started) * 1000,
@@ -550,6 +582,7 @@ class ADKRunner:
         query: str,
         answer: str,
         intent_detected: str | None = None,
+        last_products: list[str] | None = None,
     ) -> None:
         session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
         if not session:
@@ -558,6 +591,8 @@ class ADKRunner:
         state = dict(getattr(session, "state", None) or {})
         if intent_detected:
             state["intent"] = intent_detected
+        if last_products is not None:
+            state["last_products"] = last_products
         history = [
             *[
                 {"source": message.source, "message": message.message}
@@ -590,14 +625,29 @@ class ADKRunner:
         location_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
         elapsed_ms = (time.time() - start) * 1000
-        cached_metrics = dict(cached_response.get("search_metrics") or {})
+        cached_metrics = dict(
+            cached_response.get("searchMetrics")
+            or cached_response.get("search_metrics")
+            or {}
+        )
         cached_metrics["total_ms"] = round(elapsed_ms)
         answer = str(cached_response.get("answer", ""))
-        sql_phases = _coerce_sql_phases(cached_response.get("sql_phases"))
+        sql_phases = _coerce_sql_phases(
+            cached_response.get("sqlPhases")
+            or cached_response.get("sql_phases")
+        )
         intent_detected = _effective_intent(
-            str(cached_response.get("intent_detected", "GENERAL_CONVERSATION")),
+            str(
+                cached_response.get("intentDetected")
+                or cached_response.get("intent_detected")
+                or "GENERAL_CONVERSATION"
+            ),
             cached_metrics,
             sql_phases,
+        )
+        last_products = (
+            cached_response.get("lastProducts")
+            or cached_response.get("last_products")
         )
         if answer:
             await self._append_display_history(
@@ -606,6 +656,7 @@ class ADKRunner:
                 query=query,
                 answer=answer,
                 intent_detected=intent_detected,
+                last_products=last_products,
             )
         return {
             "type": "final",
@@ -615,11 +666,23 @@ class ADKRunner:
             "intent_detected": intent_detected,
             "search_metrics": cached_metrics,
             "from_cache": True,
-            "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit")),
+            "embedding_cache_hit": bool(
+                cached_response.get("embeddingCacheHit")
+                or cached_response.get("embedding_cache_hit")
+            ),
             "sql_phases": [response_cache_phase, *sql_phases],
-            "store_results": _coerce_dict_rows(cached_response.get("store_results")),
-            "inventory_results": _coerce_dict_rows(cached_response.get("inventory_results")),
-            "map_actions": _coerce_dict_rows(cached_response.get("map_actions")),
+            "store_results": _coerce_dict_rows(
+                cached_response.get("storeResults")
+                or cached_response.get("store_results")
+            ),
+            "inventory_results": _coerce_dict_rows(
+                cached_response.get("inventoryResults")
+                or cached_response.get("inventory_results")
+            ),
+            "map_actions": _coerce_dict_rows(
+                cached_response.get("mapActions")
+                or cached_response.get("map_actions")
+            ),
             "location_context": _safe_location_context(location_context),
         }
 
@@ -641,6 +704,8 @@ class ADKRunner:
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
         product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        products = metric_state.get("rag_products", [])
+        last_products = [p["name"] for p in products] if products else None
         response_data = {
             "answer": answer,
             "intent_detected": _PRODUCT_RAG_INTENT,
@@ -650,6 +715,7 @@ class ADKRunner:
             "store_results": [],
             "inventory_results": [],
             "map_actions": [],
+            "last_products": last_products,
         }
         if answer:
             if cache_key:
@@ -660,6 +726,7 @@ class ADKRunner:
                 query=query,
                 answer=answer,
                 intent_detected=_PRODUCT_RAG_INTENT,
+                last_products=last_products,
             )
         return {
             "type": "final",
@@ -736,6 +803,13 @@ class ADKRunner:
     ) -> dict[str, Any]:
         coordinates = _request_coordinates(location_context)
         product_query = _extract_product_query(query)
+        if not product_query:
+            state = dict(getattr(session, "state", None) or {})
+            last_products = state.get("last_products", [])
+            if last_products:
+                product_query = last_products[0]
+            else:
+                product_query = query
 
         # Resolve target store if possible
         location_hint = None

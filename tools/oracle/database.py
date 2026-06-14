@@ -83,9 +83,15 @@ class DatabaseConfig:
         wallet_pw = os.getenv("WALLET_PASSWORD", "SuperSecret1")
         wallet_loc = os.getenv("TNS_ADMIN", os.getenv("WALLET_LOCATION", ".envs/tns"))
         host_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
+        host_mtls_port = os.getenv("ORACLE_MTLS_PORT", os.getenv("ORACLE26AI_MTLS_PORT", "1522"))
+        host_https_port = os.getenv("ORACLE_HTTPS_PORT", os.getenv("ORACLE26AI_HTTPS_PORT", "8443"))
+        host_mongo_port = os.getenv("ORACLE_MONGO_PORT", "27017")
 
         return cls(
             host_port=int(host_port),
+            host_mtls_port=int(host_mtls_port),
+            host_https_port=int(host_https_port),
+            host_mongo_port=int(host_mongo_port),
             admin_password=oracle_system_pw,
             wallet_password=wallet_pw,
             app_username=os.getenv("DATABASE_USER", "app"),
@@ -195,6 +201,9 @@ class OracleDatabase:
             self.console.print(f"  Service: {info['service_name']}")
             self.console.print(f"  User: {info['user']}")
             self.console.print(f"  DSN: {info['dsn']}")
+            self.console.print("\n[bold]Developer Services:[/bold]")
+            self.console.print(f"  Oracle APEX: https://localhost:{self.config.host_https_port}/ords/apex")
+            self.console.print(f"  Database Actions: https://localhost:{self.config.host_https_port}/ords/sql-developer")
         else:
             logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
             raise ContainerStartError(
