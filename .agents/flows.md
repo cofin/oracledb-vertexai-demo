@@ -22,6 +22,34 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [~] PRD: apex-gvenzl-install
+*Link: [./specs/apex-gvenzl-install/](./specs/apex-gvenzl-install/)*
+*Beads: oracledb-vertexai-apxg (master epic)*
+*Research: [./research/research_apex_upgrade/](./research/research_apex_upgrade/)*
+
+Install/upgrade Oracle APEX 26.1 + ORDS into the reverted `gvenzl/oracle-free` container via
+`manage.py infra apex`, and adopt APEXlang source at `src/apex/`. Precondition: container base
+revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-2q0`).
+
+### Chapters (all specced — implementation-ready)
+- [ ] **Chapter 1: APEX media staging (`apex-media-staging`)** — implementation-ready
+  *Link: [./specs/apex-media-staging/](./specs/apex-media-staging/)*
+  *Beads: oracledb-vertexai-apxg.1 (5 tasks)*
+- [ ] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — implementation-ready, blocked by Ch1
+  *Link: [./specs/apex-install-upgrade/](./specs/apex-install-upgrade/)*
+  *Beads: oracledb-vertexai-apxg.2 (5 tasks)*
+- [ ] **Chapter 3: ORDS sidecar runtime via Python CLI (`apex-ords-sidecar`)** — implementation-ready, blocked by Ch1+Ch2
+  *Link: [./specs/apex-ords-sidecar/](./specs/apex-ords-sidecar/)*
+  *Beads: oracledb-vertexai-apxg.3 (5 tasks)*
+- [ ] **Chapter 4: APEXlang source layout + export/import (`apexlang-source`)** — implementation-ready, blocked by Ch2+Ch3
+  *Link: [./specs/apexlang-source/](./specs/apexlang-source/)*
+  *Beads: oracledb-vertexai-apxg.4 (5 tasks)*
+- [ ] **Chapter 5: Verification, settings alignment & docs (`apex-verify-docs`)** — implementation-ready, blocked by Ch2+Ch4
+  *Link: [./specs/apex-verify-docs/](./specs/apex-verify-docs/)*
+  *Beads: oracledb-vertexai-apxg.5 (5 tasks)*
+
+---
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*

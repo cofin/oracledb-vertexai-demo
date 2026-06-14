@@ -60,7 +60,7 @@ class DatabaseSettings:
     )
     """Oracle Database Port."""
     SERVICE_NAME: str = field(
-        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "myatp_low"),
+        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"),
     )
     """Oracle Database Service Name."""
     DSN: str = field(
