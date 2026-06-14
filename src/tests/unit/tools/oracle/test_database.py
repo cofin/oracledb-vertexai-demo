@@ -37,8 +37,17 @@ def test_database_config_defaults() -> None:
     assert config.app_password == DEMO_PASSWORD
     assert config.wallet_location == ".envs/tns"
     assert config.data_location == "/dev/shm/oracle-data"
-    assert config.audit_location is None
+    assert config.audit_location == "/dev/shm/oracle-audit"
     assert config.oradata_location == "/dev/shm/oracle-oradata"
+
+
+def test_database_config_reads_audit_location_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The database container should allow relocating Oracle audit files."""
+    monkeypatch.setenv("ORACLE_AUDIT_LOCATION", "/tmp/oracle-audit")
+
+    config = DatabaseConfig.from_env()
+
+    assert config.audit_location == "/tmp/oracle-audit"
 
 
 def test_build_run_command_contains_correct_flags() -> None:
@@ -60,6 +69,8 @@ def test_build_run_command_contains_correct_flags() -> None:
 
     absolute_data_path = str(Path("/dev/shm/oracle-data").resolve())
     assert f"{absolute_data_path}:/u01/data:z" in cmd
+    absolute_audit_path = str(Path("/dev/shm/oracle-audit").resolve())
+    assert f"{absolute_audit_path}:/u01/app/oracle/audit:z" in cmd
     absolute_oradata_path = str(Path("/dev/shm/oracle-oradata").resolve())
     assert f"{absolute_oradata_path}:/u01/app/oracle/oradata:z" in cmd
     absolute_wallet_path = str(Path(".envs/tns").resolve())

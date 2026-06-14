@@ -61,7 +61,7 @@ class DatabaseConfig:
     workload_type: str = "ATP"
 
     data_location: str = "/dev/shm/oracle-data"  # noqa: S108
-    audit_location: str | None = None
+    audit_location: str | None = "/dev/shm/oracle-audit"  # noqa: S108
     oradata_location: str | None = "/dev/shm/oracle-oradata"  # noqa: S108
 
     log_max_size: str = "10m"
@@ -90,6 +90,7 @@ class DatabaseConfig:
             wallet_location=wallet_loc,
             workload_type=os.getenv("WORKLOAD_TYPE", "ATP"),
             data_location=os.getenv("ORACLE_DATA_LOCATION", "/dev/shm/oracle-data"),  # noqa: S108
+            audit_location=os.getenv("ORACLE_AUDIT_LOCATION", "/dev/shm/oracle-audit"),  # noqa: S108
             oradata_location=os.getenv("ORACLE_ORADATA_LOCATION", "/dev/shm/oracle-oradata"),  # noqa: S108
         )
 
@@ -581,6 +582,12 @@ class OracleDatabase:
         absolute_data_path.mkdir(parents=True, exist_ok=True)
         absolute_data_path.chmod(0o777)
 
+        absolute_audit_path: Path | None = None
+        if self.config.audit_location is not None:
+            absolute_audit_path = Path(self.config.audit_location).resolve()
+            absolute_audit_path.mkdir(parents=True, exist_ok=True)
+            absolute_audit_path.chmod(0o777)
+
         absolute_oradata_path: Path | None = None
         if self.config.oradata_location is not None:
             absolute_oradata_path = Path(self.config.oradata_location).resolve()
@@ -615,6 +622,8 @@ class OracleDatabase:
             "-v",
             f"{absolute_data_path}:/u01/data:z",
         ]
+        if absolute_audit_path is not None:
+            cmd.extend(["-v", f"{absolute_audit_path}:/u01/app/oracle/audit:z"])
         if absolute_oradata_path is not None:
             cmd.extend(["-v", f"{absolute_oradata_path}:/u01/app/oracle/oradata:z"])
 

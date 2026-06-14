@@ -7,9 +7,12 @@ from __future__ import annotations
 
 import gzip
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tools.scripts.generate_inventory_fixtures import generate_inventory
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_generate_inventory_writes_gzipped_load_fixture_name(tmp_path: Path) -> None:
