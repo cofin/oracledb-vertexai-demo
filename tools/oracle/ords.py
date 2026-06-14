@@ -14,12 +14,13 @@ host media staged in Chapter 1.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from rich.console import Console
 
 if TYPE_CHECKING:
+    from tools.oracle.apex_media import ApexMedia
     from tools.oracle.container import ContainerRuntime
 
 DEFAULT_ORDS_IMAGE = "container-registry.oracle.com/database/ords:latest"
@@ -47,10 +48,14 @@ class OrdsConfig:
 
     @classmethod
     def from_env(cls) -> OrdsConfig:
-        """Build config from environment with quiet demo defaults."""
+        """Build config from environment with quiet demo defaults.
+
+        The service name is intentionally **not** read from ``DATABASE_SERVICE_NAME``:
+        the local ORDS sidecar always targets the gvenzl PDB (``freepdb1``), whereas
+        that env may point the app at a remote ATP service.
+        """
         return cls(
             image=os.getenv("ORDS_IMAGE", DEFAULT_ORDS_IMAGE),
-            service_name=os.getenv("DATABASE_SERVICE_NAME", "freepdb1"),
             db_password=os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
         )
 
@@ -94,3 +99,14 @@ class OrdsSidecar:
             cmd.extend(["-v", f"{c.apex_images_path}:{c.container_images_path}:z"])
         cmd.append(c.image)
         return cmd
+
+
+def build_ords_sidecar(
+    runtime: ContainerRuntime,
+    media: ApexMedia,
+    *,
+    console: Console | None = None,
+) -> OrdsSidecar:
+    """Build an ORDS sidecar wired to serve Chapter 1's resolved APEX images dir."""
+    config = replace(OrdsConfig.from_env(), apex_images_path=str(media.paths().images_dir))
+    return OrdsSidecar(runtime, config, console=console)

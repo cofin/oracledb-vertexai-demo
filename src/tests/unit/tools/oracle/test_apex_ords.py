@@ -74,3 +74,22 @@ def test_build_run_command_omits_mount_without_images_path() -> None:
 
     assert "/i/" not in " ".join(m for m in cmd if m == "-v")
     assert cmd.count("-v") == 0
+
+
+def test_build_ords_sidecar_wires_ch1_images() -> None:
+    """build_ords_sidecar pulls the resolved Ch1 images dir into the ORDS config."""
+    from pathlib import Path
+
+    from tools.oracle.ords import build_ords_sidecar
+
+    runtime = MagicMock(spec=ContainerRuntime)
+    media = MagicMock()
+    media.paths.return_value.images_dir = Path("/cache/26.1/apex/images")
+
+    sidecar = build_ords_sidecar(runtime, media)
+
+    assert sidecar.config.apex_images_path == "/cache/26.1/apex/images"
+    assert sidecar.config.service_name == "freepdb1"
+    joined = " ".join(sidecar._build_run_command())
+    assert "/cache/26.1/apex/images:/opt/oracle/apex/images:z" in joined
+    assert "DBSERVICENAME=freepdb1" in joined
