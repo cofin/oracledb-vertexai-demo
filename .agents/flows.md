@@ -31,10 +31,10 @@ Install/upgrade Oracle APEX 26.1 + ORDS into the reverted `gvenzl/oracle-free` c
 `manage.py infra apex`, and adopt APEXlang source at `src/apex/`. Precondition: container base
 revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-2q0`).
 
-### Chapters (all specced — implementation-ready)
-- [ ] **Chapter 1: APEX media staging (`apex-media-staging`)** — implementation-ready
+### Chapters (Ch1 done; Ch2–Ch5 specced, gated on gvenzl revert)
+- [x] **Chapter 1: APEX media staging (`apex-media-staging`)** — done (32 tests; commits 56cb007..1c157c6)
   *Link: [./specs/apex-media-staging/](./specs/apex-media-staging/)*
-  *Beads: oracledb-vertexai-apxg.1 (5 tasks)*
+  *Beads: oracledb-vertexai-apxg.1 (5/5 tasks closed)*
 - [ ] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — implementation-ready, blocked by Ch1
   *Link: [./specs/apex-install-upgrade/](./specs/apex-install-upgrade/)*
   *Beads: oracledb-vertexai-apxg.2 (5 tasks)*

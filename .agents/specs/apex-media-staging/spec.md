@@ -3,7 +3,7 @@
 *Beads: `oracledb-vertexai-apxg.1` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Research: [../../research/research_apex_upgrade/](../../research/research_apex_upgrade/)*
-*Status: Implementation-ready*
+*Status: Done — 5/5 tasks closed; 32 unit tests green (ruff + mypy clean); commits 56cb007..1c157c6*
 
 ---
 
@@ -68,16 +68,16 @@ staging layout that downstream chapters mount/consume. It performs **no database
 
 ## 4.0 Implementation Plan (TDD)
 
-- [ ] **Task 1.1** — `ApexMediaConfig` + URL/filename/path derivation (version + english_only),
-  `from_env()`. Unit tests assert URLs/paths for `26.1` (en + full) and a future version.
-- [ ] **Task 1.2** — Idempotent `download()` with size validation and `--force`; skip-on-valid-cache.
-  Unit tests mock the HTTP layer (success, truncated/size-mismatch → raise, cache-hit → no fetch).
-- [ ] **Task 1.3** — `verify_zip()` + `extract()` with `apexins.sql` presence gate and skip-on-extracted.
-  Unit tests use a tiny synthetic zip fixture (good + corrupt + missing-apexins).
-- [ ] **Task 1.4** — `paths()` / `ApexMediaPaths` + `container_mounts()` contract; `.gitignore` entry.
-  Unit tests assert the mount-spec shape and resolved absolute paths.
-- [ ] **Task 1.5** — `ApexMedia.ensure()` orchestration (download→verify→extract→paths), idempotent
-  end-to-end. Unit test runs twice; second run performs no network/extract work.
+- [x] **Task 1.1** — `ApexMediaConfig` + URL/filename/path derivation (version + english_only),
+  `from_env()`. Unit tests assert URLs/paths for `26.1` (en + full) and a future version. `[56cb007]`
+- [x] **Task 1.2** — Idempotent `download()` with size validation and `--force`; skip-on-valid-cache.
+  Unit tests mock the HTTP layer (success, truncated/size-mismatch → raise, cache-hit → no fetch). `[ed0126d]`
+- [x] **Task 1.3** — `verify_zip()` + `extract()` with `apexins.sql` presence gate and skip-on-extracted.
+  Unit tests use a tiny synthetic zip fixture (good + corrupt + missing-apexins). `[81a57c6]`
+- [x] **Task 1.4** — `paths()` / `ApexMediaPaths` + `container_mounts()` contract; `.gitignore` entry.
+  Unit tests assert the mount-spec shape and resolved absolute paths. `[57f16c6]`
+- [x] **Task 1.5** — `ApexMedia.ensure()` orchestration (download→verify→extract→paths), idempotent
+  end-to-end. Unit test runs twice; second run performs no network/extract work. `[1c157c6]`
 
 ---
 
