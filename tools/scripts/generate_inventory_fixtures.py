@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
-PRODUCTS_PER_STORE = 5
+PRODUCTS_PER_STORE = 100
 MAX_QUANTITY = 50
 LOW_STOCK_THRESHOLD = 10
 
@@ -65,6 +65,16 @@ def selected_products(products: list[dict[str, Any]], store_index: int) -> list[
 
 def inventory_row(current_id: int, store_id: int, product_id: int) -> dict[str, Any]:
     """Build one deterministic inventory fixture row."""
+    if product_id == 231:
+        return {
+            "id": current_id,
+            "store_id": store_id,
+            "product_id": product_id,
+            "quantity_available": 0,
+            "stock_status": "OUT_OF_STOCK",
+            "pickup_available": False,
+        }
+
     quantity = (store_id * 17 + product_id * 13 + current_id) % (MAX_QUANTITY + 1)
     return {
         "id": current_id,

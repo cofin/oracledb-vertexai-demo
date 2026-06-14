@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -142,14 +143,14 @@ def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
     """
     prepared: dict[str, Any] = {}
     for key, value in record.items():
-        if value is None:
-            continue
         if key == "price" and isinstance(value, str):
             prepared[key] = Decimal(value)
         elif isinstance(value, bool):
             prepared[key] = int(value)
         elif key in DATETIME_FIELDS and isinstance(value, str):
             prepared[key] = datetime.fromisoformat(value)
+        elif key == "embedding" and isinstance(value, list):
+            prepared[key] = json.dumps(value)
         else:
             prepared[key] = value
     return prepared
