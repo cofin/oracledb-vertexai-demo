@@ -89,14 +89,106 @@ class ApexInstaller:
         self.config = config or ApexInstallConfig()
         self.console = console or Console()
 
-    def _exec_sysdba(self, sql: str, *, in_pdb: bool = True) -> str:
+    def _exec_sysdba(self, sql: str, *, in_pdb: bool = True, workdir: str | None = None) -> str:
         """Run SQL inside the container as SYSDBA (optionally entering the PDB)."""
         preamble = f"ALTER SESSION SET CONTAINER={self.config.pdb};\n" if in_pdb else ""
-        script = f"sqlplus -S -L / as sysdba <<'SQL'\n{preamble}{sql}\nexit\nSQL\n"
+        command = f"sqlplus -S -L / as sysdba <<'SQL'\n{preamble}{sql}\nexit\nSQL\n"
+        if workdir is not None:
+            command = f"cd {workdir} && {command}"
         _rc, stdout, _stderr = self.runtime.run_command(
-            ["exec", self.db.config.container_name, "bash", "-c", script]
+            ["exec", self.db.config.container_name, "bash", "-c", command]
         )
         return stdout
+
+    @staticmethod
+    def _satisfies(installed: str, target: str) -> bool:
+        """True when ``installed`` is in the ``target`` line (26.1.x satisfies 26.1)."""
+        arity = len(target.split("."))
+        truncated = ".".join(installed.split(".")[:arity])
+        return compare_versions(truncated, target) == 0
+
+    def _decide_action(self, installed: str | None, target: str, *, force: bool) -> str:
+        """Decide skip / install / upgrade from the installed vs target versions."""
+        if force or installed is None:
+            return "install"
+        arity = len(target.split("."))
+        truncated = ".".join(installed.split(".")[:arity])
+        comparison = compare_versions(truncated, target)
+        if comparison == 0:
+            return "skip"
+        if comparison < 0:
+            return "upgrade"
+        # Installed is on a newer line than requested. Default: leave it (apexins
+        # cannot downgrade). Flip to `raise ApexInstallError(...)` to make a
+        # newer-than-target database a hard error instead.
+        return "skip"
+
+    def install(self, *, force: bool = False) -> str:
+        """Install or upgrade APEX into the PDB, idempotently; return the version."""
+        target = self.media.config.version
+        installed = self.installed_version()
+        action = self._decide_action(installed, target, force=force)
+        if action == "skip":
+            # _decide_action only returns "skip" for a known (non-None) installed version.
+            current = installed or target
+            self.console.print(f"[green]✓[/green] APEX {current} already satisfies target {target}; skipping.")
+            return current
+
+        verb = "Upgrading" if action == "upgrade" else "Installing"
+        self.console.print(f"[cyan]{verb} APEX {target} into {self.config.pdb}...[/cyan]")
+        self.stage_media(force=force)
+        self._run_apexins()
+        self._configure_rest()
+        self.provision_workspace()
+
+        result = self.installed_version()
+        if result is None or not self._satisfies(result, target):
+            raise ApexInstallError(f"APEX did not reach target {target} after install (got {result!r})")
+        self.console.print(f"[green]✓[/green] APEX {result} ready in {self.config.pdb}.")
+        return result
+
+    def _run_apexins(self) -> None:
+        """Run the APEX installer script as SYSDBA from the staged media dir."""
+        apexins = f"{self.config.container_apex_dir}/apexins.sql"
+        self._exec_sysdba(
+            f"@{apexins} SYSAUX SYSAUX TEMP {self.config.images_url_path}",
+            workdir=self.config.container_apex_dir,
+        )
+
+    def _configure_rest(self) -> None:
+        """Configure the ORDS/REST listener users non-interactively."""
+        rest_script = f"{self.config.container_apex_dir}/apex_rest_config_core.sql"
+        self._exec_sysdba(
+            f"@{rest_script} {self.config.admin_password} {self.config.admin_password}",
+            workdir=self.config.container_apex_dir,
+        )
+
+    def stage_media(self, *, force: bool = False) -> None:
+        """Stage host APEX media into the container via ``docker cp`` (see Task 2.4)."""
+        paths = self.media.ensure(force=force)
+        container = self.db.config.container_name
+        self.runtime.run_command(["exec", container, "mkdir", "-p", self.config.container_apex_dir])
+        self.runtime.run_command(["cp", f"{paths.apex_dir}/.", f"{container}:{self.config.container_apex_dir}"])
+
+    def provision_workspace(self) -> None:
+        """Provision the COFFEE workspace + ADMIN dev user idempotently (see Task 2.3)."""
+        workspace = self.config.workspace
+        schema = self.config.primary_schema.upper()
+        # Identifiers are config-controlled demo values, not external input (S608 N/A).
+        exists_query = f"SELECT COUNT(*) INTO l_count FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
+        plsql = (
+            "DECLARE\n"
+            "  l_count NUMBER;\n"
+            "BEGIN\n"
+            f"  {exists_query};\n"
+            "  IF l_count = 0 THEN\n"
+            "    apex_instance_admin.add_workspace(\n"
+            f"      p_workspace      => '{workspace}',\n"
+            f"      p_primary_schema => '{schema}');\n"
+            "  END IF;\n"
+            "END;\n/\n"
+        )
+        self._exec_sysdba(plsql)
 
     def installed_version(self) -> str | None:
         """Return the installed APEX version in the PDB, or None when absent."""
