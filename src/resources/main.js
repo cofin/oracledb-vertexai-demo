@@ -152,7 +152,7 @@ const renderSqlPhase = (phase) => {
   const binds = Object.entries(phase.binds ?? {})
     .map(
       ([key, value]) =>
-        `<div class="help-tooltip-metric"><span class="help-tooltip-metric-label">${escapeHtml(key)}</span><span class="help-tooltip-metric-value">${escapeHtml(
+        `<div class="flex items-center justify-between gap-2 text-xs"><span class="text-muted">${escapeHtml(key)}</span><span class="font-mono text-strong">${escapeHtml(
           String(value),
         )}</span></div>`,
     )
@@ -272,6 +272,8 @@ const showTelemetryPopover = (detail) => {
     ? sqlPhases.map(renderSqlPhase).join("")
     : '<p class="mt-2 text-sm text-muted">No SQL was executed for this phase.</p>'
   root.hidden = false
+  root.removeAttribute("aria-hidden")
+  root.setAttribute("role", "dialog")
   root.className = "popover-surface fixed bottom-4 right-4 z-50 max-h-[70vh] w-[min(34rem,calc(100vw-2rem))] overflow-auto p-4"
   root.innerHTML = `<header class="flex items-start justify-between gap-3">
     <div>
@@ -300,6 +302,10 @@ const showTelemetryPopover = (detail) => {
           ${sqlMarkup}
         </div>`
   }`
+  const closeButton = root.querySelector("[data-telemetry-close]")
+  if (closeButton instanceof HTMLElement) {
+    closeButton.focus()
+  }
   if (planQuery) {
     void loadExplainPlan(planQuery)
   }
@@ -311,6 +317,8 @@ const hideTelemetryPopover = () => {
     return
   }
   root.hidden = true
+  root.setAttribute("aria-hidden", "true")
+  root.removeAttribute("role")
   root.className = "popover-surface sr-only"
   root.innerHTML = ""
 }
@@ -865,6 +873,13 @@ const parseSseBlock = (block) => {
   return { eventName, data: dataLines.join("\n") }
 }
 
+const announceToScreenReader = (text) => {
+  const announcer = document.getElementById("chat-live-announcer")
+  if (announcer) {
+    announcer.textContent = text
+  }
+}
+
 const handleChatStreamEvent = ({ eventName, data }) => {
   const payload = JSON.parse(data)
   if (eventName === "delta") {
@@ -872,11 +887,13 @@ const handleChatStreamEvent = ({ eventName, data }) => {
     return
   }
   if (eventName === "final") {
-    setPendingText(payload.answer ?? "")
+    const answer = payload.answer ?? ""
+    setPendingText(answer)
     renderMessageTelemetry(payload)
     renderStructuredResults(payload)
     renderMetrics(payload)
     finalizePendingReply()
+    announceToScreenReader(answer)
     return
   }
   if (eventName === "error") {
@@ -884,6 +901,7 @@ const handleChatStreamEvent = ({ eventName, data }) => {
     setPendingText(message)
     showChatError(message)
     finalizePendingReply()
+    announceToScreenReader(message)
   }
 }
 

@@ -22,6 +22,28 @@ from tools.oracle.container import ContainerNotFoundError, ContainerRuntime, Con
 
 ADB_PASSWORD_MIN_LENGTH = 12
 ADB_PASSWORD_MAX_LENGTH = 30
+OEE_USERNAME = "MPACK_OEE"
+ORACLE_PASSWORD_REUSE_ERROR = 28007
+DEFAULT_VECTOR_MEMORY_SIZE = "512M"
+
+VECTOR_MEMORY_CHECK_SQL = """
+SET HEADING OFF
+SET FEEDBACK OFF
+SET PAGESIZE 0
+SET VERIFY OFF
+SELECT NVL(MAX(BYTES), 0)
+  FROM V$SGAINFO
+ WHERE NAME IN ('Vector Memory', 'Vector Memory Area');
+EXIT
+"""
+
+VECTOR_MEMORY_CONFIG_SQL = f"""
+WHENEVER SQLERROR EXIT SQL.SQLCODE
+ALTER SYSTEM SET vector_memory_size = {DEFAULT_VECTOR_MEMORY_SIZE} SCOPE = SPFILE;
+SHUTDOWN IMMEDIATE
+STARTUP
+EXIT
+"""
 
 
 @dataclass(frozen=True)
@@ -33,6 +55,8 @@ class _AppUserStatements:
     alter_user: str
     grant_developer: str
     grant_tablespace: str
+    enable_rest: str
+    configure_oee: str
 
 
 @dataclass
@@ -60,6 +84,7 @@ class DatabaseConfig:
     wallet_password: str = "SuperSecret1"  # noqa: S105
     app_username: str = "app"
     app_password: str = "SuperSecret1"  # noqa: S105
+    oee_password: str = "SuperSecret1"  # noqa: S105
     wallet_location: str = ".envs/tns"
     workload_type: str = "ATP"
 
@@ -96,6 +121,7 @@ class DatabaseConfig:
             wallet_password=wallet_pw,
             app_username=os.getenv("DATABASE_USER", "app"),
             app_password=os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
+            oee_password=os.getenv("OEE_PASSWORD", oracle_system_pw),
             wallet_location=wallet_loc,
             workload_type=os.getenv("WORKLOAD_TYPE", "ATP"),
             data_location=os.getenv("ORACLE_DATA_LOCATION", "/dev/shm/oracle-data"),  # noqa: S108
@@ -150,7 +176,7 @@ class OracleDatabase:
             ContainerAlreadyRunningError: If container is already running
             ContainerStartError: If container fails to start
         """
-        self._validate_app_password()
+        self._validate_managed_passwords()
         self.console.rule("[bold blue]Starting Oracle Database Container")
 
         # Check if already running
@@ -171,7 +197,18 @@ class OracleDatabase:
             else:
                 self.console.print("[cyan]Starting existing container...[/cyan]")
                 self.runtime.run_command(["start", self.config.container_name])
+                self.console.print("[cyan]Waiting for database to become healthy...[/cyan]")
+                if not self.wait_for_healthy(timeout=300):
+                    logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
+                    raise ContainerStartError(
+                        f"Existing container restarted but health check timed out. Check logs with: {logs_hint}"
+                    )
                 self.console.print("[green]✓[/green] Container started")
+                # The vector_memory_size SPFILE setting lives on /dev/shm tmpfs and can
+                # be lost on host reboot. Re-verify on every start so HNSW index builds
+                # never hit ORA-51962; configure_vector_memory() is idempotent.
+                self.configure_vector_memory()
+                self._patch_host_sqlnet_ora()
                 return
 
         # Pull image if requested
@@ -192,6 +229,7 @@ class OracleDatabase:
         self.console.print("[cyan]Waiting for database to become healthy...[/cyan]")
         if self.wait_for_healthy(timeout=300):
             self.console.print("[green]✓[/green] Database is healthy and ready!")
+            self.configure_vector_memory()
             self._patch_host_sqlnet_ora()
             self.initialize_db_users()
             info = self.get_connection_info()
@@ -204,9 +242,12 @@ class OracleDatabase:
             self.console.print("\n[bold]Developer Services:[/bold]")
             self.console.print(f"  Oracle APEX: https://localhost:{self.config.host_https_port}/ords/apex")
             self.console.print(f"  Database Actions: https://localhost:{self.config.host_https_port}/ords/sql-developer")
+            self.console.print(f"  Oracle Estate Explorer: https://localhost:{self.config.host_https_port}/ords/apex")
             self.console.print("  Workspace: internal")
             self.console.print("  Admin User: ADMIN")
             self.console.print(f"  Admin Password: {self.config.admin_password}")
+            self.console.print(f"  OEE Workspace/User: {OEE_USERNAME}")
+            self.console.print(f"  OEE Password: {self.config.oee_password}")
         else:
             logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
             raise ContainerStartError(
@@ -421,9 +462,44 @@ class OracleDatabase:
 
         return False
 
+    def configure_vector_memory(self) -> None:
+        """Ensure SYSDBA-only vector memory is available for HNSW indexes."""
+        current_bytes = _first_int(self._exec_sysdba_sql(VECTOR_MEMORY_CHECK_SQL))
+        if current_bytes > 0:
+            self.console.print("[green]✓[/green] Vector memory pool is already allocated.")
+            return
+
+        self.console.print(f"[cyan]Configuring vector memory pool ({DEFAULT_VECTOR_MEMORY_SIZE})...[/cyan]")
+        self._exec_sysdba_sql(VECTOR_MEMORY_CONFIG_SQL)
+        if not self.wait_for_healthy(timeout=300):
+            raise ContainerStartError("Database did not become healthy after vector memory restart")
+
+        # Fail loud: confirm the SPFILE change actually took effect rather than
+        # letting a later HNSW index build surface a cryptic ORA-51962.
+        configured_bytes = _first_int(self._exec_sysdba_sql(VECTOR_MEMORY_CHECK_SQL))
+        if configured_bytes <= 0:
+            raise ContainerStartError(
+                "Vector memory pool is still 0 after configuration. The SYSDBA bounce "
+                "likely failed: verify `sqlplus / as sysdba` OS authentication works "
+                "inside the container and that SHUTDOWN/STARTUP completed "
+                f"(vector_memory_size={DEFAULT_VECTOR_MEMORY_SIZE} SCOPE=SPFILE)."
+            )
+        self.console.print("[green]✓[/green] Vector memory pool configured.")
+
+    def _exec_sysdba_sql(self, sql_text: str) -> str:
+        """Run SQL inside the managed container with OS-authenticated SYSDBA."""
+        _, stdout, _ = self.runtime.run_command([
+            "exec",
+            self.config.container_name,
+            "bash",
+            "-lc",
+            f"sqlplus -S / as sysdba <<'SQL'\n{sql_text.strip()}\nSQL",
+        ])
+        return stdout
+
     def initialize_db_users(self) -> None:
-        """Initialize the development users/schemas post container start."""
-        self.console.print("[cyan]Initializing app user and privileges...[/cyan]")
+        """Initialize the development schemas post container start."""
+        self.console.print("[cyan]Initializing app user, ORDS, and OEE...[/cyan]")
         absolute_wallet_path = Path(self.config.wallet_location).resolve()
         original_tns_admin = os.environ.get("TNS_ADMIN")
         os.environ["TNS_ADMIN"] = str(absolute_wallet_path)
@@ -436,7 +512,7 @@ class OracleDatabase:
         self.console.print(f"[dim]Files in wallet: {[f.name for f in absolute_wallet_path.glob('*')]}[/dim]")
 
         masked_pwd = self.config.admin_password[:3] + "..." + self.config.admin_password[-1:] if self.config.admin_password else "None"
-        self.console.print(f"[dim]Connection parameters: user=ADMIN, dsn=myatp_low, pwd={masked_pwd}, pwd_len={len(self.config.admin_password)}[/dim]")
+        self.console.print(f"[dim]Connection parameters: user=ADMIN, dsn=myatp_medium, pwd={masked_pwd}, pwd_len={len(self.config.admin_password)}[/dim]")
 
         conn_params = self._build_admin_conn_params(absolute_wallet_path)
         statements = self._build_app_user_statements()
@@ -462,7 +538,7 @@ class OracleDatabase:
         return {
             "user": "ADMIN",
             "password": self.config.admin_password,
-            "dsn": "myatp_low",
+            "dsn": "myatp_medium",
             "wallet_location": str(absolute_wallet_path),
             "config_dir": str(absolute_wallet_path),
             "wallet_password": self.config.wallet_password,
@@ -476,18 +552,56 @@ class OracleDatabase:
             raise ValueError(msg)
         app_username_upper = app_username.upper()
         app_password = self.config.app_password.replace('"', '""')
+        oee_password = self.config.oee_password.replace('"', '""')
 
         return _AppUserStatements(
             username_upper=app_username_upper,
-            create_user=f'CREATE USER {app_username} IDENTIFIED BY "{app_password}"',
+            create_user=f'CREATE USER {app_username} IDENTIFIED BY "{app_password}" QUOTA UNLIMITED ON DATA',
             alter_user=f'ALTER USER {app_username} IDENTIFIED BY "{app_password}" ACCOUNT UNLOCK',
-            grant_developer=f"GRANT CONNECT, RESOURCE, DB_DEVELOPER_ROLE TO {app_username}",
-            grant_tablespace=f"GRANT UNLIMITED TABLESPACE TO {app_username}",
+            grant_developer=f"GRANT CONNECT, CONSOLE_DEVELOPER, DWROLE, RESOURCE TO {app_username}",
+            grant_tablespace=f"ALTER USER {app_username} QUOTA UNLIMITED ON DATA",
+            enable_rest=f"""
+BEGIN
+    ORDS.ENABLE_SCHEMA(
+        p_enabled => TRUE,
+        p_schema => '{app_username_upper}',
+        p_url_mapping_type => 'BASE_PATH',
+        p_url_mapping_pattern => '{app_username.lower()}',
+        p_auto_rest_auth => TRUE
+    );
+    COMMIT;
+END;
+""".strip(),
+            configure_oee=f'ALTER USER {OEE_USERNAME} IDENTIFIED BY "{oee_password}" ACCOUNT UNLOCK',
         )
 
-    def _validate_app_password(self) -> None:
-        """Validate the managed app password before mutating the container."""
-        password = self.config.app_password
+    def _validate_managed_passwords(self) -> None:
+        """Validate managed ADB passwords before mutating the container."""
+        self._validate_managed_password(
+            env_name="DATABASE_PASSWORD",
+            password=self.config.app_password,
+            username=self.config.app_username,
+            username_label="DATABASE_USER",
+            guidance="Use SuperSecret1 for the local demo or update DATABASE_PASSWORD and DATABASE_URL together.",
+        )
+        self._validate_managed_password(
+            env_name="OEE_PASSWORD",
+            password=self.config.oee_password,
+            username=OEE_USERNAME,
+            username_label=OEE_USERNAME,
+            guidance="Use SuperSecret1 for the local demo or update OEE_PASSWORD in .env.",
+        )
+
+    @staticmethod
+    def _validate_managed_password(
+        *,
+        env_name: str,
+        password: str,
+        username: str,
+        username_label: str,
+        guidance: str,
+    ) -> None:
+        """Validate a password against the managed ADB profile."""
         missing_requirements: list[str] = []
         if not ADB_PASSWORD_MIN_LENGTH <= len(password) <= ADB_PASSWORD_MAX_LENGTH:
             missing_requirements.append(f"{ADB_PASSWORD_MIN_LENGTH} to {ADB_PASSWORD_MAX_LENGTH} characters")
@@ -497,18 +611,17 @@ class OracleDatabase:
             missing_requirements.append("one lowercase character")
         if not any(char.isdigit() for char in password):
             missing_requirements.append("one numeric character")
-        if self.config.app_username and self.config.app_username.lower() in password.lower():
-            missing_requirements.append("cannot contain DATABASE_USER")
+        if username and username.lower() in password.lower():
+            missing_requirements.append(f"cannot contain {username_label}")
         if '"' in password:
             missing_requirements.append("no double quote characters")
 
         if missing_requirements:
             requirements = ", ".join(missing_requirements)
             msg = (
-                "DATABASE_PASSWORD does not satisfy the Oracle mandatory profile "
+                f"{env_name} does not satisfy the Oracle mandatory profile "
                 f"for the managed ADB container. It must satisfy: {requirements}. "
-                "Use SuperSecret1 for the local demo or update DATABASE_PASSWORD "
-                "and DATABASE_URL together."
+                f"{guidance}"
             )
             raise ContainerStartError(msg)
 
@@ -541,12 +654,14 @@ class OracleDatabase:
                 cursor.execute(statements.alter_user if user_exists else statements.create_user)
             except oracledb.DatabaseError as e:
                 error_obj, = e.args
-                if error_obj.code == 28007:
+                if error_obj.code == ORACLE_PASSWORD_REUSE_ERROR:
                     cursor.execute(f"ALTER USER {statements.username_upper} ACCOUNT UNLOCK")
                 else:
                     raise
             cursor.execute(statements.grant_developer)
+            cursor.execute(statements.enable_rest)
             cursor.execute(statements.grant_tablespace)
+            cursor.execute(statements.configure_oee)
         conn.commit()
 
     def _patch_host_sqlnet_ora(self) -> None:
@@ -679,14 +794,7 @@ class OracleDatabase:
         if absolute_oradata_path is not None:
             cmd.extend(["-v", f"{absolute_oradata_path}:/u01/app/oracle/oradata:z"])
 
-        absolute_on_init_path = Path("tools/oracle/on_init").resolve()
-        absolute_on_startup_path = Path("tools/oracle/on_startup").resolve()
-
         cmd.extend([
-            "-v",
-            f"{absolute_on_init_path}:/opt/oracle/scripts/setup:z",
-            "-v",
-            f"{absolute_on_startup_path}:/opt/oracle/scripts/startup:z",
             "-v",
             f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z",
             "--cap-add",
@@ -748,3 +856,11 @@ class ContainerStartError(DatabaseError):
 
 class DatabaseNotReadyError(DatabaseError):
     """Raised when database isn't ready for operations."""
+
+
+def _first_int(text: str) -> int:
+    """Return the first integer emitted by SQL*Plus output."""
+    for token in text.replace("\n", " ").split():
+        if token.isdigit():
+            return int(token)
+    return 0

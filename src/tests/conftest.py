@@ -24,8 +24,8 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.anyio
 
 # Tests connect to the repo-managed Oracle database. Start it with
-# `make start-infra` and apply migrations with
-# `uv run python manage.py database upgrade --no-prompt`; pytest owns per-test state only.
+# `make start-infra`; integration fixtures apply SQLSpec migrations before
+# requests touch Oracle-backed Litestar or ADK session tables.
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +47,10 @@ DATABASE_USER=test_app
 DATABASE_PASSWORD=test-secret
 DATABASE_HOST=localhost
 DATABASE_PORT=1521
-DATABASE_SERVICE_NAME=freepdb1
+DATABASE_SERVICE_NAME=myatp_low
+DATABASE_URL=oracle+oracledb://app:SuperSecret1@myatp_low
+WALLET_PASSWORD=SuperSecret1
+TNS_ADMIN=.envs/tns
 
 GOOGLE_CLOUD_PROJECT=test-project
 GOOGLE_API_KEY=test-api-key

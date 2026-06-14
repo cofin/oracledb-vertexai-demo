@@ -54,14 +54,17 @@ Oracle must have a non-zero `vector_memory_size` before `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH` indexes can be created. Without it, migrations fail with
 `ORA-51962`.
 
-Local container startup handles this in `tools/oracle/on_init/00_configure_vector_memory.sql`:
+Local managed ADB startup checks the pool with `sqlplus / as sysdba` after the
+container is healthy. If the pool is zero, it sets a Free-friendly value and
+restarts the database:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
 That value is intentionally small because Oracle Free Edition has a constrained
-SGA. For larger non-Free environments, `tools/oracle/configure_vector_memory.sql`
+SGA. The ADB container path does not mount legacy `on_init`/`on_startup`
+directories. For larger non-Free environments, `tools/oracle/configure_vector_memory.sql`
 uses a 4G target:
 
 ```sql

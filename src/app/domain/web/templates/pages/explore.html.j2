@@ -66,8 +66,10 @@ SPDX-License-Identifier: Apache-2.0
           <article data-metric-card class="metric-card px-3 py-2">
             <p class="text-xs text-muted">${card.label}</p>
             <p class="text-base font-semibold text-strong">${card.value}</p>
-            <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'"
-              class="text-xs">${card.trendValue ?? card.trend ?? 'neutral'}</p>
+            <template ls-if="card.trendValue">
+              <p :class="card.trend === 'up' ? 'text-success' : card.trend === 'down' ? 'text-danger' : 'text-muted'"
+                class="text-xs">${card.trendValue}</p>
+            </template>
           </article>
         </template>
         <template ls-if="!cards || cards.length === 0">
@@ -129,10 +131,6 @@ SPDX-License-Identifier: Apache-2.0
               <button type="button" data-vector-preset data-preset-dimensions="1536" data-preset-format="FLOAT32"
                 class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
                 OpenAI 1536
-              </button>
-              <button type="button" data-vector-preset data-preset-dimensions="3072" data-preset-format="FLOAT32"
-                class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">
-                OpenAI 3072
               </button>
               <button type="button" data-vector-preset data-preset-dimensions="1024" data-preset-format="FLOAT32"
                 class="rounded-lg border border-border bg-surface px-3 py-2 text-left text-xs font-semibold text-base transition-colors hover:border-accent/40 hover:bg-accent-soft">

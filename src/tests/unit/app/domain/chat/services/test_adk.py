@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -598,6 +599,84 @@ async def test_product_availability_near_me_uses_consented_coordinates_and_bypas
     tools_service.get_cached_chat_response.assert_not_called()
     tools_service.set_cached_chat_response.assert_not_called()
     tools_service.find_stores_with_product.assert_awaited_once_with("Cold Brew Nitro", 32.7876, -96.7994)
+
+
+async def test_product_rag_persists_last_products_through_session_store(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-last-products"
+    fake_session.state = {}
+    store = MagicMock()
+    store.update_session_state = AsyncMock()
+    session_service = MagicMock()
+    session_service.store = store
+    session_service.get_session = AsyncMock(return_value=fake_session)
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 42,
+                    "name": "Gemini Rush",
+                    "description": "A bright espresso tonic.",
+                    "price": 5.75,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "recommend a citrus espresso",
+            "search_metrics": {"embedding_ms": 10.0, "oracle_ms": 5.0, "tool_ms": 15.0},
+        }
+    )
+
+    monkeypatch.setattr(adk_module, "Runner", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "LlmAgent", lambda **kw: MagicMock())
+    monkeypatch.setattr(adk_module, "make_workflow", lambda c, a: MagicMock())
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=MagicMock())
+
+    await runner.process_request(
+        query="recommend a citrus espresso",
+        user_id="u1",
+        session_id="sess-last-products",
+        persona="enthusiast",
+        tools_service=tools_service,
+    )
+
+    store.update_session_state.assert_awaited()
+    state = store.update_session_state.await_args.args[1]
+    assert state["last_products"] == ["Gemini Rush"]
+
+
+async def test_append_display_history_requires_session_store_contract() -> None:
+    from app.domain.chat.services.adk import ADKRunner
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-miswired"
+    fake_session.state = {}
+    session_service = SimpleNamespace(get_session=AsyncMock(return_value=fake_session))
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=MagicMock())  # type: ignore[arg-type]
+
+    with pytest.raises(AttributeError):
+        await runner._append_display_history(
+            user_id="u1",
+            session_id="sess-miswired",
+            query="recommend coffee",
+            answer="Try Gemini Rush.",
+            intent_detected="PRODUCT_RAG",
+            last_products=["Gemini Rush"],
+        )
 
 
 async def test_order_status_route_is_explicitly_unsupported(monkeypatch: Any) -> None:

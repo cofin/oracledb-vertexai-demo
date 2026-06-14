@@ -313,9 +313,14 @@
       overflow-x: hidden;
     }
 
-    .ui-panel {
+    .ui-panel:not(.chat-shell .ui-panel) {
       width: calc(100vw - 2rem);
       max-width: calc(100vw - 2rem);
+    }
+
+    .chat-shell .ui-panel {
+      width: 100%;
+      max-width: 100%;
     }
 
     input[type="search"] {

@@ -4,6 +4,24 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [~] PRD: adb-podman-lab-hardening
+*Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
+*Beads: oracledb-vertexai-9p5 (master epic)*
+*Research: [./research/research_adb_hooks_ux_lab/](./research/research_adb_hooks_ux_lab/)*
+
+### Chapters
+- [ ] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — implementation-ready
+  *Link: [./specs/adb-vector-memory-hardening/](./specs/adb-vector-memory-hardening/)*
+  *Beads: oracledb-vertexai-9p5.1*
+- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft, blocked by Ch1
+  *Link: [./specs/oraclelinux-podman-lab/](./specs/oraclelinux-podman-lab/)*
+  *Beads: oracledb-vertexai-9p5.2*
+- [ ] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — draft
+  *Link: [./specs/ui-quality-fixes/](./specs/ui-quality-fixes/)*
+  *Beads: oracledb-vertexai-9p5.3*
+
+---
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*

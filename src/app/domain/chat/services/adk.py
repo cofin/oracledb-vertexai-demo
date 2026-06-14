@@ -602,11 +602,9 @@ class ADKRunner:
             {"source": "ai", "message": answer},
         ]
         state[_DISPLAY_HISTORY_STATE_KEY] = history[-40:]
-        update_state = getattr(getattr(self._session_service, "store", None), "update_session_state", None)
-        if callable(update_state):
-            result = update_state(session_id, state)
-            if isawaitable(result):
-                await result
+        result = self._session_service.store.update_session_state(session_id, state)
+        if isawaitable(result):
+            await result
 
     async def _classify_intent(self, query: str) -> str:
         intent_result = self._classifier.classify(query)

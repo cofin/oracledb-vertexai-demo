@@ -1,0 +1,41 @@
+{
+  "research_id": "research_apex_upgrade",
+  "topic": "Upgrade APEX to 26.1 in the ADB Free container, add an upgrade command to the management set, and adopt APEXlang source at src/apex/",
+  "type": "Integration + New Feature",
+  "created_at": "2026-06-14T00:00:00Z",
+  "branch": "feat/inv",
+  "validated_against_live_container": true,
+  "key_findings": {
+    "container_apex_version": "24.2.14",
+    "container_ords_version": "26.1.0.r0791128",
+    "container_db_version": "23.26.2.1.0 (Oracle AI Database 26ai)",
+    "latest_apex_release": "26.1 (GA 2026-05-14)",
+    "apexlang_requires": "APEX 26.1 on source and target",
+    "sysdba_os_auth_in_adb_free": "denied (ORA-01017)",
+    "adb_cli_has_apex_upgrade": false,
+    "apex_zip_public_download": "https://download.oracle.com/otn_software/apex/apex_26.1.zip (HTTP 200, ~326MB)"
+  },
+  "libraries_researched": [
+    "Oracle APEX 26.1",
+    "APEXlang / .apx",
+    "Oracle SQL Developer for VS Code",
+    "SQLcl apex export",
+    "Oracle adb-free container",
+    "Oracle Database Free container",
+    "ORDS"
+  ],
+  "files_analyzed": [
+    "tools/oracle/database.py",
+    "tools/oracle/cli/database.py",
+    "tools/oracle/cli/sqlcl.py",
+    "src/app/cli/commands.py",
+    "manage.py",
+    ".agents/research/research_apex_integration/research.md",
+    ".agents/specs/oracle-apex-integration/spec.md",
+    ".agents/specs/oracle-apex-integration/prd.md",
+    ".agents/specs/oracle-apex-integration/learnings.md"
+  ],
+  "supersedes": ".agents/research/research_apex_integration/research.md",
+  "linked_prd": null,
+  "linked_flow": null
+}

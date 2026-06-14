@@ -23,6 +23,7 @@ def test_managed_env_template_aligns_app_and_wallet_credentials(monkeypatch: Mon
     assert "DATABASE_URL=oracle+oracledb://app:SuperSecret1@myatp_low" in env_content
     assert "DATABASE_USER=app" in env_content
     assert "DATABASE_PASSWORD=SuperSecret1" in env_content
+    assert "OEE_PASSWORD=SuperSecret1" in env_content
     assert "WALLET_PASSWORD=SuperSecret1" in env_content
     assert "TNS_ADMIN=.envs/tns" in env_content
     assert "DATABASE_SERVICE_NAME=myatp_low" in env_content

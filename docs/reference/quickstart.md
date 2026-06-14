@@ -23,6 +23,11 @@ The generated `.env` uses `LITESTAR_PORT=5006`, so the chat UI is at
 <http://localhost:5006/>. The vector search and EXPLAIN PLAN explorer is at
 <http://localhost:5006/explore>. Set `LITESTAR_PORT` to use a different port.
 
+The managed ADB Free container also exposes APEX at
+<https://localhost:8443/ords/apex>. Oracle Estate Explorer is already installed
+in that image; startup sets the `MPACK_OEE` password from `OEE_PASSWORD` in
+`.env` so it is ready for the demo.
+
 ## Vertex AI credentials
 
 The app needs a Google Cloud project with Vertex AI enabled. Set

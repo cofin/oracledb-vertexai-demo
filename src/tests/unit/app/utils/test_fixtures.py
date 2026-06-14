@@ -55,3 +55,12 @@ def test_prepare_record_converts_boolean_for_oracle_json_table() -> None:
 
     assert prepared["pickup_available"] == 0
     assert prepared["in_stock"] == 1
+
+
+def test_prepare_record_preserves_embedding_vectors_for_oracle_binding() -> None:
+    embedding = [0.1, 0.2, 0.3]
+
+    prepared = _prepare_record({"id": 1, "embedding": embedding})
+
+    assert prepared["embedding"] == embedding
+    assert isinstance(prepared["embedding"], list)

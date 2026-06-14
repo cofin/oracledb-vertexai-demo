@@ -3,18 +3,18 @@
 
 -- Standalone DBA script for sizing the Oracle 26ai vector memory pool.
 --
--- Use this when you cannot rely on container init (autonomous database,
--- shared dev DB, prod) or you need to bump the pool size without recreating
--- the container. Run as SYSDBA against the CDB.
+-- Use this for shared or non-demo Oracle instances, or when you need to bump
+-- the pool size outside the managed local startup path. Run as SYSDBA against
+-- the CDB.
 --
 --   sqlplus / as sysdba @tools/oracle/configure_vector_memory.sql
 --
 -- The example below targets a 4 GB vector pool with a 6 GB SGA — appropriate
 -- for Oracle Standard / Enterprise / Autonomous, where SGA is unconstrained.
 -- DO NOT run these values against Oracle Database Free Edition: Free caps
--- total SGA at 2 GB and emits ORA-56752 if exceeded. For Free, mirror
--- tools/oracle/on_init/00_configure_vector_memory.sql (sga_max_size = 2G,
--- vector_memory_size = 512M).
+-- total SGA at 2 GB and emits ORA-56752 if exceeded. The managed local ADB
+-- startup path uses the Free-friendly vector_memory_size = 512M value directly
+-- through `sqlplus / as sysdba`, without mounting legacy init scripts.
 --
 -- vector_memory_size and sga_max_size are STATIC parameters — the SPFILE
 -- writes only take effect after a database restart. The SHUTDOWN/STARTUP

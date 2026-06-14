@@ -134,13 +134,46 @@ async def _seed_marker_product(session: OracleAsyncDriver) -> None:
     await session.commit()
 
 
-async def _ensure_oracle_schema(session: OracleAsyncDriver) -> None:
+async def _assert_sqlspec_extension_tables(session: OracleAsyncDriver) -> None:
+    """Fail fast when SQLSpec migrations did not materialize extension tables."""
+    expected = {"APP_SESSION", "ADK_SESSIONS", "ADK_EVENTS"}
+    rows = await session.select(
+        """
+        SELECT table_name
+          FROM user_tables
+         WHERE table_name IN ('APP_SESSION', 'ADK_SESSIONS', 'ADK_EVENTS')
+        """
+    )
+    present = {str(row["table_name"]).upper() for row in rows}
+    missing = sorted(expected - present)
+    if missing:
+        msg = (
+            "SQLSpec migrations did not create required integration-test tables: "
+            f"{', '.join(missing)}. Reset the local Oracle schema/container and rerun the tests."
+        )
+        raise RuntimeError(msg)
+
+
+async def _ensure_oracle_schema() -> None:
     """Create idempotent Oracle test schema objects once per pytest worker."""
     global _ORACLE_SCHEMA_READY  # noqa: PLW0603
 
     if _ORACLE_SCHEMA_READY:
         return
-    await _bootstrap_test_schema(session)
+
+    from app.config import db, db_manager
+
+    await db.migrate_up(echo=False)
+    with contextlib.suppress(Exception):
+        await db.close_pool()
+
+    try:
+        async with db_manager.provide_session(db) as session:
+            await _assert_sqlspec_extension_tables(session)
+            await _bootstrap_test_schema(session)
+    finally:
+        with contextlib.suppress(Exception):
+            await db.close_pool()
     _ORACLE_SCHEMA_READY = True
 
 
@@ -157,9 +190,26 @@ async def _ensure_oracle_seed_data(session: OracleAsyncDriver) -> None:
 
 
 @pytest.fixture
-async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient, None]:
+async def oracle_schema(test_settings: object) -> None:
+    """Ensure SQLSpec migrations have prepared the shared Oracle schema."""
+    del test_settings
+    await _ensure_oracle_schema()
+
+
+@pytest.fixture
+async def client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create test client."""
+    del oracle_schema
     async with AsyncTestClient(app=app) as c:
+        yield c
+
+
+@pytest.fixture
+async def htmx_client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+    """Create an HTMX-flavored test client after schema migration."""
+    del oracle_schema
+    async with AsyncTestClient(app=app) as c:
+        c.headers["HX-Request"] = "true"
         yield c
 
 
@@ -217,8 +267,8 @@ async def oracle_seed_data(test_settings: object) -> None:
     from app.config import db, db_manager
 
     try:
+        await _ensure_oracle_schema()
         async with db_manager.provide_session(db) as session:
-            await _ensure_oracle_schema(session)
             await _ensure_oracle_seed_data(session)
     finally:
         # pytest-anyio creates a fresh event loop per test by default.
