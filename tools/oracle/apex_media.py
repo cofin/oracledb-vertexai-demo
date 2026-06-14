@@ -18,6 +18,7 @@ specs that downstream chapters consume.
 from __future__ import annotations
 
 import os
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -170,3 +171,45 @@ class ApexMedia:
         if problem is not None:
             archive.unlink(missing_ok=True)
             raise ApexMediaError(problem)
+
+    def verify_zip(self) -> None:
+        """Verify archive integrity and that it carries ``apex/apexins.sql``."""
+        archive = self.config.archive_path
+        if not archive.exists():
+            raise ApexMediaError(f"APEX archive not found: {archive}")
+        member = "apex/apexins.sql"
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                bad = bundle.testzip()
+                if bad is not None:
+                    raise ApexMediaError(f"Corrupt member in APEX archive {archive}: {bad}")
+                names = set(bundle.namelist())
+        except zipfile.BadZipFile as exc:
+            raise ApexMediaError(f"Not a valid zip archive: {archive}") from exc
+        if member not in names:
+            raise ApexMediaError(f"APEX archive {archive} is missing expected member {member}")
+
+    def extract(self, *, force: bool = False) -> Path:
+        """Extract the apex/ tree into the per-version cache, idempotently.
+
+        Skips when ``apexins.sql`` is already present unless ``force`` is set, and
+        gates on that member existing after extraction.
+        """
+        apex_dir = self.config.extracted_apex_dir
+        if not force and self.config.apexins_path.exists():
+            return apex_dir
+
+        archive = self.config.archive_path
+        if not archive.exists():
+            raise ApexMediaError(f"APEX archive not found: {archive}")
+        self.config.version_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                bundle.extractall(self.config.version_dir)
+        except zipfile.BadZipFile as exc:
+            raise ApexMediaError(f"Not a valid zip archive: {archive}") from exc
+        if not self.config.apexins_path.exists():
+            raise ApexMediaError(
+                f"APEX archive {archive} did not yield {self.config.apexins_path} after extraction"
+            )
+        return apex_dir

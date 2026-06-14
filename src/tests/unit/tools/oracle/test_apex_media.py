@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from tools.oracle.apex_media import ApexMedia, ApexMediaConfig, ApexMediaError
 
 
@@ -187,3 +186,100 @@ def test_download_accepts_unknown_content_length(tmp_path: Path) -> None:
     archive = media.download()
 
     assert archive.read_bytes() == b"bytes without length"
+
+
+def _make_zip(path: Path, members: dict[str, bytes]) -> None:
+    """Write a real zip at ``path`` containing the given ``members``."""
+    import zipfile
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as zf:
+        for name, data in members.items():
+            zf.writestr(name, data)
+
+
+def _good_members() -> dict[str, bytes]:
+    return {
+        "apex/apexins.sql": b"prompt installing APEX...\n",
+        "apex/apex_rest_config.sql": b"-- rest config\n",
+        "apex/images/get_started.png": b"\x89PNG fake",
+    }
+
+
+def test_verify_zip_accepts_good_archive(tmp_path: Path) -> None:
+    """A well-formed zip containing apex/apexins.sql passes verification."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    _make_zip(config.archive_path, _good_members())
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    media.verify_zip()  # no raise
+
+
+def test_verify_zip_rejects_corrupt_archive(tmp_path: Path) -> None:
+    """Non-zip / corrupt bytes fail verification loudly."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    config.archive_path.parent.mkdir(parents=True)
+    config.archive_path.write_bytes(b"not a real zip file at all")
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    with pytest.raises(ApexMediaError):
+        media.verify_zip()
+
+
+def test_verify_zip_rejects_missing_apexins(tmp_path: Path) -> None:
+    """A valid zip lacking apexins.sql is rejected (wrong payload)."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    _make_zip(config.archive_path, {"apex/readme.txt": b"hi"})
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    with pytest.raises(ApexMediaError, match=r"apexins\.sql"):
+        media.verify_zip()
+
+
+def test_extract_writes_apex_tree(tmp_path: Path) -> None:
+    """Extraction yields the apex/ tree with apexins.sql and images/."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    _make_zip(config.archive_path, _good_members())
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    apex_dir = media.extract()
+
+    assert apex_dir == config.extracted_apex_dir
+    assert config.apexins_path.exists()
+    assert config.images_dir.is_dir()
+
+
+def test_extract_skips_when_already_extracted(tmp_path: Path) -> None:
+    """An existing apexins.sql means extraction is skipped (no archive needed)."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    config.extracted_apex_dir.mkdir(parents=True)
+    config.apexins_path.write_bytes(b"already extracted")
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    apex_dir = media.extract()  # archive absent on purpose
+
+    assert apex_dir == config.extracted_apex_dir
+    assert config.apexins_path.read_bytes() == b"already extracted"
+
+
+def test_extract_force_reextracts(tmp_path: Path) -> None:
+    """``force=True`` re-extracts over a stale tree."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    config.extracted_apex_dir.mkdir(parents=True)
+    config.apexins_path.write_bytes(b"stale")
+    _make_zip(config.archive_path, _good_members())
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    media.extract(force=True)
+
+    assert config.apexins_path.read_bytes() == b"prompt installing APEX...\n"
+
+
+def test_extract_raises_when_apexins_absent_after(tmp_path: Path) -> None:
+    """A valid zip without apexins.sql fails the post-extract gate."""
+    config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
+    _make_zip(config.archive_path, {"apex/readme.txt": b"hi"})
+    media = ApexMedia(config, fetcher=_exploding_fetcher())
+
+    with pytest.raises(ApexMediaError):
+        media.extract()
