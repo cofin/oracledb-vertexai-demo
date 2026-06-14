@@ -301,12 +301,12 @@ class AgentToolsService(OracleAsyncService):
     ) -> dict[str, Any]:
         started = time.time()
         coordinates = (latitude, longitude) if latitude is not None and longitude is not None else None
-        
+
         # 1. Try exact match first
         availability = await self.store_service.find_product_availability(product_query, coordinates=coordinates)
         sql_key = "find-product-availability-by-query"
-        binds = {"product_query": product_query}
-        
+        binds: dict[str, Any] = {"product_query": product_query}
+
         # 2. If no exact match, try vector search fallback
         if not availability:
             query_embedding = await self.vertex_ai_service.get_text_embedding(
@@ -336,7 +336,7 @@ class AgentToolsService(OracleAsyncService):
 
         if coordinates:
             binds["origin"] = "<REQUEST_COORDINATES>"
-            
+
         return {
             "availability": sanitize_for_json(availability),
             "results_count": len(availability),
@@ -806,22 +806,12 @@ class ADKRunner:
         if not product_query:
             state = dict(getattr(session, "state", None) or {})
             last_products = state.get("last_products", [])
-            if last_products:
-                product_query = last_products[0]
-            else:
-                product_query = query
+            product_query = last_products[0] if last_products else query
 
-        # Resolve target store if possible
-        location_hint = None
-        if location_context:
-            location_hint = location_context.get("store_name")
+        location_hint = (location_context or {}).get("store_name") if location_context else None
         if not location_hint:
             filters = _extract_location_filters(query, location_context)
-            parts = [str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]]
-            if parts:
-                location_hint = " ".join(parts)
-        if not location_hint:
-            location_hint = query
+            location_hint = " ".join(str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]) or query
 
         target_store = await tools_service.store_service.resolve_store(
             location_hint=location_hint,
@@ -839,7 +829,6 @@ class ADKRunner:
 
         target_row = None
         alternatives = []
-        target_store_name = target_store.name if target_store else None
 
         if target_store:
             for row in inventory:
@@ -855,7 +844,7 @@ class ADKRunner:
         answer = _format_availability_answer(
             target=target_row,
             alternatives=alternatives,
-            target_store_name=target_store_name,
+            target_store_name=target_store.name if target_store else None,
         )
         await self._append_display_history(
             user_id=user_id,

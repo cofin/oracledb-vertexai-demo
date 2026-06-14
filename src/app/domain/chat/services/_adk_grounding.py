@@ -171,7 +171,6 @@ def _extract_product_query(query: str) -> str | None:
     return cleaned.title() if cleaned else None
 
 
-
 def _store_query_parts(row: dict[str, Any]) -> tuple[str, str]:
     name = str(row.get("name") or row.get("store_name") or "Cymbal Coffee").strip()
     address = str(row.get("address") or row.get("store_address") or "").strip()

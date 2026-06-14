@@ -204,6 +204,9 @@ class OracleDatabase:
             self.console.print("\n[bold]Developer Services:[/bold]")
             self.console.print(f"  Oracle APEX: https://localhost:{self.config.host_https_port}/ords/apex")
             self.console.print(f"  Database Actions: https://localhost:{self.config.host_https_port}/ords/sql-developer")
+            self.console.print("  Workspace: internal")
+            self.console.print("  Admin User: ADMIN")
+            self.console.print(f"  Admin Password: {self.config.admin_password}")
         else:
             logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
             raise ContainerStartError(
@@ -529,10 +532,19 @@ class OracleDatabase:
     @staticmethod
     def _execute_app_user_statements(conn: Any, statements: _AppUserStatements) -> None:
         """Create or update the app user and reapply required grants."""
+        import oracledb
+
         with conn.cursor() as cursor:
             cursor.execute("SELECT COUNT(*) FROM dba_users WHERE username = :username", username=statements.username_upper)
             user_exists = cursor.fetchone()[0]
-            cursor.execute(statements.alter_user if user_exists else statements.create_user)
+            try:
+                cursor.execute(statements.alter_user if user_exists else statements.create_user)
+            except oracledb.DatabaseError as e:
+                error_obj, = e.args
+                if error_obj.code == 28007:
+                    cursor.execute(f"ALTER USER {statements.username_upper} ACCOUNT UNLOCK")
+                else:
+                    raise
             cursor.execute(statements.grant_developer)
             cursor.execute(statements.grant_tablespace)
         conn.commit()
@@ -667,7 +679,14 @@ class OracleDatabase:
         if absolute_oradata_path is not None:
             cmd.extend(["-v", f"{absolute_oradata_path}:/u01/app/oracle/oradata:z"])
 
+        absolute_on_init_path = Path("tools/oracle/on_init").resolve()
+        absolute_on_startup_path = Path("tools/oracle/on_startup").resolve()
+
         cmd.extend([
+            "-v",
+            f"{absolute_on_init_path}:/opt/oracle/scripts/setup:z",
+            "-v",
+            f"{absolute_on_startup_path}:/opt/oracle/scripts/startup:z",
             "-v",
             f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z",
             "--cap-add",

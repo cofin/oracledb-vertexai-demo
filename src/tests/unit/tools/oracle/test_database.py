@@ -92,6 +92,11 @@ def test_build_run_command_contains_correct_flags() -> None:
     absolute_wallet_path = str(Path(".envs/tns").resolve())
     assert f"{absolute_wallet_path}:/u01/app/oracle/wallets/tls_wallet:z" in cmd
 
+    absolute_on_init_path = str(Path("tools/oracle/on_init").resolve())
+    assert f"{absolute_on_init_path}:/opt/oracle/scripts/setup:z" in cmd
+    absolute_on_startup_path = str(Path("tools/oracle/on_startup").resolve())
+    assert f"{absolute_on_startup_path}:/opt/oracle/scripts/startup:z" in cmd
+
     assert "WORKLOAD_TYPE=ATP" in cmd
     assert f"ADMIN_PASSWORD={DEMO_PASSWORD}" in cmd
     assert f"WALLET_PASSWORD={DEMO_PASSWORD}" in cmd
