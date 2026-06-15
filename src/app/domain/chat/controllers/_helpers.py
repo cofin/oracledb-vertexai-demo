@@ -34,20 +34,6 @@ class CoffeeChatForm:
     store_name: str = ""
 
 
-def metrics_badges(result: dict, intent: str, from_cache: bool) -> dict:
-    """Shape the metrics OOB-swap context for ``partials/_metrics_badges.html.j2``."""
-    metrics = result.get("search_metrics") or {}
-    return {
-        "total_ms": metrics.get("total_ms"),
-        "oracle_ms": metrics.get("oracle_ms"),
-        "embedding_ms": metrics.get("embedding_ms"),
-        "vector_query": metrics.get("vector_query"),
-        "from_cache": from_cache,
-        "embedding_cache_hit": bool(result.get("embedding_cache_hit")),
-        "intent": intent,
-    }
-
-
 def payload_raw(payload: Any, *keys: str, default: Any = "") -> Any:
     getter = getattr(payload, "get", None)
     if not callable(getter):

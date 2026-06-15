@@ -82,20 +82,6 @@ _PRODUCT_AVAILABILITY_INTENT = "PRODUCT_AVAILABILITY"
 _STORE_LOCATION_INTENT = "STORE_LOCATION"
 _ORDER_STATUS_INTENT = "ORDER_STATUS"
 _DISPLAY_HISTORY_STATE_KEY = "display_history"
-_CHAT_RESULT_KEYS: tuple[str, ...] = (
-    "answer",
-    "session_id",
-    "response_time_ms",
-    "intent_detected",
-    "search_metrics",
-    "from_cache",
-    "embedding_cache_hit",
-    "sql_phases",
-    "store_results",
-    "inventory_results",
-    "map_actions",
-    "location_context",
-)
 
 
 async def _collect_workflow_stream(
@@ -1093,43 +1079,6 @@ class ADKRunner:
             "from_cache": False,
             "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
             "sql_phases": sql_phases,
-            **_default_route_fields(location_context),
-        }
-
-    async def process_request(
-        self,
-        query: str,
-        user_id: str,
-        session_id: str | None,
-        persona: str,
-        tools_service: AgentToolsService,
-        location_context: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Run a chat turn to completion.
-
-        Returns:
-            Final chat payload used by JSON and non-streaming HTMX callers.
-        """
-        async for event in self.stream_request(
-            query=query,
-            user_id=user_id,
-            session_id=session_id,
-            persona=persona,
-            tools_service=tools_service,
-            location_context=location_context,
-        ):
-            if event.get("type") == "final":
-                return {key: event[key] for key in _CHAT_RESULT_KEYS}
-
-        return {
-            "answer": "",
-            "session_id": session_id or "",
-            "response_time_ms": 0.0,
-            "intent_detected": "GENERAL_CONVERSATION",
-            "search_metrics": {},
-            "from_cache": False,
-            "embedding_cache_hit": False,
-            "sql_phases": [],
             **_default_route_fields(location_context),
         }
 

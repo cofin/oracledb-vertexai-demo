@@ -5,10 +5,8 @@
 
 from ._chat import (
     ChatMessage,
-    CoffeeChatReply,
 )
 
 __all__ = (
     "ChatMessage",
-    "CoffeeChatReply",
 )

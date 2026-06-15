@@ -143,15 +143,20 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         cache_service=CacheService(driver),
     )
 
-    result = await runner.process_request(
+    result: dict[str, Any] | None = None
+    async for event in runner.stream_request(
         query=query,
         user_id="integration-user",
         session_id=session_id,
         persona="enthusiast",
         tools_service=tools_service,
-    )
+    ):
+        if event.get("type") == "final":
+            result = event
+    assert result is not None, "stream_request must emit a final event"
 
     assert set(result) == {
+        "type",
         "answer",
         "session_id",
         "response_time_ms",
@@ -165,6 +170,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         "map_actions",
         "location_context",
     }
+    assert result["type"] == "final"
     assert result["session_id"] == session_id
     assert result["intent_detected"] == IntentLabel.PRODUCT_RAG.value
     assert result["answer"]
