@@ -177,6 +177,7 @@ def test_database_remove_is_idempotent_when_container_missing(monkeypatch: pytes
     monkeypatch.setattr("tools.oracle.container.ContainerRuntime", lambda: runtime)
     monkeypatch.setattr("tools.oracle.database.DatabaseConfig.from_env", DatabaseConfig)
     monkeypatch.setattr("tools.oracle.database.OracleDatabase", lambda **_: db)
+    monkeypatch.setattr("tools.oracle.cli.database._build_ords_sidecar", lambda _db: MagicMock())
 
     result = CliRunner().invoke(database_remove, ["--volumes", "--force", "--yes"])
 
@@ -202,7 +203,7 @@ def test_database_start_loads_env_file(monkeypatch: pytest.MonkeyPatch, tmp_path
     monkeypatch.setattr("tools.oracle.database.DatabaseConfig.from_env", from_env)
     monkeypatch.setattr("tools.oracle.database.OracleDatabase", lambda **_: db)
 
-    result = CliRunner().invoke(database_start, ["--env-file", str(env_file)])
+    result = CliRunner().invoke(database_start, ["--env-file", str(env_file), "--skip-apex", "--skip-ords"])
 
     assert result.exit_code == 0
     assert captured["database_password"] == "env-secret"  # noqa: S105
