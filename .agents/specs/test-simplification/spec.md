@@ -182,12 +182,12 @@ Greps and reads run on branch `feat/inv`:
 
 ### Phase 1: Shared helpers + test_adk.py rewrite
 
-- [ ] 1.1 **Re-verify the live ADKRunner surface** before any edit. Read
+- [x] 1.1 **Re-verify the live ADKRunner surface** before any edit. Read
   `src/app/domain/chat/services/adk.py` and record which of `process_request` /
   `stream_request` / `_make_tool_factories` / `_build_workflow` /
   `_append_display_history` still exist (Ch5/Ch6 should have removed
   `process_request`). Drive all rewrites from the surviving surface.
-- [ ] 1.2 Add a local `src/tests/unit/app/domain/chat/services/conftest.py` (or a
+- [x] 1.2 Add a local `src/tests/unit/app/domain/chat/services/conftest.py` (or a
   sibling `_adk_helpers.py`) exporting:
   - `make_runner(*, session_service=None, classifier=None, persona_manager=None,
     intent=IntentLabel.PRODUCT_RAG)` → fully-wired `ADKRunner` with sensible
@@ -200,20 +200,20 @@ Greps and reads run on branch `feat/inv`:
     `21-26`) and a `tools_service` builder for the common
     `make_response_cache_key`/`get_cached_chat_response`/`set_cached_chat_response`/
     `search_products_by_vector` shape.
-- [ ] 1.3 Fix the `test_adk.py` module docstring (line ~4) to a behavior-only
+- [x] 1.3 Fix the `test_adk.py` module docstring (line ~4) to a behavior-only
   description (no "Phase 4").
-- [ ] 1.4 **Delete** the private-surface and deletion-guard tests:
+- [x] 1.4 **Delete** the private-surface and deletion-guard tests:
   `test_runner_constructor_takes_session_service_classifier_persona_manager`,
   `test_runner_stashes_dependencies_on_private_attrs`,
   `test_make_tool_factories_returns_store_query_async_callables`,
   `test_build_workflow_constructs_llmagent_and_calls_make_workflow`,
   `test_append_display_history_requires_session_store_contract`,
   `test_module_level_tool_functions_are_deleted`.
-- [ ] 1.5 Rewrite the retained closure-behavior tests (`83-110`, `195-207`,
+- [x] 1.5 Rewrite the retained closure-behavior tests (`83-110`, `195-207`,
   `210-222`, `225-263`) to use `make_runner`/the tools-service builder; keep
   `next(fn for fn in tools if fn.__name__ == ...)` as *selection* but remove any
   standalone `names == {...}` assertion.
-- [ ] 1.6 Rewrite the `process_request`-based behavior tests against the surviving
+- [x] 1.6 Rewrite the `process_request`-based behavior tests against the surviving
   public surface (`stream_request` and/or `AsyncTestClient`), de-duplicated via the
   shared helpers, preserving every behavioral assertion: grounded STORE_LOCATION
   (`470-528`), PRODUCT_AVAILABILITY coordinate masking + cache bypass (`531-601`),
@@ -225,50 +225,50 @@ Greps and reads run on branch `feat/inv`:
   `_effective_intent` / `_safe_location_context` / `credential_guard_callback` unit
   tests (`113-145`, `326-337`) and the `AgentToolsService` masked-sql-phase tests
   (`147-193`, `266-285`).
-- [ ] 1.7 Confirm `test_adk.py` LOC dropped substantially (target well under the
+- [x] 1.7 Confirm `test_adk.py` LOC dropped substantially (target well under the
   current 1075) and no test asserts a private attr, closure `__name__` set, or
   module-deletion guard.
 
 ### Phase 2: anyio normalization
 
-- [ ] 2.1 `test_fixtures.py`: add module `pytestmark = pytest.mark.anyio`; remove the
+- [x] 2.1 `test_fixtures.py`: add module `pytestmark = pytest.mark.anyio`; remove the
   `@pytest.mark.asyncio` on `test_merge_renders_aliased_target` (`:34`). (This file
   also has `anyio_backend` available from the package conftest.)
-- [ ] 2.2 `test_classifier.py`: add `pytestmark = pytest.mark.anyio`; remove the
+- [x] 2.2 `test_classifier.py`: add `pytestmark = pytest.mark.anyio`; remove the
   three `@pytest.mark.asyncio` decorators (`:32,47,78`).
-- [ ] 2.3 `test_workflow.py`: add `pytestmark = pytest.mark.anyio`; remove the
+- [x] 2.3 `test_workflow.py`: add `pytestmark = pytest.mark.anyio`; remove the
   `@pytest.mark.asyncio` (`:68`).
-- [ ] 2.4 `grep -rn "pytest.mark.asyncio" src/tests` returns nothing.
+- [x] 2.4 `grep -rn "pytest.mark.asyncio" src/tests` returns nothing.
 
 ### Phase 3: Legacy migrate_sqlcl_connection removal
 
-- [ ] 3.1 Delete `migrate_sqlcl_connection` (`tools/lib/utils.py:281-340`).
-- [ ] 3.2 Delete the migration branch in `configure_sqlcl_connection_with_password`
+- [x] 3.1 Delete `migrate_sqlcl_connection` (`tools/lib/utils.py:281-340`).
+- [x] 3.2 Delete the migration branch in `configure_sqlcl_connection_with_password`
   (`tools/lib/utils.py:364-371`, the `if connection_name == "cymbal_coffee" and
   is_sqlcl_connection_saved("mcp_demo"):` block) so the function falls through to the
   normal `.env`-load + create path.
-- [ ] 3.3 Remove any now-unused symbols/imports surfaced by the deletion (the
+- [x] 3.3 Remove any now-unused symbols/imports surfaced by the deletion (the
   `# noqa: PLR0911` on the surviving function may need re-tuning if branch count
   changes). `grep -rn "migrate_sqlcl_connection\|mcp_demo" .` returns 0.
 
 ### Phase 4: `.fn` / struct-internal / guard replacements
 
-- [ ] 4.1 `test_metrics_charts.py` (`:46`), `test_metrics_summary_cards.py` (`:32`):
+- [x] 4.1 `test_metrics_charts.py` (`:46`), `test_metrics_summary_cards.py` (`:32`):
   replace `Controller.handler.fn(object.__new__(Controller), ...)` with either
   direct controller-method invocation on an instance, or an `AsyncTestClient` route
   call with DI overrides for the fake services. Keep the same payload assertions.
-- [ ] 4.2 `test_explain_plan.py` (`:58,79`): same replacement for `explain_plan.fn`;
+- [x] 4.2 `test_explain_plan.py` (`:58,79`): same replacement for `explain_plan.fn`;
   the empty-query `ValidationException` case should still raise via the public path.
-- [ ] 4.3 `test_vector.py` (`:149`): replace `VectorController.vector_search_demo.fn`
+- [x] 4.3 `test_vector.py` (`:149`): replace `VectorController.vector_search_demo.fn`
   with an `AsyncTestClient` POST (or instance call); keep the `VectorDemo`
   payload/metrics assertions.
-- [ ] 4.4 `test_vector.py` struct/guard cleanup: replace
+- [x] 4.4 `test_vector.py` struct/guard cleanup: replace
   `{...} <= set(row.__struct_fields__)` (`:164`) with direct attribute reads on the
   returned struct (e.g. assert `row.name`, `row.price`, `row.similarity` resolve to
   the expected values); delete the `not hasattr(row, "distance")` negatives
   (`:107,167`) — keep one positive assertion that `price`/`similarity_score` are
   present and correct.
-- [ ] 4.5 `test_vector_search.py` (integration) guard cleanup: drop
+- [x] 4.5 `test_vector_search.py` (integration) guard cleanup: drop
   `not hasattr(match, "current_price")` (`:89`) and `not hasattr(match, "distance")`
   (`:92`); collapse to the existing positive `ProductMatch` field assertions
   (`price > 0`, `similarity_score` in range). Do **not** touch the surrounding
@@ -276,34 +276,34 @@ Greps and reads run on branch `feat/inv`:
 
 ### Phase 5: Parametrization
 
-- [ ] 5.1 `test_log.py`: parametrize the `SuppressGranianExcInfoFilter` cases
+- [x] 5.1 `test_log.py`: parametrize the `SuppressGranianExcInfoFilter` cases
   (`125-168`) over `(msg, exc_info, expected_filter_result, expect_exc_cleared)` and
   the `SuppressADKWarningsFilter` hide/keep cases (`30-65`) over
   `(message, expected)`. One record-builder helper.
-- [ ] 5.2 `test_doctor.py`: parametrize the two managed-mode memory tests (`21-70`)
+- [x] 5.2 `test_doctor.py`: parametrize the two managed-mode memory tests (`21-70`)
   over `(docker_bytes, warning_expected)`; share the patched `run_command` side
   effect.
-- [ ] 5.3 `test_database.py`: parametrize the `configure_vector_memory` state cases
+- [x] 5.3 `test_database.py`: parametrize the `configure_vector_memory` state cases
   (`134-187`) over the `run_command.side_effect`/expectation tuples where it reduces
   duplication; extend the existing app-password `@pytest.mark.parametrize` (`338-365`)
   to also cover the standalone invalid-app/oee single-case tests (`303-335`) if they
   fit the same shape. Keep behavior identical.
-- [ ] 5.4 `test_named_sql.py`: make `EXPECTED_KEYS` dynamic — glob `SQL_DIR/*.sql` and
+- [x] 5.4 `test_named_sql.py`: make `EXPECTED_KEYS` dynamic — glob `SQL_DIR/*.sql` and
   extract every `-- name: <key>` directive (regex per `test_vector.py:33`
   precedent). Make `SERVICE_FILES` dynamic — glob `DOMAIN_DIR/*/services/services.py`
   plus `chat/services/adk.py`. Keep `EXPECTED_FILES` as the dir-existence check and
   keep `test_named_query_registry_matches_get_sql_call_sites` and
   `test_no_inline_sql_strings_in_domain_services` intact.
-- [ ] 5.5 `test_settings.py`: merge `test_oracle_adk_and_litestar_session_flags_*`
+- [x] 5.5 `test_settings.py`: merge `test_oracle_adk_and_litestar_session_flags_*`
   and `test_oracle_adk_and_litestar_session_in_memory_default_to_true` (`16-41`) into
   one parametrized test over the env-override vs default cases. **Move**
   `test_vite_config_uses_resources_as_frontend_root` (`77-86`) into a Vite-settings
   test module (`test_settings_vite.py` or the existing Vite-focused location).
-- [ ] 5.6 `test_classifier.py`: in `test_classifier_passes_text_x_enum_config`
+- [x] 5.6 `test_classifier.py`: in `test_classifier_passes_text_x_enum_config`
   (`48-75`), drop the `cfg.response_mime_type`/`response_schema`/`temperature`/
   `system_instruction` assertions; assert the returned `IntentLabel` for the input.
   Keep the enum-pin (`20-29`) and unknown-label (`78-89`) tests.
-- [ ] 5.7 `test_workflow.py`: replace `workflow.edges[i][j]...` index assertions and
+- [x] 5.7 `test_workflow.py`: replace `workflow.edges[i][j]...` index assertions and
   `intent._func(...)` / `classify_and_respond._func(...)` private-node calls (`47-95`)
   with an observable-output assertion (invoke the workflow; assert the merged
   `{"intent", "answer"}` result and `ctx.state["intent"]`). Keep the stable
@@ -311,15 +311,15 @@ Greps and reads run on branch `feat/inv`:
 
 ### Phase 6: Verification
 
-- [ ] 6.1 `grep -rn "pytest.mark.asyncio" src/tests` → empty.
-- [ ] 6.2 `grep -rn "migrate_sqlcl_connection\|mcp_demo" .` → empty.
-- [ ] 6.3 `grep -rn "__struct_fields__" src/tests` → empty; `grep -rn '\.fn(' src/tests`
+- [x] 6.1 `grep -rn "pytest.mark.asyncio" src/tests` → empty.
+- [x] 6.2 `grep -rn "migrate_sqlcl_connection\|mcp_demo" .` → empty.
+- [x] 6.3 `grep -rn "__struct_fields__" src/tests` → empty; `grep -rn '\.fn(' src/tests`
   → no unit-controller hits (integration HTTP file excluded by scope if untouched).
-- [ ] 6.4 `grep -rn 'hasattr.*\(distance\|current_price\)' src/tests` → no
+- [x] 6.4 `grep -rn 'hasattr.*\(distance\|current_price\)' src/tests` → no
   deletion-guard negatives remain.
-- [ ] 6.5 `wc -l src/tests/unit/app/domain/chat/services/test_adk.py` → substantially
+- [x] 6.5 `wc -l src/tests/unit/app/domain/chat/services/test_adk.py` → substantially
   below 1075.
-- [ ] 6.6 `make start-infra` then `make lint && make test` green.
+- [x] 6.6 `make start-infra` then `make lint && make test` green.
 
 ## Acceptance
 
