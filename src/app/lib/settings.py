@@ -314,14 +314,14 @@ class MapsSettings:
 
 
 @dataclass(frozen=True)
-class VertexAISettings:
-    """Vertex AI configuration settings."""
+class AISettings:
+    """Vertex AI / Google GenAI configuration settings."""
 
-    PROJECT_ID: str = field(
+    project_id: str = field(
         default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
     )
     """Google Cloud Project ID for Vertex AI."""
-    LOCATION: str = field(
+    location: str = field(
         default_factory=lambda: (
             os.getenv("VERTEX_AI_LOCATION")
             or os.getenv("GOOGLE_CLOUD_LOCATION")
@@ -330,30 +330,45 @@ class VertexAISettings:
         )
     )
     """Vertex AI location/region."""
-    API_KEY: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+    api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    EMBEDDING_MODEL: str = field(
+    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
+    """Vertex AI chat model."""
+    intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
+    """Optional override for the single-call intent-classification model."""
+    embedding_model: str = field(
         default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview")
     )
     """Vertex AI embedding model."""
-    EMBEDDING_DIMENSIONS: int = 3072
+    embedding_dimensions: int = 3072
     """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
-    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
-    """Vertex AI chat model."""
-    INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))
-    """Vertex AI model for single-call intent classification with text/x.enum."""
 
-    def __post_init__(self) -> None:
-        """Synchronize Google client env vars when project-based Vertex AI is configured."""
-        if self.PROJECT_ID:
-            # When using Vertex AI (project-based), API key must NOT be set in environment
-            # as it causes mutual exclusivity errors in the genai client.
-            os.environ.pop("GOOGLE_API_KEY", None)
-            os.environ.pop("VERTEX_AI_API_KEY", None)
-            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
-            os.environ["GOOGLE_CLOUD_PROJECT"] = self.PROJECT_ID
-            os.environ["GOOGLE_CLOUD_LOCATION"] = self.LOCATION
-            object.__setattr__(self, "API_KEY", None)
+    @property
+    def intent_model(self) -> str:
+        """Return the intent-classification model, falling back to the chat model."""
+        return self.intent_model_override or self.chat_model
+
+
+@dataclass(frozen=True)
+class ChatSettings:
+    """Chat-workflow runtime constants."""
+
+    session_app_name: str = field(default_factory=lambda: os.getenv("CHAT_SESSION_APP_NAME", "coffee_assistant"))
+    """ADK app name used for session lookups and the per-request Runner."""
+    response_cache_version: str = field(
+        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v1")
+    )
+    """Cache-key namespace bumped to invalidate stale grounded responses."""
+    response_cache_ttl_minutes: int = field(default_factory=lambda: _env_int("CHAT_RESPONSE_CACHE_TTL_MINUTES", 60))
+    """Response-cache time-to-live in minutes."""
+    product_search_limit: int = field(default_factory=lambda: _env_int("CHAT_PRODUCT_SEARCH_LIMIT", 5))
+    """Default product vector-search result limit."""
+    product_search_threshold: float = field(
+        default_factory=lambda: float(os.getenv("CHAT_PRODUCT_SEARCH_THRESHOLD", "0.7"))
+    )
+    """Default product vector-search similarity threshold."""
+    display_history_limit: int = field(default_factory=lambda: _env_int("CHAT_DISPLAY_HISTORY_LIMIT", 40))
+    """Maximum number of display-history messages retained per session."""
 
 
 @dataclass(frozen=True)
@@ -402,7 +417,8 @@ class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
     log: LogSettings = field(default_factory=LogSettings)
-    vertex_ai: VertexAISettings = field(default_factory=VertexAISettings)
+    ai: AISettings = field(default_factory=AISettings)
+    chat: ChatSettings = field(default_factory=ChatSettings)
     vite: ViteSettings = field(default_factory=ViteSettings)
     maps: MapsSettings = field(default_factory=MapsSettings)
 
@@ -414,6 +430,21 @@ class Settings:
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
         os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
+
+    def configure_genai_env(self) -> None:
+        """Synchronize Google client env vars when project-based Vertex AI is configured.
+
+        Project-based Vertex AI and API keys are mutually exclusive in the genai
+        client, so a configured project clears any API key from the environment.
+        Run at startup rather than during dataclass construction to keep
+        ``AISettings`` immutable.
+        """
+        if self.ai.project_id:
+            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop("VERTEX_AI_API_KEY", None)
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+            os.environ["GOOGLE_CLOUD_PROJECT"] = self.ai.project_id
+            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.location
 
     @classmethod
     @lru_cache(maxsize=1, typed=True)
@@ -434,6 +465,7 @@ class Settings:
 
         settings = Settings()
         settings.setup_litestar_env()
+        settings.configure_genai_env()
         return settings
 
 

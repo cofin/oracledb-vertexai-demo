@@ -70,10 +70,8 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-_APP_NAME = "coffee_assistant"
 _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
 _PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
-_CHAT_CACHE_VERSION = "menu-grounded-v1"
 _PRODUCT_RAG_INTENT = "PRODUCT_RAG"
 _PRODUCT_AVAILABILITY_INTENT = "PRODUCT_AVAILABILITY"
 _STORE_LOCATION_INTENT = "STORE_LOCATION"
@@ -159,8 +157,11 @@ class AgentToolsService(OracleAsyncService):
         self.cache_service = cache_service
 
     async def search_products_by_vector(
-        self, query: str, limit: int = 5, similarity_threshold: float = 0.7
+        self, query: str, limit: int | None = None, similarity_threshold: float | None = None
     ) -> dict[str, Any]:
+        chat = get_settings().chat
+        limit = chat.product_search_limit if limit is None else limit
+        similarity_threshold = chat.product_search_threshold if similarity_threshold is None else similarity_threshold
         embedding_start = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query,
@@ -351,7 +352,8 @@ class AgentToolsService(OracleAsyncService):
     def make_response_cache_key(self, query: str, persona: str) -> str:
         normalized = " ".join(query.casefold().split())
         model = self.vertex_ai_service.model
-        digest = sha256(f"{_CHAT_CACHE_VERSION}:{model}:{persona}:{normalized}".encode()).hexdigest()
+        version = get_settings().chat.response_cache_version
+        digest = sha256(f"{version}:{model}:{persona}:{normalized}".encode()).hexdigest()
         return f"chat:{digest}"
 
     async def get_cached_chat_response(self, cache_key: str) -> dict[str, Any] | None:
@@ -359,7 +361,9 @@ class AgentToolsService(OracleAsyncService):
         return cached.response_data if cached else None
 
     async def set_cached_chat_response(self, cache_key: str, response_data: dict[str, Any]) -> None:
-        await self.cache_service.set_cached_response(cache_key, response_data, ttl_minutes=60)
+        await self.cache_service.set_cached_response(
+            cache_key, response_data, ttl_minutes=get_settings().chat.response_cache_ttl_minutes
+        )
 
 
 def credential_guard_callback(callback_context: CallbackContext) -> types.Content | None:
@@ -379,8 +383,8 @@ def credential_guard_callback(callback_context: CallbackContext) -> types.Conten
 
 def _has_vertex_ai_backend_config() -> bool:
     settings = get_settings()
-    project_id = settings.vertex_ai.PROJECT_ID.strip()
-    return bool(settings.vertex_ai.API_KEY or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
+    project_id = settings.ai.project_id.strip()
+    return bool(settings.ai.api_key or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
 
 
 def _ensure_vertex_ai_backend_configured() -> None:
@@ -424,8 +428,12 @@ class ADKRunner:
         _ensure_vertex_ai_backend_configured()
 
     def _make_tool_factories(self, tools_service: AgentToolsService, metric_state: dict[str, Any]) -> list[ToolUnion]:
+        chat_settings = get_settings().chat
+
         async def search_products_by_vector(
-            query: str, limit: int = 5, similarity_threshold: float = 0.7
+            query: str,
+            limit: int = chat_settings.product_search_limit,
+            similarity_threshold: float = chat_settings.product_search_threshold,
         ) -> dict[str, Any]:
             """Search the Cymbal Coffee menu with vector RAG.
 
@@ -520,7 +528,7 @@ class ADKRunner:
     def _build_workflow(self, instruction: str, temperature: float, tools: list[ToolUnion]) -> Any:
         agent = LlmAgent(
             name="CoffeeAssistant",
-            model=get_settings().vertex_ai.CHAT_MODEL,
+            model=get_settings().ai.chat_model,
             instruction=instruction,
             tools=tools,
             generate_content_config=types.GenerateContentConfig(temperature=temperature),
@@ -530,7 +538,7 @@ class ADKRunner:
 
     async def get_history(self, user_id: str, session_id: str) -> list[ChatMessage]:
         """Return displayable chat history for the current ADK session."""
-        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        session = await self._session_service.get_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
         if not session:
             return []
 
@@ -551,7 +559,7 @@ class ADKRunner:
 
     async def clear_session(self, user_id: str, session_id: str) -> None:
         """Delete the current ADK session and its event history."""
-        await self._session_service.delete_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        await self._session_service.delete_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
 
     async def _append_display_history(
         self,
@@ -563,7 +571,7 @@ class ADKRunner:
         intent_detected: str | None = None,
         last_products: list[str] | None = None,
     ) -> None:
-        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        session = await self._session_service.get_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
         if not session:
             return
 
@@ -580,7 +588,7 @@ class ADKRunner:
             {"source": "human", "message": query},
             {"source": "ai", "message": answer},
         ]
-        state[_DISPLAY_HISTORY_STATE_KEY] = history[-40:]
+        state[_DISPLAY_HISTORY_STATE_KEY] = history[-get_settings().chat.display_history_limit :]
         result = self._session_service.store.update_session_state(session_id, state)
         if isawaitable(result):
             await result
@@ -899,11 +907,11 @@ class ADKRunner:
         _ensure_vertex_ai_backend_configured()
 
         session = await self._session_service.get_session(
-            app_name=_APP_NAME, user_id=user_id, session_id=session_id
+            app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id
         ) if session_id else None
         if not session:
             session = await self._session_service.create_session(
-                app_name=_APP_NAME, user_id=user_id, session_id=session_id
+                app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id
             )
 
         # Browser coordinates are request-scoped, so consented turns skip the response cache.
@@ -994,7 +1002,7 @@ class ADKRunner:
         tools = self._make_tool_factories(tools_service, metric_state)
         workflow = self._build_workflow(instruction, self._persona_manager.get_temperature(persona), tools)
 
-        runner = Runner(node=workflow, app_name=_APP_NAME, session_service=self._session_service)
+        runner = Runner(node=workflow, app_name=get_settings().chat.session_app_name, session_service=self._session_service)
         events = runner.run_async(
             user_id=user_id,
             session_id=session.id,

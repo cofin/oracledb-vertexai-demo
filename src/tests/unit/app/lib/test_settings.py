@@ -63,17 +63,49 @@ def test_litestar_env_preserves_explicit_app_url(monkeypatch: MonkeyPatch) -> No
     assert os.environ["APP_URL"] == "https://coffee.example.test"
 
 
-def test_vertex_embedding_defaults_match_schema_contract(monkeypatch: MonkeyPatch) -> None:
-    from app.lib.settings import VertexAISettings
+def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AISettings
 
-    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.delenv("VERTEX_AI_EMBEDDING_MODEL", raising=False)
-    monkeypatch.delenv("VERTEX_AI_PROJECT_ID", raising=False)
+    for key in (
+        "GOOGLE_CLOUD_PROJECT",
+        "VERTEX_AI_PROJECT_ID",
+        "VERTEX_AI_EMBEDDING_MODEL",
+        "VERTEX_AI_CHAT_MODEL",
+        "VERTEX_AI_INTENT_MODEL",
+    ):
+        monkeypatch.delenv(key, raising=False)
 
-    settings = VertexAISettings()
+    settings = AISettings()
 
-    assert settings.EMBEDDING_MODEL == "gemini-embedding-2-preview"
-    assert settings.EMBEDDING_DIMENSIONS == 3072
+    assert settings.chat_model == "gemini-2.5-flash-lite"
+    assert settings.embedding_model == "gemini-embedding-2-preview"
+    assert settings.embedding_dimensions == 3072
+    assert settings.intent_model_override is None
+    assert settings.intent_model == settings.chat_model
+
+
+def test_intent_model_override_wins(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AISettings
+
+    monkeypatch.setenv("VERTEX_AI_INTENT_MODEL", "gemini-x")
+
+    settings = AISettings()
+
+    assert settings.intent_model_override == "gemini-x"
+    assert settings.intent_model == "gemini-x"
+
+
+def test_chat_settings_defaults(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import ChatSettings
+
+    settings = ChatSettings()
+
+    assert settings.session_app_name == "coffee_assistant"
+    assert settings.response_cache_version == "menu-grounded-v1"
+    assert settings.response_cache_ttl_minutes == 60
+    assert settings.product_search_limit == 5
+    assert settings.product_search_threshold == 0.7
+    assert settings.display_history_limit == 40
 
 
 def test_vite_config_uses_resources_as_frontend_root() -> None:

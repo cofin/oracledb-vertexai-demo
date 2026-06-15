@@ -64,13 +64,13 @@ class IntegrationsProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_genai_client(self) -> Client:
         settings = get_settings()
-        if settings.vertex_ai.PROJECT_ID:
+        if settings.ai.project_id:
             return Client(
                 vertexai=True,
-                project=settings.vertex_ai.PROJECT_ID,
-                location=settings.vertex_ai.LOCATION,
+                project=settings.ai.project_id,
+                location=settings.ai.location,
             )
-        return Client(api_key=settings.vertex_ai.API_KEY)
+        return Client(api_key=settings.ai.api_key)
 
     @provide(scope=Scope.APP)
     def provide_adk_store(self, config: OracleAsyncConfig) -> OracleAsyncADKStore:
@@ -82,7 +82,7 @@ class IntegrationsProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_intent_classifier(self, client: Client) -> FlashLiteIntentClassifier:
-        return FlashLiteIntentClassifier(client, model=get_settings().vertex_ai.INTENT_MODEL)
+        return FlashLiteIntentClassifier(client, model=get_settings().ai.intent_model)
 
     @provide(scope=Scope.APP)
     def provide_persona_manager(self) -> PersonaManager:
@@ -119,9 +119,9 @@ class DomainServiceProvider(Provider):
         settings = get_settings()
         return VertexAIService(
             client=client,
-            model=settings.vertex_ai.CHAT_MODEL,
-            embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
-            embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
+            model=settings.ai.chat_model,
+            embedding_model=settings.ai.embedding_model,
+            embedding_dimensions=settings.ai.embedding_dimensions,
             cache_service=cache_service,
         )
 

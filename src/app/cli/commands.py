@@ -59,6 +59,8 @@ async def _clear_application_cache(force: bool, cache_service: CacheService) -> 
 
     console.rule("[bold blue]Clearing Caches", style="blue", align="left")
     console.print()
+    expired_count = await cache_service.delete_expired_responses()
+    console.print(f"[green]✓ Pruned {expired_count} expired response-cache records[/green]")
     deleted_count = await cache_service.invalidate_cache()
     console.print(f"[green]✓ Cleared {deleted_count} cache records[/green]")
     console.print()
@@ -115,10 +117,10 @@ def _show_model_info(vertex_ai_service: VertexAIService) -> None:
     console.rule("[bold blue]AI Model Configuration", style="blue", align="left")
     console.print()
 
-    console.print(f"[bold]Chat Model:[/bold] {settings.vertex_ai.CHAT_MODEL}")
-    console.print(f"[bold]Embedding Model:[/bold] {settings.vertex_ai.EMBEDDING_MODEL}")
-    console.print(f"[bold]Google Project:[/bold] {settings.vertex_ai.PROJECT_ID}")
-    console.print(f"[bold]Embedding Dimensions:[/bold] {settings.vertex_ai.EMBEDDING_DIMENSIONS}")
+    console.print(f"[bold]Chat Model:[/bold] {settings.ai.chat_model}")
+    console.print(f"[bold]Embedding Model:[/bold] {settings.ai.embedding_model}")
+    console.print(f"[bold]Google Project:[/bold] {settings.ai.project_id}")
+    console.print(f"[bold]Embedding Dimensions:[/bold] {settings.ai.embedding_dimensions}")
     console.print()
 
     console.print("[bold]🔍 Testing Model Initialization...[/bold]")

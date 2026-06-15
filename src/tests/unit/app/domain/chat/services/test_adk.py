@@ -20,9 +20,15 @@ pytestmark = pytest.mark.anyio
 
 def _allow_vertex_config(monkeypatch: Any, adk_module: Any) -> None:
     settings = MagicMock()
-    settings.vertex_ai.PROJECT_ID = "test-project"
-    settings.vertex_ai.API_KEY = None
-    settings.vertex_ai.CHAT_MODEL = "gemini-2.5-flash-lite"
+    settings.ai.project_id = "test-project"
+    settings.ai.api_key = None
+    settings.ai.chat_model = "gemini-2.5-flash-lite"
+    settings.chat.session_app_name = "coffee_assistant"
+    settings.chat.response_cache_version = "menu-grounded-v1"
+    settings.chat.response_cache_ttl_minutes = 60
+    settings.chat.product_search_limit = 5
+    settings.chat.product_search_threshold = 0.7
+    settings.chat.display_history_limit = 40
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
 
 
@@ -327,8 +333,8 @@ def test_credential_guard_treats_demo_project_as_unconfigured(monkeypatch: Any) 
     from app.domain.chat.services import adk as adk_module
 
     settings = MagicMock()
-    settings.vertex_ai.PROJECT_ID = "demo-project"
-    settings.vertex_ai.API_KEY = None
+    settings.ai.project_id = "demo-project"
+    settings.ai.api_key = None
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
 
     content = adk_module.credential_guard_callback(MagicMock())
@@ -509,6 +515,92 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
     assert final["search_metrics"]["vector_query"] == "something sweet"
     assert any(phase["sql_key"] == "vector-search-products" for phase in final["sql_phases"])
     assert final["from_cache"] is False
+
+
+async def test_set_cached_chat_response_uses_chat_settings_ttl(mock_driver, monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import AgentToolsService
+
+    settings = MagicMock()
+    settings.chat.response_cache_ttl_minutes = 17
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+    cache_service = MagicMock()
+    cache_service.set_cached_response = AsyncMock()
+    tools_service = AgentToolsService(
+        driver=mock_driver,
+        product_service=MagicMock(),
+        metrics_service=MagicMock(),
+        vertex_ai_service=MagicMock(),
+        store_service=MagicMock(),
+        cache_service=cache_service,
+    )
+
+    await tools_service.set_cached_chat_response("cache-key", {"answer": "hi"})
+
+    cache_service.set_cached_response.assert_awaited_once_with("cache-key", {"answer": "hi"}, ttl_minutes=17)
+
+
+async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import AgentToolsService
+
+    settings = MagicMock()
+    settings.chat.response_cache_version = "custom-vN"
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+    vertex_ai_service = MagicMock()
+    vertex_ai_service.model = "gemini-2.5-flash-lite"
+    tools_service = AgentToolsService(
+        driver=mock_driver,
+        product_service=MagicMock(),
+        metrics_service=MagicMock(),
+        vertex_ai_service=vertex_ai_service,
+        store_service=MagicMock(),
+        cache_service=MagicMock(),
+    )
+
+    from hashlib import sha256
+
+    expected_digest = sha256(b"custom-vN:gemini-2.5-flash-lite:enthusiast:latte").hexdigest()
+    assert tools_service.make_response_cache_key("latte", "enthusiast") == f"chat:{expected_digest}"
+
+
+async def test_append_display_history_truncates_to_chat_settings_limit(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+
+    settings = MagicMock()
+    settings.chat.display_history_limit = 3
+    monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
+
+    prior = [{"source": "human" if i % 2 == 0 else "ai", "message": f"m{i}"} for i in range(10)]
+    fake_session = MagicMock()
+    fake_session.id = "sess-trunc"
+    fake_session.state = {"display_history": prior}
+    captured: dict[str, Any] = {}
+
+    def update_session_state(session_id: str, state: dict[str, Any]) -> None:
+        captured["state"] = state
+
+    session_service = SimpleNamespace(
+        get_session=AsyncMock(return_value=fake_session),
+        store=SimpleNamespace(update_session_state=update_session_state),
+    )
+    runner = ADKRunner(session_service=session_service, classifier=MagicMock(), persona_manager=MagicMock())  # type: ignore[arg-type]
+
+    await runner._append_display_history(
+        user_id="u1",
+        session_id="sess-trunc",
+        query="latest question",
+        answer="latest answer",
+        intent_detected="PRODUCT_RAG",
+    )
+
+    history = captured["state"]["display_history"]
+    assert len(history) == 3
+    assert history[-1] == {"source": "ai", "message": "latest answer"}
+    assert history[-2] == {"source": "human", "message": "latest question"}
 
 
 def test_module_level_tool_functions_are_deleted() -> None:

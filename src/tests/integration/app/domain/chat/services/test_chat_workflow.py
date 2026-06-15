@@ -115,11 +115,19 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
 
     monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
     configured = SimpleNamespace(
-        vertex_ai=SimpleNamespace(
-            PROJECT_ID="test-project",
-            API_KEY=None,
-            CHAT_MODEL="gemini-2.5-flash-lite",
-        )
+        ai=SimpleNamespace(
+            project_id="test-project",
+            api_key=None,
+            chat_model="gemini-2.5-flash-lite",
+        ),
+        chat=SimpleNamespace(
+            session_app_name="coffee_assistant",
+            response_cache_version="menu-grounded-v1",
+            response_cache_ttl_minutes=60,
+            product_search_limit=5,
+            product_search_threshold=0.7,
+            display_history_limit=40,
+        ),
     )
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
 

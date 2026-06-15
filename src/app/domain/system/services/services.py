@@ -15,6 +15,7 @@ from app.config import db_manager
 from app.domain.system.schemas import (
     CacheStats,
     CacheStatsRow,
+    EmbeddingCache,
     MetricsBreakdown,
     MetricsBreakdownRow,
     MetricsCharts,
@@ -187,21 +188,22 @@ class CacheService(OracleAsyncService):
 
     async def get_embedding(self, text: str, model: str) -> list[float] | None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
-        row = await self.driver.select_one_or_none(
+        cached = await self.driver.select_one_or_none(
             db_manager.get_sql("get-cached-embedding"),
             hash=text_hash,
             model=model,
+            schema_type=EmbeddingCache,
         )
-        if row:
-            await self.driver.execute(
-                sql
-                .update("embedding_cache")
-                .set(hit_count=sql.raw("hit_count + 1"), last_accessed=sql.raw("CURRENT_TIMESTAMP"))
-                .where_eq("text_hash", text_hash),
-            )
-            await self.driver.commit()
-            return list(row["embedding"]) if isinstance(row["embedding"], list) else None
-        return None
+        if cached is None:
+            return None
+        await self.driver.execute(
+            sql
+            .update("embedding_cache")
+            .set(hit_count=sql.raw("hit_count + 1"), last_accessed=sql.raw("CURRENT_TIMESTAMP"))
+            .where_eq("text_hash", text_hash),
+        )
+        await self.driver.commit()
+        return cached.embedding
 
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
