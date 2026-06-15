@@ -116,84 +116,85 @@ not app runtime connection.
 
 ### Phase 1: Lock the contract with tests
 
-- [ ] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add
+- [x] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add
       `test_database_settings_local_contract`: with `DATABASE_*` unset, assert
       `DatabaseSettings()` yields `user=app`, `password=SuperSecret1`,
-      `host=localhost`, `port=1521`, `service_name=myatp_low`, derived
-      `dsn=localhost:1521/myatp_low`, `pool_min=5`, `pool_max=20`.
-- [ ] 1.2 Add `test_connection_config_matches_database_settings_defaults` in
-      `src/tests/unit/tools/oracle/test_database.py` (or a connection test module):
-      with env cleared, assert `ConnectionConfig.from_env()` resolves the SAME
-      user/host/port/service_name defaults as `DatabaseSettings` for managed mode.
-      This test FAILS today on `service_name`/port-fallback drift (the required
-      drift test).
-- [ ] 1.3 Add `test_wallet_mode_contract`: with `DATABASE_URL` + `WALLET_PASSWORD`
+      `host=localhost`, `port=1521`, `service_name=freepdb1`, derived
+      `dsn=localhost:1521/freepdb1`, `pool_min=5`, `pool_max=20`. [31485ce]
+      (Corrected to `freepdb1`: that is the gvenzl PDB and the managed/local
+      target; `myatp_low` is only the wallet TNS alias from `DATABASE_URL`.)
+- [x] 1.2 Add `test_connection_config_matches_database_settings_defaults` in
+      `src/tests/unit/tools/oracle/test_connection.py` (connection test module,
+      kept away from the dirty `test_database.py`): with env cleared, assert
+      `ConnectionConfig.from_env()` resolves the SAME user/host/port/service_name
+      defaults as `DatabaseSettings` for managed mode. The required RED drift test;
+      failed on `service_name` (`myatp_low` vs `freepdb1`). [31485ce]
+- [x] 1.3 Add `test_wallet_mode_contract`: with `DATABASE_URL` + `WALLET_PASSWORD`
       + `TNS_ADMIN` set, assert `DatabaseSettings.is_autonomous` is True and
-      `create_config()` populates wallet keys (extend the existing wallet test).
-- [ ] 1.4 Run; confirm 1.2 is RED and others GREEN. Record RED list in Beads note.
+      `create_config()` populates wallet keys. [31485ce]
+- [x] 1.4 Ran; confirmed 1.1 + 1.2 RED for the documented drift, 1.3 + existing
+      tests GREEN. RED list recorded in Beads note. [31485ce]
 
 ### Phase 2: Align ConnectionConfig with the app contract
 
-- [ ] 2.1 In `tools/oracle/connection.py`, change the external default
-      `service_name` from `ORCL` to `myatp_low` (line 110) so managed/local agree;
-      keep explicit-override behavior.
-- [ ] 2.2 Standardize the connection port on `DATABASE_PORT`. Drop the
+- [x] 2.1 In `tools/oracle/connection.py`, changed the managed + external default
+      `service_name` from `myatp_low`/`ORCL` to `freepdb1` so the three readers
+      agree; kept explicit-override behavior. `for_external` default also aligned. [31485ce]
+- [x] 2.2 Standardized the connection port on `DATABASE_PORT`. Dropped the
       `ORACLE26AI_PORT`/`ORACLE23AI_PORT` fallbacks from `ConnectionConfig.from_env()`
-      (lines 108-109) — those host-port knobs belong to container lifecycle in
-      `database.py`, not app connection. Verify no test relies on the fallback first.
-- [ ] 2.3 Drop the `ORACLE_USER`/`ORACLE_PASSWORD` fallbacks (lines 103-105) in
-      favor of `DATABASE_USER`/`DATABASE_PASSWORD`, after confirming 0 tests/connections
-      depend on them.
-- [ ] 2.4 Re-run Phase 1; 1.2 turns GREEN.
+      — those host-port knobs stay in container lifecycle (`database.py`). Verified
+      no test relied on them for app connection. [31485ce]
+- [x] 2.3 Dropped the `ORACLE_USER`/`ORACLE_PASSWORD` fallbacks in favor of
+      `DATABASE_USER`/`DATABASE_PASSWORD`; confirmed 0 tests/connections depend on
+      them (`ORACLE_PASSWORD` is only used by the separate `database.py` lifecycle). [31485ce]
+- [x] 2.4 Re-ran Phase 1; 1.1 + 1.2 turned GREEN. [31485ce]
 
 ### Phase 3: Resolve pool knobs
 
-- [ ] 3.1 Check SQLSpec `OracleAsyncConfig` / `oracledb` pool kwargs for a
-      timeout/recycle equivalent (`uv run python -c "import oracledb; help(oracledb.create_pool)"`
-      or SQLSpec config docs).
-- [ ] 3.2 If supported: wire `POOL_TIMEOUT`/`POOL_RECYCLE` into the
-      `connection_config` of `create_config()` and add a test asserting the kwargs
-      land. If unsupported: delete `POOL_TIMEOUT`, `POOL_RECYCLE`, `ECHO` from
-      `DatabaseSettings` (coordinate with mzm.3 Phase 4.6 so deletion happens once).
-- [ ] 3.3 Keep `POOL_MIN_SIZE`/`POOL_MAX_SIZE` wired as `min`/`max`.
+- [x] 3.1 Checked: `POOL_TIMEOUT`/`POOL_RECYCLE`/`ECHO` were already removed by
+      Ch3 (mzm.3); none remain in `settings.py`. Verify-only. [31485ce]
+- [x] 3.2 No knobs to delete or wire — Ch3 owned the deletion. [31485ce]
+- [x] 3.3 Confirmed `POOL_MIN_SIZE`/`POOL_MAX_SIZE` stay wired as `min`/`max`. [31485ce]
 
 ### Phase 4: Align .env generation
 
-- [ ] 4.1 In `tools/lib/utils.py` `create_env_interactive()`, make the managed and
-      external blocks emit the canonical contract keys/defaults
-      (`DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`,
-      `DATABASE_SERVICE_NAME`, plus `DATABASE_URL`/`WALLET_PASSWORD`/`TNS_ADMIN` for
-      wallet) consistent with `DatabaseSettings`.
-- [ ] 4.2 Ensure generated values do not log secrets to the console (prompts may use
-      `password=True`; do not echo values).
-- [ ] 4.3 Reconcile the AI project key (`GOOGLE_PROJECT_ID` vs `VERTEX_AI_PROJECT_ID`)
-      only as needed for the DB contract; the full AI env reconciliation is mzm.8.
+- [x] 4.1 `tools/lib/utils.py` `create_env_interactive()` managed block already
+      emits the canonical wallet contract; generated managed `.env` is byte-identical
+      to the live working `.env` DB keys. External standard block already emits
+      `DATABASE_USER/PASSWORD/HOST/PORT/SERVICE_NAME`. No change required. [31485ce]
+- [x] 4.2 Verified generated values do not log secrets to console (`password=True`
+      on sensitive prompts; file-only writes). [31485ce]
+- [x] 4.3 AI project key reconciliation left to mzm.8 per spec; not a DB key. [31485ce]
 
 ### Phase 5: Verify
 
-- [ ] 5.1 `uv run pytest src/tests/unit/app/lib src/tests/unit/tools/oracle` passes.
-- [ ] 5.2 Confirm wallet/autonomous `create_config()` semantics unchanged
-      (`test_wallet_location_resolves_to_absolute_path` green).
-- [ ] 5.3 `make lint` passes; `git diff --check` clean.
+- [x] 5.1 `uv run pytest src/tests/unit/app/lib src/tests/unit/tools/oracle`:
+      130 passed; only the 2 pre-existing `test_database.py` failures (unrelated
+      dirty `cli/database.py`) remain — no new failures. [31485ce]
+- [x] 5.2 Wallet/autonomous `create_config()` semantics unchanged
+      (`test_wallet_location_resolves_to_absolute_path` green; live wallet
+      `SELECT 1` succeeds; chat workflow integration test passes). [31485ce]
+- [x] 5.3 `make lint` passes; `git diff --check` clean. [31485ce]
 
 ## Acceptance
 
-- [ ] `DatabaseSettings`, `ConnectionConfig.from_env()`, and `.env` generation
+- [x] `DatabaseSettings`, `ConnectionConfig.from_env()`, and `.env` generation
       resolve the same connection env variable names and defaults for the managed/
-      local path.
-- [ ] App startup, `coffee upgrade`/fixtures, and
+      local path (`freepdb1`). [31485ce]
+- [x] App startup, `coffee upgrade`/fixtures, and
       `python manage.py database upgrade` resolve one connection contract (no
-      `ORCL` vs `myatp_low` or `ORACLE*_PORT` vs `DATABASE_PORT` divergence on the
-      app path).
-- [ ] Wallet/autonomous behavior is byte-for-byte preserved in semantics.
-- [ ] No unused database pool knob remains in settings (or `POOL_TIMEOUT`/
-      `POOL_RECYCLE` are genuinely wired with a test).
-- [ ] Container lifecycle config stays in `tools/oracle/database.py` and is not
-      read by app runtime settings.
-- [ ] Service-name casing stays `myatp_low`; existing service-name/wallet tests
-      still pass.
-- [ ] No compat shim for removed `ORACLE_*` fallbacks; behavior-only docstrings;
-      no secret/URL logging added.
+      `ORCL` vs `freepdb1` or `ORACLE*_PORT` vs `DATABASE_PORT` divergence on the
+      app path). [31485ce]
+- [x] Wallet/autonomous behavior is byte-for-byte preserved in semantics
+      (live wallet `SELECT 1` + chat integration test pass). [31485ce]
+- [x] No unused database pool knob remains in settings (Ch3 removed
+      `POOL_TIMEOUT`/`POOL_RECYCLE`/`ECHO`; `min`/`max` stay wired). [31485ce]
+- [x] Container lifecycle config stays in `tools/oracle/database.py` and is not
+      read by app runtime settings. [31485ce]
+- [x] Service name stays `freepdb1` (managed/local) / `myatp_low` (wallet alias);
+      existing service-name/wallet tests still pass. [31485ce]
+- [x] No compat shim for removed `ORACLE_*` fallbacks; behavior-only docstrings;
+      no secret/URL logging added. [31485ce]
 
 ## Verification
 
