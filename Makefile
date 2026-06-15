@@ -215,13 +215,13 @@ clean: ## Cleanup temporary build artifacts
 	@echo "${INFO} Cleaning working directory... 🧹"
 	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache src/tests/.pytest_cache src/tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
 	@rm -rf src/app/domain/web/static .litestar.json src/resources/.litestar.json node_modules/.vite tsconfig.tsbuildinfo $(FRONTEND_DIR)/.vite $(FRONTEND_DIR)/tsconfig.tsbuildinfo >/dev/null 2>&1
-	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
-	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*.pyo' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*~' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
-	@find . -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.pyo' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*~' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
 	@echo "${OK} Working directory cleaned"
 
 # =============================================================================
