@@ -109,18 +109,15 @@ class OracleDatabase:
             recreate: Remove and recreate container if it exists
 
         Raises:
-            ContainerAlreadyRunningError: If the container is already running
             ContainerStartError: If the container fails to start or stay healthy
         """
         self.console.rule("[bold blue]Starting Oracle Database Container")
 
-        # Already running
+        # Already running — reuse it (idempotent); recreate only when asked
         if self.runtime.container_running(self.config.container_name):
             if not recreate:
-                raise ContainerAlreadyRunningError(
-                    f"Container '{self.config.container_name}' is already running. "
-                    "Use --recreate to remove and recreate it."
-                )
+                self.console.print("[green]✓[/green] Container already running — reusing it")
+                return
             self.console.print("[yellow]Removing existing container...[/yellow]")
             self.remove(force=True)
 
@@ -452,10 +449,6 @@ class ContainerStatus:
 
 class DatabaseError(Exception):
     """Base exception for database operations."""
-
-
-class ContainerAlreadyRunningError(DatabaseError):
-    """Raised when trying to start an already running container."""
 
 
 class ContainerStartError(DatabaseError):

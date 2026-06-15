@@ -14,7 +14,6 @@ from tools.oracle.cli.database import database_remove, database_start
 from tools.oracle.container import ContainerRuntime
 from tools.oracle.database import (
     DEFAULT_IMAGE,
-    ContainerAlreadyRunningError,
     ContainerNotFoundError,
     ContainerStartError,
     DatabaseConfig,
@@ -122,14 +121,15 @@ def test_start_existing_stopped_container_starts_and_returns() -> None:
     db._build_run_command.assert_not_called()
 
 
-def test_start_raises_when_already_running_without_recreate() -> None:
-    """Starting an already-running container without --recreate fails fast."""
+def test_start_reuses_already_running_container_without_recreate() -> None:
+    """Starting an already-running container without --recreate reuses it (idempotent)."""
     runtime = MagicMock(spec=ContainerRuntime)
     runtime.container_running.return_value = True
     db = _database(runtime)
 
-    with pytest.raises(ContainerAlreadyRunningError, match="already running"):
-        db.start()
+    db.start()  # idempotent: reuses the running container instead of raising
+
+    runtime.run_command.assert_not_called()
 
 
 def test_start_raises_when_health_check_times_out() -> None:
