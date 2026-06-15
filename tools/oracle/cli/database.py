@@ -29,13 +29,14 @@ def _build_apex_installer(db: OracleDatabase) -> ApexInstaller:
 
 
 def _auto_install_apex(db: OracleDatabase) -> None:
-    """Install APEX after the DB is healthy when none is present (idempotent)."""
+    """Install APEX when absent, then ensure the COFFEE workspace exists (both idempotent)."""
     installer = _build_apex_installer(db)
     if installer.installed_version() is None:
         console.print("[cyan]APEX not detected — installing (first run can take a few minutes)...[/cyan]")
-        installer.install()
+        installer.install()  # install() provisions the COFFEE workspace + ADMIN user
     else:
-        console.print("[dim]APEX already present; skipping auto-install.[/dim]")
+        console.print("[dim]APEX already present; ensuring the COFFEE workspace exists...[/dim]")
+        installer.provision_workspace()
 
 
 def _build_ords_sidecar(db: OracleDatabase) -> OrdsSidecar:
@@ -50,6 +51,23 @@ def _build_ords_sidecar(db: OracleDatabase) -> OrdsSidecar:
 def _start_ords(db: OracleDatabase) -> None:
     """Start the ORDS sidecar (idempotent) so APEX has an HTTP front end."""
     _build_ords_sidecar(db).start()
+
+
+def _print_apex_access_info() -> None:
+    """Print the ORDS URLs and the auto-provisioned APEX workspace login."""
+    from tools.oracle.apex_install import ApexInstallConfig
+    from tools.oracle.ords import OrdsConfig
+
+    ords = OrdsConfig.from_env()
+    apex = ApexInstallConfig.from_env()
+    console.print()
+    console.print("[bold green]APEX is ready via ORDS[/bold green]")
+    console.print(f"  App Builder : [link]http://localhost:{ords.host_http_port}/ords/[/link]")
+    console.print(f"  HTTPS       : https://localhost:{ords.host_https_port}/ords/")
+    console.print(f"  Workspace   : {apex.workspace}")
+    console.print(f"  Username    : {apex.admin_user}")
+    console.print(f"  Password    : {apex.admin_password}")
+    console.print("[dim]  (workspace + ADMIN user are auto-provisioned during APEX install)[/dim]")
 
 
 def _load_env_file(env_file: str | None) -> None:
@@ -117,6 +135,8 @@ def _database_start(
     if not skip_ords:
         _start_ords(db)
     console.print("[green]✓ Database started successfully![/green]")
+    if not skip_ords:
+        _print_apex_access_info()
 
 
 @database_group.command(name="stop")
