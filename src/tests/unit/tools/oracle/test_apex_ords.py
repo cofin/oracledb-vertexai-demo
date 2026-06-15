@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from tools.oracle.container import ContainerRuntime
 from tools.oracle.ords import OrdsConfig, OrdsSidecar
@@ -161,3 +161,79 @@ def test_wait_for_healthy_times_out() -> None:
     runtime.container_running.return_value = False
 
     assert sidecar.wait_for_healthy(timeout=0) is False
+
+
+# --- infra start/stop/remove integration (Task 3.4) -------------------------
+
+
+def test_infra_start_starts_ords_after_apex() -> None:
+    """`infra start` brings up ORDS after APEX is ensured (correct order)."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    with (
+        patch.object(cli_db, "_database", return_value=MagicMock()),
+        patch.object(cli_db, "_auto_install_apex") as auto,
+        patch.object(cli_db, "_start_ords") as ords,
+    ):
+        manager = MagicMock()
+        manager.attach_mock(auto, "auto")
+        manager.attach_mock(ords, "ords")
+        result = runner.invoke(cli_db.database_start, [])
+
+    assert result.exit_code == 0
+    assert [name for name, _, _ in manager.mock_calls] == ["auto", "ords"]
+
+
+def test_infra_start_skip_ords() -> None:
+    """`infra start --skip-ords` brings up DB + APEX but not ORDS."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    with (
+        patch.object(cli_db, "_database", return_value=MagicMock()),
+        patch.object(cli_db, "_auto_install_apex"),
+        patch.object(cli_db, "_start_ords") as ords,
+    ):
+        result = runner.invoke(cli_db.database_start, ["--skip-ords"])
+
+    assert result.exit_code == 0
+    ords.assert_not_called()
+
+
+def test_infra_stop_also_stops_ords() -> None:
+    """`infra stop` tears down the ORDS sidecar alongside the DB."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    db = MagicMock()
+    db.is_running.return_value = True
+    sidecar = MagicMock()
+    with (
+        patch.object(cli_db, "_database", return_value=db),
+        patch.object(cli_db, "_build_ords_sidecar", return_value=sidecar),
+    ):
+        result = runner.invoke(cli_db.database_stop, [])
+
+    assert result.exit_code == 0
+    sidecar.stop.assert_called_once()
+
+
+def test_infra_remove_also_removes_ords() -> None:
+    """`infra wipe` removes the ORDS sidecar alongside the DB."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    sidecar = MagicMock()
+    with (
+        patch.object(cli_db, "_database", return_value=MagicMock()),
+        patch.object(cli_db, "_build_ords_sidecar", return_value=sidecar),
+    ):
+        result = runner.invoke(cli_db.database_remove, ["--force", "--yes"])
+
+    assert result.exit_code == 0
+    sidecar.remove.assert_called_once()

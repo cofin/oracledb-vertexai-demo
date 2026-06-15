@@ -14,6 +14,7 @@ from rich.console import Console
 if TYPE_CHECKING:
     from tools.oracle.apex_install import ApexInstaller
     from tools.oracle.database import OracleDatabase
+    from tools.oracle.ords import OrdsSidecar
 
 console = Console()
 
@@ -35,6 +36,20 @@ def _auto_install_apex(db: OracleDatabase) -> None:
         installer.install()
     else:
         console.print("[dim]APEX already present; skipping auto-install.[/dim]")
+
+
+def _build_ords_sidecar(db: OracleDatabase) -> OrdsSidecar:
+    """Build an ORDS sidecar serving the configured APEX images."""
+    from tools.oracle.apex_media import ApexMedia, ApexMediaConfig
+    from tools.oracle.ords import build_ords_sidecar
+
+    media = ApexMedia(ApexMediaConfig.from_env())
+    return build_ords_sidecar(db.runtime, media, console=console)
+
+
+def _start_ords(db: OracleDatabase) -> None:
+    """Start the ORDS sidecar (idempotent) so APEX has an HTTP front end."""
+    _build_ords_sidecar(db).start()
 
 
 def _load_env_file(env_file: str | None) -> None:
@@ -72,27 +87,35 @@ def database_group() -> None:
 @click.option("--recreate", is_flag=True, help="Remove and recreate container if exists")
 @click.option("--env-file", type=click.Path(exists=True), help="Environment file to load")
 @click.option("--skip-apex", is_flag=True, help="Do not auto-install APEX after the DB is healthy")
-def database_start(pull: bool, recreate: bool, env_file: str | None, skip_apex: bool) -> None:
+@click.option("--skip-ords", is_flag=True, help="Do not start the ORDS sidecar after APEX")
+def database_start(pull: bool, recreate: bool, env_file: str | None, skip_apex: bool, skip_ords: bool) -> None:
     """Start Oracle database container.
 
     Deploys the Oracle Database Free container with local demo configuration,
-    then auto-installs APEX when it is missing (use --skip-apex to opt out).
+    auto-installs APEX when missing (--skip-apex to opt out), then starts the
+    ORDS sidecar for the APEX HTTP front end (--skip-ords to opt out).
     """
     try:
-        _database_start(pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex)
+        _database_start(
+            pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex, skip_ords=skip_ords
+        )
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
         raise click.Abort from e
 
 
-def _database_start(*, pull: bool, recreate: bool, env_file: str | None, skip_apex: bool = False) -> None:
-    """Start the configured Oracle database and (unless skipped) ensure APEX."""
+def _database_start(
+    *, pull: bool, recreate: bool, env_file: str | None, skip_apex: bool = False, skip_ords: bool = False
+) -> None:
+    """Start the Oracle database and (unless skipped) ensure APEX + ORDS."""
     _load_env_file(env_file)
     db = _database()
     console.print("[yellow]Starting Oracle database container...[/yellow]")
     db.start(pull=pull, recreate=recreate)
     if not skip_apex:
         _auto_install_apex(db)
+    if not skip_ords:
+        _start_ords(db)
     console.print("[green]✓ Database started successfully![/green]")
 
 
@@ -108,8 +131,9 @@ def database_stop(timeout: int) -> None:
 
 
 def _database_stop(*, timeout: int) -> None:
-    """Stop the configured Oracle database."""
+    """Stop the configured Oracle database (and the ORDS sidecar)."""
     db = _database()
+    _build_ords_sidecar(db).stop(timeout=timeout)
     if not db.is_running():
         console.print("[yellow]Container is not running[/yellow]")
         return
@@ -155,8 +179,9 @@ def database_remove(volumes: bool, force: bool) -> None:
 
 
 def _database_remove(*, volumes: bool, force: bool) -> None:
-    """Remove the configured Oracle database."""
+    """Remove the configured Oracle database (and the ORDS sidecar)."""
     db = _database()
+    _build_ords_sidecar(db).remove(force=force)
     console.print("[yellow]Removing Oracle database container...[/yellow]")
     db.remove(volumes=volumes, force=force)
     console.print("[green]✓ Database container removed[/green]")

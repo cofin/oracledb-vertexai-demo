@@ -377,7 +377,6 @@ def test_apex_group_is_reexported() -> None:
 def test_apex_install_command_invokes_installer() -> None:
     """`infra apex install --apex-version` builds the installer and installs."""
     from click.testing import CliRunner
-
     from tools.oracle.cli import apex as apex_cli
 
     runner = CliRunner()
@@ -393,7 +392,6 @@ def test_apex_install_command_invokes_installer() -> None:
 def test_apex_status_command_reports_versions() -> None:
     """`infra apex status` prints installed and target versions."""
     from click.testing import CliRunner
-
     from tools.oracle.cli import apex as apex_cli
 
     runner = CliRunner()
