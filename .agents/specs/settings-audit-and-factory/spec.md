@@ -120,70 +120,70 @@ fields. Lower-case field renaming is the lowest-priority item and is deferrable
 
 ### Phase 1: Lock current behavior with tests (TEST-FIRST)
 
-- [ ] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add `test_shell_env_wins_over_dotenv`:
+- [x] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add `test_shell_env_wins_over_dotenv`:
       write a temp `.env` with `LITESTAR_PORT=9999`, set `LITESTAR_PORT=8123` via
       monkeypatch, call `Settings.from_env.cache_clear()` then
       `Settings.from_env(<tmp .env path>)`, assert the shell value wins. (This test
       FAILS today because `override=True`; it is the required failing drift test.)
-- [ ] 1.2 Add `test_env_bool_parsing` covering `True/true/1/yes/Y/T` -> True and
+- [x] 1.2 Add `test_env_bool_parsing` covering `True/true/1/yes/Y/T` -> True and
       `False/false/0/no/n/""` -> False against a representative bool field
       (e.g. `DATABASE_ADK_IN_MEMORY`/`ORACLE_ADK_IN_MEMORY`).
-- [ ] 1.3 Add `test_allowed_cors_origins_json_list` (`["*"]` -> `["*"]`) and
+- [x] 1.3 Add `test_allowed_cors_origins_json_list` (`["*"]` -> `["*"]`) and
       `test_allowed_cors_origins_comma_list` (`a.com,b.com` -> `["a.com","b.com"]`).
-- [ ] 1.4 Add `test_secret_key_honors_env` (explicit `SECRET_KEY` preserved) and
+- [x] 1.4 Add `test_secret_key_honors_env` (explicit `SECRET_KEY` preserved) and
       `test_secret_key_generated_when_absent` (non-empty, stable within one instance).
-- [ ] 1.5 Add `test_create_config_local_mode` (no URL/wallet -> `connection_config`
+- [x] 1.5 Add `test_create_config_local_mode` (no URL/wallet -> `connection_config`
       has `user/password/dsn/min/max`, no wallet keys) and reuse/extend the
       existing wallet test (`test_wallet_location_resolves_to_absolute_path`).
-- [ ] 1.6 Add `test_get_settings_cache_and_reset`: two `get_settings()` calls return
+- [x] 1.6 Add `test_get_settings_cache_and_reset`: two `get_settings()` calls return
       the same object; after `Settings.from_env.cache_clear()` + env change, a new
       object reflects the change.
-- [ ] 1.7 Run the suite; confirm 1.1 (and any other drift assertions) fail RED while
+- [x] 1.7 Run the suite; confirm 1.1 (and any other drift assertions) fail RED while
       the rest pass GREEN. Record the RED list in the Beads note.
 
 ### Phase 2: Typed parser helpers + parse-time CORS
 
-- [ ] 2.1 Add module-level helpers in `settings.py`: `_env_bool(name, default)`,
+- [x] 2.1 Add module-level helpers in `settings.py`: `_env_bool(name, default)`,
       `_env_int(name, default)`, `_env_str(name, default)`, and a CORS parser that
       accepts JSON-list or comma-list and returns `list[str]`.
-- [ ] 2.2 Replace every `os.getenv(...) in TRUE_VALUES` with `_env_bool(...)`; remove
+- [x] 2.2 Replace every `os.getenv(...) in TRUE_VALUES` with `_env_bool(...)`; remove
       the `TRUE_VALUES` set once unused.
-- [ ] 2.3 Replace `AppSettings.__post_init__` CORS mutation (lines 298-312) with the
+- [x] 2.3 Replace `AppSettings.__post_init__` CORS mutation (lines 298-312) with the
       CORS parser applied at field default/parse time so `ALLOWED_CORS_ORIGINS` is a
       `list[str]` from construction; delete `__post_init__`.
-- [ ] 2.4 Re-run tests from Phase 1; 1.2 and 1.3 stay GREEN against the new helpers.
+- [x] 2.4 Re-run tests from Phase 1; 1.2 and 1.3 stay GREEN against the new helpers.
 
 ### Phase 3: Quiet, immutable factory + shell-env precedence
 
-- [ ] 3.1 Remove the `console.print` from `Settings.from_env()` (line 489).
-- [ ] 3.2 Change `load_dotenv(env_file, override=True)` to `override=False`
+- [x] 3.1 Remove the `console.print` from `Settings.from_env()` (line 489).
+- [x] 3.2 Change `load_dotenv(env_file, override=True)` to `override=False`
       (line 494); update the inline comment to state shell env wins.
-- [ ] 3.3 Make the settings dataclasses effectively immutable (`frozen=True` where
+- [x] 3.3 Make the settings dataclasses effectively immutable (`frozen=True` where
       feasible). Keep wallet `os.environ` writes inside `create_config()` only;
       ensure no field assignment happens after construction in non-create paths.
-- [ ] 3.4 Keep one cached `get_settings()` path and the documented reset hook
+- [x] 3.4 Keep one cached `get_settings()` path and the documented reset hook
       (`Settings.from_env.cache_clear()`); confirm `src/app/config.py:_reset()` and
       `src/app/config.py:274` still call it. Re-run Phase 1 tests: 1.1 and 1.6 GREEN.
 
 ### Phase 4: Delete dead settings branches and fields
 
-- [ ] 4.1 Delete `ServerSettings` (lines 200-221) and `Settings.server` (line 462).
+- [x] 4.1 Delete `ServerSettings` (lines 200-221) and `Settings.server` (line 462).
       Inline `_default_app_url()` logic into `setup_litestar_env()` so `APP_URL`
       still derives from `LITESTAR_PORT`; then delete `_default_app_url()` and
       `AppSettings.URL` (line 279).
-- [ ] 4.2 Delete `AgentSettings` (lines 385-402) and `Settings.agent` (line 465).
+- [x] 4.2 Delete `AgentSettings` (lines 385-402) and `Settings.agent` (line 465).
       (Live chat defaults are reintroduced as `ChatSettings` in mzm.8.)
-- [ ] 4.3 Delete `CacheSettings` (lines 405-414) and `Settings.cache` (line 466).
-- [ ] 4.4 Delete `VertexAISettings.CACHE_TTL_SECONDS`, `CACHE_PREFIX`,
+- [x] 4.3 Delete `CacheSettings` (lines 405-414) and `Settings.cache` (line 466).
+- [x] 4.4 Delete `VertexAISettings.CACHE_TTL_SECONDS`, `CACHE_PREFIX`,
       `STREAM_BUFFER_SIZE`, `STREAM_TIMEOUT_SECONDS` (lines 370-382) ONLY if mzm.8
       has not already replaced `VertexAISettings`; if mzm.8 landed first, this is a
       no-op.
-- [ ] 4.5 Delete `LogSettings.HTTP_EVENT` (line 234) ONLY. Leave `EXCLUDE_PATHS`,
+- [x] 4.5 Delete `LogSettings.HTTP_EVENT` (line 234) ONLY. Leave `EXCLUDE_PATHS`,
       `REQUEST_FIELDS`, `RESPONSE_FIELDS`, `OBFUSCATE_*`, `INCLUDE_COMPRESSED_BODY`
       in place — they are read by `_middleware.py`.
-- [ ] 4.6 Delete `DatabaseSettings.POOL_TIMEOUT`, `POOL_RECYCLE`, `ECHO`
+- [x] 4.6 Delete `DatabaseSettings.POOL_TIMEOUT`, `POOL_RECYCLE`, `ECHO`
       (lines 77-82).
-- [ ] 4.7 `grep -rn` each removed name across `src/app` and `src/tests` (excluding
+- [x] 4.7 `grep -rn` each removed name across `src/app` and `src/tests` (excluding
       JS assets); confirm 0 remaining references; fix any test that referenced a
       removed knob.
 
@@ -195,40 +195,40 @@ fields. Lower-case field renaming is the lowest-priority item and is deferrable
 > Defer the rename to a follow-up flow and flag it in the Beads note. Public env
 > var names are NEVER renamed regardless.
 
-- [ ] 5.1 If proceeding: rename internal dataclass field names to lower-case
+- [-] 5.1 DEFERRED. If proceeding: rename internal dataclass field names to lower-case
       (`SECRET_KEY` field -> `secret_key`, etc.) WITHOUT changing the env keys read
       by `default_factory`.
-- [ ] 5.2 Update all app call sites in one pass: `src/app/config.py`,
+- [-] 5.2 DEFERRED. Update all app call sites in one pass: `src/app/config.py`,
       `src/app/ioc.py`, `src/app/cli/commands.py`, `src/app/lib/log/_middleware.py`,
       `src/app/lib/log/_security.py`, `src/app/domain/chat/services/adk.py`.
-- [ ] 5.3 Update `src/tests/unit/app/lib/test_settings.py` and any other tests
+- [-] 5.3 DEFERRED. Update `src/tests/unit/app/lib/test_settings.py` and any other tests
       asserting UPPER-CASE field names.
 
 ### Phase 6: Verify
 
-- [ ] 6.1 `uv run pytest src/tests/unit/app/lib` passes (all new + existing).
-- [ ] 6.2 `make lint` passes for `settings.py` and updated call sites.
-- [ ] 6.3 `git diff --check` clean; record deferred-rename decision in the Beads note.
+- [x] 6.1 `uv run pytest src/tests/unit/app/lib` passes (all new + existing).
+- [x] 6.2 `make lint` passes for `settings.py` and updated call sites.
+- [x] 6.3 `git diff --check` clean; record deferred-rename decision in the Beads note.
 
 ## Acceptance
 
-- [ ] `src/tests/unit/app/lib/test_settings.py` covers: dotenv load + shell-env
+- [x] `src/tests/unit/app/lib/test_settings.py` covers: dotenv load + shell-env
       precedence, bool parsing, CORS JSON/comma parsing, SECRET_KEY behavior,
       `create_config()` local + wallet modes, and `get_settings()` cache + reset.
-- [ ] At least one drift test (shell-env-wins) was RED before the `override=False`
+- [x] At least one drift test (shell-env-wins) was RED before the `override=False`
       change and GREEN after.
-- [ ] `Settings.from_env()` no longer prints during construction.
-- [ ] Shell env overrides `.env` (e.g. `LITESTAR_PORT` shell value wins).
-- [ ] Settings objects cannot be mutated by handlers/services after construction.
-- [ ] No `os.getenv(...) in TRUE_VALUES` remains; one typed parser path is used.
-- [ ] `ServerSettings`, `AgentSettings`, `CacheSettings`, and the listed dead fields
+- [x] `Settings.from_env()` no longer prints during construction.
+- [x] Shell env overrides `.env` (e.g. `LITESTAR_PORT` shell value wins).
+- [x] Settings objects cannot be mutated by handlers/services after construction.
+- [x] No `os.getenv(...) in TRUE_VALUES` remains; one typed parser path is used.
+- [x] `ServerSettings`, `AgentSettings`, `CacheSettings`, and the listed dead fields
       are gone, with 0 dangling references and no compat shim/re-export.
-- [ ] `MapsSettings` and `Settings.maps` are retained and still resolve in
+- [x] `MapsSettings` and `Settings.maps` are retained and still resolve in
       `_security.py`.
-- [ ] `LogSettings` log-extraction fields read by `_middleware.py` are retained;
+- [x] `LogSettings` log-extraction fields read by `_middleware.py` are retained;
       only `HTTP_EVENT` removed.
-- [ ] Public env var names unchanged. Lower-case rename either completed across all
-      call sites + tests, or explicitly deferred and noted.
+- [x] Public env var names unchanged. Lower-case rename explicitly DEFERRED and noted
+      (Phase 5 marked deferred; public env var names preserved regardless).
 
 ## Verification
 
