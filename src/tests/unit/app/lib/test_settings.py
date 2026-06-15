@@ -147,6 +147,58 @@ def test_service_name_defaults_to_freepdb1(monkeypatch: MonkeyPatch) -> None:
     assert settings.SERVICE_NAME == "freepdb1"
 
 
+def test_database_settings_local_contract(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    for key in (
+        "DATABASE_URL",
+        "WALLET_PASSWORD",
+        "WALLET_LOCATION",
+        "TNS_ADMIN",
+        "DATABASE_USER",
+        "DATABASE_PASSWORD",
+        "DATABASE_HOST",
+        "DATABASE_PORT",
+        "DATABASE_SERVICE_NAME",
+        "DATABASE_DSN",
+        "DATABASE_POOL_MIN_SIZE",
+        "DATABASE_POOL_MAX_SIZE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    settings = DatabaseSettings()
+
+    assert settings.USER == "app"
+    assert settings.PASSWORD == "SuperSecret1"  # noqa: S105
+    assert settings.HOST == "localhost"
+    assert settings.PORT == "1521"
+    assert settings.SERVICE_NAME == "freepdb1"
+    assert settings.DSN == "localhost:1521/freepdb1"
+    assert settings.POOL_MIN_SIZE == 5
+    assert settings.POOL_MAX_SIZE == 20
+
+
+def test_wallet_mode_contract(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.setenv("DATABASE_URL", "oracle+oracledb://app:SuperSecret1@myatp_low")
+    monkeypatch.setenv("WALLET_PASSWORD", "SuperSecret1")
+    monkeypatch.setenv("TNS_ADMIN", "./.envs/tns")
+
+    settings = DatabaseSettings()
+
+    assert settings.is_autonomous is True
+
+    config = settings.create_config()
+    conn = config.connection_config
+
+    assert conn["user"] == "app"
+    assert conn["dsn"] == "myatp_low"
+    assert conn["wallet_password"] == "SuperSecret1"  # noqa: S105
+    assert conn["wallet_location"] == str(Path("./.envs/tns").resolve())
+    assert conn["config_dir"] == str(Path("./.envs/tns").resolve())
+
+
 def test_shell_env_wins_over_dotenv(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     from app.lib.settings import Settings
 

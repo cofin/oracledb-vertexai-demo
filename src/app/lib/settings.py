@@ -102,7 +102,7 @@ class DatabaseSettings:
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
-            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'myatp_low')}",
+            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'freepdb1')}",
         ),
     )
     """Oracle Database DSN."""

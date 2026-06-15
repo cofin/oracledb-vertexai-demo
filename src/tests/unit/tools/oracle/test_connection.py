@@ -12,7 +12,44 @@ from tools.oracle.connection import ConnectionConfig, ConnectionTester, Deployme
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+
 DEMO_PASSWORD = "SuperSecret1"  # noqa: S105
+
+_CONNECTION_ENV_KEYS = (
+    "DATABASE_URL",
+    "DATABASE_USER",
+    "DATABASE_PASSWORD",
+    "DATABASE_HOST",
+    "DATABASE_PORT",
+    "DATABASE_SERVICE_NAME",
+    "DATABASE_DSN",
+    "WALLET_LOCATION",
+    "WALLET_PASSWORD",
+    "TNS_ADMIN",
+    "ORACLE_USER",
+    "ORACLE_PASSWORD",
+    "ORACLE26AI_PORT",
+    "ORACLE23AI_PORT",
+)
+
+
+def test_connection_config_matches_database_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ConnectionConfig.from_env and DatabaseSettings share one managed/local contract."""
+    from app.lib.settings import DatabaseSettings
+
+    for key in _CONNECTION_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+    config = ConnectionConfig.from_env()
+    settings = DatabaseSettings()
+
+    assert config.mode == DeploymentMode.MANAGED
+    assert config.user == settings.USER
+    assert config.host == settings.HOST
+    assert config.port == int(settings.PORT)
+    assert config.service_name == settings.SERVICE_NAME
+    assert config.get_dsn() == settings.DSN
 
 
 def test_connection_tester_uses_wallet_directory_as_config_dir(monkeypatch: object, tmp_path: Path) -> None:

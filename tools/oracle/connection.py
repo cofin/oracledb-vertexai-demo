@@ -74,7 +74,7 @@ class ConnectionConfig:
             - WALLET_PASSWORD
 
             # Managed mode defaults
-            - Uses localhost:1521/FREEPDB1 if no DATABASE_HOST/URL set
+            - Uses localhost:1521/freepdb1 if no DATABASE_HOST/URL set
         """
         mode = detect_deployment_mode()
 
@@ -100,14 +100,11 @@ class ConnectionConfig:
                     wallet_password=wallet_password,
                 )
 
-        user = os.getenv("DATABASE_USER", os.getenv("ORACLE_USER", "app"))
-        password = os.getenv(
-            "DATABASE_PASSWORD", os.getenv("ORACLE_PASSWORD", "SuperSecret1" if mode == DeploymentMode.MANAGED else "")
-        )
+        user = os.getenv("DATABASE_USER", "app")
+        password = os.getenv("DATABASE_PASSWORD", "SuperSecret1" if mode == DeploymentMode.MANAGED else "")
         host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
-        oracle_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
-        port = int(os.getenv("DATABASE_PORT", oracle_port))
-        service_name = os.getenv("DATABASE_SERVICE_NAME", "myatp_low" if mode == DeploymentMode.MANAGED else "ORCL")
+        port = int(os.getenv("DATABASE_PORT", "1521"))
+        service_name = os.getenv("DATABASE_SERVICE_NAME", "freepdb1")
         dsn = os.getenv("DATABASE_DSN")
 
         return cls(
@@ -148,7 +145,7 @@ class ConnectionConfig:
         password: str,
         host: str | None = None,
         port: int = 1521,
-        service_name: str = "ORCL",
+        service_name: str = "freepdb1",
         database_url: str | None = None,
         wallet_location: Path | None = None,
         wallet_password: str | None = None,
