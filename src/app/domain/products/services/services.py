@@ -22,7 +22,6 @@ from app.domain.products.schemas import (
     Store,
     StoreDistance,
     StoreHours,
-    StoreInventoryItem,
 )
 from app.domain.products.services._location import haversine_miles, store_matches_hint
 from app.lib.service import FilterTypes, OffsetPagination, OracleAsyncService
@@ -108,27 +107,6 @@ class StoreService(OracleAsyncService):
     async def get_all_stores(self) -> list[Store]:
         return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
 
-    async def find_stores_by_city(self, city: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-city"),
-            city=city,
-            schema_type=Store,
-        )
-
-    async def find_stores_by_state(self, state: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-state"),
-            state=state,
-            schema_type=Store,
-        )
-
-    async def search_stores_by_zip(self, zip_code: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-zip"),
-            zip_code=zip_code,
-            schema_type=Store,
-        )
-
     async def find_stores_by_location(
         self,
         *,
@@ -193,13 +171,6 @@ class StoreService(OracleAsyncService):
             if nearest:
                 return nearest[0]
         return None
-
-    async def get_store_inventory(self, store_id: int) -> list[StoreInventoryItem]:
-        return await self.driver.select(
-            db_manager.get_sql("list-store-inventory"),
-            store_id=store_id,
-            schema_type=StoreInventoryItem,
-        )
 
     async def find_stores_with_product(
         self,

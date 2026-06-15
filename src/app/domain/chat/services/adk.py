@@ -207,30 +207,6 @@ class AgentToolsService(OracleAsyncService):
             product = await self.product_service.get_by_name(product_id)
         return cast("dict[str, Any]", sanitize_for_json(product)) if product else {"error": "Product not found"}
 
-    async def record_search_metric(
-        self,
-        session_id: str,
-        query_text: str,
-        intent: str,
-        vector_results: list[dict[str, Any]],
-        total_response_time_ms: int,
-        vector_search_time_ms: int = 0,
-        embedding_time_ms: int = 0,
-        query_id: str | None = None,
-    ) -> dict[str, Any]:
-        from app.domain.system.schemas import SearchMetricsCreate
-
-        metrics = SearchMetricsCreate(
-            query_id=query_id or str(uuid.uuid4()),
-            user_id=session_id,
-            search_time_ms=float(total_response_time_ms),
-            embedding_time_ms=float(embedding_time_ms),
-            oracle_time_ms=float(vector_search_time_ms),
-            result_count=len(vector_results),
-        )
-        await self.metrics_service.record_search(metrics)
-        return {"status": "recorded"}
-
     async def get_all_store_locations(self) -> list[dict[str, Any]]:
         stores = await self.store_service.get_all_stores()
         return cast("list[dict[str, Any]]", sanitize_for_json(stores))

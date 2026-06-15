@@ -4,15 +4,11 @@
 """Chat domain schemas package."""
 
 from ._chat import (
-    ChatConversation,
-    ChatConversationCreate,
     ChatMessage,
     CoffeeChatReply,
 )
 
 __all__ = (
-    "ChatConversation",
-    "ChatConversationCreate",
     "ChatMessage",
     "CoffeeChatReply",
 )

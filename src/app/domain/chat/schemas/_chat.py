@@ -1,31 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from datetime import datetime
-from uuid import UUID
-
 from app.lib.schema import CamelizedBaseStruct
-
-
-class ChatConversationCreate(CamelizedBaseStruct, omit_defaults=True):
-    """Conversation row to persist."""
-
-    session_id: UUID
-    user_id: str
-    role: str  # 'user' | 'assistant' | 'system'
-    content: str
-    message_metadata: dict = {}
-
-
-class ChatConversation(CamelizedBaseStruct, omit_defaults=True):
-    """A persisted conversation row."""
-
-    id: UUID
-    user_id: str
-    role: str
-    content: str
-    message_metadata: dict
-    created_at: datetime
 
 
 class ChatMessage(CamelizedBaseStruct, omit_defaults=True):

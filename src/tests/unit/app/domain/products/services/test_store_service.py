@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.domain.products.schemas import ProductAvailability, Store, StoreDistance, StoreHours, StoreInventoryItem
+from app.domain.products.schemas import ProductAvailability, Store, StoreDistance, StoreHours
 from app.domain.products.services import StoreService
 
 pytestmark = pytest.mark.anyio
@@ -80,18 +80,7 @@ async def test_find_nearest_stores_ranks_with_local_seeded_coordinates(mock_driv
     assert "FROM store" in str(statement.sql)
 
 
-async def test_inventory_methods_return_typed_rows_and_sort_by_coordinates(mock_driver) -> None:
-    store_inventory = [
-        StoreInventoryItem(
-            id=1,
-            store_id=16,
-            product_id=1,
-            quantity_available=4,
-            stock_status="LOW_STOCK",
-            pickup_available=True,
-            product_name="Espresso Romano",
-        )
-    ]
+async def test_find_stores_with_product_returns_typed_rows_and_sorts_by_coordinates(mock_driver) -> None:
     availability = [
         ProductAvailability(
             id=2,
@@ -126,17 +115,14 @@ async def test_inventory_methods_return_typed_rows_and_sort_by_coordinates(mock_
             product_name="Espresso Romano",
         ),
     ]
-    mock_driver.select = AsyncMock(side_effect=[store_inventory, availability])
+    mock_driver.select = AsyncMock(return_value=availability)
     service = StoreService(mock_driver)
 
-    inventory = await service.get_store_inventory(16)
     stores_with_product = await service.find_stores_with_product(1, latitude=32.78, longitude=-96.8)
 
-    assert inventory == store_inventory
     assert [row.store_id for row in stores_with_product] == [16, 13]
     assert stores_with_product[0].distance_miles is not None
-    assert mock_driver.select.await_args_list[0].kwargs["schema_type"] is StoreInventoryItem
-    assert mock_driver.select.await_args_list[1].kwargs["schema_type"] is ProductAvailability
+    assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
 
 
 async def test_find_product_availability_does_not_filter_location_hint(mock_driver) -> None:

@@ -49,7 +49,3 @@ def store_matches_hint(store: Store | ProductAvailability, location_hint: str) -
     if any(normalized in str(field or "").casefold() for field in fields):
         return True
     return bool(name and len(name) > MIN_LOCATION_HINT_NAME_LENGTH and name.casefold() in normalized)
-
-
-def location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
-    return store_matches_hint(row, location_hint)

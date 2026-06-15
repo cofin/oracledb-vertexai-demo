@@ -77,16 +77,6 @@ class StoreProductInventory(CamelizedBaseStruct, omit_defaults=True):
     updated_at: datetime | None = None
 
 
-class StoreInventoryItem(StoreProductInventory, omit_defaults=True):
-    """Store inventory row with product display fields."""
-
-    product_name: str = ""
-    product_category: str | None = None
-    product_sku: str | None = None
-    product_price: float | None = None
-    distance_miles: float | None = None
-
-
 class ProductAvailability(StoreProductInventory, omit_defaults=True):
     """Product availability row with store and product display fields."""
 

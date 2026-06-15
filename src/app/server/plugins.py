@@ -39,14 +39,6 @@ def __getattr__(name: str) -> object:
     raise AttributeError(msg)
 
 
-class _SQLSpecPlugin:
-    """SQLSpec plugin variant that does not register the ``db`` CLI group.
-
-    Migrations are reachable only through ``python manage.py database <cmd>``
-    so the ``coffee`` CLI never auto-mounts a Litestar CLI tree.
-    """
-
-
 _initialized: bool = False
 
 structlog: StructlogPlugin
