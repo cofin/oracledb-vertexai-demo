@@ -169,9 +169,18 @@ After a feature-level re-verification of every "dead" item:
 2. **`EMBEDDING_CACHE_ENABLED` — delete the dead flag.** It dies with `CacheSettings` in Ch3; the
    embedding cache stays unconditionally on (no bypass branch added).
 
-## Status
+## Status — COMPLETE (2026-06-15)
 
 - [x] Research complete and decisions resolved.
 - [x] Beads master epic + 10 chapter epics + dependency graph + notes created.
 - [x] All 10 chapter `spec.md` worksheets refined to implementation-ready.
-- [ ] Begin implementation — run `/flow:implement` (starts at Ch1 `docs-accuracy`, the only unblocked zero-risk chapter alongside Ch2/Ch3/Ch5).
+- [x] **All 10 chapters implemented, committed, and Beads-closed** (`06d6338`..`f5298f2`).
+
+### Final gate results
+- `make lint`: GREEN (ruff + mypy/basedpyright "0 errors" + frontend type checks).
+- Unit suite: **248 passed**; the only 2 failures (`tools/oracle/test_database.py`) are **pre-existing and unrelated** (verified: they fail against the pre-implementation `tools/oracle/` code and the separate ORDS WIP), not caused by any chapter.
+- Integration suite (Oracle-backed): **28 passed / 0 failed** — chat streaming, RAG workflow, maps, pages all green.
+- Chat path (Ch5/Ch6) and maps/settings (Ch7/Ch8) validated end-to-end against real Oracle.
+
+### Per-chapter commits
+`06d6338` docs · `1afc0c1` deadcode · `89efd7a` settings-factory · `31485ce` db-env-contract · `7b96981` chat-path · `9f528ab` adk-readability · `c3f5704` maps · `d2d960a` settings-ai-chat · `09a426d` frontend · `adb7aba` tests (+ flow-sync chore commits).
