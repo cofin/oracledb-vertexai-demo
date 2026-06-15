@@ -53,7 +53,30 @@ DEPENDS ON:
      in `adk.py:604`.
    WIRE these into `AgentToolsService` / `ADKRunner` / vector + explain defaults
    wherever `adk.py` and the products services currently hardcode them.
-3. Prune unread web/log knobs:
+3. Type the embedding-cache read (symmetry with the response cache). Today
+   `CacheService.get_cached_response` maps the full row to the `ResponseCache`
+   struct, but `CacheService.get_embedding` returns a raw value and the
+   `EmbeddingCache` struct (`system/schemas/_cache.py`) is never instantiated.
+   The embedding-cache *feature* is fully live (`get_embedding`/`save_embedding`
+   called from `products/services.py:279,295`; `invalidate_cache` clears both
+   tables). To make the struct live (not dead) and symmetric with `ResponseCache`:
+   - Widen the `get-cached-embedding` named query in `src/app/db/sql/system.sql`
+     to select the full row (`id, text_hash, embedding, model, created_at,
+     last_accessed, hit_count`) instead of only `embedding`.
+   - Map it via `schema_type=EmbeddingCache` in `CacheService.get_embedding`,
+     bump `hit_count`/`last_accessed` as today, and return `cached.embedding`.
+   - This keeps the public method contract (`list[float] | None`) and the
+     embedding-cache behavior identical; it only types the row.
+   - `EMBEDDING_CACHE_ENABLED` is deleted as a dead knob (user-confirmed); it dies
+     with `CacheSettings` in Ch3. The embedding cache stays unconditionally on — do
+     NOT add a bypass branch in `get_text_embedding`.
+4. Wire `CacheService.delete_expired_responses` into a cleanup path (user-confirmed:
+   keep + wire, not delete). Make the method live by invoking it from a CLI command:
+   extend `coffee clear-cache` (`cli/commands.py`) to also prune expired response-cache
+   rows, or add a dedicated `coffee prune-cache` command. Surface the deleted-row count
+   in the command output. Keep/extend the existing `test_cache.py` coverage to assert the
+   method runs through the wired command.
+5. Prune unread web/log knobs:
    - `ViteSettings.set_static_files`: 0 readers — there is no such method on the
      current `ViteSettings`; confirm and remove only if a stale reference exists.
    - `VITE_HOT_RELOAD` generation: 0 readers in `settings.py`/app — confirm it is

@@ -46,7 +46,7 @@ Greps run on this branch (`feat/inv`), excluding each symbol's own definition fi
 | `StoreInventoryItem` | `grep -rn "StoreInventoryItem"` | Only `get_store_inventory` (+ its test) + `_products.py` def + `schemas/__init__.py` export → **becomes newly-dead** once `get_store_inventory` is gone. |
 | named SQL `find-stores-by-city/state/zip` (`stores.sql`), `list-store-inventory` (`inventory.sql`) | `grep -rln "<key>" --include="*.sql" --include="*.py" src/` | Each referenced only by its `.sql` file, the deleted `services.py` method, and `test_named_sql.py`'s `EXPECTED_KEYS`. |
 | `location_hint_matches` (`_location.py`) | `grep -rn "location_hint_matches"` | 0 refs. `store_matches_hint` (the helper it wraps) is used → KEEP. |
-| `delete_expired_responses` (system `services.py`) | `grep -rn "delete_expired_responses"` | 0 app callers; 1 test-only caller (`test_cache.py:42-49`). |
+| `delete_expired_responses` (system `services.py`) | `grep -rn "delete_expired_responses"` + scheduler/CLI scan | **KEEP — do NOT delete** (user-confirmed). It is unwired today but will be wired to a cache-cleanup command in **Ch8**, not removed. Keep its test. |
 | `_session.py` (`UserSessionCreate`, `UserSession`, `HistoryMeta`) | per-symbol grep excluding `_session.py` | Each only in `system/schemas/__init__.py` re-export → entire file dead. |
 | `EmbeddingCache` (`_cache.py`) | `grep -rn "EmbeddingCache"` + traced the embedding-cache feature | **KEEP — do NOT delete.** The embedding-cache *feature* is live: `CacheService.get_embedding`/`save_embedding` (system `services.py:188-219`) are called from the embedding path (`products/services.py:279,295`) and `invalidate_cache`/`coffee clear-cache` clear `embedding_cache` alongside `response_cache`. The `EmbeddingCache` *struct* is currently un-instantiated only because `get-cached-embedding` selects just `embedding` (vs `get-cached-response` which selects the full row → `ResponseCache`). Resolution: the struct is wired into the typed read in **Ch8** (symmetric with `ResponseCache`), not deleted here. |
 | `record_search_metric` (adk.py lines ~210-232) | `grep -rn "record_search_metric"` | 0 callers. Has a redundant local `from app.domain.system.schemas import SearchMetricsCreate` (line 221); the module-level import (line 60, used at 158) stays. |
@@ -77,7 +77,7 @@ Cross-cutting notes captured during analysis:
 - [ ] 1.2 Delete `src/app/lib/exceptions.py` entirely (only contained `ApplicationError`, 0 references).
 - [ ] 1.3 In `src/app/lib/schema.py` delete `CamelizedBaseSchema`, `BaseSchema`, `camel_case`, `Message`, and `BaseStruct.to_dict` (leaving `BaseStruct` as an empty `msgspec.Struct` base). Remove the now-unused `from pydantic import BaseModel as _BaseModel` and `from pydantic import ConfigDict` imports, plus the unused `Any` import if it is no longer referenced. **Keep** `CamelizedBaseStruct`.
 - [ ] 1.4 In `src/app/lib/di.py` remove `from dishka import Scope` and drop `"Scope"` from `__all__` (consumers import `Scope` from dishka directly).
-- [ ] 1.5 In `src/app/server/plugins.py` delete the top-level stub class `_SQLSpecPlugin` (lines ~41-46). The real `SQLSpecPlugin` subclass inside `_initialize` is unaffected.
+- [ ] 1.5 In `src/app/server/plugins.py` delete ONLY the empty top-level stub class `_SQLSpecPlugin` (lines 42-47). Do NOT touch the similarly-named `_SQLSpecBase` type alias (line 25, used by the `db:` annotation at line 55) or `_SQLSpecPluginBase` (line 73, the real base for the nested `SQLSpecPlugin` at line 79). Verified: `_SQLSpecPlugin` (exact) is referenced nowhere — the 3 grep hits are 1 stub def + 2 `_SQLSpecPluginBase` substring matches.
 
 ### Phase 2: `domains.py` listener-discovery removal (keep controller discovery)
 - [ ] 2.1 In `src/app/utils/domains.py` delete `find_listeners_in_module`, `discover_domain_listeners`, `_discover_listeners_in_submodule`, and `DomainPlugin._discover_and_register_listeners`.
@@ -94,7 +94,7 @@ Cross-cutting notes captured during analysis:
 - [ ] 3.5 In `src/app/domain/products/services/_location.py` delete `location_hint_matches` (0 refs). Keep `haversine_miles` and `store_matches_hint`.
 
 ### Phase 4: System service + dead schema structs
-- [ ] 4.1 In `src/app/domain/system/services/services.py` delete `CacheService.delete_expired_responses` (test-only). Confirm `from sqlspec import sql` is still used elsewhere in the file (it is — `set_cached_response`, etc.) before leaving the import.
+- [ ] 4.1 **KEEP `CacheService.delete_expired_responses`** — not deleted in this chapter (user-confirmed). It is wired into a cache-cleanup command in Ch8. No change here.
 - [ ] 4.2 Delete `src/app/domain/system/schemas/_session.py` entirely, and remove `from ._session import HistoryMeta, UserSession, UserSessionCreate` plus the `"HistoryMeta"`, `"UserSession"`, `"UserSessionCreate"` `__all__` entries from `src/app/domain/system/schemas/__init__.py`.
 - [ ] 4.3 **KEEP `EmbeddingCache`** in `src/app/domain/system/schemas/_cache.py` and its `__init__` export. The embedding-cache feature is live (see Code Analysis); the struct is wired into the typed read in **Ch8** rather than deleted here. No change in this chapter.
 
@@ -106,7 +106,7 @@ Cross-cutting notes captured during analysis:
 ### Phase 6: Test removal / rewrite + named-SQL test sync
 - [ ] 6.1 Remove the `find-stores-by-city`, `find-stores-by-state`, `find-stores-by-zip`, and `list-store-inventory` entries from `EXPECTED_KEYS` in `src/tests/unit/app/db/test_named_sql.py`. Do not modify `EXPECTED_FILES`.
 - [ ] 6.2 Rewrite `src/tests/unit/app/domain/products/services/test_store_service.py::test_inventory_methods_return_typed_rows_and_sort_by_coordinates`: drop the `get_store_inventory` call, the `StoreInventoryItem` fixture/asserts, and the `StoreInventoryItem` import; keep and preserve the `find_stores_with_product` coordinate-ranking assertions (rename the test if it no longer covers "inventory methods" plural).
-- [ ] 6.3 Delete `src/tests/unit/app/domain/system/services/test_cache.py::test_delete_expired_responses_is_explicit_cleanup_operation` (the only `delete_expired_responses` test). Leave the other tests in that file intact.
+- [ ] 6.3 **KEEP** the `delete_expired_responses` test in `test_cache.py` (the method is retained and wired in Ch8). No test change here.
 - [ ] 6.4 Search test trees for any reference to the deleted schema structs (`UserSession*`, `HistoryMeta`, `ChatConversation*`) and the schema.py symbols (`CamelizedBaseSchema`, `BaseSchema`, `camel_case`); remove any orphaned references. (Analysis found none, but re-confirm post-deletion.) Do NOT touch `EmbeddingCache` references — it is kept.
 
 ### Phase 7: Gate

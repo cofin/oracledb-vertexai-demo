@@ -148,6 +148,27 @@ factory and leave the rename.
 
 ---
 
+## Re-audit Corrections (2026-06-14)
+
+After a feature-level re-verification of every "dead" item:
+
+- **`EmbeddingCache` struct — KEEP, do not delete.** The embedding-cache feature is live
+  (`CacheService.get_embedding`/`save_embedding`, used alongside the response cache). The
+  struct is simply never typed-in because `get-cached-embedding` selects only `embedding`.
+  Ch8 wires it (full-row read → `schema_type=EmbeddingCache`), making it live and symmetric
+  with `ResponseCache` instead of deleting it.
+- All other dead items re-confirmed at the feature level (search city/state/zip → served by
+  `find_stores_by_location`; metrics → `MetricsService.record_search`; history → `ChatMessage`;
+  `get_store_inventory` test-only with live inventory = `ProductAvailability`; `_SQLSpecPlugin`
+  is an empty orphan distinct from `_SQLSpecBase`/`_SQLSpecPluginBase`; no domain ships listeners).
+
+### Resolved cache decisions (2026-06-14, user-confirmed)
+1. **`delete_expired_responses` — keep + wire** (not delete). Ch8 wires it into a cache-cleanup
+   command (`coffee clear-cache` extension or a `coffee prune-cache`); the deadcode-sweep leaves
+   it and its test intact.
+2. **`EMBEDDING_CACHE_ENABLED` — delete the dead flag.** It dies with `CacheSettings` in Ch3; the
+   embedding cache stays unconditionally on (no bypass branch added).
+
 ## Status
 
 - [x] Research complete and decisions resolved.

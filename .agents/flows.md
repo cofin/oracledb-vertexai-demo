@@ -4,6 +4,36 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: demo-simplification
+*Link: [./specs/demo-simplification/](./specs/demo-simplification/)*
+*Beads: oracledb-vertexai-mzm (master epic)*
+*Research: [./research/research_demo_simplification/](./research/research_demo_simplification/)*
+*Absorbs: settings-config-consolidation_20260501*
+
+### Chapters
+- [ ] **Chapter 1: Documentation accuracy (`docs-accuracy`)** — implementation-ready
+  *Link: [./specs/docs-accuracy/](./specs/docs-accuracy/)* · *Beads: oracledb-vertexai-mzm.1*
+- [ ] **Chapter 2: Dead-code sweep (`deadcode-sweep`)** — implementation-ready
+  *Link: [./specs/deadcode-sweep/](./specs/deadcode-sweep/)* · *Beads: oracledb-vertexai-mzm.2*
+- [ ] **Chapter 3: Settings audit + factory (`settings-audit-and-factory`)** — implementation-ready
+  *Link: [./specs/settings-audit-and-factory/](./specs/settings-audit-and-factory/)* · *Beads: oracledb-vertexai-mzm.3*
+- [ ] **Chapter 4: Settings/tools DB env contract (`settings-database-env-contract`)** — implementation-ready, blocked by Ch3
+  *Link: [./specs/settings-database-env-contract/](./specs/settings-database-env-contract/)* · *Beads: oracledb-vertexai-mzm.4*
+- [ ] **Chapter 5: Chat-path consolidation (`chat-path-consolidation`)** — implementation-ready
+  *Link: [./specs/chat-path-consolidation/](./specs/chat-path-consolidation/)* · *Beads: oracledb-vertexai-mzm.5*
+- [ ] **Chapter 6: ADK readability (`adk-readability`)** — implementation-ready, blocked by Ch5
+  *Link: [./specs/adk-readability/](./specs/adk-readability/)* · *Beads: oracledb-vertexai-mzm.6*
+- [ ] **Chapter 7: Maps consolidation + directions (`maps-consolidation`)** — implementation-ready, blocked by Ch6
+  *Link: [./specs/maps-consolidation/](./specs/maps-consolidation/)* · *Beads: oracledb-vertexai-mzm.7*
+- [ ] **Chapter 8: Settings AI/chat/web/log (`settings-ai-chat-web-log`)** — implementation-ready, blocked by Ch3+Ch6
+  *Link: [./specs/settings-ai-chat-web-log/](./specs/settings-ai-chat-web-log/)* · *Beads: oracledb-vertexai-mzm.8*
+- [ ] **Chapter 9: Frontend cleanup (`frontend-cleanup`)** — implementation-ready, blocked by Ch5+Ch7
+  *Link: [./specs/frontend-cleanup/](./specs/frontend-cleanup/)* · *Beads: oracledb-vertexai-mzm.9*
+- [ ] **Chapter 10: Test simplification (`test-simplification`)** — implementation-ready, blocked by Ch6+Ch8+Ch9
+  *Link: [./specs/test-simplification/](./specs/test-simplification/)* · *Beads: oracledb-vertexai-mzm.10*
+
+---
+
 ## [~] PRD: adb-podman-lab-hardening
 *Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
 *Beads: oracledb-vertexai-9p5 (master epic)*
@@ -56,9 +86,9 @@ revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-
 
 ---
 
-## [ ] PRD: settings-config-consolidation_20260501
+## [absorbed] PRD: settings-config-consolidation_20260501
 *Link: [./specs/settings-config-consolidation_20260501/](./specs/settings-config-consolidation_20260501/)*
-*Beads: not created - review gate before implementation*
+*Beads: not created - ABSORBED into `demo-simplification` (Ch3 `settings-audit-and-factory`, Ch4 `settings-database-env-contract`, Ch8 `settings-ai-chat-web-log`). Kept as historical detail; execute via the demo-simplification chapters.*
 
 ---
 
