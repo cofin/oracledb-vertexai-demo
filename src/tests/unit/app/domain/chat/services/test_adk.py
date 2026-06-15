@@ -422,6 +422,95 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
     tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5)
 
 
+async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(monkeypatch: Any) -> None:
+    from app.domain.chat.services import adk as adk_module
+    from app.domain.chat.services.adk import ADKRunner
+    from app.domain.chat.services.classifier import IntentLabel
+
+    fake_session = MagicMock()
+    fake_session.id = "sess-relabel"
+    fake_session.state = {}
+    session_service = MagicMock()
+    session_service.get_session = AsyncMock(return_value=fake_session)
+    session_service.create_session = AsyncMock(return_value=fake_session)
+    session_service.store.update_session_state = MagicMock()
+
+    classifier = MagicMock()
+    classifier.classify = AsyncMock(return_value=IntentLabel.GENERAL_CONVERSATION)
+
+    persona_manager = MagicMock()
+    persona_manager.get_system_prompt = MagicMock(return_value="composed instruction")
+    persona_manager.get_temperature = MagicMock(return_value=0.7)
+
+    tools_service = MagicMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="cache-key")
+    tools_service.get_cached_chat_response = AsyncMock(return_value=None)
+    tools_service.set_cached_chat_response = AsyncMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 11,
+                    "name": "Caramel Cloud Latte",
+                    "description": "Silky caramel latte.",
+                    "price": 6.25,
+                }
+            ],
+            "embedding_cache_hit": False,
+            "results_count": 1,
+            "vector_query": "something sweet",
+            "search_metrics": {"embedding_ms": 9.0, "oracle_ms": 6.0, "tool_ms": 15.0},
+            "sql_phases": [{"sql_key": "vector-search-products", "row_count": 1}],
+        }
+    )
+
+    captured_tools: dict[str, Any] = {}
+
+    class FakeRunner:
+        def __init__(self, *, node: Any, app_name: str, session_service: Any) -> None:
+            del node, app_name, session_service
+
+        def run_async(self, **_kw: Any) -> Any:
+            async def _events() -> Any:
+                # The model calls the vector tool, populating metric_state via the closure.
+                search = next(fn for fn in captured_tools["tools"] if fn.__name__ == "search_products_by_vector")
+                await search("something sweet")
+                yield SimpleNamespace(output={"intent": "GENERAL_CONVERSATION", "answer": ""}, content=None, partial=False)
+
+            return _events()
+
+    runner = ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
+    original_make_tool_factories = runner._make_tool_factories
+
+    def capture_tools(tools_service: Any, metric_state: dict[str, Any]) -> Any:
+        tools = original_make_tool_factories(tools_service, metric_state)
+        captured_tools["tools"] = tools
+        return tools
+
+    monkeypatch.setattr(runner, "_make_tool_factories", capture_tools)
+    monkeypatch.setattr(adk_module, "Runner", FakeRunner)
+    _allow_vertex_config(monkeypatch, adk_module)
+
+    events = [
+        event
+        async for event in runner.stream_request(
+            query="something sweet",
+            user_id="u1",
+            session_id="sess-relabel",
+            persona="enthusiast",
+            tools_service=tools_service,
+        )
+    ]
+
+    final = events[-1]
+    assert final["type"] == "final"
+    assert final["intent_detected"] == "PRODUCT_RAG"
+    assert "Caramel Cloud Latte" in final["answer"]
+    assert final["search_metrics"]["vector_query"] == "something sweet"
+    assert any(phase["sql_key"] == "vector-search-products" for phase in final["sql_phases"])
+    assert final["from_cache"] is False
+
+
 def test_module_level_tool_functions_are_deleted() -> None:
     from app.domain.chat.services import adk as adk_module
 

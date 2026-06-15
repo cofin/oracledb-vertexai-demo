@@ -173,7 +173,7 @@ local count under the threshold; remove the `noqa` and let lint confirm.
 
 ### Phase 1: Fold `_adk_history` + `_adk_telemetry` into `_adk_support.py`
 
-- [ ] 1.1 Create `src/app/domain/chat/services/_adk_support.py` containing every
+- [x] 1.1 Create `src/app/domain/chat/services/_adk_support.py` containing every
       function currently in `_adk_history.py` and `_adk_telemetry.py`
       (`_coerce_history_messages`, `_event_content_text`,
       `_event_history_messages`, `_named_sql_text`, `_sha256_text`,
@@ -181,19 +181,19 @@ local count under the threshold; remove the `noqa` and let lint confirm.
       `_coerce_sql_phases`, `_record_tool_sql_phases`, `_similarity_score`,
       `_product_lookup_ran`, `_effective_intent`). Keep behavior identical and
       docstrings behavior-only.
-- [ ] 1.2 Delete `_adk_history.py` and `_adk_telemetry.py`.
-- [ ] 1.3 Update `adk.py` imports (currently `39-43` and `44-53`) to one
+- [x] 1.2 Delete `_adk_history.py` and `_adk_telemetry.py`.
+- [x] 1.3 Update `adk.py` imports (currently `39-43` and `44-53`) to one
       `from app.domain.chat.services._adk_support import (...)` block.
-- [ ] 1.4 Update `_adk_grounding.py:12` to
+- [x] 1.4 Update `_adk_grounding.py:12` to
       `from app.domain.chat.services._adk_support import _coerce_sql_phases`.
-- [ ] 1.5 Update any test that imports from `_adk_history`/`_adk_telemetry`
+- [x] 1.5 Update any test that imports from `_adk_history`/`_adk_telemetry`
       directly (grep for the module names under `src/tests`); tests that go
       through `adk_module.<symbol>` keep working unchanged.
-- [ ] 1.6 `make lint` — confirm no circular import, no unused imports.
+- [x] 1.6 `make lint` — confirm no circular import, no unused imports.
 
 ### Phase 2: Remove the `workflow.py` compat shim
 
-- [ ] 2.1 In `src/app/domain/chat/services/workflow.py`, simplify
+- [x] 2.1 In `src/app/domain/chat/services/workflow.py`, simplify
       `make_coffee_node` (lines 35-44) to a single body:
       `return agent.model_copy(update={"name": "coffee_turn"})`. Keep the
       behavior-only docstring; drop the `hasattr` branch and the mutate-and-
@@ -201,7 +201,7 @@ local count under the threshold; remove the `noqa` and let lint confirm.
 
 ### Phase 3: Introduce `_final_event` and route everything through it
 
-- [ ] 3.1 Add a module-level `_final_event(*, answer, session_id,
+- [x] 3.1 Add a module-level `_final_event(*, answer, session_id,
       response_time_ms, intent_detected, search_metrics, sql_phases,
       from_cache=False, embedding_cache_hit=False, store_results=None,
       inventory_results=None, map_actions=None, location_context=None) ->
@@ -209,38 +209,38 @@ local count under the threshold; remove the `noqa` and let lint confirm.
       `{"type": "final", ...}` dict; when the four route fields are omitted it
       fills them from `_default_route_fields(location_context)`; when given it
       uses the provided lists and `_safe_location_context(location_context)`.
-- [ ] 3.2 Rewrite the return at `_cached_response_event` (659-685) to call
+- [x] 3.2 Rewrite the return at `_cached_response_event` (659-685) to call
       `_final_event(...)` with `from_cache=True` and the cached/coerced values.
-- [ ] 3.3 Rewrite `_product_rag_event` return (729-740) via `_final_event(...)`.
-- [ ] 3.4 Rewrite `_store_location_event` return (775-789) via `_final_event`
+- [x] 3.3 Rewrite `_product_rag_event` return (729-740) via `_final_event(...)`.
+- [x] 3.4 Rewrite `_store_location_event` return (775-789) via `_final_event`
       (passing `store_results=stores`, `map_actions=_build_map_actions(stores)`,
       `location_context=location_context`).
-- [ ] 3.5 Rewrite `_product_availability_event` return (854-872) via
+- [x] 3.5 Rewrite `_product_availability_event` return (854-872) via
       `_final_event` (`inventory_results=inventory`,
       `map_actions=_build_map_actions(inventory)`).
-- [ ] 3.6 Rewrite the general-conversation tail return (1110-1121) via
+- [x] 3.6 Rewrite the general-conversation tail return (1110-1121) via
       `_final_event`.
-- [ ] 3.7 Confirm each rewritten dict is key-identical to the original
+- [x] 3.7 Confirm each rewritten dict is key-identical to the original
       (same 13 keys incl. `type`); rely on the integration tests in Phase 6.
 
 ### Phase 4: Strip camelCase fallbacks and inline single-call privates
 
-- [ ] 4.1 In `_cached_response_event` (614-685), replace each
+- [x] 4.1 In `_cached_response_event` (614-685), replace each
       `cached_response.get("camelKey") or cached_response.get("snake_key")`
       with the snake_case read only (`searchMetrics` → `search_metrics`,
       `sqlPhases` → `sql_phases`, `intentDetected` → `intent_detected`,
       `lastProducts` → `last_products`, `embeddingCacheHit` →
       `embedding_cache_hit`, `storeResults`/`inventoryResults`/`mapActions` →
       `store_results`/`inventory_results`/`map_actions`).
-- [ ] 4.2 Inline `_get_or_create_session` body into `stream_request` at the
+- [x] 4.2 Inline `_get_or_create_session` body into `stream_request` at the
       call site (1007), then delete the method (535-550).
-- [ ] 4.3 Inline `_classify_intent` body into `stream_request` at the call site
+- [x] 4.3 Inline `_classify_intent` body into `stream_request` at the call site
       (1027), then delete the method (609-612).
-- [ ] 4.4 Inline `_response_cache_lookup` body into `stream_request` at the call
+- [x] 4.4 Inline `_response_cache_lookup` body into `stream_request` at the call
       site (1009), then delete the method (909-928). Preserve the
       `_has_browser_coordinates` early-return that bypasses caching for
       consented coordinates (coordinate privacy).
-- [ ] 4.5 Collapse `_unsupported_order_status_event`: in
+- [x] 4.5 Collapse `_unsupported_order_status_event`: in
       `_deterministic_route_event` (974-982) build the order-status final event
       inline via `_final_event(...)` with the constant answer and
       `intent_detected=_ORDER_STATUS_INTENT`, still calling
@@ -249,21 +249,21 @@ local count under the threshold; remove the `noqa` and let lint confirm.
 
 ### Phase 5: Remove the dead PRODUCT_RAG re-ground; simplify grounding hot-spots
 
-- [ ] 5.1 Before editing: add/confirm the parity test (Phase 6.1) covering both
+- [x] 5.1 Before editing: add/confirm the parity test (Phase 6.1) covering both
       a directly-routed PRODUCT_RAG turn and a GENERAL_CONVERSATION turn that a
       tool call relabels to PRODUCT_RAG via `_effective_intent`.
-- [ ] 5.2 In `stream_request`, remove the dead re-ground branch (1081-1087). If
+- [x] 5.2 In `stream_request`, remove the dead re-ground branch (1081-1087). If
       the parity test shows the relabel case relied on it, fold the
       `_ground_product_rag_turn` re-derivation into the single tail so the
       relabeled answer/metrics still ground — without a separate `if PRODUCT_RAG`
       block. Add one comment stating the fan-out path now serves only
       `GENERAL_CONVERSATION` (and its tool-driven PRODUCT_RAG relabel).
-- [ ] 5.3 Remove `# noqa: PLR0914` from `stream_request` (985); run lint.
-- [ ] 5.4 In `_adk_grounding.py`, replace the inline stop-word regex
+- [x] 5.3 Remove `# noqa: PLR0914` from `stream_request` (985); run lint.
+- [x] 5.4 In `_adk_grounding.py`, replace the inline stop-word regex
       (164-168) with a named `_PRODUCT_QUERY_STOP_WORDS = frozenset({...})`
       and a word-filter that preserves the existing output (lower-case, strip
       non-alphanumerics, drop stop words, title-case the remainder).
-- [ ] 5.5 In `_adk_grounding.py` `_format_availability_answer` (333-342),
+- [x] 5.5 In `_adk_grounding.py` `_format_availability_answer` (333-342),
       replace `ans = ans[:-1] + f". I found ..."` by composing the sentence in
       parts (build the base in-stock sentence without a trailing period when a
       follow-on clause applies, then append
@@ -271,42 +271,42 @@ local count under the threshold; remove the `noqa` and let lint confirm.
 
 ### Phase 6: Verify identical behavior
 
-- [ ] 6.1 Add an integration assertion (in
+- [x] 6.1 Add an integration assertion (in
       `test_chat_workflow.py` or `test_chat_http.py`) that PRODUCT_RAG stream
       output (the final event's `answer`, `intent_detected`, `search_metrics`
       product keys, and `sql_phases` sql_keys) is unchanged — covering both the
       directly-routed and the tool-relabeled PRODUCT_RAG cases.
-- [ ] 6.2 Run `make lint && make test`; confirm green.
-- [ ] 6.3 Grep to confirm the three orbiting modules are now two
+- [x] 6.2 Run `make lint && make test`; confirm green.
+- [x] 6.3 Grep to confirm the three orbiting modules are now two
       (`_adk_support.py`, `_adk_grounding.py`) and `_adk_history.py` /
       `_adk_telemetry.py` are gone.
 
 ## Acceptance
 
-- [ ] Chat behavior identical end-to-end: integration chat HTTP + workflow tests
+- [x] Chat behavior identical end-to-end: integration chat HTTP + workflow tests
       pass, including the new PRODUCT_RAG stream-parity assertion.
-- [ ] No compat shim in `workflow.py` (`make_coffee_node` is a single
+- [x] No compat shim in `workflow.py` (`make_coffee_node` is a single
       `model_copy` line, no `hasattr`).
-- [ ] `_adk_history.py` and `_adk_telemetry.py` no longer exist as separate
+- [x] `_adk_history.py` and `_adk_telemetry.py` no longer exist as separate
       modules; their functions live in `_adk_support.py`; `_adk_grounding.py`
       remains separate and import-cycle-free.
-- [ ] One `_final_event` builds the final dict for all routes; the 12-key dict
+- [x] One `_final_event` builds the final dict for all routes; the 12-key dict
       is no longer hand-written 6×.
-- [ ] `_cached_response_event` reads snake_case keys only (no camelCase
+- [x] `_cached_response_event` reads snake_case keys only (no camelCase
       fallback).
-- [ ] `_get_or_create_session`, `_classify_intent`, `_response_cache_lookup`,
+- [x] `_get_or_create_session`, `_classify_intent`, `_response_cache_lookup`,
       and `_unsupported_order_status_event` are gone (inlined/collapsed);
       `_make_tool_factories`, `_build_workflow`, `_append_display_history`,
       `_deterministic_route_event`, `_product_rag_event`,
       `_store_location_event`, `_product_availability_event` remain.
-- [ ] The dead PRODUCT_RAG re-ground branch is removed; `stream_request` carries
+- [x] The dead PRODUCT_RAG re-ground branch is removed; `stream_request` carries
       no `# noqa: PLR0914` and reads as three linear exits.
-- [ ] `_adk_grounding.py` uses a named stop-word frozenset and a part-built
+- [x] `_adk_grounding.py` uses a named stop-word frozenset and a part-built
       availability sentence (no inline 40-word regex, no negative-index slice).
-- [ ] `record_search_metric` is untouched here (Ch2 owns it).
-- [ ] Browser coordinates stay request-scoped and masked; no coordinate value
+- [x] `record_search_metric` is untouched here (Ch2 owns it).
+- [x] Browser coordinates stay request-scoped and masked; no coordinate value
       appears in history, cache, metrics, or logs.
-- [ ] `make lint && make test` green.
+- [x] `make lint && make test` green.
 
 ## Verification
 

@@ -9,7 +9,7 @@ import re
 from typing import Any
 from urllib.parse import urlencode, urlunsplit
 
-from app.domain.chat.services._adk_telemetry import _coerce_sql_phases
+from app.domain.chat.services._adk_support import _coerce_sql_phases
 
 _KNOWN_CITY_FILTERS: tuple[tuple[str, str | None], ...] = (
     ("Austin", "TX"),
@@ -32,6 +32,14 @@ _PRODUCT_QUERY_ALIASES: tuple[tuple[str, str], ...] = (
     ("cold brew", "Cold Brew Nitro"),
     ("nitro", "Cold Brew Nitro"),
     ("espresso", "Espresso Romano"),
+)
+_PRODUCT_QUERY_STOP_WORDS = frozenset(
+    {
+        "where", "can", "i", "pick", "up", "near", "me", "is", "are",
+        "available", "availability", "which", "cafe", "store", "has",
+        "have", "in", "at", "do", "you", "the", "a", "an", "that",
+        "this", "it", "them", "those", "stock", "nearby", "here", "there",
+    }
 )
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0
@@ -84,15 +92,6 @@ def _get_field(row: dict[str, Any], snake_name: str) -> Any:
     parts = snake_name.split("_")
     camel_name = parts[0] + "".join(p.title() for p in parts[1:])
     return row.get(camel_name)
-
-
-def _default_route_fields(location_context: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "store_results": [],
-        "inventory_results": [],
-        "map_actions": [],
-        "location_context": _safe_location_context(location_context),
-    }
 
 
 def _safe_location_context(location_context: dict[str, Any] | None) -> dict[str, Any]:
@@ -161,13 +160,9 @@ def _extract_product_query(query: str) -> str | None:
         if needle in query_text:
             return product_name
 
-    cleaned = re.sub(
-        r"\b(where|can|i|pick|up|near|me|is|are|available|availability|which|cafe|store|has|have|in|at|do|you|the|a|an|that|this|it|them|those|stock|nearby|here|there)\b",
-        " ",
-        query_text,
-    )
-    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
-    cleaned = " ".join(cleaned.split())
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", query_text)
+    words = [word for word in cleaned.split() if word not in _PRODUCT_QUERY_STOP_WORDS]
+    cleaned = " ".join(words)
     return cleaned.title() if cleaned else None
 
 
@@ -330,16 +325,19 @@ def _format_availability_answer(
 
     first = available_alternatives[0]
     store_name = _get_field(first, "store_name") or "a Cymbal Coffee store"
-    ans = _format_in_stock_store(
+    in_stock_sentence = _format_in_stock_store(
         product_name=product_name,
         store_name=store_name,
         quantity=_get_field(first, "quantity_available"),
         status=_get_field(first, "stock_status"),
         distance=_get_field(first, "distance_miles"),
     )
-    if len(available_alternatives) > 1:
-        ans = ans[:-1] + f". I found {len(available_alternatives)} stores with matching availability."
-    return ans
+    if len(available_alternatives) <= 1:
+        return in_stock_sentence
+    # The in-stock sentence ends with a period; replace it with a follow-on clause.
+    base_sentence = in_stock_sentence.removesuffix(".")
+    found_clause = f". I found {len(available_alternatives)} stores with matching availability."
+    return base_sentence + found_clause
 
 
 def _record_product_search_result(metric_state: dict[str, Any], result: dict[str, Any], query: str) -> None:
