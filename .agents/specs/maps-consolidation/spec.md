@@ -1,6 +1,6 @@
 # Flow: maps-consolidation
 
-*Beads: oracledb-vertexai-mzm.7*
+*Beads: oracledb-vertexai-mzm.7 — CLOSED [c3f5704]*
 
 ## Specification
 
@@ -99,26 +99,26 @@ Chosen approach: refactor `maps.py` to build from explicit primitive fields.
 ## Implementation Plan
 
 ### Phase 1: Single field-based Maps builder
-- [ ] 1.1 In `src/app/domain/products/services/maps.py`, change `_store_query` to
+- [x] 1.1 In `src/app/domain/products/services/maps.py`, change `_store_query` to
       operate on primitive fields: `_store_query(name, address, city, state, zip_code) -> str`
       (same assembly: `name, address, "city, state zip"`).
-- [ ] 1.2 Change `build_store_search_url` (`maps.py:15`) to signature
+- [x] 1.2 Change `build_store_search_url` (`maps.py:15`) to signature
       `build_store_search_url(name, address, city, state, zip_code, place_id=None)`;
       keep `/maps/search/`, `api=1`, `query`, and `query_place_id` (set only when
       `place_id`).
-- [ ] 1.3 Change `build_store_directions_url` (`maps.py:23`) to signature
+- [x] 1.3 Change `build_store_directions_url` (`maps.py:23`) to signature
       `build_store_directions_url(name, address, city, state, zip_code, place_id=None, origin=None)`;
       keep `/maps/dir/`, `api=1`, `destination`, `destination_place_id`, and the
       optional `origin` formatting (tuple → `"{lat:.6f},{lon:.6f}"`, else string).
-- [ ] 1.4 Drop the `Store` import / `TYPE_CHECKING` block if no longer referenced.
+- [x] 1.4 Drop the `Store` import / `TYPE_CHECKING` block if no longer referenced.
       Keep behavior-only docstrings (no spec/phase references).
 
 ### Phase 2: Wire grounding to the single builder + dual actions
-- [ ] 2.1 In `_adk_grounding.py`, add a small row→fields reader (reuse the
+- [x] 2.1 In `_adk_grounding.py`, add a small row→fields reader (reuse the
       existing `name`/`address`/`city`/`state`/`zip` + `store_*` fallback logic
       that lives in `_store_query_parts`) so `_build_map_actions` can pull the
       primitives and `google_place_id`.
-- [ ] 2.2 Rewrite `_build_map_actions(rows)` (`_adk_grounding.py:193`) to emit two
+- [x] 2.2 Rewrite `_build_map_actions(rows)` (`_adk_grounding.py:193`) to emit two
       actions per row: a `search` action `{type:"search", label:"Open in Google
       Maps", url: build_store_search_url(...)}` and a `directions` action
       `{type:"directions", label:"Get directions", url: build_store_directions_url(...)}`.
@@ -126,65 +126,65 @@ Chosen approach: refactor `maps.py` to build from explicit primitive fields.
       Note: labels change from the store name to fixed action labels because the
       frontend match-by-label path is being replaced (Phase 4); confirm no other
       consumer depends on label == store name.
-- [ ] 2.3 Preserve a store-name source for `_format_store_location_answer`
+- [x] 2.3 Preserve a store-name source for `_format_store_location_answer`
       (`_adk_grounding.py:222`): it calls `_store_query_parts(first)` only for the
       name. Replace with an inline name read (`row.get("name") or row.get("store_name") or "Cymbal Coffee"`)
       or a tiny `_store_name(row)` helper; do not retain `_store_query_parts`
       solely for this.
-- [ ] 2.4 Delete `_maps_search_url` (`_adk_grounding.py:186`) and
+- [x] 2.4 Delete `_maps_search_url` (`_adk_grounding.py:186`) and
       `_store_query_parts` (`:174`). Confirm no other references remain
       (`grep -rn "_maps_search_url\|_store_query_parts" src/`).
-- [ ] 2.5 Confirm `adk.py` call sites (`:787`, `:870`) need no change — they pass
+- [x] 2.5 Confirm `adk.py` call sites (`:787`, `:870`) need no change — they pass
       the same dict rows; only the returned action list grows. The `urlencode`/
       `urlunsplit` imports in `_adk_grounding.py` become unused → remove them.
 
 ### Phase 3: Backend tests
-- [ ] 3.1 Update `src/tests/unit/app/domain/products/services/test_maps.py` to the
+- [x] 3.1 Update `src/tests/unit/app/domain/products/services/test_maps.py` to the
       field-based signatures (pass the store's fields instead of a `Store`). Keep
       the existing assertions: no-key, `api=1`, `query`/`destination` encoding,
       `*_place_id`, `origin` formatting, `key=` absent.
-- [ ] 3.2 In `src/tests/unit/app/domain/chat/services/test_adk_grounding.py`, add a
+- [x] 3.2 In `src/tests/unit/app/domain/chat/services/test_adk_grounding.py`, add a
       test asserting `_build_map_actions([store_row])` returns exactly two actions:
       one `type=="search"` and one `type=="directions"`, both with URLs starting
       `https://www.google.com/maps/`, both with `api=1`, neither containing
       `origin=` or `key=`.
 
 ### Phase 4: Render the directions action
-- [ ] 4.1 In `src/resources/main.js`, replace `mapActionForRow(row, actions)`
+- [x] 4.1 In `src/resources/main.js`, replace `mapActionForRow(row, actions)`
       (`:714`) with a function that returns the row's validated search + directions
       actions. Since two actions now share the search-link rendering surface and the
       old code matched by `label === store name`, group actions per row: each
       `find_stores_*` event returns actions in row order (2 per row), or filter by
       `type`. Validate each URL with `safeMapsUrl` (`:702`); drop any that fail.
-- [ ] 4.2 In `renderStoreCard(row, action)` (`:721`), accept the search +
+- [x] 4.2 In `renderStoreCard(row, action)` (`:721`), accept the search +
       directions pair and render both links in the actions row (`:753-765`):
       keep the existing "Open in Google Maps" anchor for the `search` action; add a
       sibling anchor labeled "Get directions" for the `directions` action, using the
       same classes, `target="_blank"`, and `rel="noopener noreferrer"`.
-- [ ] 4.3 Update `renderStructuredResults` (`:769`) to pass the per-row action pair
+- [x] 4.3 Update `renderStructuredResults` (`:769`) to pass the per-row action pair
       to `renderStoreCard`. Keep the `slice(0, 3)` cap.
-- [ ] 4.4 Do NOT hand-edit generated bundles under
+- [x] 4.4 Do NOT hand-edit generated bundles under
       `src/app/domain/web/static/assets/main-*.js`; they regenerate from the build.
 
 ### Phase 5: Build + verify
-- [ ] 5.1 `cd src/resources && npm run build` succeeds.
-- [ ] 5.2 `uv run pytest src/tests/unit/app/domain/products/services/test_maps.py src/tests/unit/app/domain/chat/services/test_adk_grounding.py`
+- [x] 5.1 `cd src/resources && npm run build` succeeds.
+- [x] 5.2 `uv run pytest src/tests/unit/app/domain/products/services/test_maps.py src/tests/unit/app/domain/chat/services/test_adk_grounding.py`
       passes.
-- [ ] 5.3 `make lint` and `make test` green.
+- [x] 5.3 `make lint` and `make test` green.
 
 ## Acceptance
 
-- [ ] `products/services/maps.py` is the only Maps URL builder; it builds both
+- [x] `products/services/maps.py` is the only Maps URL builder; it builds both
       search and directions URLs from primitive fields.
-- [ ] `_adk_grounding.py` contains no inline URL builder (`_maps_search_url` and
+- [x] `_adk_grounding.py` contains no inline URL builder (`_maps_search_url` and
       `_store_query_parts` deleted; `urlencode`/`urlunsplit` imports removed).
-- [ ] `_build_map_actions` returns one `search` action and one `directions`
+- [x] `_build_map_actions` returns one `search` action and one `directions`
       action per store row, with valid no-key `www.google.com/maps/` URLs and no
       `origin`/`key`.
-- [ ] Chat store/availability replies render BOTH "Open in Google Maps" and
+- [x] Chat store/availability replies render BOTH "Open in Google Maps" and
       "Get directions" links, each through `safeMapsUrl`.
-- [ ] No dead maps function remains anywhere (grep clean).
-- [ ] `make test` and `cd src/resources && npm run build` are green.
+- [x] No dead maps function remains anywhere (grep clean).
+- [x] `make test` and `cd src/resources && npm run build` are green.
 
 ## Verification
 
