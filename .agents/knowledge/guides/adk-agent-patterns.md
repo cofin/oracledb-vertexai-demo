@@ -180,6 +180,7 @@ response = await client.aio.models.generate_content(
 Labels:
 
 - `PRODUCT_RAG`
+- `PRODUCT_AVAILABILITY`
 - `GENERAL_CONVERSATION`
 - `STORE_LOCATION`
 - `ORDER_STATUS`

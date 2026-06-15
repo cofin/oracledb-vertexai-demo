@@ -95,7 +95,7 @@ Two construction parameters set the shape:
 the recall target dynamically.
 
 The pool itself is configured by `vector_memory_size`. 512 MB is plenty for
-the demo's 122 committed product vectors plus query embeddings saved in
+the demo's 130 committed product vectors plus query embeddings saved in
 `embedding_cache`; budget roughly
 `rows × dimensions × 4 bytes × 1.4 (HNSW overhead) × 2 (safety)` for larger
 catalogs.

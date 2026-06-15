@@ -9,7 +9,7 @@ inspect the app.
 | `coffee run` | Start the Litestar app via Granian. |
 | `coffee upgrade` | End-user install path: apply migrations and load committed fixtures. |
 | `coffee load-fixtures` | Populate Oracle from the committed gzipped demo data (products, stores, embeddings). |
-| `coffee bulk-embed` | Generate `gemini-embedding-2` embeddings for any catalog rows still missing them. |
+| `coffee bulk-embed` | Generate `gemini-embedding-2-preview` embeddings for any catalog rows still missing them. |
 | `coffee export-fixtures` | Dump the current database state back into committable fixture files. |
 | `coffee clear-cache --force` | Truncate the response cache and the embedding cache. |
 | `coffee model-info` | Print the active Vertex AI model + dimension settings. |

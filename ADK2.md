@@ -8,6 +8,18 @@ drops the legacy/configured ADK tables and creates the current schema;
 the demo runs it via the existing `make migrate` target. No demo-side
 migration scripts are required.
 
+> **Plan-execution caveat (not a correction).** The memory-embedding preset
+> rows below are forward-looking and do not match the current shipped stack.
+> They reference `gemini-embedding-002` at 1536-dim (the `1536-dim` helper, the
+> `ADK_EMBEDDING_PRESET = "gemini-embedding-002"` setting, and the
+> `embedding_preset: gemini-embedding-002` wiring step) and a
+> `RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY` memory-embedding helper. The running
+> demo uses `gemini-embedding-2-preview` at 3072 dimensions and selects
+> query-vs-document intent through an instruction-prefix `embedding_purpose`,
+> sending no `task_type` parameter. Anyone executing this plan should reconcile
+> the memory-embedding preset and dimensionality with the shipped embedding
+> contract before wiring it. The aspirational rows are left intact below.
+
 ## Snapshot — what's already correct
 
 | Aspect | Status |

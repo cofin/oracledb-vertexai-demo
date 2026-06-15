@@ -19,7 +19,7 @@ fallbacks, and closure-bound tools.
 
 ## Services
 
-`SQLSpecAsyncService` subclasses that own the named-SQL queries and result
+`OracleAsyncService` subclasses that own the named-SQL queries and result
 mapping for products, the embedding/response caches, and the per-message
 metrics surfaced on `/explore`.
 

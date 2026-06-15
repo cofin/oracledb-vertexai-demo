@@ -16,7 +16,7 @@ flowchart LR
 
 | Setting | Value |
 | --- | --- |
-| Embedding model | Vertex AI `gemini-embedding-2` |
+| Embedding model | Vertex AI `gemini-embedding-2-preview` |
 | Dimensions | `3072` |
 | Storage | `VECTOR(3072, FLOAT32)` |
 | Distance metric | `COSINE` |
@@ -67,7 +67,7 @@ ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
 `512M` is intentional for Oracle Free Edition's constrained SGA. The committed
-demo fixture has 122 product vectors, so this is generous headroom for the
+demo fixture has 130 product vectors, so this is generous headroom for the
 catalog plus query embeddings saved in `embedding_cache`. For larger Oracle
 editions, `tools/oracle/configure_vector_memory.sql` uses a 4G target.
 

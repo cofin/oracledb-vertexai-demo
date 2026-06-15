@@ -13,8 +13,8 @@ not need to link into `.agents/archive/`.
 - Use `guides/adk-agent-patterns.md` for ADK sessions, runner flow, tools,
   streaming, cache, and chat result contracts.
 - Use `.agents/flows.md` only to find active specs and current Flow state.
-- Use the active store/location/inventory/maps specs for planned component
-  boundaries until those chapters are implemented.
+- Use `guides/architecture.md` for the store/location/inventory/maps component
+  boundaries; those features ship in source.
 - Do not rely on `.agents/archive/`; it is ignored disposable history.
 
 ## Application Shape
@@ -25,10 +25,10 @@ Vite-built browser helper. Frontend behavior is HTMX/Jinja/Tailwind v4 with
 vanilla JavaScript and ApexCharts, not React, TanStack Router, Bun, Biome, or a
 client-side SPA.
 
-Active planning also covers store-aware chat, store-level inventory, browser
-location opt-in, Google Maps URL actions, optional Maps Embed, and settings
-contract cleanup. Keep those as first-class components in knowledge updates even
-before their source changes land.
+The app also ships store-aware chat, store-level inventory, browser location
+opt-in, and Google Maps URL actions as first-class components. Optional Maps
+Embed and settings contract cleanup remain forward-looking. Keep all of these as
+first-class components in knowledge updates.
 
 Domain behavior belongs under `src/app/domain/<domain>/controllers`,
 `schemas`, and `services`. Cross-domain use should go through public package
@@ -52,32 +52,33 @@ search metrics.
 
 ## Store, Inventory, And Maps Components
 
-The store-aware chat PRD owns five linked components:
+Store-aware chat is built from five linked components:
 
-- Data foundation: extend the baseline `0001` migration only, adding store
+- Data foundation: the baseline `0001` migration carries store
   latitude/longitude/timezone/place-id fields plus a normalized
-  `store_product_inventory` table. Add the Dallas Arts District store, explicit
+  `store_product_inventory` table, the Dallas Arts District store, explicit
   product `in_stock` booleans, and curated inventory fixtures.
-- Query services: keep store, hours, nearest-store, inventory, and product
-  availability lookups behind named SQL and product-domain service methods.
-  Nearest-store ranking may use seeded coordinates plus Haversine; do not call
-  Google geocoding, Places, Distance Matrix, or Routes APIs from chat.
-  Availability queries resolve target products using exact match, falling back
-  to pronoun resolution from session state, and finally using Vertex AI vector
-  search to match partial or imprecise names.
-- ADK tools and intent routing: add deterministic `STORE_LOCATION` and
-  `PRODUCT_AVAILABILITY` routes that gather store/product/inventory facts before
-  answering. Keep `ORDER_STATUS` explicit but unsupported until order data
+- Query services: store, hours, nearest-store, inventory, and product
+  availability lookups sit behind named SQL and product-domain service methods.
+  Nearest-store ranking uses seeded coordinates plus Haversine
+  (`_location.haversine_miles`); chat never calls Google geocoding, Places,
+  Distance Matrix, or Routes APIs. Availability queries resolve target products
+  using exact match, falling back to pronoun resolution from session state, and
+  finally Vertex AI vector search for partial or imprecise names.
+- ADK tools and intent routing: deterministic `STORE_LOCATION` and
+  `PRODUCT_AVAILABILITY` routes gather store/product/inventory facts before
+  answering. `ORDER_STATUS` stays explicit but unsupported until order data
   exists.
 - Browser UI: location is opt-in from a user click, never page load. Coordinates
-  stay in memory for the page session and are sent only with consent. Render
-  store cards, inventory status, hours, phone/address, distance when available,
-  and Maps actions in the current HTMX/Jinja chat shell.
-- Maps and security: Google Maps URLs are the required no-key baseline for
-  search and directions. Embedded maps are optional and require
-  `MAPS_ENABLE_EMBED=true` plus a separate restricted
-  `GOOGLE_MAPS_EMBED_API_KEY`. Add `Permissions-Policy: geolocation=(self)` and
-  only allow map iframe CSP sources when embed is enabled.
+  stay in memory for the page session and are sent only with consent. The chat
+  shell renders store cards, inventory status, hours, phone/address, distance
+  when available, and Maps actions in the current HTMX/Jinja chat shell.
+- Maps and security: Google Maps URLs (`maps.build_store_search_url` /
+  `build_store_directions_url`) are the no-key baseline for search and
+  directions. Embedded maps are optional and require `MAPS_ENABLE_EMBED=true`
+  plus a separate restricted `GOOGLE_MAPS_EMBED_API_KEY`. Responses always send
+  `Permissions-Policy: geolocation=(self)`; the map iframe `frame-src` CSP is
+  added only when embed is enabled (`build_security_headers`).
 
 Do not persist raw browser coordinates in display history, response cache,
 metrics, SQL telemetry, or logs. Coordinate-bearing requests should avoid
@@ -103,7 +104,7 @@ service, controller, template, and frontend rendering.
 
 ## Oracle Vector And Embeddings
 
-The only supported embedding shape is `gemini-embedding-2` at 3072 dimensions
+The only supported embedding shape is `gemini-embedding-2-preview` at 3072 dimensions
 stored as `VECTOR(3072, FLOAT32)`. Prefix product fixture text with a
 document-purpose instruction and user search text with a query-purpose
 instruction before embedding. Pass Python
@@ -167,8 +168,8 @@ Target behavior:
   helpers;
 - app, database, AI, chat, Vite, and logging settings are explicit and wired;
 - future-feature branches are removed until the feature exists;
-- optional maps settings are introduced by the maps/security chapter only when
-  the source behavior uses them.
+- optional Maps Embed settings (`MAPS_ENABLE_EMBED`, `GOOGLE_MAPS_EMBED_API_KEY`)
+  are wired and read by `build_security_headers`.
 
 Do not keep unused server, agent, cache, or Maps knobs merely as placeholders.
 If a setting remains, there should be a live production read or an accepted

@@ -44,10 +44,11 @@ rather than a stack trace.
 ## Common gotchas
 
 - **`ORA-51962` during migration** — `vector_memory_size` is zero. The
-  managed container in `make start-infra` configures `512M` automatically
-  on first init; if you bypassed that, see
-  `tools/oracle/configure_vector_memory.sql`.
-- **`gemini-embedding-2` 404** — the project is missing Vertex AI
+  managed container in `make start-infra` sets `512M` automatically on first
+  init via the `tools/oracle/on_init/00_configure_vector_memory.sql` hook; if
+  you bypassed that, `tools/oracle/configure_vector_memory.sql` is the manual
+  fallback (it targets `4G` on the SPFILE for larger Oracle editions).
+- **`gemini-embedding-2-preview` 404** — the project is missing Vertex AI
   permissions or the location doesn't host the embedding model. Try
   `us-central1`.
 - **Empty chat replies on first start** — products haven't been embedded
