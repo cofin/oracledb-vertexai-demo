@@ -12,6 +12,8 @@ import pytest
 
 from app.utils.fixtures import FixtureLoader, _prepare_record
 
+pytestmark = pytest.mark.anyio
+
 
 class _CaptureDriver:
     """Async driver double that records the SQL passed to ``execute``."""
@@ -31,7 +33,6 @@ class _CaptureDriver:
         return None
 
 
-@pytest.mark.asyncio
 async def test_merge_renders_aliased_target() -> None:
     driver = _CaptureDriver()
     loader = FixtureLoader(fixtures_dir=Path("/tmp"), driver=driver, table_order=["product"])

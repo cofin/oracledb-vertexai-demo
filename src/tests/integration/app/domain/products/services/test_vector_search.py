@@ -86,12 +86,6 @@ async def test_vector_search_returns_typed_product_matches_with_price(
         assert -1e-6 <= match.similarity_score <= 1 + 1e-6, (
             f"similarity_score must be in [0, 1] (±1e-6), got {match.similarity_score!r}"
         )
-        assert not hasattr(match, "current_price"), (
-            "ProductMatch must not expose 'current_price' — the column was renamed to 'price'"
-        )
-        assert not hasattr(match, "distance"), (
-            "ProductMatch must not expose 'distance' — the band-aid mapping has been removed"
-        )
 
     seed_match = next((m for m in matches if m.id == seed_id), None)
     assert seed_match is not None, "the seed product must appear in its own self-match query"

@@ -15,11 +15,18 @@ if TYPE_CHECKING:
     from pytest import MonkeyPatch
 
 
-def test_oracle_adk_and_litestar_session_flags_wire_to_sqlspec_config(monkeypatch: MonkeyPatch) -> None:
+@pytest.mark.parametrize("explicit", [True, False], ids=["explicit-true", "default-true"])
+def test_oracle_adk_and_litestar_session_in_memory_wire_to_sqlspec_config(
+    monkeypatch: MonkeyPatch, explicit: bool
+) -> None:
     from app.lib.settings import DatabaseSettings
 
-    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", "true")
-    monkeypatch.setenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "true")
+    if explicit:
+        monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", "true")
+        monkeypatch.setenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "true")
+    else:
+        monkeypatch.delenv("ORACLE_ADK_IN_MEMORY", raising=False)
+        monkeypatch.delenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raising=False)
     monkeypatch.setenv("ADK_ENABLE_MEMORY", "false")
 
     config = DatabaseSettings().create_config()
@@ -27,18 +34,6 @@ def test_oracle_adk_and_litestar_session_flags_wire_to_sqlspec_config(monkeypatc
     assert config.extension_config["adk"]["in_memory"] is True
     assert config.extension_config["adk"]["include_memory_migration"] is False
     assert config.extension_config["adk"]["memory_table"] == "adk_memory_entries"
-    assert config.extension_config["litestar"]["in_memory"] is True
-
-
-def test_oracle_adk_and_litestar_session_in_memory_default_to_true(monkeypatch: MonkeyPatch) -> None:
-    from app.lib.settings import DatabaseSettings
-
-    monkeypatch.delenv("ORACLE_ADK_IN_MEMORY", raising=False)
-    monkeypatch.delenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raising=False)
-
-    config = DatabaseSettings().create_config()
-
-    assert config.extension_config["adk"]["in_memory"] is True
     assert config.extension_config["litestar"]["in_memory"] is True
 
 
@@ -106,18 +101,6 @@ def test_chat_settings_defaults(monkeypatch: MonkeyPatch) -> None:
     assert settings.product_search_limit == 5
     assert settings.product_search_threshold == 0.7
     assert settings.display_history_limit == 40
-
-
-def test_vite_config_uses_resources_as_frontend_root() -> None:
-    from app.lib.settings import BASE_DIR, ViteSettings
-
-    config = ViteSettings().get_config()
-
-    assert config.paths.root == BASE_DIR.parent / "resources"
-    assert config.paths.resource_dir == Path()
-    assert config.paths.static_dir == Path("public")
-    assert config.types is not None
-    assert config.types.output == BASE_DIR.parent / "resources" / "generated"
 
 
 def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> None:

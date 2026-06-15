@@ -52,7 +52,7 @@ async def test_explain_plan_returns_plan_lines_and_summary() -> None:
         ],
     }
 
-    controller = object.__new__(VectorController)
+    controller = VectorController(owner=MagicMock())
     request = MagicMock()
     request.query_params = {"query": "dark roast"}
     response = await VectorController.explain_plan.fn(
@@ -72,7 +72,7 @@ async def test_explain_plan_rejects_empty_query() -> None:
     """Empty / whitespace queries should fail validation up-front."""
     from litestar.exceptions import ValidationException
 
-    controller = object.__new__(VectorController)
+    controller = VectorController(owner=MagicMock())
     request = MagicMock()
     request.query_params = {"query": "   "}
     with pytest.raises(ValidationException):

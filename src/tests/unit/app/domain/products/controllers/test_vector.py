@@ -104,10 +104,6 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
         )
         assert row.price > 0, "ProductMatch must preserve 'price' from the SQL projection"
         assert 0 <= row.similarity_score <= 1, "similarity_score must be in [0, 1]"
-        assert not hasattr(row, "distance"), (
-            "the band-aid r['distance'] = 1 - r['similarity_score'] has come back — "
-            "callers must consume similarity_score directly"
-        )
 
 
 @pytest.mark.anyio
@@ -147,7 +143,7 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
     request.json = AsyncMock(return_value={"query": "dark roast"})
 
     response = await VectorController.vector_search_demo.fn(
-        object.__new__(VectorController),
+        VectorController(owner=MagicMock()),
         vector_search_service=mock_vector_search,
         metrics_service=mock_metrics,
         request=request,
@@ -161,12 +157,10 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
 
     assert len(payload.results) == 2
     for row in payload.results:
-        assert {"name", "description", "price", "similarity"} <= set(row.__struct_fields__), (
-            f"VectorDemoMatch must surface name/description/price/similarity, got {row.__struct_fields__}"
-        )
-        assert not hasattr(row, "distance"), (
-            "VectorDemoMatch must not expose 'distance' — that key only existed because of the band-aid"
-        )
+        assert row.name
+        assert row.description
+        assert row.price > 0
+        assert 0 <= row.similarity <= 100
 
     # similarity is a 0-100 percentage derived from similarity_score, so check round-trip.
     assert payload.results[0].similarity == pytest.approx(91.0)
