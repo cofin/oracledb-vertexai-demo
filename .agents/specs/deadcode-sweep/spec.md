@@ -73,51 +73,51 @@ Cross-cutting notes captured during analysis:
 ## Implementation Plan
 
 ### Phase 1: Standalone dead files & re-exports (no SQL, no behavior)
-- [ ] 1.1 Delete `src/app/utils/sync_tools.py` entirely (0 importers). Do not touch the unrelated `from sqlspec.utils.sync_tools import run_` in `src/app/cli/utils.py`.
-- [ ] 1.2 Delete `src/app/lib/exceptions.py` entirely (only contained `ApplicationError`, 0 references).
-- [ ] 1.3 In `src/app/lib/schema.py` delete `CamelizedBaseSchema`, `BaseSchema`, `camel_case`, `Message`, and `BaseStruct.to_dict` (leaving `BaseStruct` as an empty `msgspec.Struct` base). Remove the now-unused `from pydantic import BaseModel as _BaseModel` and `from pydantic import ConfigDict` imports, plus the unused `Any` import if it is no longer referenced. **Keep** `CamelizedBaseStruct`.
-- [ ] 1.4 In `src/app/lib/di.py` remove `from dishka import Scope` and drop `"Scope"` from `__all__` (consumers import `Scope` from dishka directly).
-- [ ] 1.5 In `src/app/server/plugins.py` delete ONLY the empty top-level stub class `_SQLSpecPlugin` (lines 42-47). Do NOT touch the similarly-named `_SQLSpecBase` type alias (line 25, used by the `db:` annotation at line 55) or `_SQLSpecPluginBase` (line 73, the real base for the nested `SQLSpecPlugin` at line 79). Verified: `_SQLSpecPlugin` (exact) is referenced nowhere — the 3 grep hits are 1 stub def + 2 `_SQLSpecPluginBase` substring matches.
+- [x] 1.1 Delete `src/app/utils/sync_tools.py` entirely (0 importers). Do not touch the unrelated `from sqlspec.utils.sync_tools import run_` in `src/app/cli/utils.py`.
+- [x] 1.2 Delete `src/app/lib/exceptions.py` entirely (only contained `ApplicationError`, 0 references).
+- [x] 1.3 In `src/app/lib/schema.py` delete `CamelizedBaseSchema`, `BaseSchema`, `camel_case`, `Message`, and `BaseStruct.to_dict` (leaving `BaseStruct` as an empty `msgspec.Struct` base). Remove the now-unused `from pydantic import BaseModel as _BaseModel` and `from pydantic import ConfigDict` imports, plus the unused `Any` import if it is no longer referenced. **Keep** `CamelizedBaseStruct`.
+- [x] 1.4 In `src/app/lib/di.py` remove `from dishka import Scope` and drop `"Scope"` from `__all__` (consumers import `Scope` from dishka directly).
+- [x] 1.5 In `src/app/server/plugins.py` delete ONLY the empty top-level stub class `_SQLSpecPlugin` (lines 42-47). Do NOT touch the similarly-named `_SQLSpecBase` type alias (line 25, used by the `db:` annotation at line 55) or `_SQLSpecPluginBase` (line 73, the real base for the nested `SQLSpecPlugin` at line 79). Verified: `_SQLSpecPlugin` (exact) is referenced nowhere — the 3 grep hits are 1 stub def + 2 `_SQLSpecPluginBase` substring matches.
 
 ### Phase 2: `domains.py` listener-discovery removal (keep controller discovery)
-- [ ] 2.1 In `src/app/utils/domains.py` delete `find_listeners_in_module`, `discover_domain_listeners`, `_discover_listeners_in_submodule`, and `DomainPlugin._discover_and_register_listeners`.
-- [ ] 2.2 Remove the `discover_listeners` and `listener_submodules` fields from `DomainPluginConfig`, and remove the `if self.config.discover_listeners: self._discover_and_register_listeners(...)` branch from `DomainPlugin.on_app_init`.
-- [ ] 2.3 Remove `_DiscoveryState.listener_count` and `_DiscoveryState.logged_listeners` (attributes, their `reset()` assignments, and the `logged_listeners` log branch in `log_discovery_results`).
-- [ ] 2.4 Inline `_store_controller_results` into its single caller `_discover_and_register_controllers`, then delete the method.
-- [ ] 2.5 Remove the now-unused `from litestar.events import EventListener` import, and drop `discover_domain_listeners` + `find_controllers_in_module`-adjacent listener entries from `__all__` (`discover_domain_listeners`; keep controller exports).
+- [x] 2.1 In `src/app/utils/domains.py` delete `find_listeners_in_module`, `discover_domain_listeners`, `_discover_listeners_in_submodule`, and `DomainPlugin._discover_and_register_listeners`.
+- [x] 2.2 Remove the `discover_listeners` and `listener_submodules` fields from `DomainPluginConfig`, and remove the `if self.config.discover_listeners: self._discover_and_register_listeners(...)` branch from `DomainPlugin.on_app_init`.
+- [x] 2.3 Remove `_DiscoveryState.listener_count` and `_DiscoveryState.logged_listeners` (attributes, their `reset()` assignments, and the `logged_listeners` log branch in `log_discovery_results`).
+- [x] 2.4 Inline `_store_controller_results` into its single caller `_discover_and_register_controllers`, then delete the method.
+- [x] 2.5 Remove the now-unused `from litestar.events import EventListener` import, and drop `discover_domain_listeners` + `find_controllers_in_module`-adjacent listener entries from `__all__` (`discover_domain_listeners`; keep controller exports).
 
 ### Phase 3: Products store dead methods + named SQL
-- [ ] 3.1 In `src/app/domain/products/services/services.py` (`StoreService`) delete `find_stores_by_city`, `find_stores_by_state`, `search_stores_by_zip`, and `get_store_inventory`.
-- [ ] 3.2 Delete the `find-stores-by-city`, `find-stores-by-state`, and `find-stores-by-zip` named queries from `src/app/db/sql/stores.sql`. Keep `list-stores`, `get-store-by-id`, `find-stores-by-location`, `rank-stores-by-distance`.
-- [ ] 3.3 Delete the `list-store-inventory` named query from `src/app/db/sql/inventory.sql`. Keep `find-stores-with-product-inventory` and `find-product-availability-by-query`.
-- [ ] 3.4 Delete the now-orphaned `StoreInventoryItem` schema from `src/app/domain/products/schemas/_products.py` and remove its import + `__all__` entry from `src/app/domain/products/schemas/__init__.py`. Remove the unused `StoreInventoryItem` import from `services.py` if present.
-- [ ] 3.5 In `src/app/domain/products/services/_location.py` delete `location_hint_matches` (0 refs). Keep `haversine_miles` and `store_matches_hint`.
+- [x] 3.1 In `src/app/domain/products/services/services.py` (`StoreService`) delete `find_stores_by_city`, `find_stores_by_state`, `search_stores_by_zip`, and `get_store_inventory`.
+- [x] 3.2 Delete the `find-stores-by-city`, `find-stores-by-state`, and `find-stores-by-zip` named queries from `src/app/db/sql/stores.sql`. Keep `list-stores`, `get-store-by-id`, `find-stores-by-location`, `rank-stores-by-distance`.
+- [x] 3.3 Delete the `list-store-inventory` named query from `src/app/db/sql/inventory.sql`. Keep `find-stores-with-product-inventory` and `find-product-availability-by-query`.
+- [x] 3.4 Delete the now-orphaned `StoreInventoryItem` schema from `src/app/domain/products/schemas/_products.py` and remove its import + `__all__` entry from `src/app/domain/products/schemas/__init__.py`. Remove the unused `StoreInventoryItem` import from `services.py` if present.
+- [x] 3.5 In `src/app/domain/products/services/_location.py` delete `location_hint_matches` (0 refs). Keep `haversine_miles` and `store_matches_hint`.
 
 ### Phase 4: System service + dead schema structs
-- [ ] 4.1 **KEEP `CacheService.delete_expired_responses`** — not deleted in this chapter (user-confirmed). It is wired into a cache-cleanup command in Ch8. No change here.
-- [ ] 4.2 Delete `src/app/domain/system/schemas/_session.py` entirely, and remove `from ._session import HistoryMeta, UserSession, UserSessionCreate` plus the `"HistoryMeta"`, `"UserSession"`, `"UserSessionCreate"` `__all__` entries from `src/app/domain/system/schemas/__init__.py`.
-- [ ] 4.3 **KEEP `EmbeddingCache`** in `src/app/domain/system/schemas/_cache.py` and its `__init__` export. The embedding-cache feature is live (see Code Analysis); the struct is wired into the typed read in **Ch8** rather than deleted here. No change in this chapter.
+- [x] 4.1 **KEEP `CacheService.delete_expired_responses`** — not deleted in this chapter (user-confirmed). It is wired into a cache-cleanup command in Ch8. No change here.
+- [x] 4.2 Delete `src/app/domain/system/schemas/_session.py` entirely, and remove `from ._session import HistoryMeta, UserSession, UserSessionCreate` plus the `"HistoryMeta"`, `"UserSession"`, `"UserSessionCreate"` `__all__` entries from `src/app/domain/system/schemas/__init__.py`.
+- [x] 4.3 **KEEP `EmbeddingCache`** in `src/app/domain/system/schemas/_cache.py` and its `__init__` export. The embedding-cache feature is live (see Code Analysis); the struct is wired into the typed read in **Ch8** rather than deleted here. No change in this chapter.
 
 ### Phase 5: Chat dead struct + adk method
-- [ ] 5.1 In `src/app/domain/chat/schemas/_chat.py` delete `ChatConversationCreate` and `ChatConversation` (0 consumers). Remove the now-unused `from datetime import datetime` and `from uuid import UUID` imports. Keep `ChatMessage` and `CoffeeChatReply`.
-- [ ] 5.2 In `src/app/domain/chat/schemas/__init__.py` remove `ChatConversation`/`ChatConversationCreate` from the `from ._chat import (...)` block and from `__all__`.
-- [ ] 5.3 In `src/app/domain/chat/services/adk.py` delete the `record_search_metric` method (lines ~210-232), including its redundant local `from app.domain.system.schemas import SearchMetricsCreate`. Leave the module-level `SearchMetricsCreate` import (line 60) — it is used by the live `search_products_by_vector` path (~line 158).
+- [x] 5.1 In `src/app/domain/chat/schemas/_chat.py` delete `ChatConversationCreate` and `ChatConversation` (0 consumers). Remove the now-unused `from datetime import datetime` and `from uuid import UUID` imports. Keep `ChatMessage` and `CoffeeChatReply`.
+- [x] 5.2 In `src/app/domain/chat/schemas/__init__.py` remove `ChatConversation`/`ChatConversationCreate` from the `from ._chat import (...)` block and from `__all__`.
+- [x] 5.3 In `src/app/domain/chat/services/adk.py` delete the `record_search_metric` method (lines ~210-232), including its redundant local `from app.domain.system.schemas import SearchMetricsCreate`. Leave the module-level `SearchMetricsCreate` import (line 60) — it is used by the live `search_products_by_vector` path (~line 158).
 
 ### Phase 6: Test removal / rewrite + named-SQL test sync
-- [ ] 6.1 Remove the `find-stores-by-city`, `find-stores-by-state`, `find-stores-by-zip`, and `list-store-inventory` entries from `EXPECTED_KEYS` in `src/tests/unit/app/db/test_named_sql.py`. Do not modify `EXPECTED_FILES`.
-- [ ] 6.2 Rewrite `src/tests/unit/app/domain/products/services/test_store_service.py::test_inventory_methods_return_typed_rows_and_sort_by_coordinates`: drop the `get_store_inventory` call, the `StoreInventoryItem` fixture/asserts, and the `StoreInventoryItem` import; keep and preserve the `find_stores_with_product` coordinate-ranking assertions (rename the test if it no longer covers "inventory methods" plural).
-- [ ] 6.3 **KEEP** the `delete_expired_responses` test in `test_cache.py` (the method is retained and wired in Ch8). No test change here.
-- [ ] 6.4 Search test trees for any reference to the deleted schema structs (`UserSession*`, `HistoryMeta`, `ChatConversation*`) and the schema.py symbols (`CamelizedBaseSchema`, `BaseSchema`, `camel_case`); remove any orphaned references. (Analysis found none, but re-confirm post-deletion.) Do NOT touch `EmbeddingCache` references — it is kept.
+- [x] 6.1 Remove the `find-stores-by-city`, `find-stores-by-state`, `find-stores-by-zip`, and `list-store-inventory` entries from `EXPECTED_KEYS` in `src/tests/unit/app/db/test_named_sql.py`. Do not modify `EXPECTED_FILES`.
+- [x] 6.2 Rewrite `src/tests/unit/app/domain/products/services/test_store_service.py::test_inventory_methods_return_typed_rows_and_sort_by_coordinates`: drop the `get_store_inventory` call, the `StoreInventoryItem` fixture/asserts, and the `StoreInventoryItem` import; keep and preserve the `find_stores_with_product` coordinate-ranking assertions (rename the test if it no longer covers "inventory methods" plural).
+- [x] 6.3 **KEEP** the `delete_expired_responses` test in `test_cache.py` (the method is retained and wired in Ch8). No test change here.
+- [x] 6.4 Search test trees for any reference to the deleted schema structs (`UserSession*`, `HistoryMeta`, `ChatConversation*`) and the schema.py symbols (`CamelizedBaseSchema`, `BaseSchema`, `camel_case`); remove any orphaned references. (Analysis found none, but re-confirm post-deletion.) Do NOT touch `EmbeddingCache` references — it is kept.
 
 ### Phase 7: Gate
-- [ ] 7.1 Run `make lint` and fix any unused-import / `__all__` fallout introduced by the deletions.
-- [ ] 7.2 Run `make test` and confirm green.
+- [x] 7.1 Run `make lint` and fix any unused-import / `__all__` fallout introduced by the deletions.
+- [x] 7.2 Run `make test` and confirm green.
 
 ## Acceptance
 
-- [ ] All listed symbols/files deleted; mixed test rewritten; test-only tests removed.
-- [ ] `make lint && make test` green.
-- [ ] Each grep below returns **no results** (or only the expected non-target lines noted):
+- [x] All listed symbols/files deleted; mixed test rewritten; test-only tests removed.
+- [x] `make lint && make test` green.
+- [x] Each grep below returns **no results** (or only the expected non-target lines noted):
   - `grep -rn "sync_tools" --include="*.py" src/ | grep -v "sqlspec.utils.sync_tools"` → empty
   - `grep -rn "ApplicationError" --include="*.py" src/` → empty
   - `grep -rn "CamelizedBaseSchema\|\bBaseSchema\b\|\bcamel_case\b" --include="*.py" src/` → empty
@@ -132,8 +132,8 @@ Cross-cutting notes captured during analysis:
   - `grep -rn "UserSessionCreate\|\bUserSession\b\|HistoryMeta" --include="*.py" src/` → empty
   - `grep -rn "ChatConversationCreate\|\bChatConversation\b" --include="*.py" src/` → empty
   - `grep -rn "record_search_metric" --include="*.py" src/` → empty
-- [ ] `grep -rn "CamelizedBaseStruct" --include="*.py" src/` still returns its 37 live uses (no regression).
-- [ ] `src/app/domain/products/services/maps.py` and the `/api/chat` partials are untouched.
+- [x] `grep -rn "CamelizedBaseStruct" --include="*.py" src/` still returns its 37 live uses (no regression).
+- [x] `src/app/domain/products/services/maps.py` and the `/api/chat` partials are untouched.
 
 ## Verification
 
