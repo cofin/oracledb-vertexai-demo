@@ -137,102 +137,102 @@ DEPENDS ON:
 
 ### Phase 1: Lock current AI/chat behavior with tests
 
-- [ ] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add `test_ai_settings_defaults`:
+- [x] 1.1 In `src/tests/unit/app/lib/test_settings.py`, add `test_ai_settings_defaults`:
       `AISettings()` exposes `chat_model=gemini-2.5-flash-lite`,
       `embedding_model=gemini-embedding-2-preview`, `embedding_dimensions=3072`,
       and `intent_model == chat_model` when `intent_model_override is None`.
-- [ ] 1.2 Add `test_intent_model_override_wins`: with
+- [x] 1.2 Add `test_intent_model_override_wins`: with
       `VERTEX_AI_INTENT_MODEL=gemini-x`, `intent_model == "gemini-x"`.
-- [ ] 1.3 Add `test_chat_settings_defaults`: `session_app_name=coffee_assistant`,
+- [x] 1.3 Add `test_chat_settings_defaults`: `session_app_name=coffee_assistant`,
       `response_cache_version=menu-grounded-v1`, `response_cache_ttl_minutes=60`,
       `product_search_limit=5`, `product_search_threshold=0.7`,
       `display_history_limit=40`.
-- [ ] 1.4 In `src/tests/unit/app/domain/chat/services/test_adk.py`, add a
+- [x] 1.4 In `src/tests/unit/app/domain/chat/services/test_adk.py`, add a
       regression asserting the response-cache write TTL and the display-history
       truncation length come from `ChatSettings` (will be RED until wired).
-- [ ] 1.5 Run; confirm new chat-wiring tests RED, settings-shape tests describe the
+- [x] 1.5 Run; confirm new chat-wiring tests RED, settings-shape tests describe the
       target. Record RED list in Beads note.
 
 ### Phase 2: AISettings
 
-- [ ] 2.1 Add `AISettings` dataclass to `settings.py` with the fields and derived
+- [x] 2.1 Add `AISettings` dataclass to `settings.py` with the fields and derived
       `intent_model` property in Requirement 1; replace `Settings.vertex_ai:
       VertexAISettings` with `Settings.ai: AISettings`.
-- [ ] 2.2 Move the project/api-key env mutation out of `__post_init__` into an
+- [x] 2.2 Move the project/api-key env mutation out of `__post_init__` into an
       explicit `configure_genai_env()` (or fold into `setup_litestar_env()`'s
       startup path) so the dataclass stays immutable; preserve placeholder-project
       503 behavior.
-- [ ] 2.3 Delete the four dead Vertex fields (if mzm.3 has not already) and
+- [x] 2.3 Delete the four dead Vertex fields (if mzm.3 has not already) and
       `VertexAISettings` itself; no re-export.
-- [ ] 2.4 Update `src/tests/unit/app/lib/test_settings.py`
+- [x] 2.4 Update `src/tests/unit/app/lib/test_settings.py`
       (`test_vertex_embedding_defaults_match_schema_contract` -> `AISettings`).
 
 ### Phase 3: Rewire AI readers
 
-- [ ] 3.1 `src/app/ioc.py`: `provide_genai_client` -> `settings.ai.project_id/
+- [x] 3.1 `src/app/ioc.py`: `provide_genai_client` -> `settings.ai.project_id/
       location/api_key`; `provide_intent_classifier` -> `settings.ai.intent_model`;
       `provide_vertex_ai_service` -> `settings.ai.chat_model/embedding_model/
       embedding_dimensions`.
-- [ ] 3.2 `src/app/cli/commands.py:118-121`: `model-info` -> `settings.ai.*`.
-- [ ] 3.3 `src/app/domain/chat/services/adk.py`: `_has_vertex_ai_backend_config`
+- [x] 3.2 `src/app/cli/commands.py:118-121`: `model-info` -> `settings.ai.*`.
+- [x] 3.3 `src/app/domain/chat/services/adk.py`: `_has_vertex_ai_backend_config`
       (386-387) and `_build_workflow` (527) -> `settings.ai.project_id/api_key/
       chat_model`.
 
 ### Phase 4: ChatSettings + wire chat constants
 
-- [ ] 4.1 Add `ChatSettings` dataclass and `Settings.chat` field with the
+- [x] 4.1 Add `ChatSettings` dataclass and `Settings.chat` field with the
       Requirement 2 fields/defaults.
-- [ ] 4.2 In `adk.py`, replace `_APP_NAME` (76) usages with
+- [x] 4.2 In `adk.py`, replace `_APP_NAME` (76) usages with
       `get_settings().chat.session_app_name` (or inject via `ADKRunner.__init__`);
       replace `_CHAT_CACHE_VERSION` (79/358) with `chat.response_cache_version`;
       replace `ttl_minutes=60` (366) with `chat.response_cache_ttl_minutes`;
       replace `history[-40:]` (604) with `history[-chat.display_history_limit:]`.
-- [ ] 4.3 Wire `chat.product_search_limit`/`product_search_threshold` as the
+- [x] 4.3 Wire `chat.product_search_limit`/`product_search_threshold` as the
       default limit/threshold in `AgentToolsService.search_products_by_vector` (142)
       and the closure-bound `search_products_by_vector` tool (432); align the
       products service default in `products/services/services.py:86` so there is a
       single source. Leave the deliberate vector-fallback `0.6`/`limit=1` in
       `find_stores_with_product` (318-320) as an explicit local constant unless the
       flow decides to surface it (it is not in scope per the task).
-- [ ] 4.4 Re-run Phase 1 tests; 1.3 and 1.4 turn GREEN.
+- [x] 4.4 Re-run Phase 1 tests; 1.3 and 1.4 turn GREEN.
 
 ### Phase 5: Prune web/log knobs
 
-- [ ] 5.1 Confirm via grep there is no `ViteSettings.set_static_files` reader and no
+- [x] 5.1 Confirm via grep there is no `ViteSettings.set_static_files` reader and no
       `VITE_HOT_RELOAD` generation; remove any stale reference if found.
-- [ ] 5.2 Confirm `LogSettings` retains only fields read by `config.py` +
+- [x] 5.2 Confirm `LogSettings` retains only fields read by `config.py` +
       `_middleware.py`; `HTTP_EVENT` already removed in mzm.3. No further LogSettings
       deletion.
-- [ ] 5.3 If mzm.3's lower-case rename was accepted, rename `ViteSettings` ->
+- [-] 5.3 If mzm.3's lower-case rename was accepted, rename `ViteSettings` ->
       `WebAssetSettings`/`web` and update `config.py:242`
       (`settings.vite.get_config()`) and `test_vite_config_*`; otherwise leave as-is.
 
 ### Phase 6: Verify
 
-- [ ] 6.1 `uv run pytest src/tests/unit/app/lib` and the chat adk unit tests pass.
-- [ ] 6.2 `coffee model-info` reports chat model, embedding model, project, and
+- [x] 6.1 `uv run pytest src/tests/unit/app/lib` and the chat adk unit tests pass.
+- [x] 6.2 `coffee model-info` reports chat model, embedding model, project, and
       dimensions from `AISettings`.
-- [ ] 6.3 `make lint` passes; `git diff --check` clean.
+- [x] 6.3 `make lint` passes; `git diff --check` clean.
 
 ## Acceptance
 
-- [ ] `VertexAISettings` is replaced by `AISettings` with `project_id`, `location`,
+- [x] `VertexAISettings` is replaced by `AISettings` with `project_id`, `location`,
       `api_key`, `chat_model`, `intent_model_override`, derived `intent_model`,
       `embedding_model`, `embedding_dimensions`; no dead Vertex cache/stream fields
       remain; no re-export shim.
-- [ ] `intent_model` returns the override when set, else `chat_model`.
-- [ ] Project/api-key mutual exclusivity and placeholder-project 503 behavior
+- [x] `intent_model` returns the override when set, else `chat_model`.
+- [x] Project/api-key mutual exclusivity and placeholder-project 503 behavior
       preserved without mutating env during dataclass construction.
-- [ ] `ChatSettings` exists and is wired: `session_app_name`,
+- [x] `ChatSettings` exists and is wired: `session_app_name`,
       `response_cache_version`, `response_cache_ttl_minutes`,
       `product_search_limit`, `product_search_threshold`, `display_history_limit`.
-- [ ] `adk.py` no longer hardcodes `_APP_NAME`, `_CHAT_CACHE_VERSION`,
+- [x] `adk.py` no longer hardcodes `_APP_NAME`, `_CHAT_CACHE_VERSION`,
       `ttl_minutes=60`, `history[-40:]`, or duplicate `limit=5`/`threshold=0.7`
       defaults — all sourced from `ChatSettings`.
-- [ ] `coffee model-info` still reports chat/embedding/project/dimensions.
-- [ ] Search limit/threshold, cache TTL, and display-history length are not
+- [x] `coffee model-info` still reports chat/embedding/project/dimensions.
+- [x] Search limit/threshold, cache TTL, and display-history length are not
       duplicated between settings and service constants.
-- [ ] No unread Vite/log knob remains; live `_middleware.py` log fields retained.
+- [x] No unread Vite/log knob remains; live `_middleware.py` log fields retained.
 
 ## Verification
 
