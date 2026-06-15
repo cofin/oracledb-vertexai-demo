@@ -221,7 +221,7 @@ class ApexInstaller:
     def installed_version(self) -> str | None:
         """Return the installed APEX version in the PDB, or None when absent."""
         output = self._exec_sysdba(
-            "SET HEADING OFF FEEDBACK OFF PAGESIZE 0 VERIFY OFF;\nSELECT version FROM apex_release;"
+            "SET HEADING OFF FEEDBACK OFF PAGESIZE 0 VERIFY OFF;\nSELECT version_no FROM apex_release;"
         )
         text = output.strip()
         if "ORA-00942" in text:
