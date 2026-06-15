@@ -3,7 +3,54 @@
 
 from __future__ import annotations
 
-from app.domain.chat.services._adk_grounding import _format_availability_answer
+from app.domain.chat.services._adk_grounding import _build_map_actions, _format_availability_answer
+
+
+def test_build_map_actions_emits_search_and_directions_per_row() -> None:
+    row = {
+        "name": "Cymbal Coffee Dallas Arts District",
+        "address": "1717 N Harwood St",
+        "city": "Dallas",
+        "state": "TX",
+        "zip": "75201",
+        "google_place_id": "place-dallas-arts",
+    }
+
+    actions = _build_map_actions([row])
+
+    assert len(actions) == 2
+    search = next(a for a in actions if a["type"] == "search")
+    directions = next(a for a in actions if a["type"] == "directions")
+
+    assert search["label"] == "Open in Google Maps"
+    assert directions["label"] == "Get directions"
+
+    for action in (search, directions):
+        assert action["url"].startswith("https://www.google.com/maps/")
+        assert "api=1" in action["url"]
+        assert "origin=" not in action["url"]
+        assert "key=" not in action["url"]
+
+    assert search["url"].startswith("https://www.google.com/maps/search/")
+    assert directions["url"].startswith("https://www.google.com/maps/dir/")
+    assert "query_place_id=place-dallas-arts" in search["url"]
+    assert "destination_place_id=place-dallas-arts" in directions["url"]
+
+
+def test_build_map_actions_uses_store_prefixed_field_fallbacks() -> None:
+    row = {
+        "store_name": "Cymbal Coffee Uptown",
+        "store_address": "2000 Cedar Springs Rd",
+        "store_city": "Dallas",
+        "store_state": "TX",
+        "store_zip": "75201",
+    }
+
+    actions = _build_map_actions([row])
+
+    assert len(actions) == 2
+    assert all("Cymbal+Coffee+Uptown" in a["url"] for a in actions)
+    assert all("key=" not in a["url"] for a in actions)
 
 
 def test_format_availability_no_results() -> None:

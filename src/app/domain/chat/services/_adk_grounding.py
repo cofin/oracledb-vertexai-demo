@@ -6,10 +6,20 @@
 from __future__ import annotations
 
 import re
-from typing import Any
-from urllib.parse import urlencode, urlunsplit
+from typing import Any, TypedDict
 
 from app.domain.chat.services._adk_support import _coerce_sql_phases
+from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+
+
+class _StoreFields(TypedDict):
+    name: str
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    place_id: str | None
+
 
 _KNOWN_CITY_FILTERS: tuple[tuple[str, str | None], ...] = (
     ("Austin", "TX"),
@@ -166,35 +176,38 @@ def _extract_product_query(query: str) -> str | None:
     return cleaned.title() if cleaned else None
 
 
-def _store_query_parts(row: dict[str, Any]) -> tuple[str, str]:
-    name = str(row.get("name") or row.get("store_name") or "Cymbal Coffee").strip()
-    address = str(row.get("address") or row.get("store_address") or "").strip()
-    city = str(row.get("city") or row.get("store_city") or "").strip()
-    state = str(row.get("state") or row.get("store_state") or "").strip()
-    zip_code = str(row.get("zip") or row.get("store_zip") or "").strip()
-    locality = " ".join(part for part in (state, zip_code) if part)
-    city_region = ", ".join(part for part in (city, locality) if part)
-    query = ", ".join(part for part in (name, address, city_region) if part)
-    return name, query or name
+def _store_name(row: dict[str, Any]) -> str:
+    return str(row.get("name") or row.get("store_name") or "Cymbal Coffee").strip() or "Cymbal Coffee"
 
 
-def _maps_search_url(query: str, place_id: str | None = None) -> str:
-    params = {"api": "1", "query": query}
-    if place_id:
-        params["query_place_id"] = place_id
-    return urlunsplit(("https", "www.google.com", "/maps/search/", urlencode(params), ""))
+def _store_fields(row: dict[str, Any]) -> _StoreFields:
+    return {
+        "name": _store_name(row),
+        "address": str(row.get("address") or row.get("store_address") or "").strip(),
+        "city": str(row.get("city") or row.get("store_city") or "").strip(),
+        "state": str(row.get("state") or row.get("store_state") or "").strip(),
+        "zip_code": str(row.get("zip") or row.get("store_zip") or "").strip(),
+        "place_id": str(row.get("google_place_id") or "") or None,
+    }
 
 
 def _build_map_actions(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     for row in rows:
-        label, query = _store_query_parts(row)
-        actions.append(
-            {
-                "type": "search",
-                "label": label,
-                "url": _maps_search_url(query, str(row.get("google_place_id") or "") or None),
-            }
+        fields = _store_fields(row)
+        actions.extend(
+            (
+                {
+                    "type": "search",
+                    "label": "Open in Google Maps",
+                    "url": build_store_search_url(**fields),
+                },
+                {
+                    "type": "directions",
+                    "label": "Get directions",
+                    "url": build_store_directions_url(**fields),
+                },
+            )
         )
     return actions
 
@@ -214,7 +227,7 @@ def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
         return "I couldn't find a matching Cymbal Coffee store for that location. Try a city, ZIP code, or nearby landmark."
 
     first = stores[0]
-    name, _query = _store_query_parts(first)
+    name = _store_name(first)
     address = str(first.get("address") or "").strip()
     city = str(first.get("city") or "").strip()
     state = str(first.get("state") or "").strip()

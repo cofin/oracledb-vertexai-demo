@@ -711,14 +711,19 @@ const safeMapsUrl = (url) => {
   return null
 }
 
-const mapActionForRow = (row, actions) => {
-  const name = String(rowValue(row, ["store_name", "storeName", "name"], ""))
-  const action = actions.find((candidate) => candidate?.label === name) ?? actions[0]
+const validateMapAction = (action) => {
   const url = action ? safeMapsUrl(action.url) : null
   return url ? { ...action, url } : null
 }
 
-const renderStoreCard = (row, action) => {
+const mapActionsForRow = (rowIndex, actions) => {
+  const search = validateMapAction(actions[rowIndex * 2])
+  const directions = validateMapAction(actions[rowIndex * 2 + 1])
+  return { search, directions }
+}
+
+const renderStoreCard = (row, mapActions) => {
+  const { search, directions } = mapActions || {}
   const name = rowValue(row, ["store_name", "storeName", "name"], "Cymbal Coffee")
   const address = rowValue(row, ["store_address", "storeAddress", "address"])
   const locality = formatLocality(row)
@@ -758,8 +763,13 @@ const renderStoreCard = (row, action) => {
           : ""
       }
       ${
-        action
-          ? `<a href="${escapeHtml(action.url)}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-accent-strong transition-colors hover:border-accent/40 hover:bg-accent-soft">Open in Google Maps</a>`
+        search
+          ? `<a href="${escapeHtml(search.url)}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-accent-strong transition-colors hover:border-accent/40 hover:bg-accent-soft">Open in Google Maps</a>`
+          : ""
+      }
+      ${
+        directions
+          ? `<a href="${escapeHtml(directions.url)}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-accent-strong transition-colors hover:border-accent/40 hover:bg-accent-soft">Get directions</a>`
           : ""
       }
     </div>
@@ -783,7 +793,7 @@ const renderStructuredResults = (payload) => {
   target.hidden = false
   target.innerHTML = rows
     .slice(0, 3)
-    .map((row) => renderStoreCard(row, mapActionForRow(row, actions)))
+    .map((row, index) => renderStoreCard(row, mapActionsForRow(index, actions)))
     .join("")
 }
 
