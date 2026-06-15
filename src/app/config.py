@@ -237,7 +237,7 @@ def _initialize() -> None:
         cookie_name=settings.app.CSRF_COOKIE_NAME,
         header_name=settings.app.CSRF_HEADER_NAME,
     )
-    g["cors"] = _CORSConfig(allow_origins=cast("list[str]", settings.app.ALLOWED_CORS_ORIGINS))
+    g["cors"] = _CORSConfig(allow_origins=settings.app.ALLOWED_CORS_ORIGINS)
     g["problem_details"] = _ProblemDetailsConfig(enable_for_all_http_exceptions=True)
     g["vite"] = settings.vite.get_config()
     g["log"] = structlog_config

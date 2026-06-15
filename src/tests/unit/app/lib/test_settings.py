@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from pytest import MonkeyPatch
 
@@ -111,3 +113,98 @@ def test_service_name_defaults_to_freepdb1(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_SERVICE_NAME", raising=False)
     settings = DatabaseSettings()
     assert settings.SERVICE_NAME == "freepdb1"
+
+
+def test_shell_env_wins_over_dotenv(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import Settings
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("LITESTAR_PORT=9999\n")
+    monkeypatch.setenv("LITESTAR_PORT", "8123")
+
+    Settings.from_env.cache_clear()
+    try:
+        Settings.from_env(str(env_file))
+    finally:
+        Settings.from_env.cache_clear()
+
+    assert os.environ["LITESTAR_PORT"] == "8123"
+
+
+@pytest.mark.parametrize("raw", ["True", "true", "1", "yes", "Y", "T"])
+def test_env_bool_parsing_truthy(monkeypatch: MonkeyPatch, raw: str) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", raw)
+    assert DatabaseSettings().ADK_IN_MEMORY is True
+
+
+@pytest.mark.parametrize("raw", ["False", "false", "0", "no", "n", ""])
+def test_env_bool_parsing_falsy(monkeypatch: MonkeyPatch, raw: str) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", raw)
+    assert DatabaseSettings().ADK_IN_MEMORY is False
+
+
+def test_allowed_cors_origins_json_list(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AppSettings
+
+    monkeypatch.setenv("ALLOWED_CORS_ORIGINS", '["*"]')
+    assert AppSettings().ALLOWED_CORS_ORIGINS == ["*"]
+
+
+def test_allowed_cors_origins_comma_list(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AppSettings
+
+    monkeypatch.setenv("ALLOWED_CORS_ORIGINS", "a.com,b.com")
+    assert AppSettings().ALLOWED_CORS_ORIGINS == ["a.com", "b.com"]
+
+
+def test_secret_key_honors_env(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AppSettings
+
+    monkeypatch.setenv("SECRET_KEY", "fixed-secret-value")
+    assert AppSettings().SECRET_KEY == "fixed-secret-value"  # noqa: S105
+
+
+def test_secret_key_generated_when_absent(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AppSettings
+
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    settings = AppSettings()
+
+    # A non-empty key is generated and stable for the lifetime of one instance.
+    assert settings.SECRET_KEY
+    assert settings.SECRET_KEY == settings.SECRET_KEY
+
+
+def test_create_config_local_mode(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import DatabaseSettings
+
+    for key in ("DATABASE_URL", "WALLET_PASSWORD", "WALLET_LOCATION", "TNS_ADMIN"):
+        monkeypatch.delenv(key, raising=False)
+
+    config = DatabaseSettings().create_config()
+    conn = config.connection_config
+
+    assert set(conn) >= {"user", "password", "dsn", "min", "max"}
+    assert "wallet_location" not in conn
+    assert "wallet_password" not in conn
+    assert "config_dir" not in conn
+
+
+def test_get_settings_cache_and_reset(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import Settings, get_settings
+
+    Settings.from_env.cache_clear()
+    try:
+        first = get_settings()
+        second = get_settings()
+        assert first is second
+
+        Settings.from_env.cache_clear()
+        third = get_settings()
+        assert third is not first
+    finally:
+        Settings.from_env.cache_clear()
