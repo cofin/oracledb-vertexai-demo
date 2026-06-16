@@ -58,7 +58,7 @@ def test_build_run_command_mounts_images_for_i_path() -> None:
 
 
 def test_build_run_command_includes_db_connection_env() -> None:
-    """ORDS receives the DB host/service connection via env."""
+    """ORDS receives the DB host/service connection and SYS password via env."""
     sidecar, _ = _sidecar()
 
     cmd = sidecar._build_run_command()
@@ -66,6 +66,21 @@ def test_build_run_command_includes_db_connection_env() -> None:
     joined = " ".join(cmd)
     assert "DBHOST=host.docker.internal" in joined
     assert "DBSERVICENAME=freepdb1" in joined
+    # ORACLE_PWD (SYS) is required, or the ORDS image exits before installing.
+    assert "ORACLE_PWD=super-secret" in joined
+
+
+def test_from_env_uses_oracle_password_for_install(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ORACLE_PWD comes from the SYS password (ORACLE_PASSWORD), not DATABASE_PASSWORD."""
+    monkeypatch.setenv("ORACLE_PASSWORD", "sys-secret")
+    monkeypatch.setenv("DATABASE_PASSWORD", "app-secret")
+
+    config = OrdsConfig.from_env()
+
+    assert config.oracle_pwd == "sys-secret"  # noqa: S105
+    joined = " ".join(OrdsSidecar(MagicMock(spec=ContainerRuntime), config)._build_run_command())
+    assert "ORACLE_PWD=sys-secret" in joined
+    assert "app-secret" not in joined
 
 
 def test_build_run_command_omits_mount_without_images_path() -> None:

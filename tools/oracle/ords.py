@@ -46,8 +46,10 @@ class OrdsConfig:
     apex_images_path: str = ""
     container_images_path: str = "/opt/oracle/apex/images"
     images_url_path: str = "/i/"
-    db_user: str = "ORDS_PUBLIC_USER"
-    db_password: str = "SuperSecret1"  # noqa: S105
+    # SYS password the ORDS image uses for its first-run `ords install`. gvenzl sets
+    # SYS/SYSTEM from ORACLE_PASSWORD, so this must mirror that — not DATABASE_PASSWORD
+    # (the app user). Without it the container exits: "ORACLE_PWD ... must be declared".
+    oracle_pwd: str = "super-secret"  # noqa: S105
 
     @classmethod
     def from_env(cls) -> OrdsConfig:
@@ -59,7 +61,7 @@ class OrdsConfig:
         """
         return cls(
             image=os.getenv("ORDS_IMAGE", DEFAULT_ORDS_IMAGE),
-            db_password=os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
+            oracle_pwd=os.getenv("ORACLE_PASSWORD", os.getenv("ORACLE_SYSTEM_PASSWORD", "super-secret")),
         )
 
 
@@ -96,6 +98,9 @@ class OrdsSidecar:
             f"DBPORT={c.db_port}",
             "-e",
             f"DBSERVICENAME={c.service_name}",
+            # SYS password for the image's first-run `ords install` (required, or it exits).
+            "-e",
+            f"ORACLE_PWD={c.oracle_pwd}",
         ]
         if c.apex_images_path:
             # :z relabels for SELinux (Docker + Podman).
