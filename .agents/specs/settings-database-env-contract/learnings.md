@@ -56,6 +56,25 @@ env-contract change, verify the DB path directly: `create_config().provide_sessi
 running `SELECT 1` (exercises the live wallet path), plus the chat workflow
 integration test (real gvenzl container, Oracle-backed RAG). Both passed.
 
+## Follow-up: the `.env` generator was the un-aligned third reader
+
+Phase 4.1 originally concluded "no change required" for `tools/lib/utils.py`
+`create_env_interactive()` because the generated managed `.env` matched the author's
+live wallet `.env`. That was wrong: the managed block kept emitting the wallet-style
+contract (`DATABASE_URL=…@myatp_low` + `WALLET_PASSWORD` + `TNS_ADMIN=.envs/tns` +
+`DATABASE_SERVICE_NAME=myatp_low`) — directly contradicting the unified managed/local
+default above. Because `DatabaseSettings.is_autonomous` is True whenever both
+`DATABASE_URL` and `WALLET_PASSWORD` are present, that `.env` routes the app down the
+wallet/SSL branch (`settings.py:166`), so a fresh `make start-infra` setup could not
+connect to the gvenzl `localhost:1521/freepdb1` container.
+
+Fix: managed mode now emits `DATABASE_USER/PASSWORD/HOST/PORT/SERVICE_NAME` for
+`localhost:1521/freepdb1` and emits NO `DATABASE_URL`/`WALLET_PASSWORD`/`TNS_ADMIN`,
+so `is_autonomous` stays False. `test_env_utils.py` now asserts the local contract
+(and the absence of the wallet keys). Lesson: "matches my live `.env`" is not a
+correctness check when the live `.env` is a different deployment mode than the one
+being generated — verify the generated `.env` against a clean local container.
+
 ## Process note
 
 An external hook auto-committed the work bundled with three unrelated dirty files

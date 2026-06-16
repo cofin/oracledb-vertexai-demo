@@ -158,10 +158,17 @@ not app runtime connection.
 
 ### Phase 4: Align .env generation
 
-- [x] 4.1 `tools/lib/utils.py` `create_env_interactive()` managed block already
-      emits the canonical wallet contract; generated managed `.env` is byte-identical
-      to the live working `.env` DB keys. External standard block already emits
-      `DATABASE_USER/PASSWORD/HOST/PORT/SERVICE_NAME`. No change required. [31485ce]
+- [x] 4.1 `tools/lib/utils.py` `create_env_interactive()` managed block now emits the
+      local-container contract (`DATABASE_USER/PASSWORD/HOST/PORT/SERVICE_NAME` for
+      `localhost:1521/freepdb1`), matching `DatabaseSettings`/`ConnectionConfig` for
+      the managed/local path. External standard block already emits
+      `DATABASE_USER/PASSWORD/HOST/PORT/SERVICE_NAME`; the external wallet branch owns
+      ADB scaffolding.
+      CORRECTION: the original 4.1 left this block emitting the wallet contract
+      (`DATABASE_URL=…@myatp_low` + `WALLET_PASSWORD` + `TNS_ADMIN`), which flips
+      `DatabaseSettings.is_autonomous` to True and routes the app away from the gvenzl
+      container — so a fresh `make start-infra` setup could not connect. Realigned to
+      `freepdb1`; `test_env_utils.py` updated to assert the local contract.
 - [x] 4.2 Verified generated values do not log secrets to console (`password=True`
       on sensitive prompts; file-only writes). [31485ce]
 - [x] 4.3 AI project key reconciliation left to mzm.8 per spec; not a DB key. [31485ce]
