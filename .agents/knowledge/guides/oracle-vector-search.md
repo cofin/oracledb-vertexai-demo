@@ -64,8 +64,7 @@ ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 
 That value is intentionally small because Oracle Free Edition has a constrained
 SGA. The ADB container path does not mount legacy `on_init`/`on_startup`
-directories. For larger non-Free environments, `tools/oracle/configure_vector_memory.sql`
-uses a 4G target:
+directories. For larger non-Free environments, use a 4G target:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 4G SCOPE = SPFILE;

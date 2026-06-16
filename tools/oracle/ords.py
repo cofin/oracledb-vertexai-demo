@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console
 
+from tools.oracle.database import ContainerStartError
+
 if TYPE_CHECKING:
     from tools.oracle.apex_media import ApexMedia
     from tools.oracle.container import ContainerRuntime
@@ -106,7 +108,15 @@ class OrdsSidecar:
         return self.runtime.container_running(self.config.container_name)
 
     def start(self, *, recreate: bool = False) -> None:
-        """Start the ORDS sidecar, idempotently."""
+        """Start the ORDS sidecar and verify it stays up.
+
+        A stopped sidecar is treated as a prior failure: it is restarted once and,
+        if it does not stay up, recreated. Raises if the sidecar never comes up so
+        callers report a real failure instead of a misleading success.
+
+        Raises:
+            ContainerStartError: If the sidecar exits or never becomes healthy.
+        """
         name = self.config.container_name
         if self.runtime.container_running(name):
             if not recreate:
@@ -114,14 +124,33 @@ class OrdsSidecar:
                 return
             self.remove(force=True)
         elif self.runtime.container_exists(name):
-            if recreate:
-                self.remove(force=True)
-            else:
-                self.console.print("[cyan]Starting existing ORDS sidecar...[/cyan]")
-                self.runtime.run_command(["start", name])
+            if not recreate and self._restart_existing():
                 return
+            self.remove(force=True)
+        self._create_and_verify()
+
+    def _restart_existing(self) -> bool:
+        """Restart a stopped sidecar; return True only if it stays up."""
+        self.console.print("[cyan]Starting existing ORDS sidecar...[/cyan]")
+        self.runtime.run_command(["start", self.config.container_name])
+        if self.wait_for_healthy():
+            self.console.print("[green]✓[/green] ORDS sidecar is up")
+            return True
+        self.console.print("[yellow]ORDS sidecar did not stay up — recreating...[/yellow]")
+        return False
+
+    def _create_and_verify(self) -> None:
+        """Create the sidecar and fail loudly if it does not stay up."""
         self.console.print("[cyan]Creating ORDS sidecar...[/cyan]")
         self.runtime.run_command(self._build_run_command())
+        if self.wait_for_healthy():
+            self.console.print("[green]✓[/green] ORDS sidecar is up")
+            return
+        logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
+        raise ContainerStartError(
+            f"ORDS sidecar '{self.config.container_name}' started but did not stay up. "
+            f"Check logs with: {logs_hint}"
+        )
 
     def stop(self, *, timeout: int = 30) -> None:
         """Stop the ORDS sidecar if it exists."""
@@ -160,12 +189,16 @@ class OrdsSidecar:
         """Poll until the ORDS container is up, or the timeout elapses.
 
         Container readiness is the deterministic signal here; a real ``/ords/``
-        HTTP probe is validated in the integration smoke (Chapter 5).
+        HTTP probe is validated in the integration smoke (Chapter 5). A container
+        that exists but is not running has exited — return immediately rather than
+        waiting out the full timeout on a crash loop.
         """
         start_time = time.time()
         while time.time() - start_time < timeout:
             if self.is_running():
                 return True
+            if self.runtime.container_exists(self.config.container_name):
+                return False
             time.sleep(interval)
         return False
 

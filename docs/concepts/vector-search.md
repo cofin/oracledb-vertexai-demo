@@ -69,7 +69,7 @@ ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 `512M` is intentional for Oracle Free Edition's constrained SGA. The committed
 demo fixture has 130 product vectors, so this is generous headroom for the
 catalog plus query embeddings saved in `embedding_cache`. For larger Oracle
-editions, `tools/oracle/configure_vector_memory.sql` uses a 4G target.
+editions, raise `vector_memory_size` to a 4G target on the SPFILE.
 
 Verify the pool with:
 

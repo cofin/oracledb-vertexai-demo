@@ -107,7 +107,7 @@ SHUTDOWN IMMEDIATE;
 STARTUP;
 ```
 
-For Oracle Standard / Enterprise / Autonomous (no Free SGA cap), scale up — e.g. 6 GB SGA / 4 GB vector pool. The standalone script `tools/oracle/configure_vector_memory.sql` ships with the Standard/Enterprise values; use the Free-friendly values above if you reuse it on Free.
+For Oracle Standard / Enterprise / Autonomous (no Free SGA cap), scale up — e.g. set `sga_max_size`/`sga_target` to `6G` and `vector_memory_size` to `4G` on the SPFILE as SYSDBA, then bounce the instance. Keep the Free-friendly `512M` value above on Free Edition (larger SGA values raise ORA-56752).
 
 For the local dev container the pool is configured automatically by the
 `gvenzl/oracle-free` entrypoint hooks: `tools/oracle/on_init/00_configure_vector_memory.sql`
@@ -117,8 +117,9 @@ and bounces the instance before any later init script or migration runs), and
 start. These run because the container lifecycle mounts `tools/oracle/on_init` and
 `tools/oracle/on_startup` into the image's `/container-entrypoint-initdb.d` and
 `/container-entrypoint-startdb.d` hook directories. For an Autonomous Database or
-other shared instance reached over a wallet, run
-`tools/oracle/configure_vector_memory.sql` as SYSDBA instead.
+other shared instance reached over a wallet (no container hooks), set
+`vector_memory_size` on the SPFILE as SYSDBA and restart the instance, using the
+values above.
 
 Verify the pool is allocated:
 

@@ -7,7 +7,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from tools.oracle.container import ContainerRuntime
+from tools.oracle.database import ContainerStartError
 from tools.oracle.ords import OrdsConfig, OrdsSidecar
 
 
@@ -96,9 +98,9 @@ def test_build_ords_sidecar_wires_ch1_images() -> None:
 
 
 def test_start_runs_container_when_absent() -> None:
-    """start() issues docker run when no ORDS container exists."""
+    """start() issues docker run when no ORDS container exists, then verifies it."""
     sidecar, runtime = _sidecar()
-    runtime.container_running.return_value = False
+    runtime.container_running.side_effect = [False, True]  # absent at first; healthy after run
     runtime.container_exists.return_value = False
 
     sidecar.start()
@@ -116,15 +118,42 @@ def test_start_is_idempotent_when_running() -> None:
     runtime.run_command.assert_not_called()
 
 
-def test_start_starts_existing_stopped_container() -> None:
-    """start() restarts an existing (stopped) ORDS container instead of recreating."""
+def test_start_restarts_existing_stopped_container_that_recovers() -> None:
+    """A stopped sidecar that comes back up is restarted (not recreated)."""
     sidecar, runtime = _sidecar()
-    runtime.container_running.return_value = False
+    runtime.container_running.side_effect = [False, True]  # stopped, then healthy after restart
     runtime.container_exists.return_value = True
 
     sidecar.start()
 
     assert runtime.run_command.call_args.args[0] == ["start", "oracle-ords"]
+
+
+def test_start_recreates_stopped_container_that_stays_down() -> None:
+    """A stopped sidecar that will not come back up is recreated from scratch."""
+    sidecar, runtime = _sidecar()
+    # top check: stopped; restart wait: still down; create wait: healthy
+    runtime.container_running.side_effect = [False, False, True]
+    runtime.container_exists.return_value = True
+
+    sidecar.start()
+
+    issued = [call.args[0] for call in runtime.run_command.call_args_list]
+    assert ["start", "oracle-ords"] in issued
+    assert ["rm", "-f", "oracle-ords"] in issued
+    assert issued[-1][0] == "run"  # recreated as the final action
+
+
+def test_start_raises_when_sidecar_never_comes_up() -> None:
+    """start() fails loudly (no silent success) when a fresh sidecar exits."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.side_effect = [False, False]  # absent, then never healthy
+    runtime.container_exists.side_effect = [False, True]  # absent at top; exited during wait
+
+    with pytest.raises(ContainerStartError):
+        sidecar.start()
+
+    assert runtime.run_command.call_args.args[0][0] == "run"
 
 
 def test_stop_stops_existing() -> None:
