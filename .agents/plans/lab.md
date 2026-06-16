@@ -432,6 +432,12 @@ class CoffeeChatController(Controller):
         return Response(content={"status": "cleared"})
 ```
 
+Once you've completed your changes, start the app up and test it out.
+
+```shell
+uv run coffee run
+```
+
 ---
 
 ### Challenge 2: Embed Interactive Google Maps Iframes for Store Proximity
