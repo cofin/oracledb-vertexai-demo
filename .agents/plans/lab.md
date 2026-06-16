@@ -368,9 +368,10 @@ class CoffeeChatController(Controller):
 
         async def stream_events() -> AsyncIterator[dict[str, str]]:
             import time
-            import asyncio
             from datetime import datetime, timezone
+
             from google.cloud import bigquery
+            from sqlspec.utils.sync_tools import async_
 
             start_time = time.time()
             final_payload = {}
@@ -391,24 +392,23 @@ class CoffeeChatController(Controller):
                     yield {"event": event_type, "data": to_json(event, as_bytes=False)}
 
                 if final_payload:
-                    duration_ms = int((time.time() - start_time) * 1000)
-                    final_text = final_payload.get("answer", "")
+                    row = {
+                        "session_id": session_id,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "user_query": clean_message,
+                        "response_text": final_payload.get("answer", ""),
+                        "latency_ms": int((time.time() - start_time) * 1000),
+                    }
 
                     def log_to_bigquery():
-                        try:
-                            client = bigquery.Client()
-                            row = [{
-                                "session_id": session_id,
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                                "user_query": clean_message,
-                                "response_text": final_text,
-                                "latency_ms": duration_ms
-                            }]
-                            client.insert_rows_json("coffee_analytics.chat_logs", row)
-                        except Exception as e:
-                            print(f"BigQuery logging failed: {e}")
+                        return bigquery.Client().insert_rows_json("coffee_analytics.chat_logs", [row])
 
-                    asyncio.get_running_loop().run_in_executor(None, log_to_bigquery)
+                    try:
+                        errors = await async_(log_to_bigquery)()
+                        if errors:
+                            await logger.awarning("BigQuery streaming insert returned errors", errors=errors)
+                    except Exception as exc:  # noqa: BLE001
+                        await logger.awarning("BigQuery logging failed", error=str(exc))
 
             except Exception as exc:  # noqa: BLE001
                 await logger.aexception(
@@ -431,6 +431,8 @@ class CoffeeChatController(Controller):
         clear_adk_session_identity(request)
         return Response(content={"status": "cleared"})
 ```
+
+> **Note:** `insert_rows_json` is BigQuery's low-latency streaming-insert API. The call is synchronous, so we wrap it with SQLSpec's `async_` (`sqlspec.utils.sync_tools`) to run it off the event loop — the chat stream is never blocked by logging, and any insert errors are surfaced through the app logger instead of being silently dropped.
 
 Once you've completed your changes, start the app up and test it out.
 
@@ -476,6 +478,7 @@ their data (e.g. ``app.domain.chat.controllers``,
 
 import structlog
 from litestar import Controller, get
+from litestar.params import FromQuery
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app.domain.chat.services import ADKRunner
@@ -499,7 +502,7 @@ class PageController(Controller):
         )
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self, q: str | None = None) -> HTMXTemplate:
+    async def explore_page(self, q: FromQuery[str | None] = None) -> HTMXTemplate:
         return HTMXTemplate(
             template_name="pages/explore.html.j2",
             context={"query": q or "", "settings": get_settings()},
