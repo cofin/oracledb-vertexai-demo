@@ -26,6 +26,12 @@ not behind archive links.
 | Beads | [beads.json](./beads.json) | Beads task database |
 | Active Spec | [specs/vhs-demo-recordings_20260429/prd.md](./specs/vhs-demo-recordings_20260429/prd.md) | VHS demo recording plan |
 | Active Spec | [specs/settings-config-consolidation_20260501/prd.md](./specs/settings-config-consolidation_20260501/prd.md) | Settings and configuration consolidation plan |
+| Active Spec | [specs/inventory-data/spec.md](./specs/inventory-data/spec.md) | Inventory data foundation |
+| Active Spec | [specs/inventory-grounding/spec.md](./specs/inventory-grounding/spec.md) | Deterministic availability routing (Active) |
+| Active Spec | [specs/inventory-rag/spec.md](./specs/inventory-rag/spec.md) | Inventory-aware RAG |
+| Active Spec | [specs/inventory-ui/spec.md](./specs/inventory-ui/spec.md) | Live inventory dashboard |
+| Active Spec | [specs/oracle-apex-integration/spec.md](./specs/oracle-apex-integration/spec.md) | Oracle APEX and Autonomous container migration |
+
 | Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
 | Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |
 | Plan | [plans/installation-simplification.md](./plans/installation-simplification.md) | Installation simplification notes |

@@ -5,6 +5,21 @@ SPDX-License-Identifier: Apache-2.0
 
 {% extends "base.html.j2" %}
 
+{% macro chat_welcome() %}
+<div class="message-row message-row-ai">
+  <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
+  <article class="message message-ai px-4 py-3 shadow-sm">
+    <header class="flex items-center justify-between text-xs">
+      <span class="font-medium text-muted">Barista</span>
+      <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
+    </header>
+    <p class="mt-2 whitespace-pre-wrap text-base text-strong">
+      Tell me what sounds good and I'll check the Cymbal Coffee menu.
+    </p>
+  </article>
+</div>
+{% endmacro %}
+
 {% block title %}Cymbal Coffee — Barista Chat{% endblock %}
 {% block page_kicker %}Cymbal Coffee{% endblock %}
 {% block page_heading %}Connoisseur{% endblock %}
@@ -13,11 +28,9 @@ SPDX-License-Identifier: Apache-2.0
 {% block content %}
 <section class="chat-shell grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
   <aside data-ui-panel="chat-sidebar" class="ui-panel flex flex-col justify-between p-5">
-    <div class="space-y-5">
-      <div>
-        <p class="text-xs font-semibold uppercase text-accent-strong">Connoisseur</p>
-        <h1 class="mt-1 text-3xl font-semibold text-strong">Barista chat</h1>
-      </div>
+    <div>
+      <p class="text-xs font-semibold uppercase text-accent-strong">Connoisseur</p>
+      <h1 class="mt-1 text-3xl font-semibold text-strong">Barista chat</h1>
     </div>
 
     <div class="mt-6 space-y-3">
@@ -45,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
   </aside>
 
   <div data-ui-panel="chat-thread" class="ui-panel flex min-h-[34rem] flex-col lg:min-h-[42rem]">
-    <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="polite">
+    <div id="messages" class="flex-1 space-y-3 overflow-y-auto p-4 md:p-5" aria-live="off">
       {% if history_messages %}
         {% for history_message in history_messages %}
           {% with message=history_message, intent_detected=None %}
@@ -53,22 +66,13 @@ SPDX-License-Identifier: Apache-2.0
           {% endwith %}
         {% endfor %}
       {% else %}
-        <div class="message-row message-row-ai">
-          <div class="chat-avatar chat-avatar-ai" data-chat-avatar="ai" aria-hidden="true">B</div>
-          <article class="message message-ai px-4 py-3 shadow-sm">
-            <header class="flex items-center justify-between text-xs">
-              <span class="font-medium text-muted">Barista</span>
-              <span class="telemetry-chip border-sage/25 bg-sage/10 text-sage">READY</span>
-            </header>
-            <p class="mt-2 whitespace-pre-wrap text-base text-strong">
-              Tell me what sounds good and I'll check the Cymbal Coffee menu.
-            </p>
-          </article>
-        </div>
+        {{ chat_welcome() }}
       {% endif %}
     </div>
+    <template data-chat-welcome>{{ chat_welcome() }}</template>
 
     <div id="chat-error" class="px-4 md:px-5"></div>
+    <div id="chat-live-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
     <form data-chat-form="true" action="/api/chat/stream" method="post"
       class="border-t border-border bg-surface-strong/45 p-3">

@@ -1,0 +1,10 @@
+{
+  "flow_id": "inventory",
+  "type": "prd",
+  "status": "in_progress",
+  "beads_epic_id": "oracledb-vertexai-inv",
+  "created_at": "2026-05-04T22:46:30Z",
+  "updated_at": "2026-06-13T20:40:04Z",
+  "synced_at": "2026-06-13T20:40:04Z",
+  "description": "Inventory Enablement"
+}

@@ -6,10 +6,20 @@
 from __future__ import annotations
 
 import re
-from typing import Any
-from urllib.parse import urlencode, urlunsplit
+from typing import Any, TypedDict
 
-from app.domain.chat.services._adk_telemetry import _coerce_sql_phases
+from app.domain.chat.services._adk_support import _coerce_sql_phases
+from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+
+
+class _StoreFields(TypedDict):
+    name: str
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    place_id: str | None
+
 
 _KNOWN_CITY_FILTERS: tuple[tuple[str, str | None], ...] = (
     ("Austin", "TX"),
@@ -32,6 +42,14 @@ _PRODUCT_QUERY_ALIASES: tuple[tuple[str, str], ...] = (
     ("cold brew", "Cold Brew Nitro"),
     ("nitro", "Cold Brew Nitro"),
     ("espresso", "Espresso Romano"),
+)
+_PRODUCT_QUERY_STOP_WORDS = frozenset(
+    {
+        "where", "can", "i", "pick", "up", "near", "me", "is", "are",
+        "available", "availability", "which", "cafe", "store", "has",
+        "have", "in", "at", "do", "you", "the", "a", "an", "that",
+        "this", "it", "them", "those", "stock", "nearby", "here", "there",
+    }
 )
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0
@@ -78,13 +96,12 @@ def _coerce_dict_rows(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
-def _default_route_fields(location_context: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "store_results": [],
-        "inventory_results": [],
-        "map_actions": [],
-        "location_context": _safe_location_context(location_context),
-    }
+def _get_field(row: dict[str, Any], snake_name: str) -> Any:
+    if snake_name in row:
+        return row[snake_name]
+    parts = snake_name.split("_")
+    camel_name = parts[0] + "".join(p.title() for p in parts[1:])
+    return row.get(camel_name)
 
 
 def _safe_location_context(location_context: dict[str, Any] | None) -> dict[str, Any]:
@@ -147,51 +164,50 @@ def _extract_location_filters(query: str, location_context: dict[str, Any] | Non
     return filters
 
 
-def _extract_product_query(query: str) -> str:
+def _extract_product_query(query: str) -> str | None:
     query_text = query.casefold()
     for needle, product_name in _PRODUCT_QUERY_ALIASES:
         if needle in query_text:
             return product_name
 
-    cleaned = re.sub(
-        r"\b(where|can|i|pick|up|near|me|is|are|available|availability|which|cafe|store|has|have|in|at|do|you|the|a|an)\b",
-        " ",
-        query_text,
-    )
-    cleaned = re.sub(r"[^a-z0-9 ]+", " ", cleaned)
-    cleaned = " ".join(cleaned.split())
-    return cleaned.title() if cleaned else query
+    cleaned = re.sub(r"[^a-z0-9 ]+", " ", query_text)
+    words = [word for word in cleaned.split() if word not in _PRODUCT_QUERY_STOP_WORDS]
+    cleaned = " ".join(words)
+    return cleaned.title() if cleaned else None
 
 
-def _store_query_parts(row: dict[str, Any]) -> tuple[str, str]:
-    name = str(row.get("name") or row.get("store_name") or "Cymbal Coffee").strip()
-    address = str(row.get("address") or row.get("store_address") or "").strip()
-    city = str(row.get("city") or row.get("store_city") or "").strip()
-    state = str(row.get("state") or row.get("store_state") or "").strip()
-    zip_code = str(row.get("zip") or row.get("store_zip") or "").strip()
-    locality = " ".join(part for part in (state, zip_code) if part)
-    city_region = ", ".join(part for part in (city, locality) if part)
-    query = ", ".join(part for part in (name, address, city_region) if part)
-    return name, query or name
+def _store_name(row: dict[str, Any]) -> str:
+    return str(row.get("name") or row.get("store_name") or "Cymbal Coffee").strip() or "Cymbal Coffee"
 
 
-def _maps_search_url(query: str, place_id: str | None = None) -> str:
-    params = {"api": "1", "query": query}
-    if place_id:
-        params["query_place_id"] = place_id
-    return urlunsplit(("https", "www.google.com", "/maps/search/", urlencode(params), ""))
+def _store_fields(row: dict[str, Any]) -> _StoreFields:
+    return {
+        "name": _store_name(row),
+        "address": str(row.get("address") or row.get("store_address") or "").strip(),
+        "city": str(row.get("city") or row.get("store_city") or "").strip(),
+        "state": str(row.get("state") or row.get("store_state") or "").strip(),
+        "zip_code": str(row.get("zip") or row.get("store_zip") or "").strip(),
+        "place_id": str(row.get("google_place_id") or "") or None,
+    }
 
 
 def _build_map_actions(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     for row in rows:
-        label, query = _store_query_parts(row)
-        actions.append(
-            {
-                "type": "search",
-                "label": label,
-                "url": _maps_search_url(query, str(row.get("google_place_id") or "") or None),
-            }
+        fields = _store_fields(row)
+        actions.extend(
+            (
+                {
+                    "type": "search",
+                    "label": "Open in Google Maps",
+                    "url": build_store_search_url(**fields),
+                },
+                {
+                    "type": "directions",
+                    "label": "Get directions",
+                    "url": build_store_directions_url(**fields),
+                },
+            )
         )
     return actions
 
@@ -211,7 +227,7 @@ def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
         return "I couldn't find a matching Cymbal Coffee store for that location. Try a city, ZIP code, or nearby landmark."
 
     first = stores[0]
-    name, _query = _store_query_parts(first)
+    name = _store_name(first)
     address = str(first.get("address") or "").strip()
     city = str(first.get("city") or "").strip()
     state = str(first.get("state") or "").strip()
@@ -231,27 +247,110 @@ def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
     return answer
 
 
-def _format_availability_answer(rows: list[dict[str, Any]]) -> str:
-    if not rows:
-        return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
+def _is_in_stock(row: dict[str, Any]) -> bool:
+    status = _get_field(row, "stock_status")
+    qty = _get_field(row, "quantity_available")
+    if status in {"IN_STOCK", "LOW_STOCK"}:
+        return True
+    return bool(isinstance(qty, int | float) and qty > 0)
 
-    first = rows[0]
-    product = str(first.get("product_name") or "that item")
-    store = str(first.get("store_name") or "a Cymbal Coffee store")
-    status = str(first.get("stock_status") or "").replace("_", " ").title()
-    quantity = first.get("quantity_available")
-    answer = f"{product} is available at {store}"
-    if status:
-        answer += f" ({status})"
+
+def _format_in_stock_store(
+    product_name: str,
+    store_name: str,
+    quantity: Any,
+    status: str | None,
+    distance: Any,
+) -> str:
+    status_str = str(status or "").replace("_", " ").title()
+    answer = f"{product_name} is available at {store_name}"
+    if status_str:
+        answer += f" ({status_str})"
     if isinstance(quantity, int | float):
         answer += f" with {int(quantity)} on hand"
-    distance = first.get("distance_miles")
     if isinstance(distance, int | float):
         answer += f", about {float(distance):.1f} miles away"
     answer += "."
-    if len(rows) > 1:
-        answer += f" I found {len(rows)} stores with matching availability."
     return answer
+
+
+def _format_out_of_stock_store(
+    product_name: str,
+    store_name: str,
+    alternatives: list[dict[str, Any]],
+) -> str:
+    answer = f"{product_name} is out of stock at {store_name}."
+    in_stock_alts = [alt for alt in alternatives if _is_in_stock(alt)]
+    if in_stock_alts:
+        best_alt = in_stock_alts[0]
+        alt_name = _get_field(best_alt, "store_name")
+        alt_distance = _get_field(best_alt, "distance_miles")
+        answer += f" However, it is in stock at {alt_name}"
+        if isinstance(alt_distance, int | float):
+            answer += f" ({float(alt_distance):.1f} miles away)"
+        answer += "."
+    else:
+        answer += " I couldn't find any other stores with stock nearby."
+    return answer
+
+
+def _format_availability_answer(
+    target: dict[str, Any] | None,
+    alternatives: list[dict[str, Any]],
+    target_store_name: str | None = None,
+) -> str:
+    if not target and not alternatives:
+        return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
+
+    product_name: str | None = None
+    if target:
+        product_name = str(_get_field(target, "product_name") or "")
+    elif alternatives:
+        product_name = str(_get_field(alternatives[0], "product_name") or "")
+    if not product_name:
+        product_name = "that item"
+
+    if target or target_store_name:
+        store_name = str((_get_field(target, "store_name") if target else target_store_name) or "a Cymbal Coffee store")
+        if target and _is_in_stock(target):
+            return _format_in_stock_store(
+                product_name=product_name,
+                store_name=store_name,
+                quantity=_get_field(target, "quantity_available"),
+                status=_get_field(target, "stock_status"),
+                distance=_get_field(target, "distance_miles"),
+            )
+        return _format_out_of_stock_store(
+            product_name=product_name,
+            store_name=store_name,
+            alternatives=alternatives,
+        )
+
+    available_alternatives = [alt for alt in alternatives if _is_in_stock(alt)]
+    if not available_alternatives:
+        first = alternatives[0]
+        store_name = str(_get_field(first, "store_name") or "a Cymbal Coffee store")
+        return _format_out_of_stock_store(
+            product_name=product_name,
+            store_name=store_name,
+            alternatives=[],
+        )
+
+    first = available_alternatives[0]
+    store_name = _get_field(first, "store_name") or "a Cymbal Coffee store"
+    in_stock_sentence = _format_in_stock_store(
+        product_name=product_name,
+        store_name=store_name,
+        quantity=_get_field(first, "quantity_available"),
+        status=_get_field(first, "stock_status"),
+        distance=_get_field(first, "distance_miles"),
+    )
+    if len(available_alternatives) <= 1:
+        return in_stock_sentence
+    # The in-stock sentence ends with a period; replace it with a follow-on clause.
+    base_sentence = in_stock_sentence.removesuffix(".")
+    found_clause = f". I found {len(available_alternatives)} stores with matching availability."
+    return base_sentence + found_clause
 
 
 def _record_product_search_result(metric_state: dict[str, Any], result: dict[str, Any], query: str) -> None:

@@ -4,17 +4,131 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
+## [ ] PRD: demo-simplification
+*Link: [./specs/demo-simplification/](./specs/demo-simplification/)*
+*Beads: oracledb-vertexai-mzm (master epic)*
+*Research: [./research/research_demo_simplification/](./research/research_demo_simplification/)*
+*Absorbs: settings-config-consolidation_20260501*
+
+### Chapters
+- [ ] **Chapter 1: Documentation accuracy (`docs-accuracy`)** — implementation-ready
+  *Link: [./specs/docs-accuracy/](./specs/docs-accuracy/)* · *Beads: oracledb-vertexai-mzm.1*
+- [ ] **Chapter 2: Dead-code sweep (`deadcode-sweep`)** — implementation-ready
+  *Link: [./specs/deadcode-sweep/](./specs/deadcode-sweep/)* · *Beads: oracledb-vertexai-mzm.2*
+- [ ] **Chapter 3: Settings audit + factory (`settings-audit-and-factory`)** — implementation-ready
+  *Link: [./specs/settings-audit-and-factory/](./specs/settings-audit-and-factory/)* · *Beads: oracledb-vertexai-mzm.3*
+- [ ] **Chapter 4: Settings/tools DB env contract (`settings-database-env-contract`)** — implementation-ready, blocked by Ch3
+  *Link: [./specs/settings-database-env-contract/](./specs/settings-database-env-contract/)* · *Beads: oracledb-vertexai-mzm.4*
+- [ ] **Chapter 5: Chat-path consolidation (`chat-path-consolidation`)** — implementation-ready
+  *Link: [./specs/chat-path-consolidation/](./specs/chat-path-consolidation/)* · *Beads: oracledb-vertexai-mzm.5*
+- [ ] **Chapter 6: ADK readability (`adk-readability`)** — implementation-ready, blocked by Ch5
+  *Link: [./specs/adk-readability/](./specs/adk-readability/)* · *Beads: oracledb-vertexai-mzm.6*
+- [ ] **Chapter 7: Maps consolidation + directions (`maps-consolidation`)** — implementation-ready, blocked by Ch6
+  *Link: [./specs/maps-consolidation/](./specs/maps-consolidation/)* · *Beads: oracledb-vertexai-mzm.7*
+- [ ] **Chapter 8: Settings AI/chat/web/log (`settings-ai-chat-web-log`)** — implementation-ready, blocked by Ch3+Ch6
+  *Link: [./specs/settings-ai-chat-web-log/](./specs/settings-ai-chat-web-log/)* · *Beads: oracledb-vertexai-mzm.8*
+- [ ] **Chapter 9: Frontend cleanup (`frontend-cleanup`)** — implementation-ready, blocked by Ch5+Ch7
+  *Link: [./specs/frontend-cleanup/](./specs/frontend-cleanup/)* · *Beads: oracledb-vertexai-mzm.9*
+- [ ] **Chapter 10: Test simplification (`test-simplification`)** — implementation-ready, blocked by Ch6+Ch8+Ch9
+  *Link: [./specs/test-simplification/](./specs/test-simplification/)* · *Beads: oracledb-vertexai-mzm.10*
+
+---
+
+## [~] PRD: adb-podman-lab-hardening
+*Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
+*Beads: oracledb-vertexai-9p5 (master epic)*
+*Research: [./research/research_adb_hooks_ux_lab/](./research/research_adb_hooks_ux_lab/)*
+
+### Chapters
+- [ ] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — implementation-ready
+  *Link: [./specs/adb-vector-memory-hardening/](./specs/adb-vector-memory-hardening/)*
+  *Beads: oracledb-vertexai-9p5.1*
+- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft, blocked by Ch1
+  *Link: [./specs/oraclelinux-podman-lab/](./specs/oraclelinux-podman-lab/)*
+  *Beads: oracledb-vertexai-9p5.2*
+- [ ] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — draft
+  *Link: [./specs/ui-quality-fixes/](./specs/ui-quality-fixes/)*
+  *Beads: oracledb-vertexai-9p5.3*
+
+---
+
+## [~] PRD: apex-gvenzl-install
+*Link: [./specs/apex-gvenzl-install/](./specs/apex-gvenzl-install/)*
+*Beads: oracledb-vertexai-apxg (master epic)*
+*Research: [./research/research_apex_upgrade/](./research/research_apex_upgrade/)*
+
+Install/upgrade Oracle APEX 26.1 + ORDS into the reverted `gvenzl/oracle-free` container via
+`manage.py infra apex`, and adopt APEXlang source at `src/apex/`. Precondition: container base
+revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-2q0`).
+
+### Chapters (Ch1 done; Ch2–Ch5 specced, gated on gvenzl revert)
+- [x] **Chapter 1: APEX media staging (`apex-media-staging`)** — done (32 tests; commits 56cb007..1c157c6)
+  *Link: [./specs/apex-media-staging/](./specs/apex-media-staging/)*
+  *Beads: oracledb-vertexai-apxg.1 (5/5 tasks closed)*
+- [x] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — done (29 tests; commits 31c444f..427a091; database.py untouched)
+  *Link: [./specs/apex-install-upgrade/](./specs/apex-install-upgrade/)*
+  *Beads: oracledb-vertexai-apxg.2 (5/5 tasks closed)*
+- [ ] **Chapter 3: ORDS sidecar runtime via Python CLI (`apex-ords-sidecar`)** — implementation-ready, blocked by Ch1+Ch2
+  *Link: [./specs/apex-ords-sidecar/](./specs/apex-ords-sidecar/)*
+  *Beads: oracledb-vertexai-apxg.3 (5 tasks)*
+- [ ] **Chapter 4: APEXlang source layout + export/import (`apexlang-source`)** — implementation-ready, blocked by Ch2+Ch3
+  *Link: [./specs/apexlang-source/](./specs/apexlang-source/)*
+  *Beads: oracledb-vertexai-apxg.4 (5 tasks)*
+- [ ] **Chapter 5: Verification, settings alignment & docs (`apex-verify-docs`)** — implementation-ready, blocked by Ch2+Ch4
+  *Link: [./specs/apex-verify-docs/](./specs/apex-verify-docs/)*
+  *Beads: oracledb-vertexai-apxg.5 (5 tasks)*
+
+---
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
 
 ---
 
-## [ ] PRD: settings-config-consolidation_20260501
+## [absorbed] PRD: settings-config-consolidation_20260501
 *Link: [./specs/settings-config-consolidation_20260501/](./specs/settings-config-consolidation_20260501/)*
-*Beads: not created - review gate before implementation*
+*Beads: not created - ABSORBED into `demo-simplification` (Ch3 `settings-audit-and-factory`, Ch4 `settings-database-env-contract`, Ch8 `settings-ai-chat-web-log`). Kept as historical detail; execute via the demo-simplification chapters.*
 
 ---
+
+## [x] PRD: oracle-apex-integration
+*Link: [./specs/oracle-apex-integration/](./specs/oracle-apex-integration/)*
+*Beads: oracledb-vertexai-apex (closed after runtime verification)*
+
+---
+
+## [ ] PRD: inventory
+*Link: [./specs/inventory/](./specs/inventory/)*
+*Beads: oracledb-vertexai-inv (active/completed chapters)*
+
+### Chapters
+- [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)**
+  *Link: [./specs/inventory-data/](./specs/inventory-data/)*
+  *Beads: oracledb-vertexai-invdata*
+- [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)**
+  *Link: [./specs/inventory-grounding/](./specs/inventory-grounding/)*
+  *Beads: oracledb-vertexai-invground*
+- [ ] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)**
+  *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*
+  *Beads: oracledb-vertexai-invrag*
+- [ ] **Chapter 4: Live Inventory Dashboard (`inventory-ui`)**
+  *Link: [./specs/inventory-ui/](./specs/inventory-ui/)*
+  *Beads: oracledb-vertexai-invui*
+
+---
+
+## [~] PRD: oracle-schema-annotations
+*Link: [./specs/oracle-schema-annotations/](./specs/oracle-schema-annotations/)*
+*Beads: pending creation*
+
+### Chapters
+- [x] **Chapter 1: DDL Annotation Contract (`schema-annotations-ddl`)**
+- [x] **Chapter 2: Documentation Updates (`schema-annotations-docs`)**
+- [ ] **Chapter 3: Runtime Verification (`schema-annotations-verification`)**
+
+---
+
 
 ## Archived
 

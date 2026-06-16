@@ -8,7 +8,7 @@ WHERE cache_key = :key
   AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP);
 
 -- name: get-cached-embedding
-SELECT embedding
+SELECT id, text_hash, embedding, model, created_at, last_accessed, hit_count
 FROM embedding_cache
 WHERE text_hash = :hash
   AND model = :model;

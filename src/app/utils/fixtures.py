@@ -142,8 +142,6 @@ def _prepare_record(record: dict[str, Any]) -> dict[str, Any]:
     """
     prepared: dict[str, Any] = {}
     for key, value in record.items():
-        if value is None:
-            continue
         if key == "price" and isinstance(value, str):
             prepared[key] = Decimal(value)
         elif isinstance(value, bool):

@@ -18,28 +18,24 @@ DOMAIN_DIR = APP_ROOT / "domain"
 
 EXPECTED_FILES = ("inventory.sql", "products.sql", "stores.sql", "system.sql")
 
-EXPECTED_KEYS = (
-    "get-product",
-    "list-products-for-embedding",
-    "vector-search-products",
-    "get-store-by-id",
-    "list-stores",
-    "find-stores-by-city",
-    "find-stores-by-state",
-    "find-stores-by-zip",
-    "find-stores-by-location",
-    "rank-stores-by-distance",
-    "list-store-inventory",
-    "find-stores-with-product-inventory",
-    "find-product-availability-by-query",
-    "get-cached-response",
-    "get-cached-embedding",
-    "get-cache-stats",
-    "get-performance-stats",
-    "metrics-breakdown",
-    "metrics-scatter-points",
-    "metrics-time-series",
-)
+_NAME_DIRECTIVE = re.compile(r"^--\s*name:\s*([a-zA-Z0-9_-]+)", flags=re.MULTILINE)
+
+
+def _discover_named_keys() -> tuple[str, ...]:
+    keys: set[str] = set()
+    for sql_file in sorted(SQL_DIR.glob("*.sql")):
+        keys.update(_NAME_DIRECTIVE.findall(sql_file.read_text()))
+    return tuple(sorted(keys))
+
+
+def _discover_service_files() -> tuple[Path, ...]:
+    files = sorted(DOMAIN_DIR.glob("*/services/services.py"))
+    files.append(DOMAIN_DIR / "chat" / "services" / "adk.py")
+    return tuple(files)
+
+
+# Every `-- name: <key>` directive declared across db/sql/*.sql.
+EXPECTED_KEYS = _discover_named_keys()
 
 # Match a SQL keyword inside a Python string literal *only* when followed by whitespace
 # (real SQL: `SELECT id`, `UPDATE foo`). Excludes false positives like the named-query
@@ -49,11 +45,8 @@ INLINE_SQL_PATTERN = re.compile(
     r'(?:"|\')\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)(?=[ \t\n])',
 )
 
-SERVICE_FILES = (
-    DOMAIN_DIR / "products" / "services" / "services.py",
-    DOMAIN_DIR / "system" / "services" / "services.py",
-    DOMAIN_DIR / "chat" / "services" / "adk.py",
-)
+# Domain services that must source SQL from db_manager, never inline strings.
+SERVICE_FILES = _discover_service_files()
 
 
 def test_sql_directory_and_files_exist() -> None:

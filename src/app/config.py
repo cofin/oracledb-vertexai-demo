@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from litestar.middleware.session.server_side import ServerSideSessionConfig
     from litestar.plugins.problem_details import ProblemDetailsConfig
     from litestar.plugins.structlog import StructlogConfig
+    from litestar.stores.base import Store
     from litestar.stores.registry import StoreRegistry
     from litestar.template import TemplateConfig
     from litestar_vite import ViteConfig
@@ -107,7 +108,6 @@ def _initialize() -> None:
 
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
-    from litestar.contrib.jinja import JinjaTemplateEngine
     from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
     from litestar.logging.config import (
         LoggingConfig,
@@ -116,6 +116,7 @@ def _initialize() -> None:
     )
     from litestar.middleware.logging import LoggingMiddlewareConfig
     from litestar.middleware.session.server_side import ServerSideSessionConfig as _SessionConfig
+    from litestar.plugins.jinja import JinjaTemplateEngine
     from litestar.plugins.problem_details import ProblemDetailsConfig as _ProblemDetailsConfig
     from litestar.plugins.structlog import StructlogConfig as _StructlogConfig
     from litestar.stores.registry import StoreRegistry as _StoreRegistry
@@ -133,7 +134,8 @@ def _initialize() -> None:
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
 
-    store_registry = _StoreRegistry(stores={"sessions": OracleAsyncStore(config=db_cfg)})  # type: ignore[dict-item]
+    from typing import cast
+    store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
 
     structlog_config = _StructlogConfig(
         enable_middleware_logging=False,
@@ -235,7 +237,7 @@ def _initialize() -> None:
         cookie_name=settings.app.CSRF_COOKIE_NAME,
         header_name=settings.app.CSRF_HEADER_NAME,
     )
-    g["cors"] = _CORSConfig(allow_origins=cast("list[str]", settings.app.ALLOWED_CORS_ORIGINS))
+    g["cors"] = _CORSConfig(allow_origins=settings.app.ALLOWED_CORS_ORIGINS)
     g["problem_details"] = _ProblemDetailsConfig(enable_for_all_http_exceptions=True)
     g["vite"] = settings.vite.get_config()
     g["log"] = structlog_config

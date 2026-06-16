@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
+import socket
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,7 +15,7 @@ import pytest
 from litestar.testing import AsyncTestClient
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator, Callable, Generator
 
     from litestar import Litestar
     from sqlspec.adapters.oracledb import OracleAsyncDriver
@@ -34,6 +36,106 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     marker = pytest.mark.xdist_group(name="oracle_integration")
     for item in items:
         item.add_marker(marker)
+
+
+def find_free_port() -> int:
+    """Return an OS-assigned free TCP port on the loopback interface."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+@pytest.fixture(scope="session")
+def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
+    """Start an ephemeral gvenzl/oracle-free container on a free port for the test session.
+
+    Each run creates a uniquely named container and data volume so tests never share
+    state with the repo-managed dev container (or each other). The gvenzl entrypoint
+    hooks mounted by ``OracleDatabase`` configure the vector-memory pool, so HNSW
+    INMEMORY index migrations succeed. Set ``ORACLE_TEST_REUSE_PORT`` to point at an
+    already-running container and skip the (slow) create/teardown during local iteration.
+    """
+    from tools.oracle.container import ContainerRuntime
+    from tools.oracle.database import DatabaseConfig, OracleDatabase
+
+    password = "SuperSecret1"  # noqa: S105
+    reuse_port = os.getenv("ORACLE_TEST_REUSE_PORT")
+    if reuse_port:
+        yield {
+            "host": "localhost",
+            "port": int(reuse_port),
+            "service_name": "freepdb1",
+            "user": "app",
+            "password": password,
+        }
+        return
+
+    suffix = uuid.uuid4().hex[:8]
+    port = find_free_port()
+    config = DatabaseConfig(
+        container_name=f"oracle-test-{suffix}",
+        host_port=port,
+        app_user="app",
+        app_user_password=password,
+        data_volume_name=f"oracle-test-data-{suffix}",
+    )
+    database = OracleDatabase(runtime=ContainerRuntime(), config=config)
+    database.start(pull=bool(os.getenv("ORACLE_TEST_PULL")))
+    try:
+        yield {"host": "localhost", "port": port, "service_name": "freepdb1", "user": "app", "password": password}
+    finally:
+        with contextlib.suppress(Exception):
+            database.remove(volumes=True, force=True)
+
+
+@pytest.fixture
+def test_settings(
+    oracle_test_container: dict[str, str | int],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> Generator[object, None, None]:
+    """Point the app at the ephemeral gvenzl container in local (non-wallet) mode.
+
+    Overrides the root (mocked-DB) ``test_settings`` for integration tests only, so
+    requests resolve against the per-session ephemeral Oracle rather than a shared one.
+    """
+    from app import config as app_config
+    from app.lib import settings as app_settings
+
+    test_dir = tmp_path_factory.mktemp("integration_env")
+    test_env = test_dir / ".env.testing"
+    test_env.write_text(
+        "# Integration test configuration (ephemeral gvenzl/oracle-free)\n"
+        f"DATABASE_USER={oracle_test_container['user']}\n"
+        f"DATABASE_PASSWORD={oracle_test_container['password']}\n"
+        f"DATABASE_HOST={oracle_test_container['host']}\n"
+        f"DATABASE_PORT={oracle_test_container['port']}\n"
+        f"DATABASE_SERVICE_NAME={oracle_test_container['service_name']}\n"
+        "GOOGLE_CLOUD_PROJECT=test-project\n"
+        "GOOGLE_API_KEY=test-api-key\n"
+        "LITESTAR_DEBUG=true\n"
+        "LITESTAR_HOST=127.0.0.1\n"
+        "LITESTAR_PORT=5007\n"
+        "LITESTAR_GRANIAN_IN_SUBPROCESS=false\n"
+        "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true\n"
+        "SECRET_KEY=test-secret-key-32-characters-12\n"
+        "VITE_DEV_MODE=False\n",
+        encoding="utf-8",
+    )
+
+    settings = app_settings.Settings.from_env(str(test_env))
+
+    def get_settings(dotenv_filename: str = ".env.testing") -> object:
+        return settings
+
+    monkeypatch.setattr(app_settings, "get_settings", get_settings)
+    app_settings.Settings.from_env.cache_clear()
+    app_config._reset()
+    try:
+        yield settings
+    finally:
+        app_settings.Settings.from_env.cache_clear()
+        app_config._reset()
 
 
 async def _bootstrap_test_schema(session: OracleAsyncDriver) -> None:
@@ -134,13 +236,46 @@ async def _seed_marker_product(session: OracleAsyncDriver) -> None:
     await session.commit()
 
 
-async def _ensure_oracle_schema(session: OracleAsyncDriver) -> None:
+async def _assert_sqlspec_extension_tables(session: OracleAsyncDriver) -> None:
+    """Fail fast when SQLSpec migrations did not materialize extension tables."""
+    expected = {"APP_SESSION", "ADK_SESSIONS", "ADK_EVENTS"}
+    rows = await session.select(
+        """
+        SELECT table_name
+          FROM user_tables
+         WHERE table_name IN ('APP_SESSION', 'ADK_SESSIONS', 'ADK_EVENTS')
+        """
+    )
+    present = {str(row["table_name"]).upper() for row in rows}
+    missing = sorted(expected - present)
+    if missing:
+        msg = (
+            "SQLSpec migrations did not create required integration-test tables: "
+            f"{', '.join(missing)}. Reset the local Oracle schema/container and rerun the tests."
+        )
+        raise RuntimeError(msg)
+
+
+async def _ensure_oracle_schema() -> None:
     """Create idempotent Oracle test schema objects once per pytest worker."""
     global _ORACLE_SCHEMA_READY  # noqa: PLW0603
 
     if _ORACLE_SCHEMA_READY:
         return
-    await _bootstrap_test_schema(session)
+
+    from app.config import db, db_manager
+
+    await db.migrate_up(echo=False)
+    with contextlib.suppress(Exception):
+        await db.close_pool()
+
+    try:
+        async with db_manager.provide_session(db) as session:
+            await _assert_sqlspec_extension_tables(session)
+            await _bootstrap_test_schema(session)
+    finally:
+        with contextlib.suppress(Exception):
+            await db.close_pool()
     _ORACLE_SCHEMA_READY = True
 
 
@@ -157,15 +292,33 @@ async def _ensure_oracle_seed_data(session: OracleAsyncDriver) -> None:
 
 
 @pytest.fixture
-async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient, None]:
+async def oracle_schema(test_settings: object) -> None:
+    """Ensure SQLSpec migrations have prepared the shared Oracle schema."""
+    del test_settings
+    await _ensure_oracle_schema()
+
+
+@pytest.fixture
+async def client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create test client."""
+    del oracle_schema
     async with AsyncTestClient(app=app) as c:
         yield c
 
 
 @pytest.fixture
-def app() -> Litestar:
+async def htmx_client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+    """Create an HTMX-flavored test client after schema migration."""
+    del oracle_schema
+    async with AsyncTestClient(app=app) as c:
+        c.headers["HX-Request"] = "true"
+        yield c
+
+
+@pytest.fixture
+def app(test_settings: object) -> Litestar:
     """Create test app instance."""
+    del test_settings
     from app.server.asgi import create_app
 
     return create_app()
@@ -205,18 +358,19 @@ def unique_test_id() -> str:
 
 
 @pytest.fixture
-async def oracle_seed_data() -> None:
+async def oracle_seed_data(test_settings: object) -> None:
     """Ensure shared Oracle schema and fixture data are ready for this worker.
 
     The repo-managed Oracle container and migrations must already be available.
     This fixture only performs expensive DDL/truncate/fixture loading once per
     pytest worker; function-scoped driver sessions depend on the prepared data.
     """
+    del test_settings
     from app.config import db, db_manager
 
     try:
+        await _ensure_oracle_schema()
         async with db_manager.provide_session(db) as session:
-            await _ensure_oracle_schema(session)
             await _ensure_oracle_seed_data(session)
     finally:
         # pytest-anyio creates a fresh event loop per test by default.

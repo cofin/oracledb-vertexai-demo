@@ -5,10 +5,11 @@
 
 - **Language:** Python 3.12+ (managed via `uv`)
 - **Framework:** Litestar
-- **Server:** Litestar-granian (ASGI server)
+- **Server:** Granian (ASGI server), wired through the `litestar-granian` plugin
 - **Dependency Injection:** Dishka
-- **AI & Integrations:** Google Vertex AI, Google ADK 2.0, SQLSpec ADK session
-  service
+- **AI & Integrations:** Google Vertex AI, Google ADK 2 (`google-adk>=2.0.0b1`),
+  SQLSpec ADK session service
+
 
 ## Frontend
 

@@ -11,7 +11,6 @@ import structlog
 from google.genai.types import EmbedContentConfig
 from msgspec.structs import asdict
 from sqlspec import sql
-from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app.config import db_manager
 from app.domain.products.schemas import (
@@ -23,18 +22,29 @@ from app.domain.products.schemas import (
     Store,
     StoreDistance,
     StoreHours,
-    StoreInventoryItem,
 )
-from app.domain.products.services._location import haversine_miles, location_hint_matches
-from app.lib.service import FilterTypes, OffsetPagination, SQLSpecAsyncService
+from app.domain.products.services._location import haversine_miles, store_matches_hint
+from app.lib.service import FilterTypes, OffsetPagination, OracleAsyncService
 
 if TYPE_CHECKING:
     from google.genai import Client
 
 logger = structlog.get_logger()
 
+GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2-preview"
+EMBEDDING_PURPOSE_INSTRUCTIONS = {
+    "query": (
+        "Task: Generate an embedding for a search query to retrieve relevant "
+        "Cymbal Coffee menu and store availability documents."
+    ),
+    "document": (
+        "Task: Generate an embedding for a document that can be retrieved by "
+        "Cymbal Coffee customer search queries."
+    ),
+}
 
-class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
+
+class ProductService(OracleAsyncService):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
@@ -56,19 +66,19 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
 
     async def get_products_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
         """Return (products_to_embed, total_count). force=True returns every product."""
-        query = db_manager.get_sql("list-products-for-embedding")
+        query = sql.select("id", "name", "description").from_("product")
         if not force:
             query = query.where("embedding IS NULL")
-        page = await self.paginate(query)
-        return list(page.items), page.total
+        query = query.order_by("id")
+        rows = await self.driver.select(query)
+        return [dict(row) for row in rows], len(rows)
 
     async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
         result = await self.driver.execute(
             sql.update("product").set(embedding=embedding).where_eq("id", product_id),
         )
         await self.driver.commit()
-        rowcount = getattr(result, "rowcount", None)
-        return bool(rowcount) if rowcount is not None else True
+        return result.rows_affected > 0
 
     # docs:start-search-by-vector
     async def search_by_vector(
@@ -81,12 +91,14 @@ class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
             limit=limit,
             schema_type=ProductMatch,
         )
+
     # docs:end-search-by-vector
+
 
 # --- Store Service ---
 
 
-class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
+class StoreService(OracleAsyncService):
     """Service for managing store locations."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Store]:
@@ -94,27 +106,6 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
 
     async def get_all_stores(self) -> list[Store]:
         return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
-
-    async def find_stores_by_city(self, city: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-city"),
-            city=city,
-            schema_type=Store,
-        )
-
-    async def find_stores_by_state(self, state: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-state"),
-            state=state,
-            schema_type=Store,
-        )
-
-    async def search_stores_by_zip(self, zip_code: str) -> list[Store]:
-        return await self.driver.select(
-            db_manager.get_sql("find-stores-by-zip"),
-            zip_code=zip_code,
-            schema_type=Store,
-        )
 
     async def find_stores_by_location(
         self,
@@ -162,12 +153,24 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
         ranked.sort(key=lambda store: store.distance_miles)
         return ranked[:limit]
 
-    async def get_store_inventory(self, store_id: int) -> list[StoreInventoryItem]:
-        return await self.driver.select(
-            db_manager.get_sql("list-store-inventory"),
-            store_id=store_id,
-            schema_type=StoreInventoryItem,
-        )
+    async def resolve_store(
+        self,
+        *,
+        location_hint: str | None = None,
+        coordinates: tuple[float, float] | None = None,
+    ) -> Store | None:
+        """Resolve a single store by location hint (priority) or nearest to coordinates."""
+        if location_hint:
+            stores = await self.get_all_stores()
+            for store in stores:
+                if store_matches_hint(store, location_hint):
+                    return store
+        if coordinates:
+            lat, lon = coordinates
+            nearest = await self.find_nearest_stores(lat, lon, limit=1)
+            if nearest:
+                return nearest[0]
+        return None
 
     async def find_stores_with_product(
         self,
@@ -195,8 +198,6 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
             product_query=query,
             schema_type=ProductAvailability,
         )
-        if location_hint:
-            rows = [row for row in rows if location_hint_matches(row, location_hint)]
         latitude, longitude = coordinates or (None, None)
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
 
@@ -216,6 +217,7 @@ class StoreService(SQLSpecAsyncService[OracleAsyncDriver]):
             ranked.append(ProductAvailability(**data))
         ranked.sort(key=lambda row: row.distance_miles if row.distance_miles is not None else float("inf"))
         return ranked
+
 
 # --- Vertex AI Service ---
 
@@ -242,20 +244,20 @@ class VertexAIService:
         self,
         text: str,
         *,
-        task_type: str = "RETRIEVAL_DOCUMENT",
+        embedding_purpose: str = "document",
         return_cache_status: bool = False,
     ) -> Any:
         cached = await self.cache_service.get_embedding(text, self.embedding_model)
         if cached:
             return (cached, True) if return_cache_status else cached
 
+        content = _embedding_content(self.embedding_model, text, embedding_purpose)
+        config_kwargs: dict[str, Any] = {"output_dimensionality": self.embedding_dimensions}
+
         response = await self.client.aio.models.embed_content(
             model=self.embedding_model,
-            contents=text,
-            config=EmbedContentConfig(
-                task_type=task_type,
-                output_dimensionality=self.embedding_dimensions,
-            ),
+            contents=content,
+            config=EmbedContentConfig(**config_kwargs),
         )
         embedding_list = response.embeddings
         if not embedding_list or not embedding_list[0].values:
@@ -263,7 +265,17 @@ class VertexAIService:
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
+
     # docs:end-vertex-embedding
+
+
+def _embedding_content(model: str, text: str, embedding_purpose: str) -> str:
+    if GEMINI_EMBEDDING_2_MODEL not in model:
+        return text
+    instruction = EMBEDDING_PURPOSE_INSTRUCTIONS.get(embedding_purpose)
+    if instruction is None:
+        return text
+    return f"{instruction}\n\n{text}"
 
 
 class OracleVectorSearchService:
@@ -278,7 +290,7 @@ class OracleVectorSearchService:
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         start_time = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
-            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+            query, embedding_purpose="query", return_cache_status=True
         )
         embedding_ms = (time.time() - start_time) * 1000
 
@@ -291,6 +303,7 @@ class OracleVectorSearchService:
     @staticmethod
     def parse_plan_rows(plan_lines: list[str]) -> list[ExplainPlanRow]:
         """Parse the operation table rows from ``DBMS_XPLAN.DISPLAY`` output."""
+
         def cell(cells: list[str], index: int) -> str:
             try:
                 return cells[index]
@@ -336,7 +349,7 @@ class OracleVectorSearchService:
         hallmark for HNSW/IVF lookups).
         """
         embedding, _ = await self.vertex_ai_service.get_text_embedding(
-            query, task_type="RETRIEVAL_QUERY", return_cache_status=True
+            query, embedding_purpose="query", return_cache_status=True
         )
         await self.product_service.driver.execute(
             db_manager.get_sql("explain-plan-vector-search"),

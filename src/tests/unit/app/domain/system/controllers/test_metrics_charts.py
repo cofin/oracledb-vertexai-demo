@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.domain.system.controllers import MetricsController
@@ -44,7 +46,7 @@ class FakeMetricsService:
 @pytest.mark.anyio
 async def test_get_chart_data_returns_dashboard_charts() -> None:
     result = await MetricsController.get_chart_data.fn(
-        object.__new__(MetricsController), metrics_service=FakeMetricsService()
+        MetricsController(owner=MagicMock()), metrics_service=FakeMetricsService()
     )
 
     assert result.time_series.labels == ["00:01", "00:02", "00:03"]

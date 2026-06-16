@@ -10,6 +10,7 @@ in any Click-based CLI application.
 from __future__ import annotations
 
 __all__ = [
+    "apex_group",
     "connect_group",
     "database_group",
     "sqlcl_group",
@@ -17,6 +18,7 @@ __all__ = [
     "wallet_group",
 ]
 
+from tools.oracle.cli.apex import apex_group
 from tools.oracle.cli.connection import connect_group
 from tools.oracle.cli.database import database_group
 from tools.oracle.cli.health import status_command

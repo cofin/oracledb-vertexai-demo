@@ -16,9 +16,10 @@
 -- vector pool must therefore fit inside the existing SGA. 512 M is plenty
 -- for the demo dataset (~50 products + ~1000 intent exemplars at 3072 dims
 -- ≈ 13 MB raw, ~18 MB with HNSW overhead). On Standard / Enterprise /
--- Autonomous you can scale the pool (and SGA) up — see
--- tools/oracle/configure_vector_memory.sql for an example. Bump the pool
--- further if `bulk-embed` reports ORA-51963 (pool exhausted).
+-- Autonomous you can scale the pool (and SGA) up — set a larger
+-- vector_memory_size (and sga_max_size / sga_target) on the SPFILE as SYSDBA
+-- and restart the instance. Bump the pool further if `bulk-embed` reports
+-- ORA-51963 (pool exhausted).
 
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 

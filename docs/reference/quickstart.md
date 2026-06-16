@@ -23,6 +23,11 @@ The generated `.env` uses `LITESTAR_PORT=5006`, so the chat UI is at
 <http://localhost:5006/>. The vector search and EXPLAIN PLAN explorer is at
 <http://localhost:5006/explore>. Set `LITESTAR_PORT` to use a different port.
 
+The managed ADB Free container also exposes APEX at
+<https://localhost:8443/ords/apex>. Oracle Estate Explorer is already installed
+in that image; startup sets the `MPACK_OEE` password from `OEE_PASSWORD` in
+`.env` so it is ready for the demo.
+
 ## Vertex AI credentials
 
 The app needs a Google Cloud project with Vertex AI enabled. Set
@@ -39,10 +44,11 @@ rather than a stack trace.
 ## Common gotchas
 
 - **`ORA-51962` during migration** — `vector_memory_size` is zero. The
-  managed container in `make start-infra` configures `512M` automatically
-  on first init; if you bypassed that, see
-  `tools/oracle/configure_vector_memory.sql`.
-- **`gemini-embedding-001` 404** — the project is missing Vertex AI
+  managed container in `make start-infra` sets `512M` automatically on first
+  init via the `tools/oracle/on_init/00_configure_vector_memory.sql` hook; if
+  you bypassed that, set `vector_memory_size` on the SPFILE as SYSDBA and
+  bounce the instance (`512M` on Free, up to `4G` on larger Oracle editions).
+- **`gemini-embedding-2-preview` 404** — the project is missing Vertex AI
   permissions or the location doesn't host the embedding model. Try
   `us-central1`.
 - **Empty chat replies on first start** — products haven't been embedded

@@ -23,15 +23,51 @@ if TYPE_CHECKING:
 DEFAULT_MODULE_NAME = "app"
 BASE_DIR: Final[Path] = module_to_os_path(DEFAULT_MODULE_NAME)
 
-TRUE_VALUES = {"True", "true", "1", "yes", "Y", "T"}
+_TRUE_VALUES: Final[frozenset[str]] = frozenset({"true", "1", "yes", "y", "t", "on"})
 
 
-def _default_app_url() -> str:
-    """Return the single-port Litestar URL used by litestar-vite bridge metadata."""
-    return f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"
+def _env_bool(name: str, default: bool) -> bool:
+    """Parse an environment variable as a boolean using a single truth table."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in _TRUE_VALUES
 
 
-@dataclass
+def _env_int(name: str, default: int) -> int:
+    """Parse an environment variable as an integer, falling back to the default."""
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    return int(raw)
+
+
+def _env_str(name: str, default: str) -> str:
+    """Read an environment variable as a string with a default."""
+    return os.getenv(name, default)
+
+
+def _env_cors(name: str, default: str) -> list[str]:
+    """Parse an env value into a CORS origin list.
+
+    Accepts a JSON list (``["*"]``) or a comma-separated string (``a.com,b.com``)
+    and always returns a ``list[str]``.
+
+    Raises:
+        ValueError: If a bracketed value is not valid JSON.
+    """
+    raw = os.getenv(name, default)
+    if raw.startswith("[") and raw.endswith("]"):
+        try:
+            parsed = json.loads(raw)
+        except (SyntaxError, ValueError):
+            msg = "ALLOWED_CORS_ORIGINS is not a valid list representation."
+            raise ValueError(msg) from None
+        return [str(host) for host in parsed]
+    return [host.strip() for host in raw.split(",")]
+
+
+@dataclass(frozen=True)
 class DatabaseSettings:
     """Oracle Database connection settings."""
 
@@ -43,13 +79,12 @@ class DatabaseSettings:
     WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
     """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
 
-    # Standard/Local Database fields (existing)
     USER: str = field(
         default_factory=lambda: os.getenv("DATABASE_USER", "app"),
     )
     """Oracle Database User."""
     PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "super-secret"),
+        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
     )
     """Oracle Database Password."""
     HOST: str = field(
@@ -61,32 +96,26 @@ class DatabaseSettings:
     )
     """Oracle Database Port."""
     SERVICE_NAME: str = field(
-        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "FREEPDB1"),
+        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"),
     )
     """Oracle Database Service Name."""
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
-            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'FREEPDB1')}",
+            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'freepdb1')}",
         ),
     )
     """Oracle Database DSN."""
-    POOL_MIN_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MIN_SIZE", "5")))
+    POOL_MIN_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MIN_SIZE", 5))
     """Minimum pool size."""
-    POOL_MAX_SIZE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_MAX_SIZE", "20")))
+    POOL_MAX_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MAX_SIZE", 20))
     """Maximum pool size."""
-    POOL_TIMEOUT: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_TIMEOUT", "30")))
-    """Pool timeout in seconds."""
-    POOL_RECYCLE: int = field(default_factory=lambda: int(os.getenv("DATABASE_POOL_RECYCLE", "300")))
-    """Pool recycle time in seconds."""
-    ECHO: bool = field(default_factory=lambda: os.getenv("DATABASE_ECHO", "False") in TRUE_VALUES)
-    """Echo SQL statements to log output."""
-    ADK_IN_MEMORY: bool = field(default_factory=lambda: os.getenv("ORACLE_ADK_IN_MEMORY", "True") in TRUE_VALUES)
+    ADK_IN_MEMORY: bool = field(default_factory=lambda: _env_bool("ORACLE_ADK_IN_MEMORY", True))
     """Enable Oracle INMEMORY for ADK session/event tables when licensed."""
-    ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: os.getenv("ADK_ENABLE_MEMORY", "True") in TRUE_VALUES)
+    ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: _env_bool("ADK_ENABLE_MEMORY", True))
     """Include SQLSpec ADK memory table migrations."""
     LITESTAR_SESSION_IN_MEMORY: bool = field(
-        default_factory=lambda: os.getenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "True") in TRUE_VALUES
+        default_factory=lambda: _env_bool("ORACLE_LITESTAR_SESSION_IN_MEMORY", True)
     )
     """Enable Oracle INMEMORY for the Litestar server-side session table when licensed."""
     MIGRATION_PATH: str = field(
@@ -140,14 +169,26 @@ class DatabaseSettings:
                 msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
                 raise ValueError(msg)
 
-            # Set TNS_ADMIN for wallet location
-            os.environ["TNS_ADMIN"] = self.WALLET_LOCATION
+            wallet_path = Path(self.WALLET_LOCATION).resolve()
+            absolute_wallet_path = str(wallet_path)
+            os.environ["TNS_ADMIN"] = absolute_wallet_path
+
+            import ssl
+
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            pem_path = wallet_path / "ewallet.pem"
+            if pem_path.exists():
+                ssl_ctx.load_verify_locations(cafile=str(pem_path))
 
             pool_config = {
                 "user": conn_params["user"],
                 "password": conn_params["password"],
                 "dsn": conn_params["dsn"],
+                "wallet_location": absolute_wallet_path,
+                "config_dir": absolute_wallet_path,
                 "wallet_password": conn_params["wallet_password"],
+                "ssl_context": ssl_ctx,
                 "min": self.POOL_MIN_SIZE,
                 "max": self.POOL_MAX_SIZE,
             }
@@ -186,31 +227,7 @@ class DatabaseSettings:
         )
 
 
-@dataclass
-class ServerSettings:
-    """Server configurations."""
-
-    APP_LOC: str = "app.asgi:app"
-    """Path to app executable, or factory."""
-    HOST: str = field(default_factory=lambda: os.getenv("LITESTAR_HOST", "0.0.0.0"))  # noqa: S104
-    """Server network host."""
-    PORT: int = field(default_factory=lambda: int(os.getenv("LITESTAR_PORT", "8000")))
-    """Server port."""
-    KEEPALIVE: int = field(default_factory=lambda: int(os.getenv("LITESTAR_KEEPALIVE", "65")))
-    """Seconds to hold connections open (65 is > AWS lb idle timeout)."""
-    RELOAD: bool = field(
-        default_factory=lambda: os.getenv("LITESTAR_RELOAD", "False") in TRUE_VALUES,
-    )
-    """Turn on hot reloading."""
-    RELOAD_DIRS: list[str] = field(default_factory=lambda: [f"{BASE_DIR}"])
-    """Directories to watch for reloading."""
-    HTTP_WORKERS: int | None = field(
-        default_factory=lambda: int(os.getenv("WEB_CONCURRENCY")) if os.getenv("WEB_CONCURRENCY") is not None else None,  # type: ignore[arg-type]
-    )
-    """Number of HTTP Worker processes to be spawned by Uvicorn."""
-
-
-@dataclass
+@dataclass(frozen=True)
 class LogSettings:
     """Logger configuration"""
 
@@ -220,8 +237,6 @@ class LogSettings:
         r"\.(?:js|css|ico|png|jpg|svg|woff2?)$"
     )
     """Regex to exclude paths from logging."""
-    HTTP_EVENT: str = "HTTP"
-    """Log event name for logs from Litestar handlers."""
     INCLUDE_COMPRESSED_BODY: bool = False
     """Include 'body' of compressed responses in log output."""
     LEVEL: int = field(
@@ -232,7 +247,7 @@ class LogSettings:
         ),
     )
     """Stdlib log level as int. Accepts numeric (e.g. '20') or named (e.g. 'INFO') via LOG_LEVEL env var."""
-    SQLSPEC_LEVEL: int = field(default_factory=lambda: int(os.getenv("SQLSPEC_LOG_LEVEL", "20")))
+    SQLSPEC_LEVEL: int = field(default_factory=lambda: _env_int("SQLSPEC_LOG_LEVEL", 20))
     """SQLSpec driver log level (default: INFO=20)."""
     OBFUSCATE_COOKIES: set[str] = field(default_factory=lambda: {"session", "XSRF-TOKEN"})
     """Request cookie keys to obfuscate."""
@@ -261,13 +276,11 @@ class LogSettings:
     """Level to log ASGI error logs."""
 
 
-@dataclass
+@dataclass(frozen=True)
 class AppSettings:
     """Application configuration"""
 
-    URL: str = field(default_factory=lambda: os.getenv("APP_URL") or _default_app_url())
-    """The frontend base URL."""
-    DEBUG: bool = field(default_factory=lambda: os.getenv("LITESTAR_DEBUG", "False") in TRUE_VALUES)
+    DEBUG: bool = field(default_factory=lambda: _env_bool("LITESTAR_DEBUG", False))
     """Run `Litestar` with `debug=True`."""
     SECRET_KEY: str = field(
         default_factory=lambda: os.getenv("SECRET_KEY", binascii.hexlify(os.urandom(32)).decode(encoding="utf-8")),
@@ -275,7 +288,7 @@ class AppSettings:
     """Application secret key."""
     NAME: str = field(default_factory=lambda: "app")
     """Application name."""
-    ALLOWED_CORS_ORIGINS: list[str] | str = field(default_factory=lambda: os.getenv("ALLOWED_CORS_ORIGINS", '["*"]'))
+    ALLOWED_CORS_ORIGINS: list[str] = field(default_factory=lambda: _env_cors("ALLOWED_CORS_ORIGINS", '["*"]'))
     """Allowed CORS Origins"""
     CSRF_COOKIE_NAME: str = field(default_factory=lambda: "XSRF-TOKEN")
     """CSRF Cookie Name"""
@@ -284,28 +297,12 @@ class AppSettings:
     CSRF_COOKIE_SECURE: bool = field(default_factory=lambda: False)
     """CSRF Secure Cookie"""
 
-    def __post_init__(self) -> None:
-        # Check if the ALLOWED_CORS_ORIGINS is a string.
-        if isinstance(self.ALLOWED_CORS_ORIGINS, str):
-            # Check if the string starts with "[" and ends with "]", indicating a list.
-            if self.ALLOWED_CORS_ORIGINS.startswith("[") and self.ALLOWED_CORS_ORIGINS.endswith("]"):
-                try:
-                    # Safely evaluate the string as a Python list.
-                    self.ALLOWED_CORS_ORIGINS = json.loads(self.ALLOWED_CORS_ORIGINS)
-                except (SyntaxError, ValueError):
-                    # Handle potential errors if the string is not a valid Python literal.
-                    msg = "ALLOWED_CORS_ORIGINS is not a valid list representation."
-                    raise ValueError(msg) from None
-            else:
-                # Split the string by commas into a list if it is not meant to be a list representation.
-                self.ALLOWED_CORS_ORIGINS = [host.strip() for host in self.ALLOWED_CORS_ORIGINS.split(",")]
 
-
-@dataclass
+@dataclass(frozen=True)
 class MapsSettings:
     """Google Maps integration settings."""
 
-    ENABLE_EMBED: bool = field(default_factory=lambda: os.getenv("MAPS_ENABLE_EMBED", "False") in TRUE_VALUES)
+    ENABLE_EMBED: bool = field(default_factory=lambda: _env_bool("MAPS_ENABLE_EMBED", False))
     """Enable optional Google Maps Embed iframe rendering."""
     EMBED_API_KEY: str = field(default_factory=lambda: os.getenv("GOOGLE_MAPS_EMBED_API_KEY", ""))
     """Restricted Google Maps Embed API key. Do not reuse Gemini or Vertex keys."""
@@ -316,15 +313,15 @@ class MapsSettings:
         return self.ENABLE_EMBED and bool(self.EMBED_API_KEY.strip())
 
 
-@dataclass
-class VertexAISettings:
-    """Vertex AI configuration settings."""
+@dataclass(frozen=True)
+class AISettings:
+    """Vertex AI / Google GenAI configuration settings."""
 
-    PROJECT_ID: str = field(
+    project_id: str = field(
         default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
     )
     """Google Cloud Project ID for Vertex AI."""
-    LOCATION: str = field(
+    location: str = field(
         default_factory=lambda: (
             os.getenv("VERTEX_AI_LOCATION")
             or os.getenv("GOOGLE_CLOUD_LOCATION")
@@ -333,81 +330,52 @@ class VertexAISettings:
         )
     )
     """Vertex AI location/region."""
-    API_KEY: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+    api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    EMBEDDING_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-001"))
-    """Vertex AI embedding model."""
-    EMBEDDING_DIMENSIONS: int = 3072
-    """Embedding vector dimensions (gemini-embedding-001 native output)."""
-    CHAT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
+    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
     """Vertex AI chat model."""
-    INTENT_MODEL: str = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL", "gemini-2.5-flash-lite"))
-    """Vertex AI model for single-call intent classification with text/x.enum."""
-
-    def __post_init__(self) -> None:
-        """Handle environment variable synchronization and conflict resolution."""
-        if self.PROJECT_ID:
-            # When using Vertex AI (project-based), API key must NOT be set in environment
-            # as it causes mutual exclusivity errors in the genai client.
-            os.environ.pop("GOOGLE_API_KEY", None)
-            os.environ.pop("VERTEX_AI_API_KEY", None)
-            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
-            os.environ["GOOGLE_CLOUD_PROJECT"] = self.PROJECT_ID
-            os.environ["GOOGLE_CLOUD_LOCATION"] = self.LOCATION
-            self.API_KEY = None
-
-    # Context Caching Settings
-    CACHE_TTL_SECONDS: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_CACHE_TTL_SECONDS", "3600")))
-    """Context cache TTL in seconds (default: 1 hour)."""
-    CACHE_PREFIX: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CACHE_PREFIX", "cymbal-coffee"))
-    """Prefix for cache names."""
-
-    # Streaming Settings
-    STREAM_BUFFER_SIZE: int = field(default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_BUFFER_SIZE", "1024")))
-    """Buffer size for streaming responses."""
-    STREAM_TIMEOUT_SECONDS: int = field(
-        default_factory=lambda: int(os.getenv("VERTEX_AI_STREAM_TIMEOUT_SECONDS", "30"))
+    intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
+    """Optional override for the single-call intent-classification model."""
+    embedding_model: str = field(
+        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview")
     )
-    """Timeout for streaming responses."""
+    """Vertex AI embedding model."""
+    embedding_dimensions: int = 3072
+    """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
+
+    @property
+    def intent_model(self) -> str:
+        """Return the intent-classification model, falling back to the chat model."""
+        return self.intent_model_override or self.chat_model
 
 
-@dataclass
-class AgentSettings:
-    """Agent system configuration."""
+@dataclass(frozen=True)
+class ChatSettings:
+    """Chat-workflow runtime constants."""
 
-    INTENT_THRESHOLD: float = field(default_factory=lambda: float(os.getenv("AGENT_INTENT_THRESHOLD", "0.8")))
-    """Intent detection confidence threshold."""
-    VECTOR_SEARCH_THRESHOLD: float = field(
-        default_factory=lambda: float(os.getenv("AGENT_VECTOR_SEARCH_THRESHOLD", "0.7"))
+    session_app_name: str = field(default_factory=lambda: os.getenv("CHAT_SESSION_APP_NAME", "coffee_assistant"))
+    """ADK app name used for session lookups and the per-request Runner."""
+    response_cache_version: str = field(
+        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v1")
     )
-    """Vector search similarity threshold."""
-    VECTOR_SEARCH_LIMIT: int = field(default_factory=lambda: int(os.getenv("AGENT_VECTOR_SEARCH_LIMIT", "5")))
-    """Maximum number of vector search results."""
-    CONVERSATION_HISTORY_LIMIT: int = field(
-        default_factory=lambda: int(os.getenv("AGENT_CONVERSATION_HISTORY_LIMIT", "10"))
+    """Cache-key namespace bumped to invalidate stale grounded responses."""
+    response_cache_ttl_minutes: int = field(default_factory=lambda: _env_int("CHAT_RESPONSE_CACHE_TTL_MINUTES", 60))
+    """Response-cache time-to-live in minutes."""
+    product_search_limit: int = field(default_factory=lambda: _env_int("CHAT_PRODUCT_SEARCH_LIMIT", 5))
+    """Default product vector-search result limit."""
+    product_search_threshold: float = field(
+        default_factory=lambda: float(os.getenv("CHAT_PRODUCT_SEARCH_THRESHOLD", "0.7"))
     )
-    """Maximum conversation history to maintain."""
-    SESSION_EXPIRE_HOURS: int = field(default_factory=lambda: int(os.getenv("AGENT_SESSION_EXPIRE_HOURS", "24")))
-    """Session expiration in hours."""
+    """Default product vector-search similarity threshold."""
+    display_history_limit: int = field(default_factory=lambda: _env_int("CHAT_DISPLAY_HISTORY_LIMIT", 40))
+    """Maximum number of display-history messages retained per session."""
 
 
-@dataclass
-class CacheSettings:
-    """Caching configuration."""
-
-    RESPONSE_TTL_MINUTES: int = field(default_factory=lambda: int(os.getenv("CACHE_RESPONSE_TTL_MINUTES", "5")))
-    """Response cache TTL in minutes."""
-    EMBEDDING_CACHE_ENABLED: bool = field(
-        default_factory=lambda: os.getenv("CACHE_EMBEDDING_ENABLED", "True") in TRUE_VALUES
-    )
-    """Enable embedding caching."""
-
-
-@dataclass
+@dataclass(frozen=True)
 class ViteSettings:
     """Vite configuration settings."""
 
-    DEV_MODE: bool = field(default_factory=lambda: os.getenv("VITE_DEV_MODE", "False") in TRUE_VALUES)
+    DEV_MODE: bool = field(default_factory=lambda: _env_bool("VITE_DEV_MODE", False))
     """Enable Vite dev server mode."""
     BUNDLE_DIR: Path = field(
         default_factory=lambda: Path(
@@ -444,43 +412,52 @@ class ViteSettings:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class Settings:
     app: AppSettings = field(default_factory=AppSettings)
     db: DatabaseSettings = field(default_factory=DatabaseSettings)
-    server: ServerSettings = field(default_factory=ServerSettings)
     log: LogSettings = field(default_factory=LogSettings)
-    vertex_ai: VertexAISettings = field(default_factory=VertexAISettings)
-    agent: AgentSettings = field(default_factory=AgentSettings)
-    cache: CacheSettings = field(default_factory=CacheSettings)
+    ai: AISettings = field(default_factory=AISettings)
+    chat: ChatSettings = field(default_factory=ChatSettings)
     vite: ViteSettings = field(default_factory=ViteSettings)
     maps: MapsSettings = field(default_factory=MapsSettings)
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""
-        os.environ.setdefault("APP_URL", self.app.URL)
+        app_url = os.getenv("APP_URL") or f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"
+        os.environ.setdefault("APP_URL", app_url)
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
         os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
 
+    def configure_genai_env(self) -> None:
+        """Synchronize Google client env vars when project-based Vertex AI is configured.
+
+        Project-based Vertex AI and API keys are mutually exclusive in the genai
+        client, so a configured project clears any API key from the environment.
+        Run at startup rather than during dataclass construction to keep
+        ``AISettings`` immutable.
+        """
+        if self.ai.project_id:
+            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop("VERTEX_AI_API_KEY", None)
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+            os.environ["GOOGLE_CLOUD_PROJECT"] = self.ai.project_id
+            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.location
+
     @classmethod
     @lru_cache(maxsize=1, typed=True)
     def from_env(cls, dotenv_filename: str = ".env") -> Settings:
-        from litestar.cli._utils import console
-
         env_file = Path(dotenv_filename)
         if not env_file.is_absolute():
             env_file = Path(os.curdir) / env_file
         if env_file.is_file():
             from dotenv import load_dotenv
 
-            console.print(f"[yellow]Loading environment configuration from {dotenv_filename}[/]")
-
-            # override=True so the .env is the source of truth — otherwise stale
-            # shell exports (e.g. LITESTAR_PORT lingering in an interactive shell)
-            # silently win over what the user just edited in .env.
-            load_dotenv(env_file, override=True)
+            # override=False so shell env wins over .env — exported shell values
+            # take precedence and the factory stays predictable across processes.
+            load_dotenv(env_file, override=False)
 
         for k, v in list(os.environ.items()):
             if "$" in v:
@@ -488,6 +465,7 @@ class Settings:
 
         settings = Settings()
         settings.setup_litestar_env()
+        settings.configure_genai_env()
         return settings
 
 

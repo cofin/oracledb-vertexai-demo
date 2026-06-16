@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 from pathlib import Path
@@ -15,6 +16,7 @@ from rich.console import Console
 from tools.lib.utils import check_env_file, detect_deployment_mode, run_command
 
 console = Console()
+MIN_RECOMMENDED_MEM_BYTES = 8500000000
 
 
 @click.command(name="doctor")
@@ -99,7 +101,6 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
     mode_specific: dict[str, bool] = {}
 
     if mode == "managed":
-        # Check Docker/Podman
         has_docker = shutil.which("docker") is not None
         has_podman = shutil.which("podman") is not None
         mode_specific["container_runtime"] = has_docker or has_podman
@@ -112,6 +113,23 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
             else:
                 console.print("[red]✗ Neither Docker nor Podman found[/red]")
                 console.print("[dim]  Install from: https://www.docker.com/get-started[/dim]")
+
+        if has_docker or has_podman:
+            mem_total = 0
+            if has_docker:
+                ret, stdout, _ = run_command(["docker", "info", "--format", "{{.MemTotal}}"], check=False)
+                if ret == 0:
+                    with contextlib.suppress(ValueError):
+                        mem_total = int(stdout.strip())
+            elif has_podman:
+                ret, stdout, _ = run_command(["podman", "info", "--format", "{{.Host.MemTotal}}"], check=False)
+                if ret == 0:
+                    with contextlib.suppress(ValueError):
+                        mem_total = int(stdout.strip())
+
+            if 0 < mem_total < MIN_RECOMMENDED_MEM_BYTES and not json_output:
+                console.print("[yellow]⚠ Allocated host memory is below 8.5 GB[/yellow]")
+                console.print(f"[dim]  Current allocation: {mem_total / (1024**3):.2f} GiB. We recommend allocating at least 8 GiB for the Oracle ADB container.[/dim]")
 
     elif mode == "external":
         # Check wallet location (if configured - wallet is optional for external)

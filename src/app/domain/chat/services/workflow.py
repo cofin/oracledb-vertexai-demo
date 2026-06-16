@@ -38,10 +38,7 @@ def make_coffee_node(agent: LlmAgent) -> LlmAgent:
     Returns:
         A copied agent node named for join output collection.
     """
-    if hasattr(agent, "model_copy"):
-        return agent.model_copy(update={"name": "coffee_turn"})
-    agent.name = "coffee_turn"
-    return agent
+    return agent.model_copy(update={"name": "coffee_turn"})
 
 
 def _content_to_text(value: Any) -> str:

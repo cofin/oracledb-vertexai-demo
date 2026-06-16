@@ -8,6 +8,7 @@ single import surface. No local subclassing — the inheritance chain stops at
 sqlspec's :class:`SQLSpecAsyncService`.
 """
 
+from sqlspec.adapters.oracledb import OracleAsyncDriver
 from sqlspec.core.filters import (
     AnyCollectionFilter,
     BeforeAfterFilter,
@@ -30,6 +31,14 @@ from sqlspec.core.filters import (
 from sqlspec.extensions.litestar.providers import create_filter_dependencies
 from sqlspec.service import SQLSpecAsyncService, SQLSpecSyncService
 
+
+class OracleAsyncService(SQLSpecAsyncService[OracleAsyncDriver]):
+    """Base class for async services using Oracle."""
+
+    def __init__(self, driver: OracleAsyncDriver) -> None:
+        super().__init__(driver)
+
+
 __all__ = (
     "AnyCollectionFilter",
     "BeforeAfterFilter",
@@ -43,6 +52,7 @@ __all__ = (
     "NotInSearchFilter",
     "OffsetPagination",
     "OnBeforeAfterFilter",
+    "OracleAsyncService",
     "OrderByFilter",
     "PaginationFilter",
     "SQLSpecAsyncService",

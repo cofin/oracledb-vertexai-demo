@@ -161,10 +161,10 @@ search the live menu, format a grounded answer only from returned products,
 persist display history into ADK session state, cache the final response, and
 emit a single final SSE event.
 
-## Store, Inventory, And Maps Expansion
+## Store, Inventory, And Maps
 
-Active store-aware chat planning extends the existing product domain rather than
-adding a separate store app. The planned components are:
+Store-aware chat extends the existing product domain rather than adding a
+separate store app. The shipped components are:
 
 - store data foundation in the baseline migration and fixtures: coordinates,
   timezone, optional Google place IDs, Dallas store data, explicit product stock
@@ -173,13 +173,14 @@ adding a separate store app. The planned components are:
 - closure-bound ADK tools for store lookup, hours, nearest stores, and product
   availability;
 - deterministic `STORE_LOCATION` and `PRODUCT_AVAILABILITY` routes beside the
-  existing deterministic `PRODUCT_RAG` path;
-- HTMX/Jinja chat rendering for store cards, inventory cards, directions links,
-  and optional one-at-a-time Maps Embed output.
+  deterministic `PRODUCT_RAG` path;
+- HTMX/Jinja chat rendering for store cards, inventory cards, and directions
+  links.
 
 Maps URLs are the default integration and need no API key. Browser coordinates
-are request-scoped and require explicit consent. Embedded maps require separate
-settings and a restricted Maps Embed key; do not reuse Gemini or Vertex keys.
+are request-scoped and require explicit consent. The optional one-at-a-time Maps
+Embed output stays forward-looking: it requires separate settings and a
+restricted Maps Embed key, and must not reuse Gemini or Vertex keys.
 
 ## Vector Search Flow
 
@@ -187,14 +188,14 @@ settings and a restricted Maps Embed key; do not reuse Gemini or Vertex keys.
 POST /api/vector-demo
   -> VectorController.validate_message()
   -> OracleVectorSearchService.similarity_search()
-  -> VertexAIService.get_text_embedding(task_type="RETRIEVAL_QUERY")
+  -> VertexAIService.get_text_embedding(embedding_purpose="query")
   -> ProductService.search_by_vector()
   -> src/app/db/sql/products.sql:vector-search-products
   -> HTMX partial or JSON response
 ```
 
 Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-001`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
+by `gemini-embedding-2-preview`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH`.
 
 ## Frontend

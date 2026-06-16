@@ -6,11 +6,11 @@ Current guide for the Cymbal Coffee Oracle 26ai vector stack.
 
 The demo uses one embedding model and one vector shape everywhere:
 
-- Model: `gemini-embedding-001`
+- Model: `gemini-embedding-2-preview`
 - Dimensions: `3072`
 - Storage: `VECTOR(3072, FLOAT32)`
-- Query task type: `RETRIEVAL_QUERY`
-- Product/document task type: `RETRIEVAL_DOCUMENT`
+- Query embedding input: query-purpose instruction plus user text
+- Product/document embedding input: document-purpose instruction plus product text
 - Similarity formula: `1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE)`
 
 Do not reintroduce 768-dimensional examples. The committed product fixtures,
@@ -54,15 +54,17 @@ Oracle must have a non-zero `vector_memory_size` before `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH` indexes can be created. Without it, migrations fail with
 `ORA-51962`.
 
-Local container startup handles this in `tools/oracle/on_init/00_configure_vector_memory.sql`:
+Local managed ADB startup checks the pool with `sqlplus / as sysdba` after the
+container is healthy. If the pool is zero, it sets a Free-friendly value and
+restarts the database:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
 That value is intentionally small because Oracle Free Edition has a constrained
-SGA. For larger non-Free environments, `tools/oracle/configure_vector_memory.sql`
-uses a 4G target:
+SGA. The ADB container path does not mount legacy `on_init`/`on_startup`
+directories. For larger non-Free environments, use a 4G target:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 4G SCOPE = SPFILE;
@@ -124,17 +126,16 @@ response = await self.client.aio.models.embed_content(
     model=self.embedding_model,
     contents=text,
     config=EmbedContentConfig(
-        task_type=task_type,
         output_dimensionality=self.embedding_dimensions,
     ),
 )
 ```
 
-Use task types deliberately:
+Use embedding purposes deliberately:
 
-- Product fixture embeddings: `RETRIEVAL_DOCUMENT`
-- User search queries: `RETRIEVAL_QUERY`
-- One-off semantic cache lookups: use the same task type as the text role
+- Product fixture embeddings: document-purpose instruction plus product text
+- User search queries: query-purpose instruction plus user text
+- One-off semantic cache lookups: use the same purpose as the text role
 
 Embeddings are cached by text hash and model in the Oracle `embedding_cache`
 table. The cache table stores vectors too, so the same vector-memory rules apply.

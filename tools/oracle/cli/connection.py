@@ -8,6 +8,8 @@ from __future__ import annotations
 import rich_click as click
 from rich.console import Console
 
+from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
+
 console = Console()
 
 
@@ -32,30 +34,24 @@ def connect_test(mode: str | None, timeout: int) -> None:
     Attempts to connect and execute a simple query.
     Auto-detects wallet if configured.
     """
-    from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
-
     tester = ConnectionTester(console=console)
 
     try:
-        # If mode specified, create config for that mode
-        if mode:
-            deployment_mode = DeploymentMode(mode.upper())
-            config = ConnectionConfig.from_env()
-            config.mode = deployment_mode
-        else:
-            # Auto-detect from environment
-            config = ConnectionConfig.from_env()
-
-        # Run connection test
-        result = tester.test(config, timeout=timeout, display=True)
-
-        if not result.success:
-            raise click.Abort
-
+        run_connection_test(tester=tester, mode=mode, timeout=timeout)
     except Exception as e:
         if not isinstance(e, click.Abort):
             console.print(f"[red]✗ Test failed: {e}[/red]")
         raise click.Abort from e
+
+
+def run_connection_test(*, tester: ConnectionTester, mode: str | None, timeout: int) -> None:
+    """Build connection config and run the CLI connection test."""
+    config = ConnectionConfig.from_env()
+    if mode:
+        config.mode = DeploymentMode(mode.upper())
+    result = tester.test(config, timeout=timeout, display=True)
+    if not result.success:
+        raise click.Abort
 
 
 @connect_group.command(name="info")

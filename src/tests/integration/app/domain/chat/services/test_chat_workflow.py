@@ -15,7 +15,6 @@ from google.genai import types
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db
 from app.domain.chat.services.adk import ADKRunner, AgentToolsService
 from app.domain.chat.services.classifier import IntentLabel
 from app.domain.products.services import ProductService, StoreService
@@ -71,10 +70,10 @@ class FakeVertexAIService:
         self,
         text: str,
         *,
-        task_type: str = "RETRIEVAL_DOCUMENT",
+        embedding_purpose: str = "document",
         return_cache_status: bool = False,
     ) -> Any:
-        del text, task_type
+        del text, embedding_purpose
         embedding = _seed_embedding()
         return (embedding, True) if return_cache_status else embedding
 
@@ -116,13 +115,23 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
 
     monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
     configured = SimpleNamespace(
-        vertex_ai=SimpleNamespace(
-            PROJECT_ID="test-project",
-            API_KEY=None,
-            CHAT_MODEL="gemini-2.5-flash-lite",
-        )
+        ai=SimpleNamespace(
+            project_id="test-project",
+            api_key=None,
+            chat_model="gemini-2.5-flash-lite",
+        ),
+        chat=SimpleNamespace(
+            session_app_name="coffee_assistant",
+            response_cache_version="menu-grounded-v1",
+            response_cache_ttl_minutes=60,
+            product_search_limit=5,
+            product_search_threshold=0.7,
+            display_history_limit=40,
+        ),
     )
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
+
+    from app.config import db
 
     store = OracleAsyncADKStore(config=db)
     await store.ensure_tables()
@@ -142,15 +151,20 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         cache_service=CacheService(driver),
     )
 
-    result = await runner.process_request(
+    result: dict[str, Any] | None = None
+    async for event in runner.stream_request(
         query=query,
         user_id="integration-user",
         session_id=session_id,
         persona="enthusiast",
         tools_service=tools_service,
-    )
+    ):
+        if event.get("type") == "final":
+            result = event
+    assert result is not None, "stream_request must emit a final event"
 
     assert set(result) == {
+        "type",
         "answer",
         "session_id",
         "response_time_ms",
@@ -164,6 +178,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         "map_actions",
         "location_context",
     }
+    assert result["type"] == "final"
     assert result["session_id"] == session_id
     assert result["intent_detected"] == IntentLabel.PRODUCT_RAG.value
     assert result["answer"]

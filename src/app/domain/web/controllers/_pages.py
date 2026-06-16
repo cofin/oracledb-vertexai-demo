@@ -10,6 +10,7 @@ their data (e.g. ``app.domain.chat.controllers``,
 
 import structlog
 from litestar import Controller, get
+from litestar.params import FromQuery
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app.domain.chat.services import ADKRunner
@@ -29,5 +30,5 @@ class PageController(Controller):
         return HTMXTemplate(template_name="pages/chat.html.j2", context={"history_messages": history_messages})
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self, q: str | None = None) -> HTMXTemplate:
+    async def explore_page(self, q: FromQuery[str | None] = None) -> HTMXTemplate:
         return HTMXTemplate(template_name="pages/explore.html.j2", context={"query": q or ""})

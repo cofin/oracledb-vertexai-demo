@@ -17,32 +17,30 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.genai import errors as genai_errors
 from google.genai import types
-from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.adapters.oracledb import OracleAsyncDriver  # noqa: TC002
 from sqlspec.extensions.adk import SQLSpecSessionService  # noqa: TC002
 
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services._adk_grounding import (
     _build_map_actions,
     _coerce_dict_rows,
-    _default_route_fields,
     _extract_location_filters,
     _extract_product_query,
     _format_availability_answer,
     _format_store_location_answer,
+    _get_field,
     _ground_product_rag_turn,
     _has_browser_coordinates,
     _record_product_search_result,
     _request_coordinates,
     _safe_location_context,
 )
-from app.domain.chat.services._adk_history import (
+from app.domain.chat.services._adk_support import (
     _coerce_history_messages,
-    _event_content_text,
-    _event_history_messages,
-)
-from app.domain.chat.services._adk_telemetry import (
     _coerce_sql_phases,
     _effective_intent,
+    _event_content_text,
+    _event_history_messages,
     _record_tool_sql_phases,
     _response_cache_phase,
     _sha256_text,
@@ -58,7 +56,7 @@ from app.domain.chat.services.workflow import make_workflow
 from app.domain.products.services import ProductService, StoreService, VertexAIService  # noqa: TC001
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, CacheService, MetricsService, PersonaManager
-from app.lib.service import SQLSpecAsyncService
+from app.lib.service import OracleAsyncService
 from app.lib.settings import get_settings
 from app.utils.serialization import sanitize_for_json
 
@@ -72,32 +70,74 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-_APP_NAME = "coffee_assistant"
 _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
 _PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
-_CHAT_CACHE_VERSION = "menu-grounded-v1"
 _PRODUCT_RAG_INTENT = "PRODUCT_RAG"
 _PRODUCT_AVAILABILITY_INTENT = "PRODUCT_AVAILABILITY"
 _STORE_LOCATION_INTENT = "STORE_LOCATION"
 _ORDER_STATUS_INTENT = "ORDER_STATUS"
 _DISPLAY_HISTORY_STATE_KEY = "display_history"
-_CHAT_RESULT_KEYS: tuple[str, ...] = (
-    "answer",
-    "session_id",
-    "response_time_ms",
-    "intent_detected",
-    "search_metrics",
-    "from_cache",
-    "embedding_cache_hit",
-    "sql_phases",
-    "store_results",
-    "inventory_results",
-    "map_actions",
-    "location_context",
-)
 
 
-class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
+async def _collect_workflow_stream(
+    events: AsyncIterator[Any],
+    *,
+    workflow_output: dict[str, Any],
+    answer_parts: list[str],
+    partial_answer_parts: list[str],
+) -> AsyncIterator[dict[str, str]]:
+    """Collect ADK workflow output while yielding streaming deltas."""
+    async for event in events:
+        if isinstance(event.output, dict) and "intent" in event.output:
+            workflow_output.update(event.output)
+        text = _event_content_text(event)
+        if not text:
+            continue
+        if event.partial:
+            partial_answer_parts.append(text)
+            yield {"type": "delta", "text": text}
+        else:
+            answer_parts.append(text)
+
+
+def _final_event(
+    *,
+    answer: str,
+    session_id: str,
+    response_time_ms: float,
+    intent_detected: str,
+    search_metrics: dict[str, Any],
+    sql_phases: list[dict[str, Any]],
+    from_cache: bool = False,
+    embedding_cache_hit: bool = False,
+    store_results: list[dict[str, Any]] | None = None,
+    inventory_results: list[dict[str, Any]] | None = None,
+    map_actions: list[dict[str, Any]] | None = None,
+    location_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build the final stream event shared by every chat route.
+
+    Returns:
+        The complete reply payload with masked location context.
+    """
+    return {
+        "type": "final",
+        "answer": answer,
+        "session_id": session_id,
+        "response_time_ms": response_time_ms,
+        "intent_detected": intent_detected,
+        "search_metrics": search_metrics,
+        "from_cache": from_cache,
+        "embedding_cache_hit": embedding_cache_hit,
+        "sql_phases": sql_phases,
+        "store_results": store_results if store_results is not None else [],
+        "inventory_results": inventory_results if inventory_results is not None else [],
+        "map_actions": map_actions if map_actions is not None else [],
+        "location_context": _safe_location_context(location_context),
+    }
+
+
+class AgentToolsService(OracleAsyncService):
     """Business logic invoked by closure-bound ADK tools."""
 
     def __init__(
@@ -117,12 +157,15 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         self.cache_service = cache_service
 
     async def search_products_by_vector(
-        self, query: str, limit: int = 5, similarity_threshold: float = 0.7
+        self, query: str, limit: int | None = None, similarity_threshold: float | None = None
     ) -> dict[str, Any]:
+        chat = get_settings().chat
+        limit = chat.product_search_limit if limit is None else limit
+        similarity_threshold = chat.product_search_threshold if similarity_threshold is None else similarity_threshold
         embedding_start = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query,
-            task_type="RETRIEVAL_QUERY",
+            embedding_purpose="query",
             return_cache_status=True,
         )
         embedding_ms = (time.time() - embedding_start) * 1000
@@ -184,30 +227,6 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         except ValueError:
             product = await self.product_service.get_by_name(product_id)
         return cast("dict[str, Any]", sanitize_for_json(product)) if product else {"error": "Product not found"}
-
-    async def record_search_metric(
-        self,
-        session_id: str,
-        query_text: str,
-        intent: str,
-        vector_results: list[dict[str, Any]],
-        total_response_time_ms: int,
-        vector_search_time_ms: int = 0,
-        embedding_time_ms: int = 0,
-        query_id: str | None = None,
-    ) -> dict[str, Any]:
-        from app.domain.system.schemas import SearchMetricsCreate
-
-        metrics = SearchMetricsCreate(
-            query_id=query_id or str(uuid.uuid4()),
-            user_id=session_id,
-            search_time_ms=float(total_response_time_ms),
-            embedding_time_ms=float(embedding_time_ms),
-            oracle_time_ms=float(vector_search_time_ms),
-            result_count=len(vector_results),
-        )
-        await self.metrics_service.record_search(metrics)
-        return {"status": "recorded"}
 
     async def get_all_store_locations(self) -> list[dict[str, Any]]:
         stores = await self.store_service.get_all_stores()
@@ -279,17 +298,49 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     ) -> dict[str, Any]:
         started = time.time()
         coordinates = (latitude, longitude) if latitude is not None and longitude is not None else None
+
+        # 1. Try exact match first
         availability = await self.store_service.find_product_availability(product_query, coordinates=coordinates)
+        sql_key = "find-product-availability-by-query"
         binds: dict[str, Any] = {"product_query": product_query}
+
+        # 2. If no exact match, try vector search fallback
+        if not availability:
+            query_embedding = await self.vertex_ai_service.get_text_embedding(
+                product_query,
+                embedding_purpose="query",
+            )
+            matches = await self.product_service.search_by_vector(
+                query_embedding,
+                similarity_threshold=0.6,
+                limit=1,
+            )
+            if matches:
+                resolved_product = matches[0]
+                availability = await self.store_service.find_stores_with_product(
+                    resolved_product.id,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
+                sql_key = "find-stores-with-product-inventory"
+                binds = {"product_id": resolved_product.id}
+                await logger.ainfo(
+                    "Resolved product query via vector search",
+                    query=product_query,
+                    resolved_name=resolved_product.name,
+                    similarity=resolved_product.similarity_score,
+                )
+
         if coordinates:
             binds["origin"] = "<REQUEST_COORDINATES>"
+
         return {
             "availability": sanitize_for_json(availability),
             "results_count": len(availability),
             "sql_phases": [
                 _sql_phase(
                     label="Product availability lookup",
-                    sql_key="find-product-availability-by-query",
+                    sql_key=sql_key,
                     binds=binds,
                     row_count=len(availability),
                     runtime_ms=(time.time() - started) * 1000,
@@ -301,7 +352,8 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
     def make_response_cache_key(self, query: str, persona: str) -> str:
         normalized = " ".join(query.casefold().split())
         model = self.vertex_ai_service.model
-        digest = sha256(f"{_CHAT_CACHE_VERSION}:{model}:{persona}:{normalized}".encode()).hexdigest()
+        version = get_settings().chat.response_cache_version
+        digest = sha256(f"{version}:{model}:{persona}:{normalized}".encode()).hexdigest()
         return f"chat:{digest}"
 
     async def get_cached_chat_response(self, cache_key: str) -> dict[str, Any] | None:
@@ -309,7 +361,9 @@ class AgentToolsService(SQLSpecAsyncService[OracleAsyncDriver]):
         return cached.response_data if cached else None
 
     async def set_cached_chat_response(self, cache_key: str, response_data: dict[str, Any]) -> None:
-        await self.cache_service.set_cached_response(cache_key, response_data, ttl_minutes=60)
+        await self.cache_service.set_cached_response(
+            cache_key, response_data, ttl_minutes=get_settings().chat.response_cache_ttl_minutes
+        )
 
 
 def credential_guard_callback(callback_context: CallbackContext) -> types.Content | None:
@@ -329,8 +383,8 @@ def credential_guard_callback(callback_context: CallbackContext) -> types.Conten
 
 def _has_vertex_ai_backend_config() -> bool:
     settings = get_settings()
-    project_id = settings.vertex_ai.PROJECT_ID.strip()
-    return bool(settings.vertex_ai.API_KEY or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
+    project_id = settings.ai.project_id.strip()
+    return bool(settings.ai.api_key or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
 
 
 def _ensure_vertex_ai_backend_configured() -> None:
@@ -374,8 +428,12 @@ class ADKRunner:
         _ensure_vertex_ai_backend_configured()
 
     def _make_tool_factories(self, tools_service: AgentToolsService, metric_state: dict[str, Any]) -> list[ToolUnion]:
+        chat_settings = get_settings().chat
+
         async def search_products_by_vector(
-            query: str, limit: int = 5, similarity_threshold: float = 0.7
+            query: str,
+            limit: int = chat_settings.product_search_limit,
+            similarity_threshold: float = chat_settings.product_search_threshold,
         ) -> dict[str, Any]:
             """Search the Cymbal Coffee menu with vector RAG.
 
@@ -470,7 +528,7 @@ class ADKRunner:
     def _build_workflow(self, instruction: str, temperature: float, tools: list[ToolUnion]) -> Any:
         agent = LlmAgent(
             name="CoffeeAssistant",
-            model=get_settings().vertex_ai.CHAT_MODEL,
+            model=get_settings().ai.chat_model,
             instruction=instruction,
             tools=tools,
             generate_content_config=types.GenerateContentConfig(temperature=temperature),
@@ -478,26 +536,9 @@ class ADKRunner:
         )
         return make_workflow(self._classifier, agent)
 
-    async def _get_or_create_session(self, user_id: str, session_id: str | None) -> Any:
-        """Fetch an existing ADK session or create one for the request.
-
-        Returns:
-            ADK session bound to the user/session identifiers.
-        """
-        session = (
-            await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
-            if session_id
-            else None
-        )
-        if not session:
-            session = await self._session_service.create_session(
-                app_name=_APP_NAME, user_id=user_id, session_id=session_id
-            )
-        return session
-
     async def get_history(self, user_id: str, session_id: str) -> list[ChatMessage]:
         """Return displayable chat history for the current ADK session."""
-        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        session = await self._session_service.get_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
         if not session:
             return []
 
@@ -518,7 +559,7 @@ class ADKRunner:
 
     async def clear_session(self, user_id: str, session_id: str) -> None:
         """Delete the current ADK session and its event history."""
-        await self._session_service.delete_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        await self._session_service.delete_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
 
     async def _append_display_history(
         self,
@@ -528,14 +569,17 @@ class ADKRunner:
         query: str,
         answer: str,
         intent_detected: str | None = None,
+        last_products: list[str] | None = None,
     ) -> None:
-        session = await self._session_service.get_session(app_name=_APP_NAME, user_id=user_id, session_id=session_id)
+        session = await self._session_service.get_session(app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id)
         if not session:
             return
 
         state = dict(getattr(session, "state", None) or {})
         if intent_detected:
             state["intent"] = intent_detected
+        if last_products is not None:
+            state["last_products"] = last_products
         history = [
             *[
                 {"source": message.source, "message": message.message}
@@ -544,17 +588,10 @@ class ADKRunner:
             {"source": "human", "message": query},
             {"source": "ai", "message": answer},
         ]
-        state[_DISPLAY_HISTORY_STATE_KEY] = history[-40:]
-        update_state = getattr(getattr(self._session_service, "store", None), "update_session_state", None)
-        if callable(update_state):
-            result = update_state(session_id, state)
-            if isawaitable(result):
-                await result
-
-    async def _classify_intent(self, query: str) -> str:
-        intent_result = self._classifier.classify(query)
-        intent_label = await intent_result if isawaitable(intent_result) else intent_result
-        return intent_label.value if isinstance(intent_label, IntentLabel) else str(intent_label)
+        state[_DISPLAY_HISTORY_STATE_KEY] = history[-get_settings().chat.display_history_limit :]
+        result = self._session_service.store.update_session_state(session_id, state)
+        if isawaitable(result):
+            await result
 
     async def _cached_response_event(
         self,
@@ -573,10 +610,11 @@ class ADKRunner:
         answer = str(cached_response.get("answer", ""))
         sql_phases = _coerce_sql_phases(cached_response.get("sql_phases"))
         intent_detected = _effective_intent(
-            str(cached_response.get("intent_detected", "GENERAL_CONVERSATION")),
+            str(cached_response.get("intent_detected") or "GENERAL_CONVERSATION"),
             cached_metrics,
             sql_phases,
         )
+        last_products = cached_response.get("last_products")
         if answer:
             await self._append_display_history(
                 user_id=user_id,
@@ -584,22 +622,22 @@ class ADKRunner:
                 query=query,
                 answer=answer,
                 intent_detected=intent_detected,
+                last_products=last_products,
             )
-        return {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": intent_detected,
-            "search_metrics": cached_metrics,
-            "from_cache": True,
-            "embedding_cache_hit": bool(cached_response.get("embedding_cache_hit")),
-            "sql_phases": [response_cache_phase, *sql_phases],
-            "store_results": _coerce_dict_rows(cached_response.get("store_results")),
-            "inventory_results": _coerce_dict_rows(cached_response.get("inventory_results")),
-            "map_actions": _coerce_dict_rows(cached_response.get("map_actions")),
-            "location_context": _safe_location_context(location_context),
-        }
+        return _final_event(
+            answer=answer,
+            session_id=session.id,
+            response_time_ms=elapsed_ms,
+            intent_detected=intent_detected,
+            search_metrics=cached_metrics,
+            sql_phases=[response_cache_phase, *sql_phases],
+            from_cache=True,
+            embedding_cache_hit=bool(cached_response.get("embedding_cache_hit")),
+            store_results=_coerce_dict_rows(cached_response.get("store_results")),
+            inventory_results=_coerce_dict_rows(cached_response.get("inventory_results")),
+            map_actions=_coerce_dict_rows(cached_response.get("map_actions")),
+            location_context=location_context,
+        )
 
     async def _product_rag_event(
         self,
@@ -619,6 +657,8 @@ class ADKRunner:
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
         product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        products = metric_state.get("rag_products", [])
+        last_products = [p["name"] for p in products] if products else None
         response_data = {
             "answer": answer,
             "intent_detected": _PRODUCT_RAG_INTENT,
@@ -628,6 +668,7 @@ class ADKRunner:
             "store_results": [],
             "inventory_results": [],
             "map_actions": [],
+            "last_products": last_products,
         }
         if answer:
             if cache_key:
@@ -638,19 +679,18 @@ class ADKRunner:
                 query=query,
                 answer=answer,
                 intent_detected=_PRODUCT_RAG_INTENT,
+                last_products=last_products,
             )
-        return {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": _PRODUCT_RAG_INTENT,
-            "search_metrics": search_metrics,
-            "from_cache": False,
-            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
-            "sql_phases": ([response_cache_phase] if response_cache_phase else []) + product_sql_phases,
-            **_default_route_fields(location_context),
-        }
+        return _final_event(
+            answer=answer,
+            session_id=session.id,
+            response_time_ms=elapsed_ms,
+            intent_detected=_PRODUCT_RAG_INTENT,
+            search_metrics=search_metrics,
+            sql_phases=([response_cache_phase] if response_cache_phase else []) + product_sql_phases,
+            embedding_cache_hit=bool(metric_state.get("embedding_cache_hit")),
+            location_context=location_context,
+        )
 
     async def _store_location_event(
         self,
@@ -685,21 +725,17 @@ class ADKRunner:
             answer=answer,
             intent_detected=_STORE_LOCATION_INTENT,
         )
-        return {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": _STORE_LOCATION_INTENT,
-            "search_metrics": {"total_ms": round(elapsed_ms), "results_count": len(stores)},
-            "from_cache": False,
-            "embedding_cache_hit": False,
-            "sql_phases": ([response_cache_phase] if response_cache_phase else []) + sql_phases,
-            "store_results": stores,
-            "inventory_results": [],
-            "map_actions": _build_map_actions(stores),
-            "location_context": _safe_location_context(location_context),
-        }
+        return _final_event(
+            answer=answer,
+            session_id=session.id,
+            response_time_ms=elapsed_ms,
+            intent_detected=_STORE_LOCATION_INTENT,
+            search_metrics={"total_ms": round(elapsed_ms), "results_count": len(stores)},
+            sql_phases=([response_cache_phase] if response_cache_phase else []) + sql_phases,
+            store_results=stores,
+            map_actions=_build_map_actions(stores),
+            location_context=location_context,
+        )
 
     async def _product_availability_event(
         self,
@@ -714,6 +750,21 @@ class ADKRunner:
     ) -> dict[str, Any]:
         coordinates = _request_coordinates(location_context)
         product_query = _extract_product_query(query)
+        if not product_query:
+            state = dict(getattr(session, "state", None) or {})
+            last_products = state.get("last_products", [])
+            product_query = last_products[0] if last_products else query
+
+        location_hint = (location_context or {}).get("store_name") if location_context else None
+        if not location_hint:
+            filters = _extract_location_filters(query, location_context)
+            location_hint = " ".join(str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]) or query
+
+        target_store = await tools_service.store_service.resolve_store(
+            location_hint=location_hint,
+            coordinates=coordinates,
+        )
+
         if coordinates:
             result = await tools_service.find_stores_with_product(product_query, coordinates[0], coordinates[1])
         else:
@@ -722,7 +773,26 @@ class ADKRunner:
         inventory = _coerce_dict_rows(result.get("availability"))
         sql_phases = _coerce_sql_phases(result.get("sql_phases"))
         elapsed_ms = (time.time() - start) * 1000
-        answer = _format_availability_answer(inventory)
+
+        target_row = None
+        alternatives = []
+
+        if target_store:
+            for row in inventory:
+                if _get_field(row, "store_id") == target_store.id:
+                    target_row = row
+                else:
+                    alternatives.append(row)
+            if not target_row:
+                alternatives = inventory
+        else:
+            alternatives = inventory
+
+        answer = _format_availability_answer(
+            target=target_row,
+            alternatives=alternatives,
+            target_store_name=target_store.name if target_store else None,
+        )
         await self._append_display_history(
             user_id=user_id,
             session_id=session.id,
@@ -730,81 +800,21 @@ class ADKRunner:
             answer=answer,
             intent_detected=_PRODUCT_AVAILABILITY_INTENT,
         )
-        return {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": _PRODUCT_AVAILABILITY_INTENT,
-            "search_metrics": {
+        return _final_event(
+            answer=answer,
+            session_id=session.id,
+            response_time_ms=elapsed_ms,
+            intent_detected=_PRODUCT_AVAILABILITY_INTENT,
+            search_metrics={
                 "total_ms": round(elapsed_ms),
                 "results_count": len(inventory),
                 "product_query": product_query,
             },
-            "from_cache": False,
-            "embedding_cache_hit": False,
-            "sql_phases": ([response_cache_phase] if response_cache_phase else []) + sql_phases,
-            "store_results": [],
-            "inventory_results": inventory,
-            "map_actions": _build_map_actions(inventory),
-            "location_context": _safe_location_context(location_context),
-        }
-
-    async def _unsupported_order_status_event(
-        self,
-        *,
-        start: float,
-        query: str,
-        user_id: str,
-        session: Any,
-        location_context: dict[str, Any] | None,
-        response_cache_phase: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        elapsed_ms = (time.time() - start) * 1000
-        answer = (
-            "This demo does not include order tracking yet. I can help with menu recommendations, "
-            "store locations, and product availability."
+            sql_phases=([response_cache_phase] if response_cache_phase else []) + sql_phases,
+            inventory_results=inventory,
+            map_actions=_build_map_actions(inventory),
+            location_context=location_context,
         )
-        await self._append_display_history(
-            user_id=user_id,
-            session_id=session.id,
-            query=query,
-            answer=answer,
-            intent_detected=_ORDER_STATUS_INTENT,
-        )
-        return {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": _ORDER_STATUS_INTENT,
-            "search_metrics": {"total_ms": round(elapsed_ms)},
-            "from_cache": False,
-            "embedding_cache_hit": False,
-            "sql_phases": [response_cache_phase] if response_cache_phase else [],
-            **_default_route_fields(location_context),
-        }
-
-    async def _response_cache_lookup(
-        self,
-        *,
-        query: str,
-        persona: str,
-        tools_service: AgentToolsService,
-        location_context: dict[str, Any] | None,
-    ) -> tuple[str | None, dict[str, Any] | None, dict[str, Any] | None]:
-        if _has_browser_coordinates(location_context):
-            return None, None, None
-
-        cache_key = tools_service.make_response_cache_key(query, persona)
-        cache_start = time.time()
-        cached_response = await tools_service.get_cached_chat_response(cache_key)
-        response_cache_phase = _response_cache_phase(
-            cache_key,
-            hit=bool(cached_response),
-            runtime_ms=(time.time() - cache_start) * 1000,
-        )
-        return cache_key, response_cache_phase, cached_response
 
     async def _deterministic_route_event(
         self,
@@ -851,17 +861,30 @@ class ADKRunner:
                 response_cache_phase=response_cache_phase,
             )
         if intent_detected == _ORDER_STATUS_INTENT:
-            return await self._unsupported_order_status_event(
-                start=start,
-                query=query,
+            elapsed_ms = (time.time() - start) * 1000
+            answer = (
+                "This demo does not include order tracking yet. I can help with menu recommendations, "
+                "store locations, and product availability."
+            )
+            await self._append_display_history(
                 user_id=user_id,
-                session=session,
+                session_id=session.id,
+                query=query,
+                answer=answer,
+                intent_detected=_ORDER_STATUS_INTENT,
+            )
+            return _final_event(
+                answer=answer,
+                session_id=session.id,
+                response_time_ms=elapsed_ms,
+                intent_detected=_ORDER_STATUS_INTENT,
+                search_metrics={"total_ms": round(elapsed_ms)},
+                sql_phases=[response_cache_phase] if response_cache_phase else [],
                 location_context=location_context,
-                response_cache_phase=response_cache_phase,
             )
         return None
 
-    async def stream_request(  # noqa: PLR0914, PLR0915
+    async def stream_request(
         self,
         query: str,
         user_id: str,
@@ -883,14 +906,27 @@ class ADKRunner:
         start = time.time()
         _ensure_vertex_ai_backend_configured()
 
-        session = await self._get_or_create_session(user_id, session_id)
+        session = await self._session_service.get_session(
+            app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id
+        ) if session_id else None
+        if not session:
+            session = await self._session_service.create_session(
+                app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id
+            )
 
-        cache_key, response_cache_phase, cached_response = await self._response_cache_lookup(
-            query=query,
-            persona=persona,
-            tools_service=tools_service,
-            location_context=location_context,
-        )
+        # Browser coordinates are request-scoped, so consented turns skip the response cache.
+        cache_key: str | None = None
+        response_cache_phase: dict[str, Any] | None = None
+        cached_response: dict[str, Any] | None = None
+        if not _has_browser_coordinates(location_context):
+            cache_key = tools_service.make_response_cache_key(query, persona)
+            cache_start = time.time()
+            cached_response = await tools_service.get_cached_chat_response(cache_key)
+            response_cache_phase = _response_cache_phase(
+                cache_key,
+                hit=bool(cached_response),
+                runtime_ms=(time.time() - cache_start) * 1000,
+            )
         if cached_response and response_cache_phase:
             yield await self._cached_response_event(
                 start=start,
@@ -903,7 +939,9 @@ class ADKRunner:
             )
             return
 
-        intent_detected = await self._classify_intent(query)
+        intent_result = self._classifier.classify(query)
+        intent_label = await intent_result if isawaitable(intent_result) else intent_result
+        intent_detected = intent_label.value if isinstance(intent_label, IntentLabel) else str(intent_label)
         route_event = await self._deterministic_route_event(
             intent_detected=intent_detected,
             start=start,
@@ -919,33 +957,70 @@ class ADKRunner:
             yield route_event
             return
 
+        async for event in self._general_conversation_event(
+            start=start,
+            query=query,
+            user_id=user_id,
+            session=session,
+            persona=persona,
+            classifier_intent=intent_detected,
+            tools_service=tools_service,
+            location_context=location_context,
+            cache_key=cache_key,
+            response_cache_phase=response_cache_phase,
+        ):
+            yield event
+
+    async def _general_conversation_event(
+        self,
+        *,
+        start: float,
+        query: str,
+        user_id: str,
+        session: Any,
+        persona: str,
+        classifier_intent: str,
+        tools_service: AgentToolsService,
+        location_context: dict[str, Any] | None,
+        cache_key: str | None,
+        response_cache_phase: dict[str, Any] | None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Run the ADK fan-out for a general-conversation turn.
+
+        Yields:
+            Delta events followed by one final event. When the model called the vector
+            tool, the turn is relabeled to PRODUCT_RAG and re-grounded from that lookup.
+
+        Raises:
+            AIServiceUnconfigured: If configured credentials are missing or invalid.
+            ClientError: If the Gemini client fails for a non-credential reason.
+            ValueError: If ADK raises a non-credential validation error.
+        """
         instruction = self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
-        temperature = self._persona_manager.get_temperature(persona)
 
         metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
         tools = self._make_tool_factories(tools_service, metric_state)
-        workflow = self._build_workflow(instruction, temperature, tools)
+        workflow = self._build_workflow(instruction, self._persona_manager.get_temperature(persona), tools)
 
-        runner = Runner(node=workflow, app_name=_APP_NAME, session_service=self._session_service)
-        content = types.Content(role="user", parts=[types.Part(text=query)])
-        run_config = RunConfig(streaming_mode=StreamingMode.SSE)
-        events = runner.run_async(user_id=user_id, session_id=session.id, new_message=content, run_config=run_config)
+        runner = Runner(node=workflow, app_name=get_settings().chat.session_app_name, session_service=self._session_service)
+        events = runner.run_async(
+            user_id=user_id,
+            session_id=session.id,
+            new_message=types.Content(role="user", parts=[types.Part(text=query)]),
+            run_config=RunConfig(streaming_mode=StreamingMode.SSE),
+        )
 
         answer_parts: list[str] = []
         partial_answer_parts: list[str] = []
         workflow_output: dict[str, Any] = {}
         try:
-            async for event in events:
-                if isinstance(event.output, dict) and "intent" in event.output:
-                    workflow_output.update(event.output)
-                text = _event_content_text(event)
-                if not text:
-                    continue
-                if event.partial:
-                    partial_answer_parts.append(text)
-                    yield {"type": "delta", "text": text}
-                else:
-                    answer_parts.append(text)
+            async for delta in _collect_workflow_stream(
+                events,
+                workflow_output=workflow_output,
+                answer_parts=answer_parts,
+                partial_answer_parts=partial_answer_parts,
+            ):
+                yield delta
         except (genai_errors.ClientError, ValueError) as exc:
             if _is_credential_error(exc):
                 raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
@@ -956,8 +1031,10 @@ class ADKRunner:
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
         product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
+        # When the model actually called the vector tool, _effective_intent relabels this
+        # turn to PRODUCT_RAG; re-ground the answer/metrics from the recorded lookup.
         intent_detected = _effective_intent(
-            str(workflow_output.get("intent") or intent_detected or "GENERAL_CONVERSATION"),
+            str(workflow_output.get("intent") or classifier_intent or "GENERAL_CONVERSATION"),
             search_metrics,
             product_sql_phases,
         )
@@ -969,19 +1046,21 @@ class ADKRunner:
             product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
         sql_phases = ([response_cache_phase] if response_cache_phase else []) + product_sql_phases
 
-        response_data = {
-            "answer": answer,
-            "intent_detected": intent_detected,
-            "search_metrics": search_metrics,
-            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
-            "sql_phases": product_sql_phases,
-            "store_results": [],
-            "inventory_results": [],
-            "map_actions": [],
-        }
         if answer:
             if cache_key:
-                await tools_service.set_cached_chat_response(cache_key, response_data)
+                await tools_service.set_cached_chat_response(
+                    cache_key,
+                    {
+                        "answer": answer,
+                        "intent_detected": intent_detected,
+                        "search_metrics": search_metrics,
+                        "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
+                        "sql_phases": product_sql_phases,
+                        "store_results": [],
+                        "inventory_results": [],
+                        "map_actions": [],
+                    },
+                )
             await self._append_display_history(
                 user_id=user_id,
                 session_id=session.id,
@@ -990,55 +1069,16 @@ class ADKRunner:
                 intent_detected=intent_detected,
             )
 
-        yield {
-            "type": "final",
-            "answer": answer,
-            "session_id": session.id,
-            "response_time_ms": elapsed_ms,
-            "intent_detected": intent_detected,
-            "search_metrics": search_metrics,
-            "from_cache": False,
-            "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
-            "sql_phases": sql_phases,
-            **_default_route_fields(location_context),
-        }
-
-    async def process_request(
-        self,
-        query: str,
-        user_id: str,
-        session_id: str | None,
-        persona: str,
-        tools_service: AgentToolsService,
-        location_context: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """Run a chat turn to completion.
-
-        Returns:
-            Final chat payload used by JSON and non-streaming HTMX callers.
-        """
-        async for event in self.stream_request(
-            query=query,
-            user_id=user_id,
-            session_id=session_id,
-            persona=persona,
-            tools_service=tools_service,
+        yield _final_event(
+            answer=answer,
+            session_id=session.id,
+            response_time_ms=elapsed_ms,
+            intent_detected=intent_detected,
+            search_metrics=search_metrics,
+            sql_phases=sql_phases,
+            embedding_cache_hit=bool(metric_state.get("embedding_cache_hit")),
             location_context=location_context,
-        ):
-            if event.get("type") == "final":
-                return {key: event[key] for key in _CHAT_RESULT_KEYS}
-
-        return {
-            "answer": "",
-            "session_id": session_id or "",
-            "response_time_ms": 0.0,
-            "intent_detected": "GENERAL_CONVERSATION",
-            "search_metrics": {},
-            "from_cache": False,
-            "embedding_cache_hit": False,
-            "sql_phases": [],
-            **_default_route_fields(location_context),
-        }
+        )
 
 
 __all__ = (

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.domain.system.controllers import MetricsController
@@ -30,7 +32,7 @@ class FakeCacheService:
 @pytest.mark.anyio
 async def test_get_metrics_summary_returns_cards_array() -> None:
     result = await MetricsController.get_metrics_summary.fn(
-        object.__new__(MetricsController),
+        MetricsController(owner=MagicMock()),
         metrics_service=FakeMetricsService(),
         cache_service=FakeCacheService(),
     )

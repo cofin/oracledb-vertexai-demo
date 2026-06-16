@@ -15,6 +15,10 @@
         Top vector op: <span class="font-mono text-accent-strong">{{ plan.plan_summary or '—' }}</span>
       </p>
 
+      {# Plan table contract: six columns in order — Id, Operation, Name, Rows,
+         Cost, Time — with rows flagged is_vector highlighted (bg-accent-soft/60
+         text-accent-strong). The chat telemetry popover builds an identical table
+         in JavaScript; both renderers must keep the same columns and highlight. #}
       {% if plan.plan_rows %}
         <div class="overflow-x-auto border-y border-border bg-surface/45">
           <table class="w-full table-fixed text-left text-xs">

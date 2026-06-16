@@ -3,7 +3,19 @@
 
 """Oracle database container lifecycle management.
 
-This module manages Oracle Database Free container deployment and operations.
+This module manages the local Oracle Database Free (gvenzl/oracle-free)
+container used for development and the demo. The image bundles the
+``/container-entrypoint-initdb.d`` (run once on first creation) and
+``/container-entrypoint-startdb.d`` (run on every start) hook directories and
+executes those scripts as SYSDBA, so vector-memory configuration and app-user
+grants live in ``tools/oracle/on_init`` / ``tools/oracle/on_startup`` rather
+than in Python.
+
+The image is overridable via ``ORACLE_IMAGE`` for advanced setups, but the run
+command, health check, and hook mounts are shaped for gvenzl/oracle-free.
+Connecting the app to a remote Oracle Autonomous Database (OCI or any cloud)
+is a separate, wallet-based concern handled by ``tools/oracle/connection.py``
+and the app settings — it does not use this container lifecycle.
 """
 
 from __future__ import annotations
@@ -18,25 +30,28 @@ from rich.console import Console
 
 from tools.oracle.container import ContainerNotFoundError, ContainerRuntime
 
+DEFAULT_IMAGE = "gvenzl/oracle-free:latest"
+PDB_SERVICE_NAME = "freepdb1"
+
 
 @dataclass
 class DatabaseConfig:
-    """Configuration for Oracle database container."""
+    """Configuration for the local Oracle database container."""
 
     # Container settings
     container_name: str = "oracle-free-db"
-    image: str = "gvenzl/oracle-free:latest"
+    image: str = DEFAULT_IMAGE
     hostname: str = "db"
 
     # Port mapping
     host_port: int = 1521
     container_port: int = 1521
 
-    # Environment variables (from docker-compose.yml)
+    # Environment variables (gvenzl/oracle-free)
     oracle_system_password: str = "super-secret"  # noqa: S105
     oracle_password: str = "super-secret"  # noqa: S105
-    app_user_password: str = "super-secret"  # noqa: S105
     app_user: str = "app"
+    app_user_password: str = "SuperSecret1"  # noqa: S105
 
     # Volumes
     data_volume_name: str = "oracle-db-data"
@@ -55,33 +70,21 @@ class DatabaseConfig:
 
     @classmethod
     def from_env(cls) -> DatabaseConfig:
-        """Create configuration from environment variables.
-
-        Reads from:
-        - ORACLE26AI_PORT (default: 1521)
-        - ORACLE23AI_PORT (legacy fallback)
-        - ORACLE_SYSTEM_PASSWORD (default: super-secret)
-        - ORACLE_PASSWORD (default: super-secret)
-        - ORACLE_USER (default: app)
-
-        Returns:
-            DatabaseConfig: Configuration instance
-        """
-        oracle_system_pw = os.getenv("ORACLE_SYSTEM_PASSWORD", "super-secret")
-        oracle_user_pw = os.getenv("ORACLE_PASSWORD", "super-secret")
-        host_port = os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521"))
-
+        """Create configuration from environment variables."""
+        host_port = os.getenv("DATABASE_PORT", os.getenv("ORACLE26AI_PORT", os.getenv("ORACLE23AI_PORT", "1521")))
+        oracle_system_pw = os.getenv("ORACLE_SYSTEM_PASSWORD", os.getenv("ORACLE_PASSWORD", "super-secret"))
         return cls(
+            image=os.getenv("ORACLE_IMAGE", DEFAULT_IMAGE),
             host_port=int(host_port),
             oracle_system_password=oracle_system_pw,
-            oracle_password=oracle_system_pw,  # Matches docker-compose behavior
-            app_user_password=oracle_user_pw,
-            app_user=os.getenv("ORACLE_USER", "app"),
+            oracle_password=os.getenv("ORACLE_PASSWORD", oracle_system_pw),
+            app_user=os.getenv("DATABASE_USER", "app"),
+            app_user_password=os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
         )
 
 
 class OracleDatabase:
-    """Manage Oracle Database Free container lifecycle."""
+    """Manage the local Oracle Database Free container lifecycle."""
 
     def __init__(
         self,
@@ -89,15 +92,8 @@ class OracleDatabase:
         config: DatabaseConfig | None = None,
         console: Console | None = None,
     ) -> None:
-        """Initialize Oracle database manager.
-
-        Args:
-            runtime: Container runtime instance
-            config: Database configuration (uses defaults if None)
-            console: Rich console for output (creates new if None)
-        """
         self.runtime = runtime
-        self.config = config or DatabaseConfig()
+        self.config = config or DatabaseConfig.from_env()
         self.console = console or Console()
 
     def start(
@@ -106,39 +102,26 @@ class OracleDatabase:
         pull: bool = False,
         recreate: bool = False,
     ) -> None:
-        """Start Oracle database container.
+        """Start the Oracle database container.
 
         Args:
             pull: Pull latest image before starting
-            recreate: Remove and recreate container if exists
-
-        Process:
-            1. Check if container already exists
-            2. Pull image if requested
-            3. Create data volume if needed
-            4. Prepare init script mount
-            5. Build container run command
-            6. Start container
-            7. Wait for health check
-            8. Display connection info
+            recreate: Remove and recreate container if it exists
 
         Raises:
-            ContainerAlreadyRunningError: If container is already running
-            ContainerStartError: If container fails to start
+            ContainerStartError: If the container fails to start or stay healthy
         """
         self.console.rule("[bold blue]Starting Oracle Database Container")
 
-        # Check if already running
+        # Already running — reuse it (idempotent); recreate only when asked
         if self.runtime.container_running(self.config.container_name):
             if not recreate:
-                raise ContainerAlreadyRunningError(
-                    f"Container '{self.config.container_name}' is already running. "
-                    "Use --recreate to remove and recreate it."
-                )
+                self.console.print("[green]✓[/green] Container already running — reusing it")
+                return
             self.console.print("[yellow]Removing existing container...[/yellow]")
             self.remove(force=True)
 
-        # Check if exists but stopped
+        # Exists but stopped
         if self.runtime.container_exists(self.config.container_name):
             if recreate:
                 self.console.print("[yellow]Removing existing container...[/yellow]")
@@ -146,20 +129,16 @@ class OracleDatabase:
             else:
                 self.console.print("[cyan]Starting existing container...[/cyan]")
                 self.runtime.run_command(["start", self.config.container_name])
+                # on_startup hooks (vector-memory verification) re-run automatically.
                 self.console.print("[green]✓[/green] Container started")
                 return
 
-        # Pull image if requested
+        # Fresh create
         if pull:
             self._pull_image()
-
-        # Create volume
         self._create_volume(self.config.data_volume_name)
 
-        # Build run command
         run_cmd = self._build_run_command()
-
-        # Start container
         self.console.print("[cyan]Creating and starting container...[/cyan]")
         try:
             _, stdout, _stderr = self.runtime.run_command(run_cmd)
@@ -168,31 +147,25 @@ class OracleDatabase:
         except Exception as e:
             raise ContainerStartError(f"Failed to start container: {e}") from e
 
-        # Wait for healthy
         self.console.print("[cyan]Waiting for database to become healthy...[/cyan]")
-        if self.wait_for_healthy(timeout=300):
-            self.console.print("[green]✓[/green] Database is healthy and ready!")
-            info = self.get_connection_info()
-            self.console.print("\n[bold]Connection Info:[/bold]")
-            self.console.print(f"  Host: {info['host']}")
-            self.console.print(f"  Port: {info['port']}")
-            self.console.print(f"  Service: {info['service_name']}")
-            self.console.print(f"  User: {info['user']}")
-            self.console.print(f"  DSN: {info['dsn']}")
-        else:
-            self.console.print("[yellow]⚠[/yellow] Container started but health check timed out")
-            self.console.print(
-                f"  Check logs with: {self.runtime.get_runtime_command()} logs {self.config.container_name}"
-            )
+        if not self.wait_for_healthy(timeout=300):
+            logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
+            raise ContainerStartError(f"Container started but health check timed out. Check logs with: {logs_hint}")
+
+        self.console.print("[green]✓[/green] Database is healthy and ready!")
+        info = self.get_connection_info()
+        self.console.print("\n[bold]Connection Info:[/bold]")
+        self.console.print(f"  Host: {info['host']}")
+        self.console.print(f"  Port: {info['port']}")
+        self.console.print(f"  Service: {info['service_name']}")
+        self.console.print(f"  User: {info['user']}")
+        self.console.print(f"  DSN: {info['dsn']}")
 
     def stop(self, *, timeout: int = 30) -> None:
-        """Stop Oracle database container.
-
-        Args:
-            timeout: Seconds to wait before forcing stop
+        """Stop the Oracle database container.
 
         Raises:
-            ContainerNotFoundError: If container doesn't exist
+            ContainerNotFoundError: If the container doesn't exist
         """
         if not self.runtime.container_exists(self.config.container_name):
             raise ContainerNotFoundError(f"Container '{self.config.container_name}' does not exist")
@@ -202,13 +175,10 @@ class OracleDatabase:
         self.console.print("[green]✓[/green] Container stopped")
 
     def restart(self, *, timeout: int = 30) -> None:
-        """Restart Oracle database container.
-
-        Args:
-            timeout: Seconds to wait for stop before forcing
+        """Restart the Oracle database container.
 
         Raises:
-            ContainerNotFoundError: If container doesn't exist
+            ContainerNotFoundError: If the container doesn't exist
         """
         if not self.runtime.container_exists(self.config.container_name):
             raise ContainerNotFoundError(f"Container '{self.config.container_name}' does not exist")
@@ -223,14 +193,14 @@ class OracleDatabase:
         volumes: bool = False,
         force: bool = False,
     ) -> None:
-        """Remove Oracle database container.
+        """Remove the Oracle database container.
 
         Args:
-            volumes: Also remove associated volumes
+            volumes: Also remove the associated data volume
             force: Force removal even if running
 
         Raises:
-            ContainerNotFoundError: If container doesn't exist
+            ContainerNotFoundError: If the container doesn't exist
         """
         if not self.runtime.container_exists(self.config.container_name):
             raise ContainerNotFoundError(f"Container '{self.config.container_name}' does not exist")
@@ -245,7 +215,7 @@ class OracleDatabase:
         self.console.print("[green]✓[/green] Container removed")
 
         if volumes and self.runtime.volume_exists(self.config.data_volume_name):
-            self.console.print("[cyan]Removing volume...[/cyan]")
+            self.console.print(f"[cyan]Removing volume {self.config.data_volume_name}...[/cyan]")
             self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
             self.console.print("[green]✓[/green] Volume removed")
 
@@ -258,13 +228,8 @@ class OracleDatabase:
     ) -> None:
         """Stream container logs.
 
-        Args:
-            follow: Continue streaming new logs
-            tail: Number of lines from end to show
-            since: Show logs since timestamp/duration
-
         Raises:
-            ContainerNotFoundError: If container doesn't exist
+            ContainerNotFoundError: If the container doesn't exist
         """
         if not self.runtime.container_exists(self.config.container_name):
             raise ContainerNotFoundError(f"Container '{self.config.container_name}' does not exist")
@@ -278,18 +243,10 @@ class OracleDatabase:
             logs_cmd.extend(["--since", since])
         logs_cmd.append(self.config.container_name)
 
-        # Stream logs directly (don't capture)
         self.runtime.run_command(logs_cmd, capture_output=False)
 
     def status(self) -> ContainerStatus:
-        """Get detailed container status.
-
-        Returns:
-            ContainerStatus: Current status information
-
-        Raises:
-            ContainerNotFoundError: If container doesn't exist
-        """
+        """Get detailed container status."""
         exists = self.runtime.container_exists(self.config.container_name)
         if not exists:
             return ContainerStatus(
@@ -304,7 +261,6 @@ class OracleDatabase:
                 created_at=None,
             )
 
-        # Get status from runtime
         status_dict = self.runtime.get_container_status(self.config.container_name)
         running = self.runtime.container_running(self.config.container_name)
         healthy = self.is_healthy() if running else None
@@ -315,29 +271,18 @@ class OracleDatabase:
             healthy=healthy,
             status=status_dict.get("status", "unknown"),
             container_id=status_dict.get("id"),
-            uptime=None,  # Could parse from created_at if needed
-            ports={"1521": str(self.config.host_port)},
+            uptime=None,
+            ports={str(self.config.container_port): str(self.config.host_port)},
             image=status_dict.get("image", self.config.image),
             created_at=status_dict.get("created"),
         )
 
     def is_running(self) -> bool:
-        """Quick check if container is running.
-
-        Returns:
-            bool: True if container exists and is running
-        """
+        """Quick check if the container is running."""
         return self.runtime.container_running(self.config.container_name)
 
     def is_healthy(self) -> bool:
-        """Check if container health check is passing.
-
-        Returns:
-            bool: True if container is healthy
-
-        Note:
-            Returns False if container doesn't exist or isn't running
-        """
+        """Check if the container health check is passing."""
         if not self.is_running():
             return False
 
@@ -346,8 +291,7 @@ class OracleDatabase:
                 ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name],
                 check=False,
             )
-            health_status = stdout.strip()
-            return health_status == "healthy"
+            return stdout.strip() == "healthy"
         except Exception:  # noqa: BLE001
             return False
 
@@ -357,16 +301,10 @@ class OracleDatabase:
         *,
         show_progress: bool = True,
     ) -> bool:
-        """Wait for container to become healthy.
-
-        Args:
-            timeout: Maximum seconds to wait
-            show_progress: Show progress indicator
+        """Wait for the container to become healthy.
 
         Returns:
-            bool: True if became healthy, False if timeout
-
-        Used after starting container to ensure it's ready.
+            bool: True if it became healthy, False on timeout
         """
         start_time = time.time()
 
@@ -375,7 +313,6 @@ class OracleDatabase:
                 while time.time() - start_time < timeout:
                     if self.is_healthy():
                         return True
-
                     elapsed = int(time.time() - start_time)
                     status.update(f"[bold yellow]Waiting for database... ({elapsed}s / {timeout}s)")
                     time.sleep(5)
@@ -388,80 +325,48 @@ class OracleDatabase:
         return False
 
     def get_connection_info(self) -> dict[str, Any]:
-        """Get connection information for the database.
-
-        Returns:
-            dict: Connection details including:
-                - host: Database host
-                - port: Database port
-                - service_name: Oracle service name
-                - user: App user name
-                - password: App user password
-                - dsn: Connection DSN string
-        """
+        """Get connection information for the local database."""
         return {
             "host": "localhost",
             "port": self.config.host_port,
-            "service_name": "FREEPDB1",
+            "service_name": PDB_SERVICE_NAME,
             "user": self.config.app_user,
             "password": self.config.app_user_password,
-            "dsn": f"localhost:{self.config.host_port}/FREEPDB1",
+            "dsn": f"localhost:{self.config.host_port}/{PDB_SERVICE_NAME}",
         }
 
-    def exec_sql(self, sql: str, *, user: str = "app") -> str:
-        """Execute SQL command in running container.
-
-        Args:
-            sql: SQL command to execute
-            user: Database user to connect as
-
-        Returns:
-            str: Command output
+    def exec_sql(self, sql: str, *, user: str | None = None) -> str:
+        """Execute a SQL statement inside the running container as the app user.
 
         Raises:
-            ContainerNotFoundError: If container doesn't exist
-            DatabaseNotReadyError: If database isn't healthy
+            ContainerNotFoundError: If the container isn't running
+            DatabaseNotReadyError: If the database isn't healthy yet
         """
         if not self.is_running():
             raise ContainerNotFoundError(f"Container '{self.config.container_name}' is not running")
-
         if not self.is_healthy():
             raise DatabaseNotReadyError("Database is not healthy yet")
 
-        # Execute SQL via sqlplus in container
+        connect_user = user or self.config.app_user
         _, stdout, _ = self.runtime.run_command([
             "exec",
             self.config.container_name,
             "sqlplus",
             "-S",
-            f"{user}/{self.config.app_user_password}@FREEPDB1",
+            f"{connect_user}/{self.config.app_user_password}@localhost:{self.config.container_port}/{PDB_SERVICE_NAME}",
             sql,
         ])
-
         return stdout
 
     def _build_run_command(self) -> list[str]:
-        """Build the container run command.
-
-        Returns:
-            list[str]: Command arguments for container run
-
-        Constructs command matching docker-compose.yml:
-        - Port mapping
-        - Environment variables
-        - Volume mounts
-        - Health check
-        - Restart policy
-        - Logging options
-        """
+        """Build the container run command for gvenzl/oracle-free."""
         cmd = [
             "run",
-            "-d",  # Detached
+            "-d",
             "--name",
             self.config.container_name,
             "--hostname",
             self.config.hostname,
-            # Port mapping
             "-p",
             f"{self.config.host_port}:{self.config.container_port}",
             # Environment variables
@@ -473,7 +378,7 @@ class OracleDatabase:
             f"APP_USER_PASSWORD={self.config.app_user_password}",
             "-e",
             f"APP_USER={self.config.app_user}",
-            # Data volume
+            # Data volume (persistent across restarts)
             "-v",
             f"{self.config.data_volume_name}:/opt/oracle/oradata",
             # Restart policy
@@ -495,42 +400,27 @@ class OracleDatabase:
             str(self.config.health_retries),
         ]
 
-        # Mount individual files from on_init folder (run once during first DB creation)
-        # Mounted to /container-entrypoint-initdb.d (gvenzl/oracle-free standard)
+        # Mount on_init scripts (run once during first DB creation) and on_startup
+        # scripts (run on every start) into the gvenzl hook directories. These run
+        # as SYSDBA and own vector-memory configuration + app-user grants.
         project_root = Path(__file__).parent.parent.parent
-        on_init_dir = project_root / "tools" / "oracle" / "on_init"
-        if on_init_dir.exists():
-            for script_file in sorted(on_init_dir.glob("*.sql")) + sorted(on_init_dir.glob("*.sh")):
+        hook_mounts = (
+            (project_root / "tools" / "oracle" / "on_init", "/container-entrypoint-initdb.d"),
+            (project_root / "tools" / "oracle" / "on_startup", "/container-entrypoint-startdb.d"),
+        )
+        for hook_dir, mount_target in hook_mounts:
+            if not hook_dir.exists():
+                continue
+            for script_file in sorted(hook_dir.glob("*.sql")) + sorted(hook_dir.glob("*.sh")):
                 if script_file.is_file() and script_file.name != ".gitkeep":
-                    # Use :z for SELinux compatibility (works with both Docker and Podman)
-                    cmd.extend([
-                        "-v",
-                        f"{script_file.absolute()}:/container-entrypoint-initdb.d/{script_file.name}:z",
-                    ])
+                    # :z relabels for SELinux (works with both Docker and Podman)
+                    cmd.extend(["-v", f"{script_file.absolute()}:{mount_target}/{script_file.name}:z"])
 
-        # Mount individual files from on_startup folder (run every time container starts)
-        # Mounted to /container-entrypoint-startdb.d (gvenzl/oracle-free standard)
-        on_startup_dir = project_root / "tools" / "oracle" / "on_startup"
-        if on_startup_dir.exists():
-            for script_file in sorted(on_startup_dir.glob("*.sql")) + sorted(on_startup_dir.glob("*.sh")):
-                if script_file.is_file() and script_file.name != ".gitkeep":
-                    # Use :z for SELinux compatibility (works with both Docker and Podman)
-                    cmd.extend([
-                        "-v",
-                        f"{script_file.absolute()}:/container-entrypoint-startdb.d/{script_file.name}:z",
-                    ])
-
-        # Image name
         cmd.append(self.config.image)
-
         return cmd
 
     def _create_volume(self, volume_name: str) -> None:
-        """Create named volume if it doesn't exist.
-
-        Args:
-            volume_name: Name of volume to create
-        """
+        """Create the named data volume if it doesn't already exist."""
         if not self.runtime.volume_exists(volume_name):
             self.console.print(f"Creating volume [cyan]{volume_name}[/cyan]...")
             self.runtime.run_command(["volume", "create", volume_name])
@@ -552,7 +442,7 @@ class ContainerStatus:
     status: str  # e.g., "running", "exited", "created"
     container_id: str | None
     uptime: str | None
-    ports: dict[str, str]  # Container port -> host port mapping
+    ports: dict[str, str]  # container port -> host port mapping
     image: str
     created_at: str | None
 
@@ -561,13 +451,9 @@ class DatabaseError(Exception):
     """Base exception for database operations."""
 
 
-class ContainerAlreadyRunningError(DatabaseError):
-    """Raised when trying to start an already running container."""
-
-
 class ContainerStartError(DatabaseError):
-    """Raised when container fails to start."""
+    """Raised when the container fails to start."""
 
 
 class DatabaseNotReadyError(DatabaseError):
-    """Raised when database isn't ready for operations."""
+    """Raised when the database isn't ready for operations."""

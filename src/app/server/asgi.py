@@ -27,8 +27,10 @@ def create_app() -> Litestar:
 
     @asynccontextmanager
     async def dishka_lifespan(app: Litestar) -> AsyncIterator[None]:
-        yield
-        await container.close()
+        try:
+            yield
+        finally:
+            await container.close()
 
     app = Litestar(
         debug=settings.app.DEBUG,

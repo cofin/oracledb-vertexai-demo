@@ -16,15 +16,29 @@ flowchart LR
 
 | Setting | Value |
 | --- | --- |
-| Embedding model | Vertex AI `gemini-embedding-001` |
+| Embedding model | Vertex AI `gemini-embedding-2-preview` |
 | Dimensions | `3072` |
 | Storage | `VECTOR(3072, FLOAT32)` |
 | Distance metric | `COSINE` |
 | Index type | HNSW, `ORGANIZATION INMEMORY NEIGHBOR GRAPH` |
-| Query task type | `RETRIEVAL_QUERY` |
-| Document task type | `RETRIEVAL_DOCUMENT` |
+| Query embedding input | Query-purpose instruction + user text |
+| Document embedding input | Document-purpose instruction + product text |
 
 The product table and the embedding cache both use the same shape.
+
+## Schema annotations
+
+The baseline DDL also annotates the vector columns with their application
+contract: model, dimension count, embedding purpose, and distance metric. These are
+Oracle 26ai schema annotations, so they live with the database metadata and can
+be queried from `USER_ANNOTATIONS_USAGE` after `coffee upgrade`.
+
+```{literalinclude} ../../src/app/db/migrations/0001_cymball_coffee_products.sql
+:language: sql
+:start-after: docs:start-schema-annotations
+:end-before: docs:end-schema-annotations
+:caption: src/app/db/migrations/0001_cymball_coffee_products.sql
+```
 
 ## The HNSW index
 
@@ -53,9 +67,9 @@ ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
 `512M` is intentional for Oracle Free Edition's constrained SGA. The committed
-demo fixture has 122 product vectors, so this is generous headroom for the
+demo fixture has 130 product vectors, so this is generous headroom for the
 catalog plus query embeddings saved in `embedding_cache`. For larger Oracle
-editions, `tools/oracle/configure_vector_memory.sql` uses a 4G target.
+editions, raise `vector_memory_size` to a 4G target on the SPFILE.
 
 Verify the pool with:
 

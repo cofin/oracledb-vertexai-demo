@@ -12,6 +12,9 @@ if TYPE_CHECKING:
     from app.domain.products.schemas import ProductAvailability, Store
 
 
+MIN_LOCATION_HINT_NAME_LENGTH = 3
+
+
 def haversine_miles(latitude: float, longitude: float, store: Store | ProductAvailability) -> float:
     """Return local distance in miles without calling external Maps APIs."""
     if store.latitude is None or store.longitude is None:
@@ -27,15 +30,22 @@ def haversine_miles(latitude: float, longitude: float, store: Store | ProductAva
     return 2 * earth_radius_miles * asin(sqrt(a))
 
 
-def location_hint_matches(row: ProductAvailability, location_hint: str) -> bool:
+def store_matches_hint(store: Store | ProductAvailability, location_hint: str) -> bool:
     normalized = location_hint.casefold().strip()
     if not normalized:
         return True
+    name = getattr(store, "store_name", getattr(store, "name", None))
     fields = (
-        row.store_name,
-        row.store_address,
-        row.store_city,
-        row.store_state,
-        row.store_zip,
+        name,
+        getattr(store, "store_address", None),
+        getattr(store, "store_city", None),
+        getattr(store, "store_state", None),
+        getattr(store, "store_zip", None),
+        getattr(store, "address", None),
+        getattr(store, "city", None),
+        getattr(store, "state", None),
+        getattr(store, "zip", None),
     )
-    return any(normalized in str(field or "").casefold() for field in fields)
+    if any(normalized in str(field or "").casefold() for field in fields):
+        return True
+    return bool(name and len(name) > MIN_LOCATION_HINT_NAME_LENGTH and name.casefold() in normalized)

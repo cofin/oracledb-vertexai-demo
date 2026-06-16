@@ -1,23 +1,6 @@
 -- SPDX-FileCopyrightText: 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- name: list-store-inventory
-SELECT spi.id,
-       spi.store_id,
-       spi.product_id,
-       spi.quantity_available,
-       spi.stock_status,
-       spi.pickup_available,
-       spi.updated_at,
-       p.name AS product_name,
-       p.category AS product_category,
-       p.sku AS product_sku,
-       p.price AS product_price
-FROM store_product_inventory spi
-JOIN product p ON p.id = spi.product_id
-WHERE spi.store_id = :store_id
-ORDER BY p.name;
-
 -- name: find-stores-with-product-inventory
 SELECT spi.id,
        spi.store_id,

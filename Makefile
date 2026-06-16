@@ -97,17 +97,17 @@ destroy:
 
 # =============================================================================
 # Dependency Management
-# =============================================================================
 .PHONY: upgrade
 upgrade: setup-env ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
+
 	@uv lock --upgrade
 	@echo "${INFO} Updating frontend dependencies... 🔄"
-	@cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade
-	@cd $(FRONTEND_DIR) && npm install --no-fund
+	@(cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade && npm install --no-fund)
 	@echo "${OK} Dependencies updated 🔄"
 	@uvx prek autoupdate
 	@echo "${OK} Updated prek hooks 🔄"
+
 
 .PHONY: lock
 lock: ## Rebuild lockfiles from scratch
@@ -215,13 +215,13 @@ clean: ## Cleanup temporary build artifacts
 	@echo "${INFO} Cleaning working directory... 🧹"
 	@rm -rf .pytest_cache .ruff_cache .hypothesis build/ -rf dist/ .eggs/ .coverage coverage.xml coverage.json htmlcov/ .pytest_cache src/tests/.pytest_cache src/tests/**/.pytest_cache .mypy_cache .unasyncd_cache/ .auto_pytabs_cache >/dev/null 2>&1
 	@rm -rf src/app/domain/web/static .litestar.json src/resources/.litestar.json node_modules/.vite tsconfig.tsbuildinfo $(FRONTEND_DIR)/.vite $(FRONTEND_DIR)/tsconfig.tsbuildinfo >/dev/null 2>&1
-	@find . -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
-	@find . -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*.pyo' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '*~' -exec rm -f {} + >/dev/null 2>&1
-	@find . -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
-	@find . -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.egg-info' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -type f -name '*.egg' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.pyc' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*.pyo' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '*~' -exec rm -f {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '__pycache__' -exec rm -rf {} + >/dev/null 2>&1
+	@find . \( -path './.envs' -o -path './.git' -o -path './.venv' -o -path './node_modules' \) -prune -o -name '.ipynb_checkpoints' -exec rm -rf {} + >/dev/null 2>&1
 	@echo "${OK} Working directory cleaned"
 
 # =============================================================================
@@ -329,10 +329,16 @@ bootstrap: install init doctor start-infra migrate load-fixtures ## One-shot loc
 # Local Infrastructure (Oracle 26ai Docker)
 # =============================================================================
 .PHONY: start-infra
-start-infra: ## Start local containers
+start-infra: ## Start local Oracle container (DB only; run `make apex` separately for APEX)
 	@echo "${INFO} Starting local Oracle 26ai instance..."
-	@uv run python manage.py infra start --recreate
-	@echo "${OK} Infrastructure started"
+	@uv run python manage.py infra start --recreate --skip-apex --skip-ords
+	@echo "${OK} Infrastructure started (APEX skipped — run 'make apex' to install/upgrade it)"
+
+.PHONY: apex
+apex: ## Install/upgrade APEX in the DB and start the ORDS sidecar container (slow; not run automatically)
+	@echo "${INFO} Installing/upgrading Oracle APEX + ORDS — this can take several minutes... ⏳"
+	@uv run python manage.py infra start
+	@echo "${OK} APEX + ORDS ready"
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers

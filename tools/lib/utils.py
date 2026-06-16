@@ -90,28 +90,32 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
 
     env_content = "# App\n"
 
-    # Database configuration based on mode
     if mode == "managed":
-        # Managed mode: container with known defaults
         if non_interactive:
             db_user = "app"
-            db_password = "super-secret"  # noqa: S105
-            db_host = "localhost"
-            db_port = "1521"
-            db_service = "freepdb1"
+            db_password = "SuperSecret1"  # noqa: S105
+            oee_password = "SuperSecret1"  # noqa: S105
+            db_url = f"oracle+oracledb://{db_user}:{db_password}@myatp_low"
+            wallet_password = "SuperSecret1"  # noqa: S105
+            tns_admin = ".envs/tns"
+            db_service = "myatp_low"
         else:
             console.print("[bold]Database Settings (Managed Container):[/bold]")
             db_user = Prompt.ask("DATABASE_USER", default="app")
-            db_password = Prompt.ask("DATABASE_PASSWORD", default="super-secret")
-            db_host = Prompt.ask("DATABASE_HOST", default="localhost")
-            db_port = Prompt.ask("DATABASE_PORT", default="1521")
-            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="freepdb1")
+            db_password = Prompt.ask("DATABASE_PASSWORD", default="SuperSecret1", password=True)
+            oee_password = Prompt.ask("OEE_PASSWORD", default=db_password, password=True)
+            db_url = Prompt.ask("DATABASE_URL", default=f"oracle+oracledb://{db_user}:{db_password}@myatp_low")
+            wallet_password = Prompt.ask("WALLET_PASSWORD", default="SuperSecret1")
+            tns_admin = Prompt.ask("TNS_ADMIN", default=".envs/tns")
+            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="myatp_low")
 
         env_content += "# Database (Managed Container)\n"
+        env_content += f"DATABASE_URL={db_url}\n"
         env_content += f"DATABASE_USER={db_user}\n"
         env_content += f"DATABASE_PASSWORD={db_password}\n"
-        env_content += f"DATABASE_HOST={db_host}\n"
-        env_content += f"DATABASE_PORT={db_port}\n"
+        env_content += f"OEE_PASSWORD={oee_password}\n"
+        env_content += f"WALLET_PASSWORD={wallet_password}\n"
+        env_content += f"TNS_ADMIN={tns_admin}\n"
         env_content += f"DATABASE_SERVICE_NAME={db_service}\n\n"
 
     elif non_interactive:
@@ -274,69 +278,7 @@ def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
         return connection_name in result.stdout
 
 
-def migrate_sqlcl_connection(old_name: str = "mcp_demo", new_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: PLR0911
-    """Migrate old SQLcl connection name to new name.
-
-    Args:
-        old_name: Old connection name to rename
-        new_name: New connection name
-
-    Returns:
-        tuple[bool, str]: (success, message)
-    """
-    from dotenv import dotenv_values
-
-    # Check if old connection exists
-    if not is_sqlcl_connection_saved(old_name):
-        return True, f"No '{old_name}' connection to migrate"
-
-    # Check if new connection already exists
-    if is_sqlcl_connection_saved(new_name):
-        return True, f"Connection '{new_name}' already exists"
-
-    # Load credentials from .env
-    env_path = Path(".env")
-    if not env_path.exists():
-        return False, ".env file not found"
-
-    env_vars = dotenv_values(env_path)
-    user = env_vars.get("DATABASE_USER")
-    password = env_vars.get("DATABASE_PASSWORD")
-    host = env_vars.get("DATABASE_HOST")
-    port = env_vars.get("DATABASE_PORT", "1521")
-    service_name = env_vars.get("DATABASE_SERVICE_NAME")
-
-    if not all([user, password, host, service_name]):
-        return False, "Missing database credentials in .env"
-
-    # Create new connection with new name
-    conn_string = f"{user}/{password}@//{host}:{port}/{service_name}"
-    conn_cmd = f"conn -save {new_name} -savepwd {conn_string}\nexit"
-
-    try:
-        result = subprocess.run(
-            ["sql", "/nolog"],  # noqa: S607
-            check=False,
-            input=conn_cmd,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-
-        if result.returncode == 0:
-            # NOTE: SQLcl doesn't have a delete command for saved connections
-            # The old connection will still exist but won't be used
-            return True, f"Created connection '{new_name}' (old '{old_name}' still exists)"
-
-    except subprocess.TimeoutExpired:
-        return False, "SQLcl command timed out"
-    except Exception as e:  # noqa: BLE001
-        return False, f"Error migrating connection: {e}"
-    else:
-        return False, "Failed to create new connection"
-
-
-def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: C901, PLR0911
+def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: PLR0911
     """Configure SQLcl saved connection with password from .env.
 
     Args:
@@ -356,15 +298,6 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
     # Check if connection already exists
     if is_sqlcl_connection_saved(connection_name):
         return True, f"Connection '{connection_name}' already configured"
-
-    # Check for old connection name and migrate
-    if connection_name == "cymbal_coffee" and is_sqlcl_connection_saved("mcp_demo"):
-        console.print("[yellow]🔄 Migrating old connection 'mcp_demo' to 'cymbal_coffee'...[/yellow]")
-        success, message = migrate_sqlcl_connection("mcp_demo", "cymbal_coffee")
-        if success:
-            return True, message
-        console.print(f"[yellow]⚠ Migration warning: {message}[/yellow]")
-        # Continue to create new connection even if migration failed
 
     # Load .env values
     env_path = Path(".env")

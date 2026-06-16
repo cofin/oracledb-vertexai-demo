@@ -180,6 +180,7 @@ response = await client.aio.models.generate_content(
 Labels:
 
 - `PRODUCT_RAG`
+- `PRODUCT_AVAILABILITY`
 - `GENERAL_CONVERSATION`
 - `STORE_LOCATION`
 - `ORDER_STATUS`
@@ -187,6 +188,16 @@ Labels:
 The classifier instructions intentionally include concrete menu and idiom
 examples. Keep those examples when changing labels; removing them makes the
 classifier under-route obvious menu questions and idiomatic requests.
+
+## Context-Aware Availability
+
+To support conversational continuity, product availability queries (`PRODUCT_AVAILABILITY`) are context-aware:
+
+1.  **Session-State Tracking**: When answering a `PRODUCT_RAG` query (e.g. recommending items), the runner extracts the names of the recommended products and stores them in the ADK session state under the `last_products` key.
+2.  **Pronoun Resolution**: In `_product_availability_event`, if the cleaned query does not contain a specific product name (e.g. "Is that in stock?"), the system retrieves the `last_products` from the session state and uses the primary recommended product as the target query.
+3.  **Vector Fallback Resolution**: When searching stock via `find_stores_with_product`, the system first attempts an exact match on name/SKU/ID. If the lookup returns no results, it falls back to embedding the product query and running a vector similarity search (threshold 0.6) to resolve the query to the closest actual menu product (e.g. matching "Gemini" to "Gemini Rush").
+
+This combination allows the user to seamlessly ask follow-up questions about recommended items without repeating their names, while remaining tolerant to minor name variations.
 
 ## Streaming
 

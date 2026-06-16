@@ -6,7 +6,6 @@
 from contextvars import ContextVar
 from dataclasses import dataclass
 
-from dishka import Scope
 from dishka.integrations.litestar import DishkaRouter as LitestarRouter
 from dishka.integrations.litestar import FromDishka as Inject
 from dishka.integrations.litestar import LitestarProvider, setup_dishka
@@ -26,7 +25,6 @@ __all__ = (
     "LitestarProvider",
     "LitestarRouter",
     "QueryContext",
-    "Scope",
     "query_id_var",
     "setup_dishka",
 )

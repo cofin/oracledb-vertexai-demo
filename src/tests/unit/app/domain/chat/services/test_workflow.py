@@ -5,11 +5,11 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from google.adk import Workflow
-from google.adk.workflow import JoinNode
 from google.adk.workflow._function_node import FunctionNode
 
 from app.domain.chat.services.classifier import IntentLabel
@@ -19,9 +19,19 @@ from app.domain.chat.services.workflow import (
     make_workflow,
 )
 
+pytestmark = pytest.mark.anyio
+
 
 def _coffee_node(node_input: str) -> str:
     return f"answer:{node_input}"
+
+
+def _node_by_name(workflow: Workflow, name: str) -> Any:
+    for edge in workflow.edges:
+        for member in edge:
+            if getattr(member, "name", None) == name:
+                return member
+    raise AssertionError(f"workflow has no node named {name!r}")
 
 
 def test_make_intent_node_binds_node_input_with_classifier() -> None:
@@ -44,7 +54,7 @@ def test_make_coffee_node_binds_node_input_with_agent() -> None:
     agent.model_copy.assert_called_once_with(update={"name": "coffee_turn"})
 
 
-def test_make_workflow_returns_named_workflow_with_joined_parallel_edges() -> None:
+def test_make_workflow_returns_named_workflow_with_intent_and_coffee_nodes() -> None:
     classifier = MagicMock()
     agent = MagicMock()
     agent.model_copy.return_value = FunctionNode(func=_coffee_node, name="coffee_turn")
@@ -52,20 +62,11 @@ def test_make_workflow_returns_named_workflow_with_joined_parallel_edges() -> No
 
     assert isinstance(workflow, Workflow)
     assert workflow.name == "coffee_workflow"
-    assert workflow.max_concurrency == 2
-    assert len(workflow.edges) == 3
-    assert workflow.edges[0][0] == "START"
-    assert isinstance(workflow.edges[0][1], FunctionNode)
-    assert isinstance(workflow.edges[0][2], JoinNode)
-    assert workflow.edges[1][0] == "START"
-    assert workflow.edges[1][1].name == "coffee_turn"
-    assert isinstance(workflow.edges[1][2], JoinNode)
-    assert isinstance(workflow.edges[2][0], JoinNode)
-    assert isinstance(workflow.edges[2][1], FunctionNode)
-    assert workflow.edges[2][1].name == "classify_and_respond"
+    assert _node_by_name(workflow, "intent").name == "intent"
+    assert _node_by_name(workflow, "coffee_turn").name == "coffee_turn"
+    assert _node_by_name(workflow, "classify_and_respond").name == "classify_and_respond"
 
 
-@pytest.mark.asyncio
 async def test_intent_node_func_returns_classifier_label_value() -> None:
     classifier = MagicMock()
     classifier.classify = AsyncMock(return_value=IntentLabel.PRODUCT_RAG)
@@ -77,16 +78,16 @@ async def test_intent_node_func_returns_classifier_label_value() -> None:
     assert result == "PRODUCT_RAG"
 
 
-def test_classify_and_respond_func_merges_join_outputs() -> None:
+def test_workflow_merge_node_combines_intent_and_answer_into_state() -> None:
     classifier = MagicMock()
     agent = MagicMock()
     agent.model_copy.return_value = FunctionNode(func=_coffee_node, name="coffee_turn")
     workflow = make_workflow(classifier, agent)
-    classify_and_respond = workflow.edges[2][1]
+    merge = _node_by_name(workflow, "classify_and_respond")
     ctx = MagicMock()
     ctx.state = {}
 
-    result = classify_and_respond._func(
+    result = merge._func(
         ctx=ctx,
         node_input={"intent": "PRODUCT_RAG", "coffee_turn": "answer-for:latte"},
     )

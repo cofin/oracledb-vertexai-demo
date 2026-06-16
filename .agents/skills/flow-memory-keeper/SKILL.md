@@ -117,3 +117,7 @@ Before claiming a task, phase, or flow is complete, verify:
 - Treat `.agents/archive/` as ignored disposable history. Before adding or
   moving archive material, synthesize durable lessons into `.agents/knowledge/`
   and `.agents/patterns.md`, then remove active links to archive paths.
+- This repo's Beads database enforces the `oracledb-vertexai-` issue ID prefix.
+  When recreating missing local Flow records with explicit IDs, use that prefix
+  and attach hierarchy after creation with `bd update <id> --parent <parent>`;
+  `bd create --id ... --parent ...` is rejected by this Beads version.

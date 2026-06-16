@@ -6,9 +6,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import rich_click as click
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from tools.oracle.wallet import WalletInfo
 
 console = Console()
 
@@ -119,18 +123,22 @@ def wallet_validate(wallet_dir: str | None) -> None:
 
     try:
         wallet_info = configurator.validate_wallet(wallet_path)
-
-        if wallet_info.is_valid:
-            console.print("[green]✓ Wallet is valid[/green]")
-            console.print(f"\nWallet location: {wallet_info.wallet_dir}")
-            console.print(f"Required files present: {wallet_info.required_files_present}")
-            if wallet_info.services:
-                console.print(f"Services found: {len(wallet_info.services)}")
-        else:
-            console.print("[red]✗ Wallet validation failed[/red]")
-            for error in wallet_info.validation_errors or []:
-                console.print(f"  • {error}")
-            raise click.Abort
+        display_wallet_validation(wallet_info)
     except Exception as e:
         console.print(f"[red]✗ Validation failed: {e}[/red]")
         raise click.Abort from e
+
+
+def display_wallet_validation(wallet_info: WalletInfo) -> None:
+    """Display wallet validation result."""
+    if wallet_info.is_valid:
+        console.print("[green]✓ Wallet is valid[/green]")
+        console.print(f"\nWallet location: {wallet_info.wallet_dir}")
+        console.print(f"Required files present: {wallet_info.required_files_present}")
+        if wallet_info.services:
+            console.print(f"Services found: {len(wallet_info.services)}")
+        return
+    console.print("[red]✗ Wallet validation failed[/red]")
+    for error in wallet_info.validation_errors or []:
+        console.print(f"  • {error}")
+    raise click.Abort

@@ -26,7 +26,7 @@ async def generate_product_embeddings(
     product_service: ProductService,
     vertex_ai_service: VertexAIService,
 ) -> None:
-    """Generate ``RETRIEVAL_DOCUMENT`` embeddings for product rows."""
+    """Generate document-purpose embeddings for product rows."""
     validate_batch_size(batch_size)
 
     console = get_console()
@@ -86,34 +86,55 @@ async def process_product_batch(
         for i, product in enumerate(batch):
             product_id: int | None = None
             try:
-                if isinstance(product, dict):
-                    product_id = int(product["id"])
-                    product_name = product.get("name", f"Product {product_id}")
-                    description = product.get("description", "")
-                else:
-                    product_id = int(product.id)
-                    product_name = product.name or f"Product {product_id}"
-                    description = product.description or ""
-
+                product_id, product_name, description = product_embedding_input(product)
                 global_idx = start_idx + i + 1
                 status.update(f"[bold yellow]Processing {global_idx}/{total_products}: {product_name}...")
-
-                embedding = await vertex_ai_service.get_text_embedding(
-                    f"{product_name}: {description}",
-                    task_type="RETRIEVAL_DOCUMENT",
+                success_count, error_count = await update_product_embedding(
+                    product_service=product_service,
+                    vertex_ai_service=vertex_ai_service,
+                    product_id=product_id,
+                    product_name=product_name,
+                    description=description,
+                    success_count=success_count,
+                    error_count=error_count,
                 )
-                updated = await product_service.update_embedding(product_id, embedding)
-                if not updated:
-                    error_count += 1
-                    logger.warning("Failed to process product", product_id=product_id, error="update affected 0 rows")
-                    continue
-                success_count += 1
-
             except Exception as e:  # noqa: BLE001
                 error_count += 1
                 logger.warning("Failed to process product", product_id=product_id, error=str(e))
 
     return success_count, error_count
+
+
+def product_embedding_input(product: Any) -> tuple[int, str, str]:
+    """Extract product fields needed for document embedding."""
+    if isinstance(product, dict):
+        product_id = int(product["id"])
+        return product_id, str(product.get("name", f"Product {product_id}")), str(product.get("description", ""))
+
+    product_id = int(product.id)
+    return product_id, product.name or f"Product {product_id}", product.description or ""
+
+
+async def update_product_embedding(
+    *,
+    product_service: ProductService,
+    vertex_ai_service: VertexAIService,
+    product_id: int,
+    product_name: str,
+    description: str,
+    success_count: int,
+    error_count: int,
+) -> tuple[int, int]:
+    """Generate and store one product embedding, returning updated counters."""
+    embedding = await vertex_ai_service.get_text_embedding(
+        f"{product_name}: {description}",
+        embedding_purpose="document",
+    )
+    updated = await product_service.update_embedding(product_id, embedding)
+    if not updated:
+        logger.warning("Failed to process product", product_id=product_id, error="update affected 0 rows")
+        return success_count, error_count + 1
+    return success_count + 1, error_count
 
 
 def validate_batch_size(batch_size: int) -> None:

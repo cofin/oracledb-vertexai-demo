@@ -61,17 +61,45 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 The initial Oracle 26ai schema in this project includes:
 
-- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-001`.
+- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2-preview`.
 - `store` table for location data with `JSON`-encoded business hours.
 - `store_product_inventory` table for curated store-level product availability.
 - `response_cache`, `embedding_cache`, and `search_metric` support tables.
 - HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product` and `embedding_cache`.
 
+## Schema Annotations
+
+The baseline DDL demonstrates Oracle AI Database 26ai schema annotations
+inline in the existing `CREATE TABLE`, column definition, and supported
+`CREATE INDEX` statements. `COMMENT ON` statements remain in place for
+compatibility with older tooling; annotations carry richer application metadata
+such as embedding model, dimensions, distance metric, cache role, and the
+privacy boundary for store coordinates.
+
+Inspect the applied metadata through Oracle's annotation dictionary views:
+
+```sql
+SELECT object_name,
+       object_type,
+       column_name,
+       annotation_name,
+       annotation_value
+FROM user_annotations_usage
+WHERE object_name IN (
+    'PRODUCT',
+    'STORE',
+    'STORE_PRODUCT_INVENTORY',
+    'EMBEDDING_CACHE',
+    'PRODUCT_IN_STOCK_IDX'
+)
+ORDER BY object_name, column_name, annotation_name;
+```
+
 ## Vector Memory Pool
 
 Oracle 26ai requires a non-zero `vector_memory_size` allocation before HNSW INMEMORY indexes can be built. Without it, `CREATE VECTOR INDEX ... ORGANIZATION INMEMORY NEIGHBOR GRAPH` fails with `ORA-51962`.
 
-Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the 122 committed product vectors at 3072 dims plus query embeddings saved in `embedding_cache`:
+Configure the pool once per database (the change is persisted in SPFILE and requires a restart). On **Oracle Free Edition**, `sga_max_size`/`sga_target` are locked (ORA-56752 if you try to bump them) — the vector pool has to fit inside the existing ~1.5 GB SGA. 512 MB is plenty for the 130 committed product vectors at 3072 dims plus query embeddings saved in `embedding_cache`:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE=SPFILE;
@@ -79,9 +107,19 @@ SHUTDOWN IMMEDIATE;
 STARTUP;
 ```
 
-For Oracle Standard / Enterprise / Autonomous (no Free SGA cap), scale up — e.g. 6 GB SGA / 4 GB vector pool. The standalone script `tools/oracle/configure_vector_memory.sql` ships with the Standard/Enterprise values; use the Free-friendly values above if you reuse it on Free.
+For Oracle Standard / Enterprise / Autonomous (no Free SGA cap), scale up — e.g. set `sga_max_size`/`sga_target` to `6G` and `vector_memory_size` to `4G` on the SPFILE as SYSDBA, then bounce the instance. Keep the Free-friendly `512M` value above on Free Edition (larger SGA values raise ORA-56752).
 
-For the dev container the pool is set automatically: `tools/oracle/on_init/00_configure_vector_memory.sql` runs once on first DB creation (executes the `ALTER SYSTEM ... SCOPE=SPFILE` and bounces the instance), and `tools/oracle/on_startup/00_verify_vector_memory.sql` confirms the allocation on every container restart (visible via `make infra-logs`). For autonomous DB or other shared instances, run `tools/oracle/configure_vector_memory.sql` as SYSDBA.
+For the local dev container the pool is configured automatically by the
+`gvenzl/oracle-free` entrypoint hooks: `tools/oracle/on_init/00_configure_vector_memory.sql`
+runs once as SYSDBA on first creation (it sets `vector_memory_size = 512M SCOPE=SPFILE`
+and bounces the instance before any later init script or migration runs), and
+`tools/oracle/on_startup/00_verify_vector_memory.sql` re-checks `V$SGAINFO` on every
+start. These run because the container lifecycle mounts `tools/oracle/on_init` and
+`tools/oracle/on_startup` into the image's `/container-entrypoint-initdb.d` and
+`/container-entrypoint-startdb.d` hook directories. For an Autonomous Database or
+other shared instance reached over a wallet (no container hooks), set
+`vector_memory_size` on the SPFILE as SYSDBA and restart the instance, using the
+values above.
 
 Verify the pool is allocated:
 

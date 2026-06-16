@@ -12,6 +12,7 @@ NOTE: Dishka introspects @provide method annotations at runtime; this module mus
 `from __future__ import annotations`.
 """
 
+import sys
 from collections.abc import AsyncIterator
 
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
@@ -43,8 +44,18 @@ class LitestarPersistenceProvider(Provider):
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:
-        async with db_manager.provide_session(db) as driver:
+        session_context = db_manager.provide_session(db)
+        # Dishka owns async-generator provider cleanup; SQLSpec exposes only an
+        # async context manager, so entering it manually avoids yielding inside
+        # an async-with block while preserving exception-aware cleanup.
+        driver = await session_context.__aenter__()  # noqa: PLC2801
+        try:
             yield driver
+        except BaseException:
+            await session_context.__aexit__(*sys.exc_info())
+            raise
+        else:
+            await session_context.__aexit__(None, None, None)
 
 
 class IntegrationsProvider(Provider):
@@ -53,13 +64,13 @@ class IntegrationsProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_genai_client(self) -> Client:
         settings = get_settings()
-        if settings.vertex_ai.PROJECT_ID:
+        if settings.ai.project_id:
             return Client(
                 vertexai=True,
-                project=settings.vertex_ai.PROJECT_ID,
-                location=settings.vertex_ai.LOCATION,
+                project=settings.ai.project_id,
+                location=settings.ai.location,
             )
-        return Client(api_key=settings.vertex_ai.API_KEY)
+        return Client(api_key=settings.ai.api_key)
 
     @provide(scope=Scope.APP)
     def provide_adk_store(self, config: OracleAsyncConfig) -> OracleAsyncADKStore:
@@ -71,7 +82,7 @@ class IntegrationsProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_intent_classifier(self, client: Client) -> FlashLiteIntentClassifier:
-        return FlashLiteIntentClassifier(client, model=get_settings().vertex_ai.INTENT_MODEL)
+        return FlashLiteIntentClassifier(client, model=get_settings().ai.intent_model)
 
     @provide(scope=Scope.APP)
     def provide_persona_manager(self) -> PersonaManager:
@@ -100,6 +111,7 @@ class DomainServiceProvider(Provider):
     store_service = provide(StoreService)
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
+
     agent_tools_service = provide(AgentToolsService)
 
     @provide
@@ -107,9 +119,9 @@ class DomainServiceProvider(Provider):
         settings = get_settings()
         return VertexAIService(
             client=client,
-            model=settings.vertex_ai.CHAT_MODEL,
-            embedding_model=settings.vertex_ai.EMBEDDING_MODEL,
-            embedding_dimensions=settings.vertex_ai.EMBEDDING_DIMENSIONS,
+            model=settings.ai.chat_model,
+            embedding_model=settings.ai.embedding_model,
+            embedding_dimensions=settings.ai.embedding_dimensions,
             cache_service=cache_service,
         )
 

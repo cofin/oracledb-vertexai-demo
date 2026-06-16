@@ -516,35 +516,35 @@ class WalletConfigurator:
 
         Quick connection test using oracledb.
         """
+        original_tns = os.environ.get("TNS_ADMIN")
+        os.environ["TNS_ADMIN"] = str(wallet_dir.absolute())
         try:
-            import oracledb
-
-            # Set TNS_ADMIN temporarily
-            original_tns = os.environ.get("TNS_ADMIN")
-            os.environ["TNS_ADMIN"] = str(wallet_dir.absolute())
-
-            try:
-                with (
-                    oracledb.connect(
-                        user=username,
-                        password=password,
-                        dsn=service_name,
-                    ) as connection,
-                    connection.cursor() as cursor,
-                ):
-                    cursor.execute("SELECT 1 FROM DUAL")
-                    cursor.fetchone()
-                return True
-            finally:
-                # Restore original TNS_ADMIN
-                if original_tns:
-                    os.environ["TNS_ADMIN"] = original_tns
-                elif "TNS_ADMIN" in os.environ:
-                    del os.environ["TNS_ADMIN"]
-
+            self._test_wallet_query(service_name=service_name, username=username, password=password)
+            return True
         except Exception as e:  # noqa: BLE001
             self.console.print(f"[red]✗ Connection test failed: {e}[/red]")
             return False
+        finally:
+            if original_tns:
+                os.environ["TNS_ADMIN"] = original_tns
+            else:
+                os.environ.pop("TNS_ADMIN", None)
+
+    @staticmethod
+    def _test_wallet_query(service_name: str, username: str, password: str) -> None:
+        """Run one simple query through the configured wallet."""
+        import oracledb
+
+        with (
+            oracledb.connect(
+                user=username,
+                password=password,
+                dsn=service_name,
+            ) as connection,
+            connection.cursor() as cursor,
+        ):
+            cursor.execute("SELECT 1 FROM DUAL")
+            cursor.fetchone()
 
 
 class WalletError(Exception):

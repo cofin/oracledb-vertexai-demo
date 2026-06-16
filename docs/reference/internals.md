@@ -15,11 +15,10 @@ msgspec structs.
 Five things make it the right fit once Oracle 26ai's `VECTOR` type and the
 `/explore` page are on the table:
 
-- **AST-based statement handling.** SQLSpec parses every statement into an
-  AST, validates it, and normalizes parameter binding *before* it reaches
-  the driver. That's how `:bind` parameters, dialect quirks, and rewrites
-  like `EXPLAIN` work uniformly — instead of requiring per-driver string
-  surgery inside service code.
+- **Statement-aware query handling.** SQLSpec normalizes named SQL and
+  parameter binding before it reaches the driver. That's how `:bind`
+  parameters, dialect quirks, and rewrites like `EXPLAIN` work uniformly —
+  instead of requiring per-driver string surgery inside service code.
 - **Adapter-neutral service shape.** The demo only uses Oracle, but SQLSpec
   keeps the named-SQL service and Litestar plugin shape separate from the
   driver-specific connection details.
@@ -47,6 +46,18 @@ plan-generation, and result-shaping that an Oracle-aware service would
 otherwise have to spell out. See <https://sqlspec.dev> for the full
 feature set, including the adapter list, migration runner, and Litestar
 plugin used by this app.
+
+### Schema annotations in migrations
+
+Oracle AI Database 26ai schema annotations are authored directly in the
+baseline migration DDL. SQLSpec loads the migration as named SQL and executes
+the migration body as a script, so new Oracle DDL such as `ANNOTATIONS(...)`
+can remain inline with the `CREATE TABLE`, column definition, and supported
+`CREATE INDEX` statements.
+
+The app does not read annotations at runtime; they are demo metadata for
+database inspection and tooling. After `coffee upgrade`, inspect them with
+`USER_ANNOTATIONS_USAGE` alongside the existing `COMMENT ON` metadata.
 
 ## The HNSW neighbor graph in the SGA
 
@@ -84,7 +95,7 @@ Two construction parameters set the shape:
 the recall target dynamically.
 
 The pool itself is configured by `vector_memory_size`. 512 MB is plenty for
-the demo's 122 committed product vectors plus query embeddings saved in
+the demo's 130 committed product vectors plus query embeddings saved in
 `embedding_cache`; budget roughly
 `rows × dimensions × 4 bytes × 1.4 (HNSW overhead) × 2 (safety)` for larger
 catalogs.

@@ -20,7 +20,7 @@ BEGIN
 
     IF l_pool_bytes = 0 THEN
         DBMS_OUTPUT.PUT_LINE('WARNING: vector_memory_size is 0 — HNSW INMEMORY indexes will fail.');
-        DBMS_OUTPUT.PUT_LINE('  Run tools/oracle/configure_vector_memory.sql or restart the container.');
+        DBMS_OUTPUT.PUT_LINE('  Restart the container, or set vector_memory_size in the SPFILE as SYSDBA and bounce the instance.');
     ELSE
         DBMS_OUTPUT.PUT_LINE(
             'Vector Memory pool: ' || ROUND(l_pool_bytes / 1024 / 1024, 2) || ' MB allocated.'

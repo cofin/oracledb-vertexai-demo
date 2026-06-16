@@ -19,13 +19,11 @@ from ._metrics import (
     PerformanceStats,
     SearchMetricsCreate,
 )
-from ._session import HistoryMeta, UserSession, UserSessionCreate
 
 __all__ = (
     "CacheStats",
     "CacheStatsRow",
     "EmbeddingCache",
-    "HistoryMeta",
     "MetricCard",
     "MetricsBreakdown",
     "MetricsBreakdownRow",
@@ -38,6 +36,4 @@ __all__ = (
     "PerformanceStats",
     "ResponseCache",
     "SearchMetricsCreate",
-    "UserSession",
-    "UserSessionCreate",
 )

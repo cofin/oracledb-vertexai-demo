@@ -26,6 +26,9 @@ import rich_click as click
 from rich.console import Console
 from tools.cli import doctor_command, init_command, install_group
 from tools.oracle import (
+    apex_group as oracle_apex_group,
+)
+from tools.oracle import (
     connect_group as oracle_connect_group,
 )
 from tools.oracle import (
@@ -88,6 +91,9 @@ for src_name, dst_name in _INFRA_RENAME.items():
     cmd = oracle_container_group.commands.get(src_name)
     if cmd is not None:
         infra_group.add_command(cmd, name=dst_name)
+
+# APEX install/upgrade/status as a nested subgroup: `manage.py infra apex …`
+infra_group.add_command(oracle_apex_group, name="apex")
 
 
 # =============================================================================

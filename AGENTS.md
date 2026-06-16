@@ -14,12 +14,14 @@ store-aware chat planning for locations, inventory, and maps.
 - **Framework**: Litestar 2 with HTMX, Jinja templates, and litestar-vite template mode.
 - **Server**: Granian via `uv run coffee run`.
 - **Database**: Oracle 26ai with SQLSpec, named SQL files, JSON, BOOLEAN, and `VECTOR(3072, FLOAT32)`.
-- **AI**: Vertex AI `gemini-embedding-001` embeddings and Gemini Flash-Lite chat/intent calls.
+- **AI**: Vertex AI `gemini-embedding-2-preview` embeddings and Gemini Flash-Lite chat/intent calls.
 - **Agent runtime**: Google ADK 2 Workflow/BaseNode runner with Oracle-backed ADK sessions.
 - **DI**: Dishka with three app providers in `src/app/ioc.py`.
-- **Planned components**: store coordinates/inventory, deterministic store and
-  product-availability chat routes, browser location opt-in, no-key Maps URLs,
-  optional Maps Embed, and settings contract cleanup.
+- **Shipped components**: store coordinates/inventory, deterministic store and
+  product-availability chat routes, browser location opt-in, and no-key Maps
+  URLs.
+- **Forward-looking components**: optional Maps Embed and settings contract
+  cleanup.
 
 ## Project Context
 
@@ -124,10 +126,10 @@ manual vector packing; SQLSpec Oracle handles Python `list[float]` values.
 ```python
 from app.config import db_manager
 from app.domain.products.schemas import ProductMatch
-from app.lib.service import SQLSpecAsyncService
+from app.lib.service import OracleAsyncService
 
 
-class ProductService(SQLSpecAsyncService[OracleAsyncDriver]):
+class ProductService(OracleAsyncService):
     async def search_by_vector(self, query_embedding: list[float]) -> list[ProductMatch]:
         return await self.driver.select(
             db_manager.get_sql("vector-search-products"),
@@ -158,9 +160,11 @@ provider annotations at runtime.
 
 ### Vertex AI
 
-Use `task_type="RETRIEVAL_QUERY"` for user search queries and
-`task_type="RETRIEVAL_DOCUMENT"` for product/document embeddings. Runtime
-settings use `gemini-embedding-001` with `EMBEDDING_DIMENSIONS = 3072`.
+Pass `embedding_purpose="query"` for user search queries and
+`embedding_purpose="document"` for product/document embeddings. The value
+selects a text instruction prefix from `EMBEDDING_PURPOSE_INSTRUCTIONS` that is
+prepended to the content; no `task_type` parameter is sent. Runtime settings use
+`gemini-embedding-2-preview` with `EMBEDDING_DIMENSIONS = 3072`.
 
 ### ADK Chat
 
@@ -174,15 +178,14 @@ active Dishka request services. Streaming responses use `/api/chat/stream` with
 
 ### Store, Inventory, And Maps
 
-Store/location work stays in the products domain. Planned data changes belong in
-the baseline `0001` migration on this branch: store coordinates/timezone/place
-IDs, Dallas fixture data, explicit product stock booleans, and curated
-`store_product_inventory` rows. Query behavior should use named SQL and typed
-service boundaries.
+Store/location work stays in the products domain. The baseline `0001` migration
+ships the supporting data: store coordinates/timezone/place IDs, Dallas fixture
+data, explicit product stock booleans, and curated `store_product_inventory`
+rows. Query behavior uses named SQL and typed service boundaries.
 
-`STORE_LOCATION` and `PRODUCT_AVAILABILITY` should be deterministic grounded
-routes like `PRODUCT_RAG`; `ORDER_STATUS` stays explicit but unsupported until
-order data exists. Browser coordinates require user opt-in, stay request-scoped,
+`STORE_LOCATION` and `PRODUCT_AVAILABILITY` are deterministic grounded routes
+like `PRODUCT_RAG`; `ORDER_STATUS` stays explicit but unsupported until order
+data exists. Browser coordinates require user opt-in, stay request-scoped,
 and must not be persisted in history, cache, metrics, or logs.
 
 Google Maps URLs are the default and require no key. Embedded maps require

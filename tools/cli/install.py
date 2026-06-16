@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import rich_click as click
 from rich.console import Console
@@ -21,6 +22,9 @@ from tools.lib.utils import (
     is_tool_installed,
     run_command,
 )
+
+if TYPE_CHECKING:
+    from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
 
 console = Console()
 
@@ -248,18 +252,7 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         config = SQLclConfig()
         if install_dir:
             config.install_dir = Path(install_dir)
-
-        installer = SQLclInstaller(config=config, console=console)
-        installed_path = installer.install(force=force)
-
-        console.print(f"[green]✓ SQLcl installed to: {installed_path}[/green]")
-
-        # Check if in PATH
-        if not installer.is_in_path():
-            console.print("\n[yellow]⚠ SQLcl is not in your PATH[/yellow]")
-            instructions = installer.get_path_instructions()
-            for instruction in instructions:
-                console.print(f"  {instruction}")
+        install_sqlcl_with_config(config, SQLclInstaller, force=force)
     except Exception as e:
         console.print(f"[red]✗ Installation failed: {e}[/red]")
         raise click.Abort from e
@@ -297,3 +290,15 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         else:
             console.print("[yellow]⚠ Could not auto-configure Gemini MCP[/yellow]")
             console.print("[dim]  You can manually add SQLcl to ~/.gemini/settings.json[/dim]")
+
+
+def install_sqlcl_with_config(config: SQLclConfig, installer_type: type[SQLclInstaller], *, force: bool) -> None:
+    """Install SQLcl with the configured installer class."""
+    installer = installer_type(config=config, console=console)
+    installed_path = installer.install(force=force)
+    console.print(f"[green]✓ SQLcl installed to: {installed_path}[/green]")
+    if installer.is_in_path():
+        return
+    console.print("\n[yellow]⚠ SQLcl is not in your PATH[/yellow]")
+    for instruction in installer.get_path_instructions():
+        console.print(f"  {instruction}")

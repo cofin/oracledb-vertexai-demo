@@ -6,12 +6,13 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from sqlspec.driver._async import AsyncDriverAdapterBase
 
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 
 
-class RecordingDriver:
+class RecordingDriver(AsyncDriverAdapterBase):
     """Captures SQLSpec execute calls for service-boundary assertions."""
 
     def __init__(self) -> None:
@@ -28,7 +29,7 @@ class RecordingDriver:
 @pytest.mark.anyio
 async def test_record_search_uses_database_column_names() -> None:
     driver = RecordingDriver()
-    service = MetricsService(driver)  # type: ignore[arg-type]
+    service = MetricsService(driver)
 
     await service.record_search(
         SearchMetricsCreate(

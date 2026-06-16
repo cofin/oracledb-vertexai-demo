@@ -25,7 +25,6 @@ from typing import TYPE_CHECKING
 
 import structlog
 from litestar import Controller
-from litestar.events import EventListener
 
 from app.lib.di import LitestarRouter
 
@@ -41,9 +40,7 @@ class DomainPluginConfig:
 
     domain_packages: list[str] = field(default_factory=lambda: ["app.domain"])
     discover_controllers: bool = True
-    discover_listeners: bool = True
     controller_submodules: list[str] = field(default_factory=lambda: ["controllers", "routes", "controller", "route"])
-    listener_submodules: list[str] = field(default_factory=lambda: ["events", "listeners"])
     use_dishka_router: bool = True
     log_discovered: bool = True
 
@@ -66,17 +63,6 @@ def find_controllers_in_module(module: object) -> list[type[Controller]]:
         controllers.append(obj)
 
     return controllers
-
-
-def find_listeners_in_module(module: object) -> list[EventListener]:
-    """Find all event listeners defined in a module."""
-    listeners: list[EventListener] = []
-
-    for _, obj in inspect.getmembers(module):
-        if isinstance(obj, EventListener):
-            listeners.append(obj)
-
-    return listeners
 
 
 def discover_domain_controllers(
@@ -112,25 +98,6 @@ def discover_domain_controllers(
     return unique_controllers
 
 
-def discover_domain_listeners(
-    domain_packages: list[str], listener_submodules: list[str] | None = None
-) -> list["EventListener"]:
-    """Discover listeners in domain subpackages."""
-    if listener_submodules is None:
-        listener_submodules = ["events", "listeners"]
-
-    all_listeners: list[EventListener] = []
-
-    for domain_pkg in domain_packages:
-        for domain_module_path, _ in _iter_domain_directories(domain_pkg):
-            for submodule_name in listener_submodules:
-                listener_path = f"{domain_module_path}.{submodule_name}"
-                listeners = _discover_listeners_in_submodule(listener_path)
-                all_listeners.extend(listeners)
-
-    return all_listeners
-
-
 class DomainPlugin:
     """Litestar plugin for automatic domain discovery."""
 
@@ -144,9 +111,6 @@ class DomainPlugin:
         """Initialize the plugin when app is created."""
         if self.config.discover_controllers:
             self._discover_and_register_controllers(app_config)
-
-        if self.config.discover_listeners:
-            self._discover_and_register_listeners(app_config)
 
         if self.config.log_discovered:
             app_config.on_startup = app_config.on_startup or []
@@ -162,27 +126,6 @@ class DomainPlugin:
             logger.warning("No controllers discovered", domain_packages=self.config.domain_packages)
             return
 
-        self._store_controller_results(controllers)
-
-        if self.config.use_dishka_router:
-            router = LitestarRouter(path="/", route_handlers=controllers)
-            app_config.route_handlers.append(router)
-        else:
-            app_config.route_handlers.extend(controllers)
-
-    def _discover_and_register_listeners(self, app_config: "AppConfig") -> None:
-        """Discover listeners and register them with the application."""
-        listeners = discover_domain_listeners(self.config.domain_packages, self.config.listener_submodules)
-
-        if not listeners:
-            return
-
-        _DiscoveryState.listener_count = len(listeners)
-
-        app_config.listeners.extend(listeners)
-
-    def _store_controller_results(self, controllers: list[type[Controller]]) -> None:
-        """Store controller discovery results for deferred logging."""
         by_domain: dict[str, list[str]] = {}
         for ctrl in controllers:
             module = getattr(ctrl, "__module__", "unknown")
@@ -195,6 +138,12 @@ class DomainPlugin:
 
         _DiscoveryState.controller_count = len(controllers)
         _DiscoveryState.controllers_by_domain = by_domain
+
+        if self.config.use_dishka_router:
+            router = LitestarRouter(path="/", route_handlers=controllers)
+            app_config.route_handlers.append(router)
+        else:
+            app_config.route_handlers.extend(controllers)
 
 
 async def _on_startup_log_discovery() -> None:  # noqa: RUF029
@@ -242,18 +191,14 @@ class _DiscoveryState:
 
     controller_count: int = 0
     controllers_by_domain: dict[str, list[str]] = {}
-    listener_count: int = 0
     logged_controllers: bool = False
-    logged_listeners: bool = False
 
     @classmethod
     def reset(cls) -> None:
         """Reset discovery state (for testing)."""
         cls.controller_count = 0
         cls.controllers_by_domain = {}
-        cls.listener_count = 0
         cls.logged_controllers = False
-        cls.logged_listeners = False
 
     @classmethod
     def log_discovery_results(cls) -> None:
@@ -265,10 +210,6 @@ class _DiscoveryState:
                 "Controller inventory by domain",
                 by_domain={k: sorted(v) for k, v in sorted(cls.controllers_by_domain.items())},
             )
-
-        if not cls.logged_listeners and cls.listener_count > 0:
-            cls.logged_listeners = True
-            logger.info("Discovered domain listeners", total=cls.listener_count)
 
 
 def _iter_domain_directories(domain_pkg: str) -> list[tuple[str, Path]]:
@@ -324,37 +265,10 @@ def _discover_controllers_in_submodule(controller_module_path: str) -> list[type
     return all_controllers
 
 
-def _discover_listeners_in_submodule(listener_module_path: str) -> list["EventListener"]:
-    """Discover listeners in a single submodule path."""
-    try:
-        listener_module = importlib.import_module(listener_module_path)
-    except ImportError:
-        return []
-
-    all_listeners: list[EventListener] = []
-
-    if hasattr(listener_module, "__path__"):
-        for _, modname, ispkg in pkgutil.walk_packages(listener_module.__path__, prefix=f"{listener_module_path}."):
-            if ispkg:
-                continue
-            try:
-                mod = importlib.import_module(modname)
-                listeners = find_listeners_in_module(mod)
-                all_listeners.extend(listeners)
-            except (ImportError, AttributeError, SyntaxError) as e:
-                logger.warning("Failed to import listener module", module=modname, error=str(e))
-
-    listeners = find_listeners_in_module(listener_module)
-    all_listeners.extend(listeners)
-
-    return all_listeners
-
-
 __all__ = (
     "DomainPlugin",
     "DomainPluginConfig",
     "clear_discovery_cache",
     "discover_domain_controllers",
-    "discover_domain_listeners",
     "find_controllers_in_module",
 )
