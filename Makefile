@@ -335,7 +335,7 @@ start-infra: ## Start local Oracle container (DB only; run `make apex` separatel
 	@echo "${OK} Infrastructure started (APEX skipped — run 'make apex' to install/upgrade it)"
 
 .PHONY: apex
-apex: ## Install/upgrade Oracle APEX + ORDS in the running container (slow; not run automatically)
+apex: ## Install/upgrade APEX in the DB and start the ORDS sidecar container (slow; not run automatically)
 	@echo "${INFO} Installing/upgrading Oracle APEX + ORDS — this can take several minutes... ⏳"
 	@uv run python manage.py infra start
 	@echo "${OK} APEX + ORDS ready"

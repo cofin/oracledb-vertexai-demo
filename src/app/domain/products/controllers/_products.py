@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from litestar import Controller, get
-from litestar.params import Dependency
+from litestar.di import NamedDependency
+from litestar.params import SkipValidation
 
 from app.domain.products.schemas import Product, Store
 from app.domain.products.services import ProductService, StoreService
@@ -30,7 +31,7 @@ class ProductController(Controller):
     async def list_products(
         self,
         products_service: Inject[ProductService],
-        filters: list[FilterTypes] = Dependency(skip_validation=True),
+        filters: NamedDependency[SkipValidation[list[FilterTypes]]],
     ) -> OffsetPagination[Product]:
         """List products with pagination, search, and filtering."""
         return await products_service.list_with_count(*filters)
@@ -56,7 +57,7 @@ class StoreController(Controller):
     async def list_stores(
         self,
         stores_service: Inject[StoreService],
-        filters: list[FilterTypes] = Dependency(skip_validation=True),
+        filters: NamedDependency[SkipValidation[list[FilterTypes]]],
     ) -> OffsetPagination[Store]:
         """List stores with pagination, search, and filtering."""
         return await stores_service.list_with_count(*filters)
