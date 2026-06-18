@@ -22,7 +22,7 @@ dependencies = [
     "sqlspec[adk,mypyc,oracledb,performance]==0.50.0",
 
     "python-dotenv",
-    "google-adk>=2.0.0b1",
+    "google-adk>=2.3.0",
     "numpy>=2.3.3",
     "dishka>=1.4.2",
     "litestar-vite>=0.23.4",
