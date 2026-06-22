@@ -28,7 +28,7 @@ menu rows.
 :::{grid-item-card} {octicon}`zap;1.2em` Vertex AI
 :class-card: hero-pill
 
-`gemini-embedding-2-preview` for retrieval, **Gemini** for the answer.
+`gemini-embedding-2-preview` for retrieval; **Gemini** can assist selection.
 :::
 
 ::::
@@ -37,7 +37,7 @@ menu rows.
 flowchart TD
     U([User question]) --> C[Litestar chat controller]
     C --> I{Flash-Lite intent}
-    I -->|PRODUCT_RAG| P[Product RAG formatter]
+    I -->|PRODUCT_RAG| P[Product RAG selector]
     I -->|STORE_LOCATION| S[Store lookup]
     I -->|PRODUCT_AVAILABILITY| V[Inventory lookup]
     I -->|GENERAL_CONVERSATION| A[ADK 2.0 workflow]
@@ -50,9 +50,10 @@ flowchart TD
     R --> U
 ```
 
-*Product, store, and availability turns are answered from deterministic
-service calls. General conversation falls through to the ADK workflow, where
-the model can still use the same closure-bound tools.*
+*Product, store, and availability turns are grounded in deterministic service
+facts. Product RAG may use structured selection, but final product copy is
+rendered from Oracle rows. General conversation falls through to the ADK
+workflow, where the model can still use the same closure-bound tools.*
 
 ## Where to go next
 

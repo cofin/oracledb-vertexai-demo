@@ -26,7 +26,7 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   data, services, intent routes, and rendering exist in source.
 * Fix the embedding-method reference in `docs/tour.md` from the non-existent
   `ProductService.embed_text` to `VertexAIService.get_text_embedding`.
-* Fix `.agents/tech-stack.md` version/wording: `google-adk>=2.0.0b1` (not
+* Fix `.agents/tech-stack.md` version/wording: `google-adk>=2.0.0` (not
   `2.2.0`), and stop conflating the `litestar-granian` plugin with the Granian
   server.
 * Fix the service base class in `AGENTS.md` and `docs/reference/api.md` from
@@ -82,7 +82,7 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   AGENTS.md "three app providers" is accurate, leave it.
 * Fixture counts (verified by gunzip + len): `product.json.gz` = 130,
   `store.json.gz` = 17, `store_product_inventory.json.gz` = 1700.
-* `pyproject.toml:25` — `google-adk>=2.0.0b1`; `:20` — `litestar-granian[uvloop]`
+* `pyproject.toml:25` — `google-adk>=2.0.0`; `:20` — `litestar-granian[uvloop]`
   (plugin dep, distinct from the Granian server).
 * `ADK2.md:1` — "ADK 2.2 / SQLSpec 0.50 Migration Plan" (forward-looking).
   Contradictions to flag, not fix: `:558` (1536-dim), `:609` / `:717`
@@ -203,7 +203,7 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   as the plugin/integration and the runtime ASGI server is named "Granian",
   removing the conflation.
 - [ ] 3.11 `.agents/tech-stack.md:10` — change "Google ADK 2.2.0" to match the
-  `pyproject.toml` pin `google-adk>=2.0.0b1` (e.g. "Google ADK 2 (>=2.0.0b1)").
+  `pyproject.toml` pin `google-adk>=2.0.0` (e.g. "Google ADK 2 (>=2.0.0)").
 
 ### Phase 4: tools-tree tracked docs (counts and model sweep)
 
@@ -225,6 +225,17 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   shipped stack (`gemini-embedding-2-preview`, 3072-dim, instruction-prefix
   embedding purpose, no `task_type`). Do NOT rewrite the aspirational rows
   themselves.
+
+### Product RAG guard addendum
+
+The `fix/product-improve` branch changes Product RAG wording behavior. Docs
+must not claim the model writes final customer-facing product copy safely. The
+accurate contract is: Product RAG may use Gemini structured output to select
+retrieved product ids, Python validates those ids, and Python renders names,
+prices, and descriptions from Oracle rows. Grep active docs and guides for
+phrases such as "Gemini for the answer", "formats the final answer", and
+"deterministic Product RAG" to verify they do not imply either a fully model-
+authored product answer or no model call at all.
 
 ### Phase 6: Verification grep sweep
 
@@ -251,7 +262,7 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   references `ProductService.embed_text`.
 - [ ] `.agents/knowledge/guides/adk-agent-patterns.md` intent list includes
   `PRODUCT_AVAILABILITY`.
-- [ ] `.agents/tech-stack.md` matches `google-adk>=2.0.0b1` and distinguishes the
+- [ ] `.agents/tech-stack.md` matches `google-adk>=2.0.0` and distinguishes the
   `litestar-granian` plugin from the Granian server.
 - [ ] Store/inventory/maps are described as shipped (not "planned") in
   `AGENTS.md`, `.agents/knowledge/project-guide.md`, and

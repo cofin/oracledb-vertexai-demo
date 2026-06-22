@@ -8,8 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from google.adk import Context, Workflow
-from google.adk.workflow import JoinNode
-from google.adk.workflow._function_node import FunctionNode
+from google.adk.workflow import FunctionNode, JoinNode
 from google.genai import types
 
 if TYPE_CHECKING:

@@ -5,11 +5,21 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import re
+import time
 from typing import Any, TypedDict
 
+import structlog
+from google.genai import types
+
+from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services._adk_support import _coerce_sql_phases
 from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+from app.lib.settings import get_settings
+
+logger = structlog.get_logger()
 
 
 class _StoreFields(TypedDict):
@@ -87,6 +97,200 @@ def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
     if len(menu_products) > 1:
         second = menu_products[1]
         answer += f" Another good menu option is {second['name']}{_format_price(second.get('price'))}."
+    return answer
+
+
+_GROUNDED_ANSWER_TEMPERATURE = 0
+_GROUNDED_SELECTION_MODES = frozenset({"recommend", "off_menu_alternative"})
+_GROUNDED_ANSWER_INSTRUCTION = """You are a Cymbal Coffee product selector. Choose from ONLY the candidate products provided.
+
+Rules:
+- Do NOT write the final customer response.
+- Return product ids from the candidate list only.
+- Use mode "off_menu_alternative" only when the customer names a specific brand or product Cymbal Coffee does not carry, such as Folgers or Starbucks.
+- Use mode "recommend" for preferences such as "something bold", "for breakfast", or "what should I get".
+- Never invent products, ids, prices, descriptions, or availability.
+
+Respond as JSON: mode, selected_product_ids, off_menu_term."""
+_GROUNDED_ANSWER_SCHEMA: dict[str, Any] = {
+    "type": "OBJECT",
+    "properties": {
+        "mode": {"type": "STRING", "enum": sorted(_GROUNDED_SELECTION_MODES)},
+        "selected_product_ids": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "off_menu_term": {"type": "STRING"},
+    },
+    "required": ["mode", "selected_product_ids", "off_menu_term"],
+}
+
+
+def _candidate_id(product: dict[str, Any]) -> str:
+    for key in ("id", "product_id", "sku", "name"):
+        value = product.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return str(product["name"]).strip()
+
+
+def _candidate_block(products: list[dict[str, Any]]) -> str:
+    """Render candidate products as the only menu items the model may select.
+
+    Returns:
+        A newline-delimited list of id/name/price/description rows.
+    """
+    lines: list[str] = []
+    for product in products:
+        name = str(product.get("name") or "").strip()
+        if not name:
+            continue
+        description = str(product.get("description") or "").strip()
+        line = f"- id={_candidate_id(product)}; name={name}{_format_price(product.get('price'))}"
+        if description:
+            line += f"; description={description}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _response_payload(response: Any) -> dict[str, Any] | None:
+    parsed = getattr(response, "parsed", None)
+    if isinstance(parsed, dict):
+        return parsed
+    text = getattr(response, "text", "")
+    try:
+        payload = json.loads(str(text))
+    except (TypeError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _selected_products(payload: dict[str, Any], products: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    mode = str(payload.get("mode") or "").strip()
+    if mode not in _GROUNDED_SELECTION_MODES:
+        return None
+    selected_ids = payload.get("selected_product_ids")
+    if not isinstance(selected_ids, list) or not selected_ids:
+        return None
+
+    candidates = {_candidate_id(product): product for product in products}
+    selected: list[dict[str, Any]] = []
+    for raw_id in selected_ids:
+        product = candidates.get(str(raw_id).strip())
+        if product is None:
+            return None
+        selected.append(product)
+    return selected
+
+
+def _clean_off_menu_term(value: Any) -> str:
+    term = re.sub(r"\s+", " ", str(value or "").strip().strip("\"'"))
+    return term[:60] or "that item"
+
+
+def _render_selected_product(product: dict[str, Any]) -> str:
+    name = str(product["name"])
+    return f"{name}{_format_price(product.get('price'))}"
+
+
+def _render_grounded_selection(query: str, payload: dict[str, Any], selected: list[dict[str, Any]]) -> str | None:
+    """Render final copy from trusted candidate rows, never from model text.
+
+    Returns:
+        Customer-facing answer text when the structured selection is valid.
+    """
+    mode = str(payload.get("mode") or "").strip()
+    if mode == "recommend":
+        return _grounded_product_answer(query, selected)
+
+    if mode == "off_menu_alternative":
+        first = selected[0]
+        answer = (
+            f"Cymbal Coffee does not carry {_clean_off_menu_term(payload.get('off_menu_term'))}, "
+            f"but {_render_selected_product(first)} is the closest menu option"
+        )
+        description = str(first.get("description") or "").strip()
+        if description:
+            answer += f": {description}"
+        return answer + "."
+    return None
+
+
+def _record_grounded_answer_metric(
+    metric_state: dict[str, Any] | None,
+    *,
+    mode: str,
+    started: float,
+    error_type: str | None = None,
+) -> None:
+    if metric_state is None:
+        return
+    search_metrics = metric_state.setdefault("search_metrics", {})
+    search_metrics["grounded_answer_mode"] = mode
+    search_metrics["grounded_answer_ms"] = round((time.perf_counter() - started) * 1000, 2)
+    if error_type:
+        search_metrics["grounded_answer_error_type"] = error_type
+
+
+async def _compose_grounded_answer(
+    query: str,
+    products: list[dict[str, Any]],
+    tools_service: Any,
+    metric_state: dict[str, Any] | None = None,
+) -> str:
+    """Select with the LLM, then render the customer reply from trusted rows.
+
+    The model never writes final product copy. It may only return candidate ids
+    and an off-menu term; Python validates those ids and renders names, prices,
+    and descriptions from the retrieved products.
+
+    Returns:
+        The grounded reply text, or the templated answer when composition fails.
+
+    Raises:
+        AIServiceUnconfigured: If the configured Vertex AI credentials are invalid.
+    """
+    menu_products = _coerce_products(products)
+    started = time.perf_counter()
+    if not menu_products:
+        _record_grounded_answer_metric(metric_state, mode="template", started=started)
+        return _grounded_product_answer(query, menu_products)
+
+    contents = (
+        f"Customer request: {query}\n\n"
+        f"Candidate products (select only these ids):\n{_candidate_block(menu_products)}"
+    )
+    try:
+        async with asyncio.timeout(get_settings().chat.grounded_answer_timeout_seconds):
+            response = await tools_service.vertex_ai_service.generate_structured_content(
+                model=get_settings().ai.chat_model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    temperature=_GROUNDED_ANSWER_TEMPERATURE,
+                    system_instruction=_GROUNDED_ANSWER_INSTRUCTION,
+                    response_mime_type="application/json",
+                    response_schema=_GROUNDED_ANSWER_SCHEMA,
+                ),
+            )
+    except TimeoutError:
+        _record_grounded_answer_metric(metric_state, mode="timeout", started=started, error_type="TimeoutError")
+        await logger.awarning("Grounded answer generation timed out")
+        return _grounded_product_answer(query, menu_products)
+    except Exception as exc:
+        # Lazy import avoids an import cycle: adk.py imports this module at load time.
+        from app.domain.chat.services.adk import _UNCONFIGURED_MESSAGE, _is_credential_error
+
+        if _is_credential_error(exc):
+            raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
+        _record_grounded_answer_metric(metric_state, mode="error", started=started, error_type=type(exc).__name__)
+        await logger.awarning("Grounded answer generation failed", error_type=type(exc).__name__)
+        return _grounded_product_answer(query, menu_products)
+
+    payload = _response_payload(response)
+    selected = _selected_products(payload, menu_products) if payload is not None else None
+    answer = _render_grounded_selection(query, payload, selected) if payload is not None and selected is not None else None
+    if answer is None:
+        _record_grounded_answer_metric(metric_state, mode="rejected", started=started)
+        await logger.awarning("Grounded answer rejected by guard")
+        return _grounded_product_answer(query, menu_products)
+    _record_grounded_answer_metric(metric_state, mode="structured", started=started)
     return answer
 
 
@@ -381,4 +585,4 @@ async def _ground_product_rag_turn(
         fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5)
         _record_product_search_result(metric_state, fallback_result, query)
         products = _coerce_products(metric_state.get("rag_products"))
-    return _grounded_product_answer(query, products)
+    return await _compose_grounded_answer(query, products, tools_service, metric_state)

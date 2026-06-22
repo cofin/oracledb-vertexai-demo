@@ -93,10 +93,12 @@ and bridge keys, not products, metrics, response cache, or embedding cache.
 
 `ADKRunner` is app-scoped and receives request-scoped `AgentToolsService`
 instances for database-backed work. Product RAG is classifier-first and emits a
-single grounded final event from returned Cymbal Coffee products. It also
-persists the names of recommended products in the ADK session state under
-`last_products` to support subsequent context-aware availability queries.
-Non-RAG turns may stream model deltas through ADK Workflow.
+single grounded final event. It may ask Gemini for structured selection among
+retrieved product ids, but Python validates that selection and renders the final
+answer from returned Cymbal Coffee rows. It also persists the names of
+recommended products in the ADK session state under `last_products` to support
+subsequent context-aware availability queries. Non-RAG turns may stream model
+deltas through ADK Workflow.
 
 Final chat responses must preserve intent, vector query, product/store result
 context, timing phases, response-cache state, and embedding-cache state through

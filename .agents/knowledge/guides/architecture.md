@@ -143,7 +143,7 @@ POST /api/chat/stream
   -> SQLSpecSessionService get/create session
   -> response cache lookup
   -> FlashLiteIntentClassifier
-  -> PRODUCT_RAG direct vector search and grounded final event
+  -> PRODUCT_RAG direct vector search, structured selection, validation, and grounded final event
      OR ADK workflow stream for conversational turns:
         START -> intent FunctionNode -> JoinNode
         START -> LlmAgent coffee_turn -> JoinNode
@@ -157,9 +157,10 @@ cache, metrics, store, and Vertex services. This keeps database sessions aligned
 with Litestar request scope while ADK owns only orchestration.
 
 Product RAG turns do not stream speculative model deltas. They classify first,
-search the live menu, format a grounded answer only from returned products,
-persist display history into ADK session state, cache the final response, and
-emit a single final SSE event.
+search the live menu, optionally ask Vertex AI/Gemini for structured selection
+among returned product ids, validate that selection, render a grounded answer
+only from returned products, persist display history into ADK session state,
+cache the final response, and emit a single final SSE event.
 
 ## Store, Inventory, And Maps
 

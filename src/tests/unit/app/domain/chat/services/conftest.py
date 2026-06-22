@@ -87,9 +87,10 @@ def allow_vertex_config(monkeypatch: Any, adk_module: Any) -> None:
     settings.ai.api_key = None
     settings.ai.chat_model = "gemini-2.5-flash-lite"
     settings.chat.session_app_name = "coffee_assistant"
-    settings.chat.response_cache_version = "menu-grounded-v1"
+    settings.chat.response_cache_version = "menu-grounded-v2"
     settings.chat.response_cache_ttl_minutes = 60
     settings.chat.product_search_limit = 5
     settings.chat.product_search_threshold = 0.7
     settings.chat.display_history_limit = 40
+    settings.chat.grounded_answer_timeout_seconds = 2.5
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)

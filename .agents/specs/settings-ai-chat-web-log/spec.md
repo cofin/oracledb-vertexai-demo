@@ -41,8 +41,10 @@ DEPENDS ON:
 2. Introduce `ChatSettings`:
    - `session_app_name` (default `coffee_assistant`) — replaces the hardcoded
      `_APP_NAME = "coffee_assistant"` in `adk.py:76`.
-   - `response_cache_version` (default `menu-grounded-v1`) — replaces
+   - `response_cache_version` (default `menu-grounded-v2`) — replaces
      `_CHAT_CACHE_VERSION` in `adk.py:79`.
+   - `grounded_answer_timeout_seconds` (default `2.5`) — bounds Product RAG
+     structured selection before deterministic fallback.
    - `response_cache_ttl_minutes` (default `60`) — replaces the hardcoded
      `ttl_minutes=60` in `adk.py:366`.
    - `product_search_limit` (default `5`) — replaces hardcoded `limit=5` defaults
@@ -116,7 +118,7 @@ DEPENDS ON:
   - `adk.py:76` `_APP_NAME = "coffee_assistant"` — used in
     `Runner(app_name=...)` (1050) and every `_session_service` call
     (542, 547-549, 554, 575, 587).
-  - `adk.py:79` `_CHAT_CACHE_VERSION = "menu-grounded-v1"` — used in
+  - `adk.py:79` `_CHAT_CACHE_VERSION = "menu-grounded-v2"` — used in
     `make_response_cache_key` (358).
   - `adk.py:366` `set_cached_response(..., ttl_minutes=60)`.
   - `adk.py:604` `state[_DISPLAY_HISTORY_STATE_KEY] = history[-40:]`.
@@ -144,9 +146,9 @@ DEPENDS ON:
 - [x] 1.2 Add `test_intent_model_override_wins`: with
       `VERTEX_AI_INTENT_MODEL=gemini-x`, `intent_model == "gemini-x"`.
 - [x] 1.3 Add `test_chat_settings_defaults`: `session_app_name=coffee_assistant`,
-      `response_cache_version=menu-grounded-v1`, `response_cache_ttl_minutes=60`,
+      `response_cache_version=menu-grounded-v2`, `response_cache_ttl_minutes=60`,
       `product_search_limit=5`, `product_search_threshold=0.7`,
-      `display_history_limit=40`.
+      `display_history_limit=40`, `grounded_answer_timeout_seconds=2.5`.
 - [x] 1.4 In `src/tests/unit/app/domain/chat/services/test_adk.py`, add a
       regression asserting the response-cache write TTL and the display-history
       truncation length come from `ChatSettings` (will be RED until wired).

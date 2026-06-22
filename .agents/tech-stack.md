@@ -7,7 +7,7 @@
 - **Framework:** Litestar
 - **Server:** Granian (ASGI server), wired through the `litestar-granian` plugin
 - **Dependency Injection:** Dishka
-- **AI & Integrations:** Google Vertex AI, Google ADK 2 (`google-adk>=2.0.0b1`),
+- **AI & Integrations:** Google Vertex AI, Google ADK 2 (`google-adk>=2.0.0`),
   SQLSpec ADK session service
 
 
@@ -34,8 +34,9 @@
 - `/api/chat/stream` is the primary chat route. It checks response cache,
   classifies intent, runs direct grounded product lookup for `PRODUCT_RAG`, and
   runs ADK SSE streaming for non-RAG model conversation.
-- Product/menu answers are formatted only from returned Cymbal Coffee menu rows.
-  They emit a final SSE event without speculative model deltas.
+- Product/menu answers may use Gemini structured output for candidate selection,
+  but final text is rendered from returned Cymbal Coffee menu rows. They emit a
+  final SSE event without speculative model deltas.
 - The sidebar `Clear chat` action deletes the current ADK session/events and
   clears the Litestar bridge keys; it does not reset caches, metrics, fixtures,
   or product data.

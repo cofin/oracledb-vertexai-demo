@@ -8,7 +8,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import structlog
-from google.genai.types import EmbedContentConfig
+from google.genai.types import EmbedContentConfig, GenerateContentConfig
 from msgspec.structs import asdict
 from sqlspec import sql
 
@@ -267,6 +267,16 @@ class VertexAIService:
         return (embedding, False) if return_cache_status else embedding
 
     # docs:end-vertex-embedding
+
+    async def generate_structured_content(
+        self,
+        *,
+        model: str,
+        contents: str,
+        config: GenerateContentConfig,
+    ) -> Any:
+        """Generate structured content through the shared Vertex AI client."""
+        return await self.client.aio.models.generate_content(model=model, contents=contents, config=config)
 
 
 def _embedding_content(model: str, text: str, embedding_purpose: str) -> str:

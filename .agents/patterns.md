@@ -46,9 +46,14 @@
 - `/api/chat/stream` is an SSE endpoint. Streaming runs ADK with
   `RunConfig(streaming_mode=StreamingMode.SSE)` for non-RAG turns and preserves
   the non-streaming response payload keys.
-- Product RAG turns must not stream speculative model deltas. The runner should
-  emit a single grounded final event built from returned Cymbal Coffee menu
-  rows.
+- Product RAG turns must not stream speculative model deltas. The runner emits a
+  single grounded final event. `_compose_grounded_answer` may make a bounded
+  Gemini structured-output call to choose candidate product ids and detect an
+  off-menu term, but the model must not write final product copy. Python
+  validates selected ids against retrieved rows, renders names/prices/details
+  from those rows, and falls back to `_grounded_product_answer` on timeout,
+  malformed output, invalid ids, or non-credential model errors. Credential
+  failures surface as `AIServiceUnconfigured`.
 - Chat page history is hydrated from the Litestar-session-bound ADK session.
   Display history lives in ADK session state under `display_history`, with ADK
   event replay as a fallback.
@@ -56,8 +61,10 @@
   clears only the Litestar ADK bridge keys. It must not clear menu data, metrics,
   response cache, or embedding cache.
 - Product RAG tool calls record `vector_query`, `embedding_ms`, `oracle_ms`,
-  `tool_ms`, result counts, and embedding cache status; the chat UI shows these
-  as message-level telemetry along with intent and response-cache status.
+  `tool_ms`, result counts, embedding cache status, and grounded-answer mode
+  (`structured`, `template`, `timeout`, `rejected`, or `error`); the chat UI
+  shows the stable message-level telemetry along with intent and response-cache
+  status.
 - Store/location/inventory work stays in the products domain: seed coordinates,
   Dallas, and curated inventory; route store answers from service facts.
 - Maps URLs are the no-key baseline. Browser coordinates are opt-in and

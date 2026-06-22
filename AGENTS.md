@@ -176,6 +176,11 @@ Tools are closure-bound inside `ADKRunner` for each request so they use the
 active Dishka request services. Streaming responses use `/api/chat/stream` with
 `ServerSentEvent` and ADK `StreamingMode.SSE`.
 
+Product RAG may use Gemini structured output to select among retrieved
+candidate product ids, but final product names, prices, and descriptions must be
+rendered from Oracle rows in Python. Invalid selection output, timeouts, or
+non-credential model errors fall back to the deterministic grounded template.
+
 ### Store, Inventory, And Maps
 
 Store/location work stays in the products domain. The baseline `0001` migration

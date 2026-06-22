@@ -42,6 +42,14 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _env_float(name: str, default: float) -> float:
+    """Parse an environment variable as a float, falling back to the default."""
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    return float(raw)
+
+
 def _env_str(name: str, default: str) -> str:
     """Read an environment variable as a string with a default."""
     return os.getenv(name, default)
@@ -309,7 +317,7 @@ class MapsSettings:
 
     @property
     def embed_enabled(self) -> bool:
-        """Return true only when embed rendering is explicitly enabled and keyed."""
+        """True only when embed rendering is explicitly enabled and keyed."""
         return self.ENABLE_EMBED and bool(self.EMBED_API_KEY.strip())
 
 
@@ -345,7 +353,7 @@ class AISettings:
 
     @property
     def intent_model(self) -> str:
-        """Return the intent-classification model, falling back to the chat model."""
+        """Intent-classification model, falling back to the chat model."""
         return self.intent_model_override or self.chat_model
 
 
@@ -356,7 +364,7 @@ class ChatSettings:
     session_app_name: str = field(default_factory=lambda: os.getenv("CHAT_SESSION_APP_NAME", "coffee_assistant"))
     """ADK app name used for session lookups and the per-request Runner."""
     response_cache_version: str = field(
-        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v1")
+        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v2")
     )
     """Cache-key namespace bumped to invalidate stale grounded responses."""
     response_cache_ttl_minutes: int = field(default_factory=lambda: _env_int("CHAT_RESPONSE_CACHE_TTL_MINUTES", 60))
@@ -367,6 +375,10 @@ class ChatSettings:
         default_factory=lambda: float(os.getenv("CHAT_PRODUCT_SEARCH_THRESHOLD", "0.7"))
     )
     """Default product vector-search similarity threshold."""
+    grounded_answer_timeout_seconds: float = field(
+        default_factory=lambda: _env_float("CHAT_GROUNDED_ANSWER_TIMEOUT_SECONDS", 2.5)
+    )
+    """Maximum time allowed for Product RAG structured selection before falling back."""
     display_history_limit: int = field(default_factory=lambda: _env_int("CHAT_DISPLAY_HISTORY_LIMIT", 40))
     """Maximum number of display-history messages retained per session."""
 

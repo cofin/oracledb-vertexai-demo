@@ -11,11 +11,12 @@ flowchart TD
     C -->|hit| H[final event]
     C -->|miss| I{Flash-Lite intent}
     I -->|PRODUCT_RAG| P[product vector search]
+    P --> PV[structured selection<br/>and validation]
     I -->|STORE_LOCATION| S[store lookup]
     I -->|PRODUCT_AVAILABILITY| A[inventory lookup]
     I -->|ORDER_STATUS| U[unsupported order response]
     I -->|GENERAL_CONVERSATION| W[ADK workflow]
-    P --> F[grounded final event]
+    PV --> F[grounded final event]
     S --> F
     A --> F
     U --> F
@@ -35,11 +36,12 @@ The classifier returns one enum value:
   implement.
 - `GENERAL_CONVERSATION` for greetings and small talk.
 
-The first three labels are deterministic grounded routes. They query Oracle
-through `AgentToolsService`, shape rows into `store_results`,
-`inventory_results`, `map_actions`, metrics, and SQL phases, then emit one
-`final` event. `ORDER_STATUS` returns a clear unsupported message instead of
-asking the model to invent order data.
+The first three labels are grounded routes. They query Oracle through
+`AgentToolsService`, shape rows into `store_results`, `inventory_results`,
+`map_actions`, metrics, and SQL phases, then emit one `final` event. Product
+RAG may use Gemini structured output to select among returned product ids, but
+the final product answer is rendered from Oracle rows. `ORDER_STATUS` returns a
+clear unsupported message instead of asking the model to invent order data.
 
 ## ADK Fallback
 
@@ -56,8 +58,8 @@ Flash-Lite classifier as a `FunctionNode` for workflow output labelling.
 
 The ADK path has the same closure-bound tools as the deterministic path. If
 the model calls the product vector-search tool during a general turn, the
-runner treats the response as product-grounded and formats the final answer
-from the returned product rows.
+runner treats the response as product-grounded and sends it through the same
+selector, validator, and row-renderer used by directly-routed Product RAG.
 
 ## Closure-Bound Tools
 

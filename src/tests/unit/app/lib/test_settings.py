@@ -96,11 +96,12 @@ def test_chat_settings_defaults(monkeypatch: MonkeyPatch) -> None:
     settings = ChatSettings()
 
     assert settings.session_app_name == "coffee_assistant"
-    assert settings.response_cache_version == "menu-grounded-v1"
+    assert settings.response_cache_version == "menu-grounded-v2"
     assert settings.response_cache_ttl_minutes == 60
     assert settings.product_search_limit == 5
     assert settings.product_search_threshold == 0.7
     assert settings.display_history_limit == 40
+    assert settings.grounded_answer_timeout_seconds == 2.5
 
 
 def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> None:

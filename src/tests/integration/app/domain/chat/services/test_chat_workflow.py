@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from google.adk.workflow._function_node import FunctionNode
+from google.adk.workflow import FunctionNode
 from google.genai import types
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
@@ -61,10 +63,30 @@ class FakeIntentClassifier:
         return IntentLabel.PRODUCT_RAG
 
 
+class _FakeGenAiModels:
+    """Stub Gemini models endpoint that returns a guard-passing product selection."""
+
+    async def generate_content(self, **kwargs: Any) -> Any:
+        contents = str(kwargs.get("contents") or "")
+        product_id = re.search(r"id=([^;]+);", contents)
+        payload = {
+            "mode": "recommend",
+            "off_menu_term": "",
+            "selected_product_ids": [product_id.group(1)] if product_id else [],
+        }
+        return SimpleNamespace(text=json.dumps(payload))
+
+
 class FakeVertexAIService:
     """Embedding service stub that keeps the Oracle/vector path live."""
 
     model = "integration-test-chat-model"
+
+    def __init__(self) -> None:
+        self.client = SimpleNamespace(aio=SimpleNamespace(models=_FakeGenAiModels()))
+
+    async def generate_structured_content(self, **kwargs: Any) -> Any:
+        return await self.client.aio.models.generate_content(**kwargs)
 
     async def get_text_embedding(
         self,
@@ -122,14 +144,16 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         ),
         chat=SimpleNamespace(
             session_app_name="coffee_assistant",
-            response_cache_version="menu-grounded-v1",
+            response_cache_version="menu-grounded-v2",
             response_cache_ttl_minutes=60,
             product_search_limit=5,
             product_search_threshold=0.7,
+            grounded_answer_timeout_seconds=2.5,
             display_history_limit=40,
         ),
     )
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
+    monkeypatch.setattr("app.domain.chat.services._adk_grounding.get_settings", lambda: configured)
 
     from app.config import db
 

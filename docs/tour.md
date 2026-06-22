@@ -22,7 +22,8 @@ The path of this message:
 2. Flash-Lite classifies it as `PRODUCT_RAG`.
 3. Vertex AI embeds the question (with an Oracle-backed cache in front).
 4. Oracle 26ai's HNSW index returns the closest products.
-5. The runner formats one grounded final SSE event.
+5. Gemini may select among candidate product ids, and the runner renders one
+   grounded final SSE event from the selected Oracle rows.
 
 ```{mermaid}
 flowchart LR
@@ -31,7 +32,8 @@ flowchart LR
     R --> I[Flash-Lite<br/>intent]
     I --> V[Vertex AI<br/>embedding]
     V --> O[(Oracle 26ai<br/>HNSW search)]
-    O --> F[Grounded formatter]
+    O --> S[Structured selector]
+    S --> F[Grounded renderer]
     F -->|SSE final| B
 ```
 
@@ -154,10 +156,11 @@ index shape and the `vector_memory_size` knob.
 ## 4. The runner emits a grounded final event
 
 For `PRODUCT_RAG`, the runner does not stream speculative model deltas. It
-formats the returned product rows into one grounded `final` event. Store
-location and product availability turns follow the same deterministic shape:
-classify first, query named SQL through request-scoped services, then emit a
-single grounded event with optional map actions.
+may use Gemini structured output to select among returned product ids, validates
+that selection, then renders one grounded `final` event from Oracle product
+rows. Store location and product availability turns follow the same
+deterministic shape: classify first, query named SQL through request-scoped
+services, then emit a single grounded event with optional map actions.
 
 ```{mermaid}
 flowchart TD
