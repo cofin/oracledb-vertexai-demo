@@ -383,7 +383,7 @@ Target state for the implementation:
 
 | File | Required update |
 |------|-----------------|
-| `.agents/plans/ADK2.md` | This is an aspirational migration plan, not live docs. Do not rewrite it as current behavior. Add only a caveat if the selector/renderer change creates a conflict with the plan's ADK state or memory examples. |
+| `.agents/specs/adk2-sqlspec-migration/source-plan.md` | This is an aspirational migration plan, not live docs. Do not rewrite it as current behavior. Add only a caveat if the selector/renderer change creates a conflict with the plan's ADK state or memory examples. |
 | `docs/reference/cli.md` | No change expected unless a new cache-clear or model-info behavior is added for the Product RAG response cache version. |
 | `docs/maps.md` | No change expected. The coordinate privacy rules stay the same. |
 | `docs/concepts/vector-search.md` | No change expected unless the Product RAG SQL shape changes to include stable ids/SKUs for selection. If it does, update the `ProductMatch` row description. |

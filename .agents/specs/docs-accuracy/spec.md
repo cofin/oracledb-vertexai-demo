@@ -36,9 +36,9 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   `4G`).
 * Add the missing `PRODUCT_AVAILABILITY` label to the intent list in
   `.agents/knowledge/guides/adk-agent-patterns.md`.
-* Leave `ADK2.md` aspirational sections intact; only flag its two internal
-  contradictions as plan-execution caveats (do not "correct" them to match the
-  current stack).
+* Leave the ADK migration source plan aspirational sections intact; only flag
+  its two internal contradictions as plan-execution caveats (do not "correct"
+  them to match the current stack).
 * Do not touch `docs/_build/html/` (gitignored, out of scope).
 * Docs/docstrings describe behavior only; no spec/phase/flow-ID references in
   any edited text.
@@ -84,9 +84,10 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   `store.json.gz` = 17, `store_product_inventory.json.gz` = 1700.
 * `pyproject.toml:25` — `google-adk>=2.0.0`; `:20` — `litestar-granian[uvloop]`
   (plugin dep, distinct from the Granian server).
-* `ADK2.md:1` — "ADK 2.2 / SQLSpec 0.50 Migration Plan" (forward-looking).
-  Contradictions to flag, not fix: `:558` (1536-dim), `:609` / `:717`
-  (`gemini-embedding-002`), `:719` (`RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY`).
+* `.agents/specs/adk2-sqlspec-migration/source-plan.md:1` — "ADK 2.2 /
+  SQLSpec 0.50 Migration Plan" (forward-looking). Contradictions to flag, not
+  fix: `:558` (1536-dim), `:609` / `:717` (`gemini-embedding-002`), `:719`
+  (`RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY`).
 * `CLAUDE.md` is a symlink -> `AGENTS.md` (verified `ls -la`); never edit
   `CLAUDE.md` directly.
 
@@ -216,11 +217,12 @@ with zero outdated or hallucinated references. Editing `AGENTS.md` fixes
   vectors" to "130 committed product vectors". (File is already modified in the
   working tree; re-grep for the exact current line before editing.)
 
-### Phase 5: ADK2.md caveat flags (no content correction)
+### Phase 5: ADK migration source-plan caveat flags (no content correction)
 
-- [ ] 5.1 `ADK2.md` — add a short plan-execution caveat (near the snapshot/top
-  or beside the affected rows) noting that its memory-embedding preset
-  references — `gemini-embedding-002` / 1536-dim (`:558,:609,:717`) and
+- [ ] 5.1 `.agents/specs/adk2-sqlspec-migration/source-plan.md` — add a short
+  plan-execution caveat (near the snapshot/top or beside the affected rows)
+  noting that its memory-embedding preset references —
+  `gemini-embedding-002` / 1536-dim (`:558,:609,:717`) and
   `RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY` (`:719`) — conflict with the current
   shipped stack (`gemini-embedding-2-preview`, 3072-dim, instruction-prefix
   embedding purpose, no `task_type`). Do NOT rewrite the aspirational rows
@@ -241,18 +243,18 @@ authored product answer or no model call at all.
 
 - [ ] 6.1 Re-grep the whole tree (excluding gitignored `docs/_build`) to prove
   no stale `task_type` instruction, no non-preview `gemini-embedding-2` literal,
-  and no `122`/`16 store` counts remain outside ADK2.md's flagged aspirational
-  rows.
+  and no `122`/`16 store` counts remain outside the ADK migration source plan's
+  flagged aspirational rows.
 
 ## Acceptance
 
-- [ ] No tracked file outside `ADK2.md` (and outside gitignored `docs/_build`)
-  instructs the use of `task_type` for embeddings; the only surviving mentions
-  describe NOT using it (`.agents/patterns.md`, `docs/tour.md`) or are flagged
-  ADK2.md plan rows.
+- [ ] No tracked file outside `.agents/specs/adk2-sqlspec-migration/source-plan.md`
+  (and outside gitignored `docs/_build`) instructs the use of `task_type` for
+  embeddings; the only surviving mentions describe NOT using it
+  (`.agents/patterns.md`, `docs/tour.md`) or are flagged source-plan rows.
 - [ ] No tracked Markdown contains a bare `gemini-embedding-2` model literal
   (i.e. `gemini-embedding-2` not immediately followed by `-preview`), except the
-  ADK2.md `gemini-embedding-002` lines flagged as caveats.
+  source-plan `gemini-embedding-002` lines flagged as caveats.
 - [ ] No tracked doc states `122` products or `16 stores`; all read `130`
   products / `17 stores`.
 - [ ] `AGENTS.md` and `docs/reference/api.md` reference `OracleAsyncService` as
@@ -267,14 +269,15 @@ authored product answer or no model call at all.
 - [ ] Store/inventory/maps are described as shipped (not "planned") in
   `AGENTS.md`, `.agents/knowledge/project-guide.md`, and
   `.agents/knowledge/guides/architecture.md`.
-- [ ] `ADK2.md` aspirational sections are unchanged except for the added caveat.
+- [ ] The ADK migration source-plan aspirational sections are unchanged except
+  for the added caveat.
 - [ ] `docs/_build/` is untouched.
 
 ## Verification
 
-- `grep -rn "task_type" --include="*.md" . | grep -v docs/_build | grep -v ADK2.md`
+- `grep -rn "task_type" --include="*.md" . | grep -v docs/_build | grep -v .agents/specs/adk2-sqlspec-migration/source-plan.md`
   — only "do not / does not use" prose should remain.
-- `grep -rnE "gemini-embedding-2([^-]|$)" --include="*.md" . | grep -v docs/_build | grep -v ADK2.md`
+- `grep -rnE "gemini-embedding-2([^-]|$)" --include="*.md" . | grep -v docs/_build | grep -v .agents/specs/adk2-sqlspec-migration/source-plan.md`
   — expect zero hits.
 - `grep -rnE "\b122\b|16 stores?\b" --include="*.md" . | grep -v docs/_build`
   — expect zero product/store-count hits.

@@ -1,0 +1,41 @@
+{
+  "research_id": "research_sqlcl_mcp_antigravity_revival",
+  "topic": "Historical Gemini CLI SQLcl MCP tooling and Antigravity CLI restoration plan",
+  "type": "Research + Integration Planning",
+  "created_at": "2026-06-22T00:00:00Z",
+  "branch": "fix/product-improve",
+  "status": "complete",
+  "validated_against_live_repo": true,
+  "validated_against_git_history": true,
+  "validated_against_external_docs": true,
+  "key_findings": {
+    "gemini_cli_status": "Google announced Gemini CLI consumer/free tiers stop serving requests on 2026-06-18 and transition to Antigravity CLI",
+    "antigravity_mcp_config": "Antigravity 2.0, IDE, and CLI share ~/.gemini/config/mcp_config.json for MCP servers",
+    "local_agy_version": "agy 1.0.8 is installed locally and supports plugin import/install/validate/list",
+    "historical_behavior": "Original installer configured SQLcl, sequential-thinking, and Context7 MCP servers in ~/.gemini/settings.json",
+    "current_repo_gap": "Current install sqlcl still contains Gemini-specific MCP code targeting ~/.gemini/settings.json, but no Antigravity target",
+    "recommendation": "Replace Gemini-specific helpers with clean Antigravity MCP config helpers; add explicit SQLcl MCP and optional MCP Toolbox configuration/install commands; do not migrate legacy Gemini config",
+    "mcp_toolbox_revision": "Google MCP Toolbox now has current Oracle prebuilt support, so an optional manage.py install mcp-toolbox command is justified outside install all"
+  },
+  "files_analyzed": [
+    "tools/cli/install.py",
+    "tools/lib/utils.py",
+    "tools/oracle/cli/sqlcl.py",
+    ".agents/plans/installation-simplification.md",
+    "historical docs/guides/gemini-mcp-integration.md",
+    "historical docs/guides/sqlcl-usage-guide.md",
+    "historical tools/cli/install.py",
+    "historical tools/lib/utils.py"
+  ],
+  "commits_analyzed": [
+    "1d68651 fix: updated tool installer",
+    "094da5a feat: Refactor Oracle CLI into modular command groups",
+    "03f95ef fix: include missing lib directory and updated agents (#13)",
+    "68eeb3c feat: Q1 2026 Demos (#17)",
+    "da56791 refactor(devops): manage.py accelerator-style rewrite + coffee CLI rename",
+    "adb7aba test: simplify ADK/test suite to public-behavior assertions; remove legacy sqlcl migration",
+    "1c75677 Refactor SQLcl installation and verification process; improve wallet validation and connection testing"
+  ],
+  "linked_flow": null,
+  "linked_prd": null
+}

@@ -55,12 +55,21 @@ facts. Product RAG may use structured selection, but final product copy is
 rendered from Oracle rows. General conversation falls through to the ADK
 workflow, where the model can still use the same closure-bound tools.*
 
+<div class="logo-strip logo-strip-compact" aria-label="Official technology logos">
+  <img src="_static/logos/oracle-logo.svg" alt="Oracle">
+  <img src="_static/logos/google-cloud-logo-fullcolor.svg" alt="Google Cloud">
+  <img class="logo-icon" src="_static/logos/google-cloud-vertex-ai.svg" alt="Vertex AI">
+  <img class="logo-icon logo-litestar" src="_static/logos/litestar-logo.svg" alt="Litestar">
+  <img class="logo-icon" src="_static/logos/antigravity-logo.png" alt="Google Antigravity">
+  <img class="logo-wide" src="_static/logos/mcp-toolbox-logo.png" alt="MCP Toolbox for Databases">
+</div>
+
 ## Where to go next
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 2 4
 :gutter: 3
 
-:::{grid-item-card} Walkthrough
+:::{grid-item-card} {octicon}`workflow;1.1em` Walkthrough
 :link: tour
 :link-type: doc
 
@@ -68,12 +77,28 @@ One chat message, end to end: question → embedding → Oracle → streamed
 answer.
 :::
 
-:::{grid-item-card} Concepts
+:::{grid-item-card} {octicon}`database;1.1em` Concepts
 :link: concepts/vector-search
 :link-type: doc
 
 Vectors in Oracle, RAG, and how the chat router chooses grounded service
 calls.
+:::
+
+:::{grid-item-card} {octicon}`mortar-board;1.1em` Hands-on lab
+:link: lab
+:link-type: doc
+
+The single-file workshop guide for running Cymbal Coffee with Oracle 26ai and
+Vertex AI.
+:::
+
+:::{grid-item-card} {octicon}`terminal;1.1em` Antigravity MCP
+:link: mcp-antigravity
+:link-type: doc
+
+Clean SQLcl and Google MCP Toolbox configuration for teaching Antigravity
+workflows.
 :::
 
 ::::
@@ -91,6 +116,20 @@ maps
 
 ```{toctree}
 :hidden:
+:caption: MCP
+
+mcp-antigravity
+```
+
+```{toctree}
+:hidden:
+:caption: Lab
+
+lab
+```
+
+```{toctree}
+:hidden:
 :caption: Reference
 
 reference/quickstart
@@ -98,4 +137,5 @@ reference/cli
 reference/api
 reference/internals
 reference/developers
+reference/brand-assets
 ```

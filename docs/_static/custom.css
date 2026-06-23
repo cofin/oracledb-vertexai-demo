@@ -54,6 +54,49 @@ pre > code {
   margin-bottom: 1.75rem;
 }
 
+/* Official technology logo strip */
+.logo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.75rem;
+  background: var(--md-code-bg-color);
+}
+
+.logo-strip img {
+  display: block;
+  width: auto;
+  max-width: 12rem;
+  max-height: 2.75rem;
+  object-fit: contain;
+}
+
+.logo-strip .logo-icon {
+  max-width: 3.5rem;
+  max-height: 3.5rem;
+}
+
+.logo-strip .logo-wide {
+  max-width: 14rem;
+}
+
+.logo-strip .logo-litestar {
+  max-width: 3.5rem;
+}
+
+.logo-strip-compact {
+  gap: 0.8rem 1.15rem;
+  padding: 0.85rem;
+}
+
+.logo-strip-compact img {
+  max-height: 2.25rem;
+}
+
 /* Hero pill cards: compact tool callouts */
 .hero-pill {
   border: 1px solid var(--md-default-fg-color--lightest);

@@ -158,7 +158,7 @@ Because `CLAUDE.md` is a **symlink to `AGENTS.md`**, fix `AGENTS.md` once.
 - `quickstart.md:48-49` attributes the 512M default to `configure_vector_memory.sql` (which sets 4G); the default is `database.py::DEFAULT_VECTOR_MEMORY_SIZE`.
 - `tech-stack.md:8` conflates the `litestar-granian` plugin with the Granian server.
 
-**`ADK2.md` is a migration *plan*, not a description** — its forward-looking sections must NOT be "corrected" to match current code. But flag two internal contradictions for whoever executes it: it specifies `gemini-embedding-002`/1536-dim and `RETRIEVAL_DOCUMENT/QUERY` for ADK memory, both inconsistent with the app's 3072-dim `embedding_purpose` stack.
+**`.agents/specs/adk2-sqlspec-migration/source-plan.md` is a migration *plan*, not a description** — its forward-looking sections must NOT be "corrected" to match current code. But flag two internal contradictions for whoever executes it: it specifies `gemini-embedding-002`/1536-dim and `RETRIEVAL_DOCUMENT/QUERY` for ADK memory, both inconsistent with the app's 3072-dim `embedding_purpose` stack.
 
 **Clean (verified, no changes):** `docs/maps.md`, `docs/concepts/agent-flow.md`, `docs/concepts/rag.md`, `docs/reference/cli.md`, `docs/reference/developers.md`, `CONTRIBUTING.md`, `.agents/index.md`.
 
