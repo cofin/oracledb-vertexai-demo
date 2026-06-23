@@ -2,7 +2,7 @@
 
 Welcome to the **Cymbal Coffee Hands-on Lab**. In this workshop, you will step-by-step setup, configure, ingest data into, and run a premium next-generation AI-powered coffee recommendation application. For complete background concepts and documentation material, please visit the official [Cymbal Coffee Documentation Site](https://cofin.github.io/oracledb-vertexai-demo/index.html).
 
-The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-2`) and large language model orchestration (`gemini-2.5-flash-lite`), and **Google ADK 2.0** as the multi-agent planning engine. The application frontend is built on **Litestar 2**, **HTMX**, and **Jinja templates**, managed with **Dishka Dependency Injection** and served using the high-performance **Granian** ASGI server.
+The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-2`) and large language model orchestration (`gemini-3.1-flash-lite`), and **Google ADK 2.0** as the multi-agent planning engine. The application frontend is built on [**Litestar 2**](https://docs.litestar.dev/), [**HTMX**](https://htmx.org/), and [**Jinja templates**](https://jinja.palletsprojects.com/), managed with [**Dishka Dependency Injection**](https://dishka.readthedocs.io/) and served using the high-performance [**Granian**](https://github.com/emmett-framework/granian) ASGI server via the [`litestar-granian`](https://github.com/cofin/litestar-granian) plugin.
 
 ---
 
@@ -94,7 +94,7 @@ gcloud compute routers nats create default-nat-gw \
 
 Now, you will spin up a high-performance Compute Engine virtual machine where the Oracle 26ai database container and the Litestar web application will co-exist.
 
-1. Run the following command in Cloud Shell to create a `e2-standard-4` (4 vCPUs, 16 GB RAM) Ubuntu 22.04 LTS virtual machine:
+1. Run the following command in Cloud Shell to create a `e2-standard-4` (4 vCPUs, 16 GB RAM) Ubuntu 26.04 LTS virtual machine:
 
 ```shell
 gcloud compute instances create coffeevm \
@@ -109,7 +109,7 @@ gcloud compute instances create coffeevm \
   --instance-termination-action=STOP \
   --scopes=https://www.googleapis.com/auth/cloud-platform \
   --tags=xe \
-  --create-disk=auto-delete=yes,boot=yes,device-name=coffeevm,image=projects/ubuntu-os-cloud/global/images/ubuntu-2204-jammy-v20241115,mode=rw,size=100,type=pd-balanced
+  --create-disk=auto-delete=yes,boot=yes,device-name=coffeevm,image=projects/ubuntu-os-cloud/global/images/family/ubuntu-2604-lts-amd64,mode=rw,size=100,type=pd-balanced
 ```
 
 2. Grant the attached Compute Engine default service account permissions to invoke Vertex AI models:
@@ -160,13 +160,13 @@ sudo apt autoremove -y
 6. Install core utilities, compilation dependencies, Docker, and curl:
 
 ```shell
-sudo apt install -y docker.io docker-compose build-essential python3.10-venv git curl
+sudo apt install -y docker.io docker-compose-v2 build-essential python3.14-venv git curl
 ```
 
-7. Fetch and register the modern NodeSource Node.js v20 distribution setup:
+7. Fetch and register the modern NodeSource Node.js v24 distribution setup:
 
 ```shell
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 ```
 
 8. Install the updated modern Node.js engine:

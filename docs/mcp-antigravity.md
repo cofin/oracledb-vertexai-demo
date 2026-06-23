@@ -5,13 +5,6 @@ same Oracle database used by Cymbal Coffee. For this workshop, keep the setup
 clean: configure current Antigravity MCP files directly, avoid legacy Gemini CLI
 migration, and never commit credentials.
 
-<div class="logo-strip logo-strip-compact" aria-label="Official MCP-related logos">
-  <img class="logo-icon" src="_static/logos/antigravity-logo.png" alt="Google Antigravity">
-  <img class="logo-wide" src="_static/logos/mcp-toolbox-logo.png" alt="MCP Toolbox for Databases">
-  <img src="_static/logos/oracle-logo.svg" alt="Oracle">
-  <img class="logo-icon" src="_static/logos/google-cloud-databases.svg" alt="Google Cloud Databases">
-</div>
-
 ::::{grid} 1 1 2 2
 :gutter: 3
 
@@ -43,15 +36,22 @@ secrets outside tracked files.
 
 ## Config Location
 
-Antigravity reads MCP server entries from the user-level MCP config:
+Antigravity reads MCP server entries from a user-level `mcp_config.json`. The
+IDE owns a per-app file:
 
 ```text
-~/.gemini/config/mcp_config.json
+~/.gemini/antigravity/mcp_config.json
 ```
 
-Do not add project-local MCP config under `.gemini/`. The project can keep
-secret-free examples under `.agents/` or `docs/`, but the live Antigravity file
-belongs in the user's home directory.
+On Windows this is `%USERPROFILE%\.gemini\antigravity\mcp_config.json`. To edit
+it without touching the filesystem, open the Agent panel "..." menu, choose
+**MCP Servers > Manage MCP Servers > View raw config**. A shared
+`~/.gemini/config/mcp_config.json` is also read and lets the same entries apply
+across Antigravity tools (IDE and CLI); use it when servers should be shared.
+
+Antigravity uses this home-directory model rather than a project-local
+`.gemini/` config. Keep secret-free examples under `.agents/` or `docs/`, but
+the live MCP file belongs in the user's home directory.
 
 ## SQLcl MCP
 
@@ -105,9 +105,12 @@ Google Cloud Oracle Database also exposes a remote MCP endpoint:
 https://oracledatabase.googleapis.com/mcp
 ```
 
-Use this as a separate managed-cloud example. It requires the target Google
-Cloud API to be enabled, Application Default Credentials, and a principal with
-the MCP tool-caller role.
+Use this as a separate managed-cloud example. It is a remote HTTP MCP server, so
+register it with `serverUrl` (and auth headers) rather than `command`/`args`. It
+requires the Oracle Database@Google Cloud API (`oracledatabase.googleapis.com`)
+to be enabled, OAuth 2.0 credentials over IAM (Application Default Credentials
+satisfy this), and a principal granted the MCP Tool User role
+(`roles/mcp.toolUser`) plus the resource roles for the databases it touches.
 
 ## Installer Surface To Add
 

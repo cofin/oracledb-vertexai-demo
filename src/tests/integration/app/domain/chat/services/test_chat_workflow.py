@@ -140,7 +140,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
         ai=SimpleNamespace(
             project_id="test-project",
             api_key=None,
-            chat_model="gemini-2.5-flash-lite",
+            chat_model="gemini-3.1-flash-lite",
         ),
         chat=SimpleNamespace(
             session_app_name="coffee_assistant",

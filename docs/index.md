@@ -55,15 +55,6 @@ facts. Product RAG may use structured selection, but final product copy is
 rendered from Oracle rows. General conversation falls through to the ADK
 workflow, where the model can still use the same closure-bound tools.*
 
-<div class="logo-strip logo-strip-compact" aria-label="Official technology logos">
-  <img src="_static/logos/oracle-logo.svg" alt="Oracle">
-  <img src="_static/logos/google-cloud-logo-fullcolor.svg" alt="Google Cloud">
-  <img class="logo-icon" src="_static/logos/google-cloud-vertex-ai.svg" alt="Vertex AI">
-  <img class="logo-icon logo-litestar" src="_static/logos/litestar-logo.svg" alt="Litestar">
-  <img class="logo-icon" src="_static/logos/antigravity-logo.png" alt="Google Antigravity">
-  <img class="logo-wide" src="_static/logos/mcp-toolbox-logo.png" alt="MCP Toolbox for Databases">
-</div>
-
 ## Where to go next
 
 ::::{grid} 1 1 2 4

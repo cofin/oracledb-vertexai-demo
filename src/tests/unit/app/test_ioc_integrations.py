@@ -98,4 +98,4 @@ def test_integrations_provider_builds_intent_classifier_from_injected_client(mon
 
     assert isinstance(classifier, FakeClassifier)
     assert captured["client"] is sentinel_client
-    assert captured["model"] == "gemini-2.5-flash-lite"
+    assert captured["model"] == "gemini-3.1-flash-lite"

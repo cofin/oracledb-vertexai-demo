@@ -85,7 +85,7 @@ def allow_vertex_config(monkeypatch: Any, adk_module: Any) -> None:
     settings = MagicMock()
     settings.ai.project_id = "test-project"
     settings.ai.api_key = None
-    settings.ai.chat_model = "gemini-2.5-flash-lite"
+    settings.ai.chat_model = "gemini-3.1-flash-lite"
     settings.chat.session_app_name = "coffee_assistant"
     settings.chat.response_cache_version = "menu-grounded-v2"
     settings.chat.response_cache_ttl_minutes = 60

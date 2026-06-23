@@ -144,7 +144,7 @@ def _chat_settings() -> SimpleNamespace:
         ai=SimpleNamespace(
             project_id="test-project",
             api_key=None,
-            chat_model="gemini-2.5-flash-lite",
+            chat_model="gemini-3.1-flash-lite",
         ),
         chat=SimpleNamespace(
             session_app_name="coffee_assistant",

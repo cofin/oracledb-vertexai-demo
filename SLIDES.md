@@ -78,7 +78,7 @@ Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
 2. **Response cache** lookup — key = `sha256(version:model:persona:normalized_query)`;
    a hit returns instantly. *Skipped entirely when the user shared browser
    coordinates* (privacy)
-3. **Intent classification** — one `gemini-2.5-flash-lite` call, `temperature=0`,
+3. **Intent classification** — one `gemini-3.1-flash-lite` call, `temperature=0`,
    structured `text/x.enum` output → one of 5 labels (`classifier.py`)
 4. **Route** on the label
 
@@ -192,7 +192,7 @@ if description:
 
 | Stage | Engine | Free-form LLM text? |
 |---|---|---|
-| Intent classification | `gemini-2.5-flash-lite`, `temp=0`, enum output | No (picks a label) |
+| Intent classification | `gemini-3.1-flash-lite`, `temp=0`, enum output | No (picks a label) |
 | `PRODUCT_RAG` answer | **Constrained LLM over retrieved candidates** (guarded; template fallback) | **Yes, bounded** |
 | `STORE_LOCATION` answer | Python template over SQL rows | No |
 | `PRODUCT_AVAILABILITY` answer | Python template over inventory rows | No |

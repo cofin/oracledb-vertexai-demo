@@ -473,7 +473,7 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
 
     vertex_ai_service = MagicMock()
-    vertex_ai_service.model = "gemini-2.5-flash-lite"
+    vertex_ai_service.model = "gemini-3.1-flash-lite"
     tools_service = AgentToolsService(
         driver=mock_driver,
         product_service=MagicMock(),
@@ -485,7 +485,7 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
 
     from hashlib import sha256
 
-    expected_digest = sha256(b"custom-vN:gemini-2.5-flash-lite:enthusiast:latte").hexdigest()
+    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:enthusiast:latte").hexdigest()
     assert tools_service.make_response_cache_key("latte", "enthusiast") == f"chat:{expected_digest}"
 
 

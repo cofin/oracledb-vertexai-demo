@@ -340,7 +340,7 @@ class AISettings:
     """Vertex AI location/region."""
     api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
+    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3.1-flash-lite"))
     """Vertex AI chat model."""
     intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
     """Optional override for the single-call intent-classification model."""

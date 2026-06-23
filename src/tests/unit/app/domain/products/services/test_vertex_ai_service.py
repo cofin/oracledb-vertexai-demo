@@ -18,7 +18,7 @@ async def test_gemini_embedding_2_uses_prompt_instruction_not_task_type() -> Non
     cache_service = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
     service = VertexAIService(
         client=SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content))),
-        model="gemini-2.5-flash-lite",
+        model="gemini-3.1-flash-lite",
         embedding_model="gemini-embedding-2",
         embedding_dimensions=3072,
         cache_service=cache_service,

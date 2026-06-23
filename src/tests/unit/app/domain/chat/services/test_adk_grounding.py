@@ -24,7 +24,7 @@ from app.domain.chat.services._adk_grounding import (
 def _patch_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the grounding module's settings at a fixed chat model."""
     settings = MagicMock()
-    settings.ai.chat_model = "gemini-2.5-flash-lite"
+    settings.ai.chat_model = "gemini-3.1-flash-lite"
     settings.chat.grounded_answer_timeout_seconds = 0.01
     monkeypatch.setattr("app.domain.chat.services._adk_grounding.get_settings", lambda: settings)
 
