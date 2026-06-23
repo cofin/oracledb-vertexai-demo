@@ -98,25 +98,6 @@ branch while it is unmerged, and update the default chat/classifier model to
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
 
-## [ ] PRD: inventory
-*Link: [./specs/inventory/](./specs/inventory/)*
-*Beads: oracledb-vertexai-inv (active/completed chapters)*
-
-### Chapters
-- [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)** — completed, archived locally 2026-06-23
-  *Beads: oracledb-vertexai-invdata*
-- [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)** — completed, archived locally 2026-06-23
-  *Beads: oracledb-vertexai-invground*
-- [x] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)** — completed, archived locally 2026-06-23
-  *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*
-  *Beads: oracledb-vertexai-invrag*
-- [ ] **Chapter 4: Live Inventory Dashboard (`inventory-ui`)**
-  *Link: [./specs/inventory-ui/](./specs/inventory-ui/)*
-  *Beads: oracledb-vertexai-invui*
-
----
-
-
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from
@@ -165,13 +146,15 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   chat, ADK readability, Maps directions, frontend module split, and test
   simplification; current guidance lives in `.agents/patterns.md` and the
   `.agents/knowledge/` guide set.
-- `inventory-data` (`oracledb-vertexai-invdata`), `inventory-grounding`
-  (`oracledb-vertexai-invground`), and `inventory-rag`
-  (`oracledb-vertexai-invrag`) completed and archived locally on
-  2026-06-23 while the parent `inventory` PRD remains active for
-  `inventory-ui`. Store inventory data, deterministic availability routing,
-  inventory-aware vector search (RAG), and coordinate/privacy guidance are
-  synthesized in `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
+- `inventory` (`oracledb-vertexai-inv`) completed and archived locally on
+  2026-06-23. All four chapters are closed in Beads: `inventory-data`
+  (`oracledb-vertexai-invdata`), `inventory-grounding`
+  (`oracledb-vertexai-invground`), `inventory-rag`
+  (`oracledb-vertexai-invrag`), and `inventory-ui`
+  (`oracledb-vertexai-invui`). Store inventory data, deterministic availability
+  routing, inventory-aware vector search (RAG), live HTMX inventory UI, and
+  coordinate/privacy guidance are synthesized in
+  `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
 - `ui-quality-fixes` (`oracledb-vertexai-9p5.3`) completed and archived
   locally on 2026-06-23 while the parent `adb-podman-lab-hardening` PRD remains
   active. Durable UI/testing guidance is already in `.agents/patterns.md`,
