@@ -317,7 +317,11 @@ split-on-trailing-comma = false
 strict-imports = false
 
 [tool.codespell]
-ignore-words-list = "alog, uv.lock, package-lock.json"
+# `ans` is an intentional answer-variable name in tests. Directory exclusions
+# live in the pre-commit hook `exclude` regex (codespell skip globs don't match
+# the relative paths pre-commit passes); this `skip` only covers file types.
+ignore-words-list = "alog,ans"
+skip = "uv.lock,package-lock.json,*.gz,*.min.js,*.map"
 
 [tool.mypy]
 disallow_any_generics = false

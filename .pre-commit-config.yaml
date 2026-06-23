@@ -28,5 +28,17 @@ repos:
       - id: ruff-check
         args:
           - --fix
-      # Run the formatter.
+      # Run the formatter (also formats Python in Markdown fences via preview mode).
       - id: ruff-format
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+        exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/)
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.22.1
+    hooks:
+      - id: markdownlint-cli2
+        exclude: ^(\.agents/|docs/_build/|node_modules/|tools/oracle/downloads/)

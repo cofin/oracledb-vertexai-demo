@@ -7,7 +7,7 @@
 
 ## Slide 0 — The whole turn at a glance
 
-```
+```text
 Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
                                               │ validate msg/persona, read opt-in coords
                                               │ bridge Litestar session → ADK (user_id, session_id)

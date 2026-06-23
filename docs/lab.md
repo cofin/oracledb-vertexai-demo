@@ -25,7 +25,7 @@ In this first step, you will initialize your cloud workspace and enable the nece
 gcloud config set project [YOUR-PROJECT-ID]
 ```
 
-4. Define the default geographic deployment regions and zones:
+1. Define the default geographic deployment regions and zones:
 
 ```shell
 export REGION=us-central1
@@ -37,7 +37,7 @@ gcloud config set compute/region $REGION
 gcloud config set compute/zone $ZONE
 ```
 
-5. Enable the necessary Google Cloud Services APIs for Compute Engine, Identity-Aware Proxy, Vertex AI, and Maps backends:
+1. Enable the necessary Google Cloud Services APIs for Compute Engine, Identity-Aware Proxy, Vertex AI, and Maps backends:
 
 ```shell
 gcloud services enable compute.googleapis.com \
@@ -64,7 +64,7 @@ gcloud compute firewall-rules create allow-ssh-ingress-from-iap \
  --source-ranges=35.235.240.0/20
 ```
 
-2. Bind the IAP tunnel resource accessor role to your cloud user account:
+1. Bind the IAP tunnel resource accessor role to your cloud user account:
 
 ```shell
 gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -72,13 +72,13 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
  --role="roles/iap.tunnelResourceAccessor"
 ```
 
-3. Create a Cloud Router to serve as the backbone for safe internet outbound requests (needed to download system packages and container images):
+1. Create a Cloud Router to serve as the backbone for safe internet outbound requests (needed to download system packages and container images):
 
 ```shell
 gcloud compute routers create default-router --network=default
 ```
 
-4. Provision a NAT Gateway associated with the router so the VM can talk out to the internet safely without an external public IP:
+1. Provision a NAT Gateway associated with the router so the VM can talk out to the internet safely without an external public IP:
 
 ```shell
 gcloud compute routers nats create default-nat-gw \
@@ -112,7 +112,7 @@ gcloud compute instances create coffeevm \
   --create-disk=auto-delete=yes,boot=yes,device-name=coffeevm,image=projects/ubuntu-os-cloud/global/images/family/ubuntu-2604-lts-amd64,mode=rw,size=100,type=pd-balanced
 ```
 
-2. Grant the attached Compute Engine default service account permissions to invoke Vertex AI models:
+1. Grant the attached Compute Engine default service account permissions to invoke Vertex AI models:
 
 ```shell
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
@@ -133,55 +133,55 @@ Now that the virtual machine is running, you will establish a secure tunnel into
 gcloud compute ssh --zone "$ZONE" "coffeevm" --tunnel-through-iap --project $PROJECT_ID
 ```
 
-2. Once inside the VM terminal, configure the system to automatically restart background services without prompting interactive dialog screens (this avoids environment variables being stripped away by `sudo` operations):
+1. Once inside the VM terminal, configure the system to automatically restart background services without prompting interactive dialog screens (this avoids environment variables being stripped away by `sudo` operations):
 
 ```shell
 sudo sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/g" /etc/needrestart/needrestart.conf
 ```
 
-3. Refresh the package index logs:
+1. Refresh the package index logs:
 
 ```shell
 sudo apt update
 ```
 
-4. Purge any legacy node packages to prevent library conflicts:
+1. Purge any legacy node packages to prevent library conflicts:
 
 ```shell
 sudo apt purge -y nodejs npm libnode-dev
 ```
 
-5. Clean up legacy dependencies:
+1. Clean up legacy dependencies:
 
 ```shell
 sudo apt autoremove -y
 ```
 
-6. Install core utilities, compilation dependencies, Docker, and curl:
+1. Install core utilities, compilation dependencies, Docker, and curl:
 
 ```shell
 sudo apt install -y docker.io docker-compose-v2 build-essential python3.14-venv git curl
 ```
 
-7. Fetch and register the modern NodeSource Node.js v24 distribution setup:
+1. Fetch and register the modern NodeSource Node.js v24 distribution setup:
 
 ```shell
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 ```
 
-8. Install the updated modern Node.js engine:
+1. Install the updated modern Node.js engine:
 
 ```shell
 sudo apt install -y nodejs
 ```
 
-9. Grant your local user account permission to interact with Docker without needing root sudo flags:
+1. Grant your local user account permission to interact with Docker without needing root sudo flags:
 
 ```shell
 sudo usermod -aG docker $USER
 ```
 
-10. **Crucial Step**: Type `exit` to disconnect from the VM session, then reconnect using the exact same command to apply the new group membership permissions:
+1. **Crucial Step**: Type `exit` to disconnect from the VM session, then reconnect using the exact same command to apply the new group membership permissions:
 
 ```shell
 exit
@@ -199,14 +199,14 @@ git clone https://github.com/cofin/oracledb-vertexai-demo.git
 cd oracledb-vertexai-demo/
 ```
 
-2. Run the idempotent `make install` workflow. This script will automatically download `uv` (the lightning-fast Python toolchain manager), build frontend assets, and configure localized paths:
+1. Run the idempotent `make install` workflow. This script will automatically download `uv` (the lightning-fast Python toolchain manager), build frontend assets, and configure localized paths:
 
 ```shell
 export PATH=$PATH:~/.local/bin
 make install
 ```
 
-3. Initialize your environmental variables file using the project interactive initializer:
+1. Initialize your environmental variables file using the project interactive initializer:
 
 ```shell
 uv run python manage.py init
@@ -224,13 +224,13 @@ uv run python manage.py init
 make start-infra
 ```
 
-2. Verify that the Oracle container is active and healthy:
+1. Verify that the Oracle container is active and healthy:
 
 ```shell
 docker ps
 ```
 
-3. Apply database migrations, construct tables, and populate the database with committed demo fixtures (130 coffee items, 17 premium store locations):
+1. Apply database migrations, construct tables, and populate the database with committed demo fixtures (130 coffee items, 17 premium store locations):
 
 ```shell
 uv run coffee upgrade
@@ -247,7 +247,7 @@ exit
 gcloud compute ssh --zone "$ZONE" "coffeevm" --tunnel-through-iap --project $PROJECT_ID -- -L8080:localhost:5006
 ```
 
-2. Move back to the application directory, build the frontend assets, and start the Granian dev app server:
+1. Move back to the application directory, build the frontend assets, and start the Granian dev app server:
 
 ```shell
 cd oracledb-vertexai-demo/
@@ -255,8 +255,8 @@ uv run python manage.py assets build
 uv run coffee run
 ```
 
-3. In the upper right area of your Google Cloud Shell browser screen, click the **Web Preview** button and select **Preview on port 8080**. A new tab will open displaying the beautiful chat recommendation layout\!
-4. Visit **`http://localhost:8080/explore`** (via the same tunnel web preview) to access the interactive **Oracle Vector Explorer**. This dedicated diagnostic tool allows you to look directly under the hood of Oracle 26ai vector search operations:
+1. In the upper right area of your Google Cloud Shell browser screen, click the **Web Preview** button and select **Preview on port 8080**. A new tab will open displaying the beautiful chat recommendation layout\!
+2. Visit **`http://localhost:8080/explore`** (via the same tunnel web preview) to access the interactive **Oracle Vector Explorer**. This dedicated diagnostic tool allows you to look directly under the hood of Oracle 26ai vector search operations:
    - **Simulate Raw Vector Queries:** Input any product description or user phrase to test vector matching without running the full LLM multi-agent conversation flow.
    - **Inspect Exact Query Latencies:** Review exact execution times in milliseconds to observe the high performance of modern enterprise databases processing multi-dimensional vector queries.
    - **Distance Comparison Strategies:** Visualize calculated vector distance scores (e.g., Cosine or Euclidean distances) between query embeddings and product row metadata.
@@ -272,21 +272,21 @@ Once the core application is up and running, challenge yourself or your particip
 
 **Objective:** Stream chat logs, user questions, and vector response latencies into a centralized serverless analytics layer for business intelligence and quality monitoring.
 
-* **Step A: Enable the Service & Prepare Dataset** Run these commands in your **Google Cloud Shell** (not inside the VM):
+- **Step A: Enable the Service & Prepare Dataset** Run these commands in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 gcloud services enable bigquery.googleapis.com
 bq mk --dataset --location=us-central1 coffee_analytics
 ```
 
-* **Step B: Create the Target Schema** Run this in your **Google Cloud Shell** (not inside the VM):
+- **Step B: Create the Target Schema** Run this in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 bq mk --table coffee_analytics.chat_logs \
   session_id:STRING,timestamp:TIMESTAMP,user_query:STRING,response_text:STRING,latency_ms:INTEGER
 ```
 
-* **Step C: Grant BigQuery IAM Permissions to the VM** Run this in your **Google Cloud Shell** (not inside the VM):
+- **Step C: Grant BigQuery IAM Permissions to the VM** Run this in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
@@ -295,14 +295,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --role="roles/bigquery.dataEditor"
 ```
 
-* **Step D: Dependency Management** Now, switch to the terminal where you are connected to the **VM** (or reconnect via SSH). Move to the application directory and add the official Google Cloud BigQuery client library into the application runtime:
+- **Step D: Dependency Management** Now, switch to the terminal where you are connected to the **VM** (or reconnect via SSH). Move to the application directory and add the official Google Cloud BigQuery client library into the application runtime:
 
 ```shell
 cd oracledb-vertexai-demo/
 uv add google-cloud-bigquery
 ```
 
-* **Step E: Extend the Chat Controller Layer (Full File Drop-in Replacement)** Open the streaming endpoint controller file located at `src/app/domain/chat/controllers/_chat.py`. To eliminate any risk of alignment or Python indentation hierarchy errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
+- **Step E: Extend the Chat Controller Layer (Full File Drop-in Replacement)** Open the streaming endpoint controller file located at `src/app/domain/chat/controllers/_chat.py`. To eliminate any risk of alignment or Python indentation hierarchy errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
 
 ```py
 # SPDX-FileCopyrightText: 2026 Google LLC
@@ -441,22 +441,21 @@ uv run coffee run
 
 **Objective:** Enrich the frontend UI by embedding a dynamic visual map whenever a customer asks for location details or nearby physical stores.
 
-* **Step A: Provision a Restricted Maps API Key** Since this is the first time Google Maps is used in this Cloud project, Google requires a one-time interactive initialization of the Maps workspace in the browser — to finish linking it to your billing account — before a key can be created:
+- **Step A: Provision a Restricted Maps API Key** Since this is the first time Google Maps is used in this Cloud project, Google requires a one-time interactive initialization of the Maps workspace in the browser — to finish linking it to your billing account — before a key can be created:
 
   1. On the **Google Maps Platform / Overview** welcome page that appears, click the large blue **"Enable APIs"** button. This completes the onboarding setup and unlocks the full left-hand menu.
   2. Then, in the left sidebar (or under **APIs & Services**), navigate to **Keys & Credentials** (or **Credentials**).
   3. At the top, click **Create Credentials** -> **API Key**.
   4. *Best Practice:* In the pop-up, click **Restrict Key** and, under *API Restrictions*, select exactly the **Maps Embed API** from the dropdown to lock the key down securely.
 
+- **Step B: Configuration Setup** Open your `.env` file inside the VM and wire up the specialized configuration keys to let the backend framework detect the key:
 
-* **Step B: Configuration Setup** Open your `.env` file inside the VM and wire up the specialized configuration keys to let the backend framework detect the key:
-
-```
+```ini
 MAPS_ENABLE_EMBED=true
 GOOGLE_MAPS_EMBED_API_KEY=your_newly_created_restricted_key_here
 ```
 
-* **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller routes. Both the chat and explore pages extend the same `base.html.j2`, so both routes must provide `settings`.
+- **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller routes. Both the chat and explore pages extend the same `base.html.j2`, so both routes must provide `settings`.
 
   1. Open `src/app/domain/web/controllers/_pages.py`. To eliminate any risk of Python alignment or indentation errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
 
@@ -503,7 +502,7 @@ class PageController(Controller):
         )
 ```
 
-  2. Now that `settings` is available in Jinja, pass it down to the client-side JavaScript runtime. Open `src/app/domain/web/templates/base.html.j2` and locate the `<body>` tag (line 19). Add the dataset variables:
+  1. Now that `settings` is available in Jinja, pass it down to the client-side JavaScript runtime. Open `src/app/domain/web/templates/base.html.j2` and locate the `<body>` tag (line 19). Add the dataset variables:
 
 ```html
 <body hx-ext="litestar" data-app-shell="true"
@@ -512,7 +511,7 @@ class PageController(Controller):
       class="app-shell font-sans text-strong antialiased">
 ```
 
-* **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/chat-stream.js`** (the chat UI is split into ES modules, so `renderStoreCard` lives here — not in `main.js`). Locate the `renderStoreCard(row, mapActions)` function (around line 118).
+- **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/chat-stream.js`** (the chat UI is split into ES modules, so `renderStoreCard` lives here — not in `main.js`). Locate the `renderStoreCard(row, mapActions)` function (around line 118).
 
   Replace the function with this version, which reads the Maps datasets from the `<body>` element and inserts the Google Maps Embed iframe into the existing store card (the "Open in Google Maps" and "Get directions" links are preserved):
 
@@ -594,7 +593,7 @@ const renderStoreCard = (row, mapActions) => {
 }
 ```
 
-* **Step E: Rebuild Assets and Refresh App Server** Since you modified a frontend source asset file (`chat-stream.js`), you **must** compile it so that Vite builds the final production script bundle:
+- **Step E: Rebuild Assets and Refresh App Server** Since you modified a frontend source asset file (`chat-stream.js`), you **must** compile it so that Vite builds the final production script bundle:
 
 ```shell
 uv run python manage.py assets build
