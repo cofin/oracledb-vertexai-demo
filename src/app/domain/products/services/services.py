@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger()
 
-GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2-preview"
+GEMINI_EMBEDDING_2_MODEL = "gemini-embedding-2"
 EMBEDDING_PURPOSE_INSTRUCTIONS = {
     "query": (
         "Task: Generate an embedding for a search query to retrieve relevant "

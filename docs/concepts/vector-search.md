@@ -16,7 +16,7 @@ flowchart LR
 
 | Setting | Value |
 | --- | --- |
-| Embedding model | Vertex AI `gemini-embedding-2-preview` |
+| Embedding model | Vertex AI `gemini-embedding-2` |
 | Dimensions | `3072` |
 | Storage | `VECTOR(3072, FLOAT32)` |
 | Distance metric | `COSINE` |

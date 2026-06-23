@@ -345,11 +345,11 @@ class AISettings:
     intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
     """Optional override for the single-call intent-classification model."""
     embedding_model: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview")
+        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2")
     )
     """Vertex AI embedding model."""
     embedding_dimensions: int = 3072
-    """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
+    """Embedding vector dimensions (gemini-embedding-2 native output)."""
 
     @property
     def intent_model(self) -> str:

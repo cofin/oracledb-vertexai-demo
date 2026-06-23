@@ -200,7 +200,7 @@ POST /api/vector-demo
 ```
 
 Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-2-preview`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
+by `gemini-embedding-2`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH`.
 
 ## Frontend

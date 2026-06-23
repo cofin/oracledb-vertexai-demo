@@ -77,7 +77,7 @@ and the Dishka-injected `AgentToolsService`.
 ## 2. Vertex AI embeds the question
 
 When the runner classifies the turn as `PRODUCT_RAG`, the question is sent
-to Vertex AI's `gemini-embedding-2-preview` model with a query-purpose instruction
+to Vertex AI's `gemini-embedding-2` model with a query-purpose instruction
 prepended to the text. The general-conversation fallback can call the same
 vector-search tool, but this menu turn uses the deterministic route. Document
 embeddings (the products themselves) are produced separately with a
@@ -95,7 +95,7 @@ flowchart TD
 ```
 
 `VertexAIService.get_text_embedding` is the wrapper around the Vertex AI
-`gemini-embedding-2-preview` call, with the Oracle-backed embedding cache check
+`gemini-embedding-2` call, with the Oracle-backed embedding cache check
 in front of it. Gemini Embedding 2 does not use the old embedding `task_type`
 API parameter; this app encodes query-vs-document intent in the text sent to the
 embedding model.

@@ -28,7 +28,7 @@ menu rows.
 :::{grid-item-card} {octicon}`zap;1.2em` Vertex AI
 :class-card: hero-pill
 
-`gemini-embedding-2-preview` for retrieval; **Gemini** can assist selection.
+`gemini-embedding-2` for retrieval; **Gemini** can assist selection.
 :::
 
 ::::

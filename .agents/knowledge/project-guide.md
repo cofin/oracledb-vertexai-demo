@@ -106,7 +106,7 @@ service, controller, template, and frontend rendering.
 
 ## Oracle Vector And Embeddings
 
-The only supported embedding shape is `gemini-embedding-2-preview` at 3072 dimensions
+The only supported embedding shape is `gemini-embedding-2` at 3072 dimensions
 stored as `VECTOR(3072, FLOAT32)`. Prefix product fixture text with a
 document-purpose instruction and user search text with a query-purpose
 instruction before embedding. Pass Python

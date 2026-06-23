@@ -25,7 +25,7 @@ CREATE TABLE product (
     embedding VECTOR(3072, FLOAT32)
         ANNOTATIONS (
             Display 'Product embedding',
-            Embedding_Model 'gemini-embedding-2-preview',
+            Embedding_Model 'gemini-embedding-2',
             Embedding_Dimensions '3072',
             Embedding_Purpose 'document',
             Distance 'COSINE'
@@ -41,7 +41,7 @@ ANNOTATIONS (
 );
 
 COMMENT ON TABLE product IS 'Products with vector embeddings for semantic search';
-COMMENT ON COLUMN product.embedding IS '3072-dimensional gemini-embedding-2-preview vector';
+COMMENT ON COLUMN product.embedding IS '3072-dimensional gemini-embedding-2 vector';
 COMMENT ON COLUMN product.in_stock IS 'Boolean: true=in stock, false=out of stock';
 
 
@@ -172,7 +172,7 @@ CREATE TABLE embedding_cache (
     embedding VECTOR(3072, FLOAT32) NOT NULL
         ANNOTATIONS (
             Display 'Cached embedding',
-            Embedding_Model 'gemini-embedding-2-preview',
+            Embedding_Model 'gemini-embedding-2',
             Embedding_Dimensions '3072'
         ),
     model VARCHAR2(100) NOT NULL
@@ -191,7 +191,7 @@ ANNOTATIONS (
 
 COMMENT ON TABLE embedding_cache IS 'Cached embeddings to reduce Vertex AI API calls';
 COMMENT ON COLUMN embedding_cache.text_hash IS 'SHA256 hash of input text';
-COMMENT ON COLUMN embedding_cache.embedding IS '3072-dimensional gemini-embedding-2-preview vector';
+COMMENT ON COLUMN embedding_cache.embedding IS '3072-dimensional gemini-embedding-2 vector';
 
 
 -- Search metrics for performance tracking

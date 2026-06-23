@@ -272,3 +272,52 @@ class TestSQLSpecConnection:
 
         # Cleanup
         await driver.execute("DROP TABLE test_returning_tmp")
+
+    async def test_oracle_schema_annotations(self, driver: OracleAsyncDriver) -> None:
+        """Verify that Oracle 26ai schema annotations are correctly created and queryable."""
+        annotations = await driver.select(
+            """
+            SELECT object_name,
+                   object_type,
+                   column_name,
+                   annotation_name,
+                   annotation_value
+            FROM user_annotations_usage
+            WHERE object_name IN (
+                'PRODUCT',
+                'STORE',
+                'STORE_PRODUCT_INVENTORY',
+                'EMBEDDING_CACHE',
+                'PRODUCT_IN_STOCK_IDX'
+            )
+            ORDER BY object_name, column_name, annotation_name
+            """
+        )
+
+        assert len(annotations) > 0
+
+        # Create a lookup structure for easier assertions
+        annotation_map = {}
+        for row in annotations:
+            obj_name = row["object_name"].upper()
+            col_name = row["column_name"].upper() if row["column_name"] else None
+            ann_name = row["annotation_name"].upper()
+            ann_val = row["annotation_value"]
+
+            key = (obj_name, col_name, ann_name)
+            annotation_map[key] = ann_val
+
+        # Assert table annotations
+        assert annotation_map.get(("PRODUCT", None, "DISPLAY")) == "Cymbal Coffee products"
+        assert annotation_map.get(("PRODUCT", None, "AI_SURFACE")) == "PRODUCT_RAG"
+        assert annotation_map.get(("STORE", None, "DISPLAY")) == "Cymbal Coffee stores"
+
+        # Assert column annotations
+        assert annotation_map.get(("PRODUCT", "EMBEDDING", "EMBEDDING_MODEL")) == "gemini-embedding-2"
+        assert annotation_map.get(("PRODUCT", "EMBEDDING", "EMBEDDING_DIMENSIONS")) == "3072"
+        assert annotation_map.get(("PRODUCT", "EMBEDDING", "EMBEDDING_PURPOSE")) == "document"
+        assert annotation_map.get(("EMBEDDING_CACHE", "EMBEDDING", "EMBEDDING_MODEL")) == "gemini-embedding-2"
+        assert annotation_map.get(("STORE_PRODUCT_INVENTORY", "STOCK_STATUS", "ENUM_VALUES")) == "IN_STOCK, LOW_STOCK, OUT_OF_STOCK"
+
+        # Assert index annotations (product_in_stock_idx is parsed from the annotation list)
+        assert annotation_map.get(("PRODUCT_IN_STOCK_IDX", None, "DISPLAY")) == "Product stock lookup"

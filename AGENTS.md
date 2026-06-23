@@ -14,7 +14,7 @@ store-aware chat planning for locations, inventory, and maps.
 - **Framework**: Litestar 2 with HTMX, Jinja templates, and litestar-vite template mode.
 - **Server**: Granian via `uv run coffee run`.
 - **Database**: Oracle 26ai with SQLSpec, named SQL files, JSON, BOOLEAN, and `VECTOR(3072, FLOAT32)`.
-- **AI**: Vertex AI `gemini-embedding-2-preview` embeddings and Gemini Flash-Lite chat/intent calls.
+- **AI**: Vertex AI `gemini-embedding-2` embeddings and Gemini Flash-Lite chat/intent calls.
 - **Agent runtime**: Google ADK 2 Workflow/BaseNode runner with Oracle-backed ADK sessions.
 - **DI**: Dishka with three app providers in `src/app/ioc.py`.
 - **Shipped components**: store coordinates/inventory, deterministic store and
@@ -164,7 +164,7 @@ Pass `embedding_purpose="query"` for user search queries and
 `embedding_purpose="document"` for product/document embeddings. The value
 selects a text instruction prefix from `EMBEDDING_PURPOSE_INSTRUCTIONS` that is
 prepended to the content; no `task_type` parameter is sent. Runtime settings use
-`gemini-embedding-2-preview` with `EMBEDDING_DIMENSIONS = 3072`.
+`gemini-embedding-2` with `EMBEDDING_DIMENSIONS = 3072`.
 
 ### ADK Chat
 

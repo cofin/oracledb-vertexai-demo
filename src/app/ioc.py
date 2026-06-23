@@ -21,7 +21,6 @@ from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.config import db, db_manager
 from app.domain.chat.services.adk import ADKRunner, AgentToolsService
 from app.domain.chat.services.classifier import FlashLiteIntentClassifier
 from app.domain.products.services.services import (
@@ -40,11 +39,13 @@ class LitestarPersistenceProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_config(self) -> OracleAsyncConfig:
-        return db
+        from app import config
+        return config.db
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:
-        session_context = db_manager.provide_session(db)
+        from app import config
+        session_context = config.db_manager.provide_session(config.db)
         # Dishka owns async-generator provider cleanup; SQLSpec exposes only an
         # async context manager, so entering it manually avoids yielding inside
         # an async-with block while preserving exception-aware cleanup.

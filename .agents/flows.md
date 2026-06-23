@@ -107,23 +107,12 @@ branch while it is unmerged, and update the default chat/classifier model to
   *Beads: oracledb-vertexai-invdata*
 - [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)** — completed, archived locally 2026-06-23
   *Beads: oracledb-vertexai-invground*
-- [ ] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)**
+- [x] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)** — completed, archived locally 2026-06-23
   *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*
   *Beads: oracledb-vertexai-invrag*
 - [ ] **Chapter 4: Live Inventory Dashboard (`inventory-ui`)**
   *Link: [./specs/inventory-ui/](./specs/inventory-ui/)*
   *Beads: oracledb-vertexai-invui*
-
----
-
-## [~] PRD: oracle-schema-annotations
-*Link: [./specs/oracle-schema-annotations/](./specs/oracle-schema-annotations/)*
-*Beads: pending creation*
-
-### Chapters
-- [x] **Chapter 1: DDL Annotation Contract (`schema-annotations-ddl`)**
-- [x] **Chapter 2: Documentation Updates (`schema-annotations-docs`)**
-- [ ] **Chapter 3: Runtime Verification (`schema-annotations-verification`)**
 
 ---
 
@@ -176,12 +165,13 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   chat, ADK readability, Maps directions, frontend module split, and test
   simplification; current guidance lives in `.agents/patterns.md` and the
   `.agents/knowledge/` guide set.
-- `inventory-data` (`oracledb-vertexai-invdata`) and `inventory-grounding`
-  (`oracledb-vertexai-invground`) completed and archived locally on
+- `inventory-data` (`oracledb-vertexai-invdata`), `inventory-grounding`
+  (`oracledb-vertexai-invground`), and `inventory-rag`
+  (`oracledb-vertexai-invrag`) completed and archived locally on
   2026-06-23 while the parent `inventory` PRD remains active for
-  `inventory-rag` and `inventory-ui`. Store inventory data, deterministic
-  availability routing, and coordinate/privacy guidance are synthesized in
-  `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
+  `inventory-ui`. Store inventory data, deterministic availability routing,
+  inventory-aware vector search (RAG), and coordinate/privacy guidance are
+  synthesized in `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
 - `ui-quality-fixes` (`oracledb-vertexai-9p5.3`) completed and archived
   locally on 2026-06-23 while the parent `adb-podman-lab-hardening` PRD remains
   active. Durable UI/testing guidance is already in `.agents/patterns.md`,
@@ -192,3 +182,4 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   vector-memory behavior is the hook-based path in `tools/oracle/on_init/` and
   `tools/oracle/on_startup/`, documented in
   `.agents/knowledge/guides/oracle-vector-search.md`.
+- `oracle-schema-annotations` completed and archived locally on 2026-06-23. All chapters (schema-annotations-ddl, schema-annotations-docs, schema-annotations-verification) closed with verification. Annotations are verified on Oracle 26ai using USER_ANNOTATIONS_USAGE dictionary view.

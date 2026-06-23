@@ -123,4 +123,3 @@ uv run python manage.py infra ords logs --tail 100
   exists.
 - ORDS lifecycle can be managed independently from the DB.
 - Old Flow tasks are reconciled so this PRD is the current source of truth.
-

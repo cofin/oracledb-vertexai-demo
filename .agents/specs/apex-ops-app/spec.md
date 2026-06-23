@@ -119,4 +119,3 @@ git diff -- src/apex/cymbal-coffee-ops
 - Pages demonstrate the same Cymbal Coffee product, store, inventory, vector,
   and model/status data as the Litestar app.
 - SQLcl validation passes before import.
-

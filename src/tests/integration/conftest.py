@@ -299,17 +299,17 @@ async def oracle_schema(test_settings: object) -> None:
 
 
 @pytest.fixture
-async def client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+async def client(app: Litestar, oracle_seed_data: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create test client."""
-    del oracle_schema
+    del oracle_seed_data
     async with AsyncTestClient(app=app) as c:
         yield c
 
 
 @pytest.fixture
-async def htmx_client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+async def htmx_client(app: Litestar, oracle_seed_data: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create an HTMX-flavored test client after schema migration."""
-    del oracle_schema
+    del oracle_seed_data
     async with AsyncTestClient(app=app) as c:
         c.headers["HX-Request"] = "true"
         yield c
@@ -349,6 +349,9 @@ async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
         return
     loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=session, table_order=COFFEE_SHOP_TABLES)
     await loader.load_all_fixtures()
+
+    from app.db.utils import _reset_sequences
+    await _reset_sequences(session)
 
 
 @pytest.fixture

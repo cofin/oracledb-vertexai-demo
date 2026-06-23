@@ -125,4 +125,3 @@ curl -fsS http://localhost:8000/api/apex/vector/status
   responses.
 - OpenAPI output has useful operation IDs and schema names.
 - Existing browser/demo routes continue to behave as before.
-

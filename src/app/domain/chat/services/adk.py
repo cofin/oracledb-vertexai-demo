@@ -449,7 +449,12 @@ class ADKRunner:
         """Raise AIServiceUnconfigured if Vertex AI credentials are missing."""
         _ensure_vertex_ai_backend_configured()
 
-    def _make_tool_factories(self, tools_service: AgentToolsService, metric_state: dict[str, Any]) -> list[ToolUnion]:
+    def _make_tool_factories(
+        self,
+        tools_service: AgentToolsService,
+        metric_state: dict[str, Any],
+        location_context: dict[str, Any] | None = None,
+    ) -> list[ToolUnion]:
         chat_settings = get_settings().chat
 
         async def search_products_by_vector(
@@ -466,7 +471,15 @@ class ADKRunner:
                 Matching menu products and cache/search metadata. Only these
                 returned products may be recommended to the user.
             """
-            result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
+            target_store = await self._resolve_rag_store(
+                tools_service=tools_service,
+                query=query,
+                location_context=location_context,
+            )
+            store_id = target_store.id if target_store else None
+            result = await tools_service.search_products_by_vector(
+                query, limit, similarity_threshold, store_id=store_id
+            )
             _record_product_search_result(metric_state, result, query)
             return result
 
@@ -1046,7 +1059,7 @@ class ADKRunner:
             ValueError: If ADK raises a non-credential validation error.
         """
         metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
-        tools = self._make_tool_factories(tools_service, metric_state)
+        tools = self._make_tool_factories(tools_service, metric_state, location_context)
         workflow = self._build_workflow(
             self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION),
             self._persona_manager.get_temperature(persona),

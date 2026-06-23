@@ -44,7 +44,7 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
 
     result = await search("dark roast", limit=3, similarity_threshold=0.5)
 
-    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5)
+    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5, store_id=None)
     assert result["products"] == [{"id": 1, "name": "Midnight Brew"}]
     assert metric_state["embedding_cache_hit"] is True
     assert metric_state["search_metrics"]["vector_query"] == "dark roast"
@@ -94,7 +94,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     product_service = MagicMock()
     product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew"}])
     vertex_ai_service = MagicMock()
-    vertex_ai_service.embedding_model = "gemini-embedding-2-preview"
+    vertex_ai_service.embedding_model = "gemini-embedding-2"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
     metrics_service = MagicMock()
     metrics_service.record_search = AsyncMock()
@@ -144,7 +144,7 @@ async def test_agent_tools_vector_search_passes_store_id_and_records_store_sql_k
         return_value=[{"id": 1, "name": "Midnight Brew", "store_id": 16}]
     )
     vertex_ai_service = MagicMock()
-    vertex_ai_service.embedding_model = "gemini-embedding-2-preview"
+    vertex_ai_service.embedding_model = "gemini-embedding-2"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], False))
     metrics_service = MagicMock()
     metrics_service.record_search = AsyncMock()
@@ -407,8 +407,12 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
     )
     original_make_tool_factories = runner._make_tool_factories
 
-    def capture_tools(tools_service: Any, metric_state: dict[str, Any]) -> Any:
-        tools = original_make_tool_factories(tools_service, metric_state)
+    def capture_tools(
+        tools_service: Any,
+        metric_state: dict[str, Any],
+        location_context: dict[str, Any] | None = None,
+    ) -> Any:
+        tools = original_make_tool_factories(tools_service, metric_state, location_context)
         captured_tools["tools"] = tools
         return tools
 

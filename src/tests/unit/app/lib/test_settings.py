@@ -73,7 +73,7 @@ def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
     settings = AISettings()
 
     assert settings.chat_model == "gemini-2.5-flash-lite"
-    assert settings.embedding_model == "gemini-embedding-2-preview"
+    assert settings.embedding_model == "gemini-embedding-2"
     assert settings.embedding_dimensions == 3072
     assert settings.intent_model_override is None
     assert settings.intent_model == settings.chat_model
