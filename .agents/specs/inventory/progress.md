@@ -7,13 +7,13 @@
 
 ## Chapters
 - [x] **Chapter 1**: `inventory-data` - Data Foundation & Fixtures
-    *   Status: Completed
+    *   Status: Completed; archived locally on 2026-06-23.
     *   Beads: `oracledb-vertexai-invdata`
-    *   Spec: [../inventory-data/spec.md](../inventory-data/spec.md)
+    *   Durable guidance: `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
 - [x] **Chapter 2**: `inventory-grounding` - Deterministic Availability Routing
-    *   Status: Completed
+    *   Status: Completed; archived locally on 2026-06-23.
     *   Beads: `oracledb-vertexai-invground`
-    *   Spec: [../inventory-grounding/spec.md](../inventory-grounding/spec.md)
+    *   Durable guidance: `.agents/knowledge/project-guide.md`, `.agents/knowledge/guides/adk-agent-patterns.md`, and `.agents/patterns.md`.
 - [ ] **Chapter 3**: `inventory-rag` - Inventory-Aware RAG
     *   Status: Planned
     *   Beads: `oracledb-vertexai-invrag`

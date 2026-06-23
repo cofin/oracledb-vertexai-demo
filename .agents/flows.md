@@ -2,52 +2,18 @@
 
 This file tracks all PRDs (Product Requirements Documents) for the project. Each PRD has its own detailed plan in its respective folder.
 
----
-
-## [ ] PRD: demo-simplification
-*Link: [./specs/demo-simplification/](./specs/demo-simplification/)*
-*Beads: oracledb-vertexai-mzm (master epic)*
-*Research: [./research/research_demo_simplification/](./research/research_demo_simplification/)*
-*Absorbs: settings-config-consolidation_20260501*
-
-### Chapters
-- [ ] **Chapter 1: Documentation accuracy (`docs-accuracy`)** — implementation-ready
-  *Link: [./specs/docs-accuracy/](./specs/docs-accuracy/)* · *Beads: oracledb-vertexai-mzm.1*
-- [ ] **Chapter 2: Dead-code sweep (`deadcode-sweep`)** — implementation-ready
-  *Link: [./specs/deadcode-sweep/](./specs/deadcode-sweep/)* · *Beads: oracledb-vertexai-mzm.2*
-- [ ] **Chapter 3: Settings audit + factory (`settings-audit-and-factory`)** — implementation-ready
-  *Link: [./specs/settings-audit-and-factory/](./specs/settings-audit-and-factory/)* · *Beads: oracledb-vertexai-mzm.3*
-- [ ] **Chapter 4: Settings/tools DB env contract (`settings-database-env-contract`)** — implementation-ready, blocked by Ch3
-  *Link: [./specs/settings-database-env-contract/](./specs/settings-database-env-contract/)* · *Beads: oracledb-vertexai-mzm.4*
-- [ ] **Chapter 5: Chat-path consolidation (`chat-path-consolidation`)** — implementation-ready
-  *Link: [./specs/chat-path-consolidation/](./specs/chat-path-consolidation/)* · *Beads: oracledb-vertexai-mzm.5*
-- [ ] **Chapter 6: ADK readability (`adk-readability`)** — implementation-ready, blocked by Ch5
-  *Link: [./specs/adk-readability/](./specs/adk-readability/)* · *Beads: oracledb-vertexai-mzm.6*
-- [ ] **Chapter 7: Maps consolidation + directions (`maps-consolidation`)** — implementation-ready, blocked by Ch6
-  *Link: [./specs/maps-consolidation/](./specs/maps-consolidation/)* · *Beads: oracledb-vertexai-mzm.7*
-- [ ] **Chapter 8: Settings AI/chat/web/log (`settings-ai-chat-web-log`)** — implementation-ready, blocked by Ch3+Ch6
-  *Link: [./specs/settings-ai-chat-web-log/](./specs/settings-ai-chat-web-log/)* · *Beads: oracledb-vertexai-mzm.8*
-- [ ] **Chapter 9: Frontend cleanup (`frontend-cleanup`)** — implementation-ready, blocked by Ch5+Ch7
-  *Link: [./specs/frontend-cleanup/](./specs/frontend-cleanup/)* · *Beads: oracledb-vertexai-mzm.9*
-- [ ] **Chapter 10: Test simplification (`test-simplification`)** — implementation-ready, blocked by Ch6+Ch8+Ch9
-  *Link: [./specs/test-simplification/](./specs/test-simplification/)* · *Beads: oracledb-vertexai-mzm.10*
-
----
-
 ## [~] PRD: adb-podman-lab-hardening
 *Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
 *Beads: oracledb-vertexai-9p5 (master epic)*
 *Research: [./research/research_adb_hooks_ux_lab/](./research/research_adb_hooks_ux_lab/)*
 
 ### Chapters
-- [ ] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — implementation-ready
-  *Link: [./specs/adb-vector-memory-hardening/](./specs/adb-vector-memory-hardening/)*
+- [x] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — superseded by gvenzl revert; archived locally 2026-06-23
   *Beads: oracledb-vertexai-9p5.1*
-- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft, blocked by Ch1
+- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft; needs revision after gvenzl revert
   *Link: [./specs/oraclelinux-podman-lab/](./specs/oraclelinux-podman-lab/)*
   *Beads: oracledb-vertexai-9p5.2*
-- [ ] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — draft
-  *Link: [./specs/ui-quality-fixes/](./specs/ui-quality-fixes/)*
+- [x] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — completed, archived locally 2026-06-23
   *Beads: oracledb-vertexai-9p5.3*
 
 ---
@@ -80,34 +46,66 @@ revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-
 
 ---
 
+## [ ] PRD: apex-ops-console
+*Link: [./specs/apex-ops-console/](./specs/apex-ops-console/)*
+*Beads: oracledb-vertexai-apxo (master epic)*
+*Research: [./research/research_apex26_ords_apexlang_schema_bridge/](./research/research_apex26_ords_apexlang_schema_bridge/)*
+*Related: `apex-gvenzl-install`*
+
+Post-research roadmap for a source-controlled APEX 26.1 demo app, APEX REST
+Source Catalog/OpenAPI bridge, and current Antigravity/MCP configuration
+examples. This PRD is not Gemini CLI migration support; it replaces old Gemini
+CLI config writes with clean Antigravity config paths.
+
+### Chapters
+- [ ] **Chapter 1: APEX runtime hardening and Flow reconciliation (`apex-runtime-hardening`)** — implementation-ready, related to `apex-gvenzl-install`
+  *Link: [./specs/apex-runtime-hardening/](./specs/apex-runtime-hardening/)* · *Beads: oracledb-vertexai-apxo.1*
+- [ ] **Chapter 2: SQLcl 26.1.2 APEXlang lifecycle (`apexlang-lifecycle`)** — implementation-ready, blocked by Ch1
+  *Link: [./specs/apexlang-lifecycle/](./specs/apexlang-lifecycle/)* · *Beads: oracledb-vertexai-apxo.2*
+- [ ] **Chapter 3: APEX-safe coffee data API and OpenAPI contract (`apex-ops-api`)** — implementation-ready, blocked by Ch1
+  *Link: [./specs/apex-ops-api/](./specs/apex-ops-api/)* · *Beads: oracledb-vertexai-apxo.3*
+- [ ] **Chapter 4: Schema bridge and Antigravity MCP configuration (`apex-schema-bridge`)** — implementation-ready, blocked by Ch3
+  *Link: [./specs/apex-schema-bridge/](./specs/apex-schema-bridge/)* · *Beads: oracledb-vertexai-apxo.4*
+- [ ] **Chapter 5: Cymbal Coffee APEX Operations Console app (`apex-ops-app`)** — implementation-ready, blocked by Ch2+Ch3+Ch4
+  *Link: [./specs/apex-ops-app/](./specs/apex-ops-app/)* · *Beads: oracledb-vertexai-apxo.5*
+- [ ] **Chapter 6: APEX demo verification and docs (`apex-demo-verification-docs`)** — implementation-ready, blocked by Ch1-Ch5
+  *Link: [./specs/apex-demo-verification-docs/](./specs/apex-demo-verification-docs/)* · *Beads: oracledb-vertexai-apxo.6*
+
+---
+
+## [ ] PRD: adk2-sqlspec-migration
+*Link: [./specs/adk2-sqlspec-migration/](./specs/adk2-sqlspec-migration/)*
+*Beads: oracledb-vertexai-6uc (master epic)*
+*Upstream: [litestar-org/sqlspec#525](https://github.com/litestar-org/sqlspec/pull/525)*
+
+Migrate Cymbal Coffee to SQLSpec's ADK 2 store contract using the open SQLSpec
+branch while it is unmerged, and update the default chat/classifier model to
+`gemini-3.1-flash-lite`.
+
+### Chapters
+- [ ] **Chapter 1: Dependency source (`adk2-dependency-source`)** — draft
+  *Beads: oracledb-vertexai-6uc.1*
+- [ ] **Chapter 2: Store contract (`adk2-store-contract`)** — draft
+  *Beads: oracledb-vertexai-6uc.3*
+- [ ] **Chapter 3: Gemini 3.1 Flash-Lite default (`gemini31-flash-lite-default`)** — draft
+  *Beads: oracledb-vertexai-6uc.4*
+- [ ] **Chapter 4: Oracle verification + release cleanup (`adk2-oracle-verification-release-cleanup`)** — draft
+  *Beads: oracledb-vertexai-6uc.2*
+
+---
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
-
----
-
-## [absorbed] PRD: settings-config-consolidation_20260501
-*Link: [./specs/settings-config-consolidation_20260501/](./specs/settings-config-consolidation_20260501/)*
-*Beads: not created - ABSORBED into `demo-simplification` (Ch3 `settings-audit-and-factory`, Ch4 `settings-database-env-contract`, Ch8 `settings-ai-chat-web-log`). Kept as historical detail; execute via the demo-simplification chapters.*
-
----
-
-## [x] PRD: oracle-apex-integration
-*Link: [./specs/oracle-apex-integration/](./specs/oracle-apex-integration/)*
-*Beads: oracledb-vertexai-apex (closed after runtime verification)*
-
----
 
 ## [ ] PRD: inventory
 *Link: [./specs/inventory/](./specs/inventory/)*
 *Beads: oracledb-vertexai-inv (active/completed chapters)*
 
 ### Chapters
-- [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)**
-  *Link: [./specs/inventory-data/](./specs/inventory-data/)*
+- [x] **Chapter 1: Data Foundation & Fixtures (`inventory-data`)** — completed, archived locally 2026-06-23
   *Beads: oracledb-vertexai-invdata*
-- [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)**
-  *Link: [./specs/inventory-grounding/](./specs/inventory-grounding/)*
+- [x] **Chapter 2: Deterministic Availability Routing (`inventory-grounding`)** — completed, archived locally 2026-06-23
   *Beads: oracledb-vertexai-invground*
 - [ ] **Chapter 3: Inventory-Aware RAG (`inventory-rag`)**
   *Link: [./specs/inventory-rag/](./specs/inventory-rag/)*
@@ -165,3 +163,32 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   adk2-runner, prune-and-document) are summarized in the master entry; their
   durable patterns are in `.agents/patterns.md` and
   `.agents/knowledge/guides/`.
+- `oracle-apex-integration` (`oracledb-vertexai-apex`) completed and archived
+  locally on 2026-06-23 after Beads recorded closed runtime verification on
+  2026-06-13. Current local Oracle guidance lives in `.agents/patterns.md`,
+  `.agents/knowledge/project-guide.md`, `.agents/knowledge/guides/architecture.md`,
+  and `.agents/knowledge/guides/oracle-vector-search.md`.
+- `demo-simplification` (`oracledb-vertexai-mzm`) completed and archived
+  locally on 2026-06-23 after Beads recorded all 10 chapters closed on
+  2026-06-15. It also absorbed and archived
+  `settings-config-consolidation_20260501`. Durable outcomes include docs
+  accuracy, dead-code removal, settings/AI/chat consolidation, stream-only
+  chat, ADK readability, Maps directions, frontend module split, and test
+  simplification; current guidance lives in `.agents/patterns.md` and the
+  `.agents/knowledge/` guide set.
+- `inventory-data` (`oracledb-vertexai-invdata`) and `inventory-grounding`
+  (`oracledb-vertexai-invground`) completed and archived locally on
+  2026-06-23 while the parent `inventory` PRD remains active for
+  `inventory-rag` and `inventory-ui`. Store inventory data, deterministic
+  availability routing, and coordinate/privacy guidance are synthesized in
+  `.agents/knowledge/project-guide.md` and `.agents/patterns.md`.
+- `ui-quality-fixes` (`oracledb-vertexai-9p5.3`) completed and archived
+  locally on 2026-06-23 while the parent `adb-podman-lab-hardening` PRD remains
+  active. Durable UI/testing guidance is already in `.agents/patterns.md`,
+  `.agents/knowledge/guides/architecture.md`, and
+  `.agents/knowledge/project-guide.md`.
+- `adb-vector-memory-hardening` (`oracledb-vertexai-9p5.1`) was superseded by
+  the gvenzl/oracle-free revert and archived locally on 2026-06-23. Current
+  vector-memory behavior is the hook-based path in `tools/oracle/on_init/` and
+  `tools/oracle/on_startup/`, documented in
+  `.agents/knowledge/guides/oracle-vector-search.md`.

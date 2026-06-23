@@ -14,8 +14,8 @@ Cymbal Coffee is a two-page Litestar application:
 
 The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
 Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
-Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and a small
-`src/resources/main.js` streaming client.
+Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and small
+focused modules under `src/resources/`.
 
 ```text
 browser
@@ -205,9 +205,12 @@ Templates live under `src/app/domain/web/templates`.
 
 - `pages/chat.html.j2` posts to `/api/chat/stream`.
 - `pages/explore.html.j2` posts vector search requests and fetches plans.
-- `partials/_chat_response.html.j2` and `partials/search_result_list.html.j2`
-  are the HTMX swap targets.
-- `src/resources/main.js` reads SSE manually with `fetch()` and a stream reader.
+- `partials/message.html.j2`, `partials/explore_search_response.html.j2`,
+  and `partials/search_result_list.html.j2` are the HTMX/Jinja render targets.
+- `src/resources/main.js` is a thin bootstrap. `chat-stream.js` reads SSE
+  manually with `fetch()` and a stream reader; `telemetry.js`, `charts.js`,
+  `geolocation.js`, `util.js`, and `vector-calculator.js` own their focused
+  browser behavior.
 
 Do not reintroduce a React SPA. The Vite build exists for static assets and the
 small browser helper, not for client-side routing.

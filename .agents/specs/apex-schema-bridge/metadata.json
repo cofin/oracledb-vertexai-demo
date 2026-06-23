@@ -1,0 +1,10 @@
+{
+  "flow_id": "apex-schema-bridge",
+  "type": "chapter",
+  "status": "planned",
+  "parent_prd": "apex-ops-console",
+  "beads_epic_id": "oracledb-vertexai-apxo.4",
+  "created_at": "2026-06-23T00:00:00Z",
+  "updated_at": "2026-06-23T00:00:00Z",
+  "description": "Export APEX-safe OpenAPI and generate clean Antigravity MCP configs for Oracle SQLcl MCP, MCP Toolbox, and optional app MCP"
+}

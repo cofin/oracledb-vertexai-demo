@@ -1,5 +1,11 @@
 # ADK 2.2 / SQLSpec 0.50 Migration Plan
 
+> **Historical input only.** This file was moved from `.agents/plans/ADK2.md`
+> during PRD creation. Do not execute it directly. The authoritative plan is
+> `.agents/specs/adk2-sqlspec-migration/prd.md`, which updates this sketch with
+> live SQLSpec PR #525 evidence, uv branch-source requirements, and the
+> `gemini-3.1-flash-lite` default-model decision.
+
 This document captures every code change required to align the
 `oracledb-vertexai-demo` with the **SQLSpec ADK clean-break schema** and
 Google ADK 2.2. The plan assumes a destructive cutover. SQLSpec 0.50

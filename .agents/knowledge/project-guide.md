@@ -26,9 +26,9 @@ vanilla JavaScript and ApexCharts, not React, TanStack Router, Bun, Biome, or a
 client-side SPA.
 
 The app also ships store-aware chat, store-level inventory, browser location
-opt-in, and Google Maps URL actions as first-class components. Optional Maps
-Embed and settings contract cleanup remain forward-looking. Keep all of these as
-first-class components in knowledge updates.
+opt-in, Google Maps URL actions, and the narrowed dataclass settings contract
+as first-class components. Optional Maps Embed remains forward-looking. Keep
+all shipped components current in knowledge updates.
 
 Domain behavior belongs under `src/app/domain/<domain>/controllers`,
 `schemas`, and `services`. Cross-domain use should go through public package
@@ -143,9 +143,9 @@ repo's canonical aggregate gates, normally `make lint` and `make test`.
 
 ## Operations And CLI
 
-Use `coffee` for app lifecycle commands: `run`, `load-fixtures`, `bulk-embed`,
-`export-fixtures`, `clear-cache`, and `model-info`. Use `python manage.py` for
-SQLSpec migrations, assets, infra helpers, and bootstrap.
+Use `coffee` for app lifecycle commands: `run`, `upgrade`, `load-fixtures`,
+`bulk-embed`, `export-fixtures`, `clear-cache`, and `model-info`. Use
+`python manage.py` for SQLSpec migrations, assets, infra helpers, and bootstrap.
 
 Public CLI modules should stay mostly declarative: define Click commands and
 delegate behavior to private helpers. Async Click commands should use
@@ -158,11 +158,11 @@ starts. Keep placeholder Vertex project checks on the typed
 
 ## Settings Component
 
-Settings should remain dataclass-based with a cached `Settings.from_env()`
-factory. The consolidation plan narrows that contract instead of adopting a new
+Settings are dataclass-based with a cached `Settings.from_env()` factory. Keep
+the contract narrow instead of adding placeholder settings or adopting another
 settings library.
 
-Target behavior:
+Current behavior:
 
 - settings construction is quiet and testable;
 - shell environment values win over `.env` values;

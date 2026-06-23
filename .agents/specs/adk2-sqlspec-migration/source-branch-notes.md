@@ -1,5 +1,10 @@
 # Migrating to the SQLSpec ADK 2.0 Store
 
+> **Historical input only.** This file was moved from `docs/ADK.md` during PRD
+> creation because it is branch-specific planning material, not public user
+> documentation. Do not execute it directly. The authoritative plan is
+> `.agents/specs/adk2-sqlspec-migration/prd.md`.
+
 This app currently pins `sqlspec[adk,mypyc,oracledb,performance]==0.50.0` and
 `google-adk>=2.0.0` (running 2.3.0). SQLSpec's next release rebuilds the ADK
 session store around the ADK 2.x contract. This guide covers what changes for

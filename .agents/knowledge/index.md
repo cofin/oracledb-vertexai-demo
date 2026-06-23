@@ -21,6 +21,12 @@
 | [test-suite-reorganization_20260501](test-suite-reorganization_20260501.md) | 2026-05-01 | testing, pytest, oracle-fixtures, layout-guard, ruff | Corrective PRD: strict unit/integration module-path layout, layout guard, shared per-worker Oracle fixtures |
 | [pyapp-packaging_20260429](pyapp-packaging_20260429.md) | 2026-05-02 | pyapp, packaging, onefile, release, github-actions, docker, distroless, glibc, cargo-zigbuild, multi-arch | PyApp onefile (Bundle-Patch-Compile) + dual-arch GitHub Releases (linux x86_64 + aarch64) + distroless container wrapping the verified binary |
 | [documentation-setup_20260429](documentation-setup_20260429.md) | 2026-05-02 | docs, sphinx, sphinx-immaterial, mermaid, autodoc, github-pages, learning-portal | Ch 6: Sphinx learning portal — three-tier IA, locked autodoc scope, literalinclude anchor convention, GitHub Pages CI |
+| [oracle-apex-integration](project-guide.md) | 2026-06-13 | oracle, adb, wallet, infra, verification | Local Oracle lifecycle and wallet lessons were folded into the current guides; current local container guidance follows the live gvenzl/on-init path. |
+| [demo-simplification](project-guide.md) | 2026-06-15 | docs, settings, chat, adk, maps, frontend, testing, dead-code | Ten-chapter simplification flow: stream-only chat, narrowed settings, ADK readability, Maps directions, frontend module split, and test-suite cleanup. |
+| [inventory-data](project-guide.md) | 2026-06-13 | inventory, fixtures, store-data | Store inventory fixture and data-foundation guidance lives in the project guide and architecture guide. |
+| [inventory-grounding](guides/adk-agent-patterns.md) | 2026-06-13 | inventory, chat, grounding, product-availability | Deterministic product-availability routing and grounded answer guidance lives in the ADK and project guides. |
+| [ui-quality-fixes](guides/architecture.md) | 2026-06-23 | ui, accessibility, telemetry, mobile, chat | UI quality fixes were closed and archived; current frontend and testing guidance lives in the architecture and project guides. |
+| [adb-vector-memory-hardening](guides/oracle-vector-search.md) | 2026-06-23 | oracle, vector-memory, gvenzl, adb-free | ADB Free hardening was closed as superseded; current vector-memory guidance follows the gvenzl hook path. |
 
 ## Guides
 
@@ -56,6 +62,8 @@
 - **maps**: project-guide.md
 - **settings**: project-guide.md
 - **configuration**: project-guide.md
+- **demo-simplification**: project-guide.md
+- **product-availability**: guides/adk-agent-patterns.md
 - **pyapp**: pyapp-packaging_20260429
 - **packaging**: pyapp-packaging_20260429
 - **onefile**: pyapp-packaging_20260429
@@ -76,6 +84,7 @@
 - **modernization**: cymbal-coffee-reset_20260429
 - **adk2**: cymbal-coffee-reset_20260429
 - **oracle-26ai**: cymbal-coffee-reset_20260429, vector-calculator_20260429
+- **vector-memory**: guides/oracle-vector-search.md
 - **hnsw**: cymbal-coffee-reset_20260429
 - **sqlspec**: cymbal-coffee-reset_20260429
 - **dishka**: cymbal-coffee-reset_20260429
@@ -87,6 +96,7 @@
 - **vanilla-vite**: vector-calculator_20260429
 - **frontend-only**: vector-calculator_20260429
 - **ui**: ui-regression-recovery_20260501
+- **accessibility**: guides/architecture.md
 - **telemetry**: ui-regression-recovery_20260501
 - **apexcharts**: ui-regression-recovery_20260501
 - **sql-phases**: ui-regression-recovery_20260501

@@ -1,0 +1,10 @@
+{
+  "flow_id": "apex-ops-app",
+  "type": "chapter",
+  "status": "planned",
+  "parent_prd": "apex-ops-console",
+  "beads_epic_id": "oracledb-vertexai-apxo.5",
+  "created_at": "2026-06-23T00:00:00Z",
+  "updated_at": "2026-06-23T00:00:00Z",
+  "description": "Build the Cymbal Coffee APEX Operations Console app from APEXlang source"
+}
