@@ -9,19 +9,14 @@ from typing import TYPE_CHECKING
 
 from click.testing import CliRunner
 from tools.cli.install import install_group
-from tools.lib.utils import (
-    build_antigravity_mcp_config,
-    get_antigravity_mcp_config_path,
-    write_antigravity_mcp_config,
-)
+from tools.lib.utils import build_antigravity_mcp_config, get_antigravity_mcp_config_path, write_antigravity_mcp_config
 
 if TYPE_CHECKING:
     from pytest import MonkeyPatch
 
 
 def test_antigravity_mcp_paths_default_to_workspace_and_require_explicit_globals(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
+    monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.chdir(tmp_path)
     home = tmp_path / "home"
@@ -65,8 +60,7 @@ def test_mcp_toolbox_config_uses_placeholders_not_process_secrets(monkeypatch: M
 
 
 def test_write_antigravity_mcp_config_does_not_touch_legacy_gemini_settings(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
+    monkeypatch: MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.chdir(tmp_path)
     home = tmp_path / "home"
@@ -82,10 +76,7 @@ def test_write_antigravity_mcp_config_does_not_touch_legacy_gemini_settings(
     assert legacy_settings.read_text(encoding="utf-8") == '{"mcpServers": {"legacy": null}}\n'
 
 
-def test_install_mcp_toolbox_dry_run_prints_guidance_without_writes(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
-) -> None:
+def test_install_mcp_toolbox_dry_run_prints_guidance_without_writes(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
     with CliRunner().isolated_filesystem(temp_dir=tmp_path):
@@ -101,10 +92,7 @@ def test_install_mcp_toolbox_dry_run_prints_guidance_without_writes(
         assert not (tmp_path / "home" / ".gemini" / "settings.json").exists()
 
 
-def test_install_mcp_toolbox_workspace_writes_antigravity_config_only(
-    monkeypatch: MonkeyPatch,
-    tmp_path: Path,
-) -> None:
+def test_install_mcp_toolbox_workspace_writes_antigravity_config_only(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
 
     with CliRunner().isolated_filesystem(temp_dir=tmp_path):

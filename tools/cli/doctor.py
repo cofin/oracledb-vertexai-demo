@@ -25,18 +25,8 @@ MIN_RECOMMENDED_MEM_BYTES = 8500000000
     type=click.Choice(["managed", "external"], case_sensitive=False),
     help="Check prerequisites for specific mode (auto-detect if not specified)",
 )
-@click.option(
-    "--json",
-    "json_output",
-    is_flag=True,
-    help="Output results as JSON",
-)
-@click.option(
-    "--verbose",
-    "-v",
-    is_flag=True,
-    help="Show detailed diagnostic information",
-)
+@click.option("--json", "json_output", is_flag=True, help="Output results as JSON")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed diagnostic information")
 def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None:  # noqa: C901, PLR0914
     """Verify all prerequisites and configuration.
 
@@ -57,12 +47,7 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
         console.rule(f"[bold blue]Health Check for '{mode}' Mode", style="blue")
         console.print()
 
-    checks = {
-        "env_file": False,
-        "uv_installed": False,
-        "mode_specific": {},
-        "overall": False,
-    }
+    checks = {"env_file": False, "uv_installed": False, "mode_specific": {}, "overall": False}
 
     # Check .env file
     if not json_output:
@@ -129,7 +114,9 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
 
             if 0 < mem_total < MIN_RECOMMENDED_MEM_BYTES and not json_output:
                 console.print("[yellow]⚠ Allocated host memory is below 8.5 GB[/yellow]")
-                console.print(f"[dim]  Current allocation: {mem_total / (1024**3):.2f} GiB. We recommend allocating at least 8 GiB for the Oracle ADB container.[/dim]")
+                console.print(
+                    f"[dim]  Current allocation: {mem_total / (1024**3):.2f} GiB. We recommend allocating at least 8 GiB for the Oracle ADB container.[/dim]"
+                )
 
     elif mode == "external":
         # Check wallet location (if configured - wallet is optional for external)
@@ -178,7 +165,9 @@ def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None: 
             console.print("[bold green]✓ All checks passed![/bold green]")
             console.print()
             console.print("[bold]Next steps:[/bold]")
-            console.print("  • Run [cyan]uv run python manage.py database connect test[/cyan] to verify database connection")
+            console.print(
+                "  • Run [cyan]uv run python manage.py database connect test[/cyan] to verify database connection"
+            )
             console.print("  • Run [cyan]uv run coffee run[/cyan] to start the application")
         else:
             console.print("[bold red]✗ Some checks failed[/bold red]")

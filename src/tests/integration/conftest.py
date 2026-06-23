@@ -110,12 +110,10 @@ def test_settings(
     (asset_dir / "styles.css").write_text("/* integration test asset */\n", encoding="utf-8")
     (asset_dir / "main.js").write_text("// integration test asset\n", encoding="utf-8")
     (bundle_dir / "manifest.json").write_text(
-        json.dumps(
-            {
-                "styles.css": {"file": "assets/styles.css", "src": "styles.css", "isEntry": True},
-                "main.js": {"file": "assets/main.js", "src": "main.js", "isEntry": True},
-            }
-        ),
+        json.dumps({
+            "styles.css": {"file": "assets/styles.css", "src": "styles.css", "isEntry": True},
+            "main.js": {"file": "assets/main.js", "src": "main.js", "isEntry": True},
+        }),
         encoding="utf-8",
     )
     test_env = test_dir / ".env.testing"
@@ -383,6 +381,7 @@ async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
     await loader.load_all_fixtures()
 
     from app.db.utils import _reset_sequences
+
     await _reset_sequences(session)
 
 

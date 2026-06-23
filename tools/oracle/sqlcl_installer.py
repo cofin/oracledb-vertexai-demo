@@ -58,11 +58,7 @@ class SQLclCapabilityStatus:
 class SQLclInstaller:
     """Install Oracle SQLcl command-line tool."""
 
-    def __init__(
-        self,
-        config: SQLclConfig | None = None,
-        console: Console | None = None,
-    ) -> None:
+    def __init__(self, config: SQLclConfig | None = None, console: Console | None = None) -> None:
         """Initialize SQLcl installer.
 
         Args:
@@ -72,12 +68,7 @@ class SQLclInstaller:
         self.config = config or SQLclConfig()
         self.console = console or Console()
 
-    def install(
-        self,
-        *,
-        force: bool = False,
-        verify_path: bool = True,
-    ) -> Path:
+    def install(self, *, force: bool = False, verify_path: bool = True) -> Path:
         """Complete installation workflow.
 
         Args:
@@ -178,13 +169,7 @@ class SQLclInstaller:
         with contextlib.suppress(Exception):
             import subprocess
 
-            result = subprocess.run(
-                [str(sql_path), "-V"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
+            result = subprocess.run([str(sql_path), "-V"], capture_output=True, text=True, timeout=5, check=False)
             if result.returncode == 0:
                 return result.stdout.strip()
 
@@ -270,17 +255,12 @@ class SQLclInstaller:
         zip_path = dest_dir / "sqlcl-latest.zip"
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=self.console,
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
         ) as progress:
             task = progress.add_task("Downloading SQLcl...", total=None)
 
             with httpx.stream(
-                "GET",
-                self.config.download_url,
-                follow_redirects=True,
-                timeout=self.config.timeout,
+                "GET", self.config.download_url, follow_redirects=True, timeout=self.config.timeout
             ) as response:
                 response.raise_for_status()
                 with Path(zip_path).open("wb") as f:
@@ -314,9 +294,7 @@ class SQLclInstaller:
             ExtractionError: If extraction fails
         """
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=self.console,
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
         ) as progress:
             task = progress.add_task("Extracting SQLcl...", total=None)
 
@@ -351,9 +329,7 @@ class SQLclInstaller:
             raise InstallationError(f"SQLcl bin directory not found at {bin_dir}")
 
         with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=self.console,
+            SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
         ) as progress:
             task = progress.add_task("Installing SQLcl...", total=None)
 

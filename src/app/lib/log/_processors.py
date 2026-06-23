@@ -92,8 +92,7 @@ def structlog_processors(as_json: bool) -> list[Processor]:
             add_logger_source,
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.dev.ConsoleRenderer(
-                colors=True,
-                exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80),
+                colors=True, exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80)
             ),
         ]
     except ImportError:
@@ -129,8 +128,7 @@ def stdlib_logger_processors(as_json: bool) -> list[Processor]:
             EventFilter(["message"]),
             structlog.stdlib.ProcessorFormatter.remove_processors_meta,
             structlog.dev.ConsoleRenderer(
-                colors=True,
-                exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80),
+                colors=True, exception_formatter=RichTracebackFormatter(max_frames=1, show_locals=False, width=80)
             ),
         ]
     except ImportError:

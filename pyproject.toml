@@ -202,6 +202,12 @@ preview = true
 src = ["src", "tools"]
 target-version = "py311"
 
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 60
+preview = true
+skip-magic-trailing-comma = true
+
 [tool.ruff.lint]
 fixable = ["ALL"]
 ignore = [
@@ -270,6 +276,7 @@ classmethod-decorators = ["classmethod"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["tests", "app", "config"]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]

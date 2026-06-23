@@ -125,9 +125,7 @@ def database_start(pull: bool, recreate: bool, env_file: str | None, skip_apex: 
     ORDS sidecar for the APEX HTTP front end (--skip-ords to opt out).
     """
     try:
-        _database_start(
-            pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex, skip_ords=skip_ords
-        )
+        _database_start(pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex, skip_ords=skip_ords)
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
         raise click.Abort from e

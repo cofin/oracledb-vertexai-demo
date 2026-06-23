@@ -80,10 +80,7 @@ class OrdsSidecar:
     """Manage the ORDS sidecar container lifecycle via the container runtime."""
 
     def __init__(
-        self,
-        runtime: ContainerRuntime,
-        config: OrdsConfig | None = None,
-        console: Console | None = None,
+        self, runtime: ContainerRuntime, config: OrdsConfig | None = None, console: Console | None = None
     ) -> None:
         self.runtime = runtime
         self.config = config or OrdsConfig()
@@ -391,12 +388,7 @@ class OrdsSidecar:
         return False
 
 
-def build_ords_sidecar(
-    runtime: ContainerRuntime,
-    media: ApexMedia,
-    *,
-    console: Console | None = None,
-) -> OrdsSidecar:
+def build_ords_sidecar(runtime: ContainerRuntime, media: ApexMedia, *, console: Console | None = None) -> OrdsSidecar:
     """Build an ORDS sidecar wired to serve Chapter 1's resolved APEX images dir."""
     config = replace(OrdsConfig.from_env(), apex_images_path=str(media.paths().images_dir))
     return OrdsSidecar(runtime, config, console=console)

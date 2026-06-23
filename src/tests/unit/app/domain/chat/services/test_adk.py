@@ -58,11 +58,7 @@ def test_effective_intent_promotes_actual_product_lookup() -> None:
     from app.domain.chat.services import adk as adk_module
 
     assert (
-        adk_module._effective_intent(
-            "GENERAL_CONVERSATION",
-            {"vector_query": "breakfast", "results_count": 1},
-            [],
-        )
+        adk_module._effective_intent("GENERAL_CONVERSATION", {"vector_query": "breakfast", "results_count": 1}, [])
         == "PRODUCT_RAG"
     )
 
@@ -70,20 +66,14 @@ def test_effective_intent_promotes_actual_product_lookup() -> None:
 def test_safe_location_context_never_exposes_raw_coordinates() -> None:
     from app.domain.chat.services import adk as adk_module
 
-    safe = adk_module._safe_location_context(
-        {
-            "city": "Dallas",
-            "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 40.0},
-        }
-    )
+    safe = adk_module._safe_location_context({
+        "city": "Dallas",
+        "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 40.0},
+    })
 
     assert safe == {"city": "Dallas", "has_browser_coordinates": True, "accuracy_meters": 40.0}
     assert (
-        adk_module._effective_intent(
-            "GENERAL_CONVERSATION",
-            {},
-            [{"sql_key": "vector-search-products"}],
-        )
+        adk_module._effective_intent("GENERAL_CONVERSATION", {}, [{"sql_key": "vector-search-products"}])
         == "PRODUCT_RAG"
     )
 
@@ -111,9 +101,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     result = await tools_service.search_products_by_vector("dark roast", limit=2, similarity_threshold=0.4)
 
     vertex_ai_service.get_text_embedding.assert_awaited_once_with(
-        "dark roast",
-        embedding_purpose="query",
-        return_cache_status=True,
+        "dark roast", embedding_purpose="query", return_cache_status=True
     )
     product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=None)
     metrics_service.record_search.assert_awaited_once()
@@ -140,9 +128,7 @@ async def test_agent_tools_vector_search_passes_store_id_and_records_store_sql_k
     from app.domain.chat.services.adk import AgentToolsService
 
     product_service = MagicMock()
-    product_service.search_by_vector = AsyncMock(
-        return_value=[{"id": 1, "name": "Midnight Brew", "store_id": 16}]
-    )
+    product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew", "store_id": 16}])
     vertex_ai_service = MagicMock()
     vertex_ai_service.embedding_model = "gemini-embedding-2"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], False))
@@ -158,12 +144,7 @@ async def test_agent_tools_vector_search_passes_store_id_and_records_store_sql_k
         cache_service=MagicMock(),
     )
 
-    result = await tools_service.search_products_by_vector(
-        "dark roast",
-        limit=2,
-        similarity_threshold=0.4,
-        store_id=16,
-    )
+    result = await tools_service.search_products_by_vector("dark roast", limit=2, similarity_threshold=0.4, store_id=16)
 
     product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=16)
     assert result["sql_phases"][1]["sql_key"] == "vector-search-products-by-store"
@@ -301,11 +282,7 @@ def test_build_workflow_wires_agent_instruction_temperature_and_credential_guard
     workflow = runner._build_workflow(instruction="be helpful", temperature=0.5, tools=[fake_tool])
 
     assert isinstance(workflow, Workflow)
-    agent = next(
-        edge[1]
-        for edge in workflow.edges
-        if getattr(edge[1], "instruction", None) == "be helpful"
-    )
+    agent = next(edge[1] for edge in workflow.edges if getattr(edge[1], "instruction", None) == "be helpful")
     assert agent.tools == [fake_tool]
     assert agent.generate_content_config.temperature == 0.5
     assert agent.before_agent_callback is adk_module.credential_guard_callback
@@ -322,7 +299,10 @@ def test_credential_guard_treats_demo_project_as_unconfigured(monkeypatch: Any) 
     content = adk_module.credential_guard_callback(MagicMock())
 
     assert content is not None
-    assert content.parts[0].text == "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+    assert (
+        content.parts[0].text
+        == "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+    )
 
 
 async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypatch: Any) -> None:
@@ -332,32 +312,19 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
         raise AssertionError("Product RAG turns must not stream speculative model text before grounding")
 
     tools_service = make_tools_service(
-        products=[
-            {
-                "id": 10,
-                "name": "Wakey Wakey Waffles",
-                "description": "Fluffy, golden waffles.",
-                "price": 7.5,
-            }
-        ],
+        products=[{"id": 10, "name": "Wakey Wakey Waffles", "description": "Fluffy, golden waffles.", "price": 7.5}],
         vector_query="hey",
     )
 
     monkeypatch.setattr(adk_module, "Runner", fail_runner)
     allow_vertex_config(monkeypatch, adk_module)
 
-    runner = make_runner(
-        session_service=make_session_service(make_session("sess-direct-rag")),
-    )
+    runner = make_runner(session_service=make_session_service(make_session("sess-direct-rag")))
 
     events = [
         event
         async for event in runner.stream_request(
-            query="hey",
-            user_id="u1",
-            session_id="sess-direct-rag",
-            persona="enthusiast",
-            tools_service=tools_service,
+            query="hey", user_id="u1", session_id="sess-direct-rag", persona="enthusiast", tools_service=tools_service
         )
     ]
 
@@ -375,14 +342,7 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
     classifier.classify = AsyncMock(return_value=IntentLabel.GENERAL_CONVERSATION)
 
     tools_service = make_tools_service(
-        products=[
-            {
-                "id": 11,
-                "name": "Caramel Cloud Latte",
-                "description": "Silky caramel latte.",
-                "price": 6.25,
-            }
-        ],
+        products=[{"id": 11, "name": "Caramel Cloud Latte", "description": "Silky caramel latte.", "price": 6.25}],
         vector_query="something sweet",
     )
 
@@ -397,20 +357,17 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
                 # The model calls the vector tool, populating metric_state via the closure.
                 search = next(fn for fn in captured_tools["tools"] if fn.__name__ == "search_products_by_vector")
                 await search("something sweet")
-                yield SimpleNamespace(output={"intent": "GENERAL_CONVERSATION", "answer": ""}, content=None, partial=False)
+                yield SimpleNamespace(
+                    output={"intent": "GENERAL_CONVERSATION", "answer": ""}, content=None, partial=False
+                )
 
             return _events()
 
-    runner = make_runner(
-        session_service=make_session_service(make_session("sess-relabel")),
-        classifier=classifier,
-    )
+    runner = make_runner(session_service=make_session_service(make_session("sess-relabel")), classifier=classifier)
     original_make_tool_factories = runner._make_tool_factories
 
     def capture_tools(
-        tools_service: Any,
-        metric_state: dict[str, Any],
-        location_context: dict[str, Any] | None = None,
+        tools_service: Any, metric_state: dict[str, Any], location_context: dict[str, Any] | None = None
     ) -> Any:
         tools = original_make_tool_factories(tools_service, metric_state, location_context)
         captured_tools["tools"] = tools

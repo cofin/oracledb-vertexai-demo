@@ -95,9 +95,7 @@ class ApexInstaller:
         command = f"sqlplus -S -L / as sysdba <<'SQL'\n{preamble}{sql}\nexit\nSQL\n"
         if workdir is not None:
             command = f"cd {workdir} && {command}"
-        _rc, stdout, _stderr = self.runtime.run_command(
-            ["exec", self.db.config.container_name, "bash", "-c", command]
-        )
+        _rc, stdout, _stderr = self.runtime.run_command(["exec", self.db.config.container_name, "bash", "-c", command])
         return stdout
 
     @staticmethod
@@ -151,8 +149,7 @@ class ApexInstaller:
         """Run the APEX installer script as SYSDBA from the staged media dir."""
         apexins = f"{self.config.container_apex_dir}/apexins.sql"
         self._exec_sysdba(
-            f"@{apexins} SYSAUX SYSAUX TEMP {self.config.images_url_path}",
-            workdir=self.config.container_apex_dir,
+            f"@{apexins} SYSAUX SYSAUX TEMP {self.config.images_url_path}", workdir=self.config.container_apex_dir
         )
 
     def _configure_rest(self) -> None:

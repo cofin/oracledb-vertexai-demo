@@ -134,9 +134,7 @@ class CacheService(OracleAsyncService):
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-cached-response"),
-            key=cache_key,
-            schema_type=ResponseCache,
+            db_manager.get_sql("get-cached-response"), key=cache_key, schema_type=ResponseCache
         )
 
     async def delete_expired_responses(self) -> int:
@@ -146,10 +144,7 @@ class CacheService(OracleAsyncService):
             Number of expired response-cache rows deleted.
         """
         res = await self.driver.execute(
-            sql
-            .delete()
-            .from_("response_cache")
-            .where("expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP"),
+            sql.delete().from_("response_cache").where("expires_at IS NOT NULL AND expires_at <= CURRENT_TIMESTAMP")
         )
         await self.driver.commit()
         return res.rows_affected
@@ -160,7 +155,7 @@ class CacheService(OracleAsyncService):
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
 
         existing = await self.driver.select_value_or_none(
-            sql.select("id").from_("response_cache").where_eq("cache_key", cache_key),
+            sql.select("id").from_("response_cache").where_eq("cache_key", cache_key)
         )
 
         if existing is not None:
@@ -168,31 +163,24 @@ class CacheService(OracleAsyncService):
                 sql
                 .update("response_cache")
                 .set(response_data=response_data, expires_at=expires_at)
-                .where_eq("cache_key", cache_key),
+                .where_eq("cache_key", cache_key)
             )
         else:
             await self.driver.execute(
                 sql.insert("response_cache").values(
-                    cache_key=cache_key,
-                    response_data=response_data,
-                    expires_at=expires_at,
-                ),
+                    cache_key=cache_key, response_data=response_data, expires_at=expires_at
+                )
             )
         await self.driver.commit()
 
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-cached-response"),
-            key=cache_key,
-            schema_type=ResponseCache,
+            db_manager.get_sql("get-cached-response"), key=cache_key, schema_type=ResponseCache
         )
 
     async def get_embedding(self, text: str, model: str) -> list[float] | None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         cached = await self.driver.select_one_or_none(
-            db_manager.get_sql("get-cached-embedding"),
-            hash=text_hash,
-            model=model,
-            schema_type=EmbeddingCache,
+            db_manager.get_sql("get-cached-embedding"), hash=text_hash, model=model, schema_type=EmbeddingCache
         )
         if cached is None:
             return None
@@ -200,7 +188,7 @@ class CacheService(OracleAsyncService):
             sql
             .update("embedding_cache")
             .set(hit_count=sql.raw("hit_count + 1"), last_accessed=sql.raw("CURRENT_TIMESTAMP"))
-            .where_eq("text_hash", text_hash),
+            .where_eq("text_hash", text_hash)
         )
         await self.driver.commit()
         return cached.embedding
@@ -208,15 +196,11 @@ class CacheService(OracleAsyncService):
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         existing = await self.driver.select_value_or_none(
-            sql.select("id").from_("embedding_cache").where_eq("text_hash", text_hash),
+            sql.select("id").from_("embedding_cache").where_eq("text_hash", text_hash)
         )
         if existing is None:
             await self.driver.execute(
-                sql.insert("embedding_cache").values(
-                    text_hash=text_hash,
-                    embedding=embedding,
-                    model=model,
-                ),
+                sql.insert("embedding_cache").values(text_hash=text_hash, embedding=embedding, model=model)
             )
             await self.driver.commit()
 
@@ -259,15 +243,10 @@ class MetricsService(OracleAsyncService):
     async def get_performance_stats(self, hours: int = 24) -> PerformanceStats:
         since = datetime.now(UTC) - timedelta(hours=hours)
         row = await self.driver.select_one_or_none(
-            db_manager.get_sql("get-performance-stats"),
-            since=since,
-            schema_type=PerformanceStats,
+            db_manager.get_sql("get-performance-stats"), since=since, schema_type=PerformanceStats
         )
         return row or PerformanceStats(
-            total_searches=0,
-            avg_search_time_ms=0.0,
-            avg_oracle_time_ms=0.0,
-            avg_similarity_score=0.0,
+            total_searches=0, avg_search_time_ms=0.0, avg_oracle_time_ms=0.0, avg_similarity_score=0.0
         )
 
     async def get_time_series(self, hours: int = 1) -> MetricsTimeSeries:
@@ -278,9 +257,7 @@ class MetricsService(OracleAsyncService):
         """
         since = datetime.now(UTC) - timedelta(hours=hours)
         rows = await self.driver.select(
-            db_manager.get_sql("metrics-time-series"),
-            since=since,
-            schema_type=MetricsTimeSeriesRow,
+            db_manager.get_sql("metrics-time-series"), since=since, schema_type=MetricsTimeSeriesRow
         )
         return MetricsTimeSeries(
             labels=[row.bucket for row in rows],
@@ -296,21 +273,13 @@ class MetricsService(OracleAsyncService):
         since = datetime.now(UTC) - timedelta(hours=hours)
         time_series = await self.get_time_series(hours=hours)
         scatter = await self.driver.select(
-            db_manager.get_sql("metrics-scatter-points"),
-            since=since,
-            schema_type=MetricsScatterPoint,
+            db_manager.get_sql("metrics-scatter-points"), since=since, schema_type=MetricsScatterPoint
         )
         breakdown_row = await self.driver.select_one_or_none(
-            db_manager.get_sql("metrics-breakdown"),
-            since=since,
-            schema_type=MetricsBreakdownRow,
+            db_manager.get_sql("metrics-breakdown"), since=since, schema_type=MetricsBreakdownRow
         )
         breakdown = breakdown_row or MetricsBreakdownRow(
-            embedding_ms=0.0,
-            oracle_ms=0.0,
-            ai_ms=0.0,
-            intent_ms=0.0,
-            other_ms=0.0,
+            embedding_ms=0.0, oracle_ms=0.0, ai_ms=0.0, intent_ms=0.0, other_ms=0.0
         )
         return MetricsCharts(
             time_series=time_series,

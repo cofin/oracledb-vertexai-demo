@@ -78,11 +78,7 @@ def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Wor
     # docs:start-workflow-fanout
     return Workflow(
         name="coffee_workflow",
-        edges=[
-            ("START", intent, join),
-            ("START", coffee, join),
-            (join, merge),
-        ],
+        edges=[("START", intent, join), ("START", coffee, join), (join, merge)],
         max_concurrency=2,
     )
     # docs:end-workflow-fanout

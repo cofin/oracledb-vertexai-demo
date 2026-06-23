@@ -26,23 +26,13 @@ pytestmark = pytest.mark.anyio
 
 def _matches() -> list[ProductMatch]:
     return [
-        ProductMatch(
-            id=1,
-            name="Cold Brew",
-            description="smooth dark cold brew",
-            price=5.25,
-            similarity_score=0.91,
-        ),
+        ProductMatch(id=1, name="Cold Brew", description="smooth dark cold brew", price=5.25, similarity_score=0.91)
     ]
 
 
 def _mock_services() -> tuple[AsyncMock, AsyncMock]:
     mock_vector_search = AsyncMock()
-    mock_vector_search.similarity_search.return_value = (
-        _matches(),
-        False,
-        {"embedding_ms": 12.0, "oracle_ms": 4.0},
-    )
+    mock_vector_search.similarity_search.return_value = (_matches(), False, {"embedding_ms": 12.0, "oracle_ms": 4.0})
     mock_metrics = AsyncMock()
     return mock_vector_search, mock_metrics
 
@@ -66,10 +56,7 @@ async def test_htmx_returns_partial_and_pushes_url() -> None:
 
     controller = object.__new__(VectorController)
     response = await VectorController.vector_search_demo.fn(
-        controller,
-        request=request,
-        vector_search_service=mock_vector_search,
-        metrics_service=mock_metrics,
+        controller, request=request, vector_search_service=mock_vector_search, metrics_service=mock_metrics
     )
 
     assert isinstance(response, HTMXTemplate)
@@ -99,17 +86,13 @@ async def test_non_htmx_returns_json() -> None:
 
 
 async def test_htmx_vector_search_route_through_test_client(
-    htmx_client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
+    htmx_client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domain.products.services import OracleVectorSearchService
     from app.domain.system.services import MetricsService
 
     async def fake_similarity_search(
-        self: OracleVectorSearchService,
-        query: str,
-        k: int = 5,
-        threshold: float = 0.5,
+        self: OracleVectorSearchService, query: str, k: int = 5, threshold: float = 0.5
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         del self, k, threshold
         assert query == "dark roast"
@@ -142,16 +125,12 @@ async def test_htmx_vector_search_route_through_test_client(
 
 
 async def test_htmx_vector_search_returns_inline_error_on_service_failure(
-    htmx_client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
+    htmx_client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domain.products.services import OracleVectorSearchService
 
     async def fail_similarity_search(
-        self: OracleVectorSearchService,
-        query: str,
-        k: int = 5,
-        threshold: float = 0.5,
+        self: OracleVectorSearchService, query: str, k: int = 5, threshold: float = 0.5
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         del self, query, k, threshold
         msg = "Vertex AI API has not been used in project demo-project"
@@ -166,10 +145,7 @@ async def test_htmx_vector_search_returns_inline_error_on_service_failure(
     assert "demo-project" not in response.text
 
 
-async def test_explain_plan_route_reads_query_string(
-    client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_explain_plan_route_reads_query_string(client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.domain.products.schemas import ExplainPlan, ExplainPlanRow
     from app.domain.products.services import OracleVectorSearchService
 

@@ -93,10 +93,7 @@ class FixtureExporter:
         self.table_order = table_order
 
     async def export_all_fixtures(
-        self,
-        tables: list[str] | None = None,
-        output_dir: Path | None = None,
-        compress: bool = True,
+        self, tables: list[str] | None = None, output_dir: Path | None = None, compress: bool = True
     ) -> dict[str, str]:
         """Export each requested table to a fixture file.
 

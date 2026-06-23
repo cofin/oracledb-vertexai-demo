@@ -41,9 +41,7 @@ EXPECTED_KEYS = _discover_named_keys()
 # (real SQL: `SELECT id`, `UPDATE foo`). Excludes false positives like the named-query
 # key string `"update-product-embedding"` (hyphen after the keyword) and method calls
 # like `sql.update("table")` (keyword not inside the string).
-INLINE_SQL_PATTERN = re.compile(
-    r'(?:"|\')\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)(?=[ \t\n])',
-)
+INLINE_SQL_PATTERN = re.compile(r'(?:"|\')\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)(?=[ \t\n])')
 
 # Domain services that must source SQL from db_manager, never inline strings.
 SERVICE_FILES = _discover_service_files()

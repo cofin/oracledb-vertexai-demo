@@ -58,10 +58,7 @@ class CoffeeChatController(Controller):
     # docs:start-stream-handler
     @post(path="/api/chat/stream", name="chat.api.stream")
     async def stream_chat_message(
-        self,
-        adk_runner: Inject[ADKRunner],
-        tools_service: Inject[AgentToolsService],
-        request: HTMXRequest,
+        self, adk_runner: Inject[ADKRunner], tools_service: Inject[AgentToolsService], request: HTMXRequest
     ) -> ServerSentEvent:
         """Stream chat response events for the browser chat UI.
 
@@ -93,9 +90,7 @@ class CoffeeChatController(Controller):
                     yield {"event": event_type, "data": to_json(event, as_bytes=False)}
             except Exception as exc:  # noqa: BLE001
                 await logger.aexception(
-                    "Chat stream failed after response started",
-                    error_type=type(exc).__name__,
-                    detail=str(exc),
+                    "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
                 )
                 yield {
                     "event": "error",
@@ -103,6 +98,7 @@ class CoffeeChatController(Controller):
                 }
 
         return ServerSentEvent(stream_events(), status_code=200)
+
     # docs:end-stream-handler
 
     @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)

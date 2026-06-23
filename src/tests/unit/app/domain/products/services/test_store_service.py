@@ -50,7 +50,9 @@ async def test_find_stores_by_location_uses_named_sql_and_typed_store_results(mo
 
 
 async def test_get_store_hours_returns_schema_owned_contract(mock_driver) -> None:
-    mock_driver.select_one_or_none = AsyncMock(return_value=_store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994))
+    mock_driver.select_one_or_none = AsyncMock(
+        return_value=_store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994)
+    )
     service = StoreService(mock_driver)
 
     result = await service.get_store_hours(16)

@@ -30,10 +30,7 @@ def _patch_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _make_tools_service(
-    response_text: str | None = None,
-    *,
-    error: Exception | None = None,
-    delay_seconds: float = 0,
+    response_text: str | None = None, *, error: Exception | None = None, delay_seconds: float = 0
 ) -> MagicMock:
     """Build a tools-service double whose structured GenAI method returns or raises."""
     tools_service = MagicMock()
@@ -112,7 +109,9 @@ def test_format_availability_target_in_stock() -> None:
         "distance_miles": 1.2,
     }
     ans = _format_availability_answer(target, [])
-    assert ans == "Nitro Cold Brew is available at Dallas Arts District (In Stock) with 10 on hand, about 1.2 miles away."
+    assert (
+        ans == "Nitro Cold Brew is available at Dallas Arts District (In Stock) with 10 on hand, about 1.2 miles away."
+    )
 
 
 def test_format_availability_target_low_stock() -> None:
@@ -143,7 +142,10 @@ def test_format_availability_target_out_of_stock_with_alternative() -> None:
         }
     ]
     ans = _format_availability_answer(target, alts)
-    assert ans == "Nitro Cold Brew is out of stock at Dallas Arts District. However, it is in stock at Dallas Uptown (2.5 miles away)."
+    assert (
+        ans
+        == "Nitro Cold Brew is out of stock at Dallas Arts District. However, it is in stock at Dallas Uptown (2.5 miles away)."
+    )
 
 
 def test_format_availability_target_out_of_stock_no_alternatives() -> None:
@@ -154,7 +156,10 @@ def test_format_availability_target_out_of_stock_no_alternatives() -> None:
         "quantity_available": 0,
     }
     ans = _format_availability_answer(target, [])
-    assert ans == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
+    assert (
+        ans
+        == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
+    )
 
 
 def test_format_availability_no_target_fallback() -> None:
@@ -171,10 +176,13 @@ def test_format_availability_no_target_fallback() -> None:
             "product_name": "Nitro Cold Brew",
             "stock_status": "LOW_STOCK",
             "quantity_available": 5,
-        }
+        },
     ]
     ans = _format_availability_answer(None, alts)
-    assert ans == "Nitro Cold Brew is available at Dallas Uptown (In Stock) with 15 on hand, about 2.5 miles away. I found 2 stores with matching availability."
+    assert (
+        ans
+        == "Nitro Cold Brew is available at Dallas Uptown (In Stock) with 15 on hand, about 2.5 miles away. I found 2 stores with matching availability."
+    )
 
 
 def test_format_availability_no_target_all_out_of_stock_uses_unavailable_wording() -> None:
@@ -195,7 +203,10 @@ def test_format_availability_no_target_all_out_of_stock_uses_unavailable_wording
 
     ans = _format_availability_answer(None, alts)
 
-    assert ans == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
+    assert (
+        ans
+        == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
+    )
     assert "is available" not in ans
 
 

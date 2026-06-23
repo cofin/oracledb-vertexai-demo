@@ -99,24 +99,10 @@ class ApexLang:
             parts.append("-force")
         return self._run_apex(parts, target_path=target)
 
-    def export(
-        self,
-        *,
-        app_id: int,
-        alias: str = DEFAULT_APEX_ALIAS,
-        clean: bool = True,
-    ) -> ApexLangResult:
+    def export(self, *, app_id: int, alias: str = DEFAULT_APEX_ALIAS, clean: bool = True) -> ApexLangResult:
         """Export an APEX application as APEXlang source."""
         target = self.target_path(alias)
-        parts = [
-            "export",
-            "-applicationid",
-            str(app_id),
-            "-exptype",
-            "APEXLANG",
-            "-dir",
-            str(self.config.src_root),
-        ]
+        parts = ["export", "-applicationid", str(app_id), "-exptype", "APEXLANG", "-dir", str(self.config.src_root)]
         if clean:
             parts.append("-force")
         return self._run_apex(parts, target_path=target)
@@ -197,21 +183,12 @@ class ApexLang:
         command = "apex " + " ".join(shlex.quote(part) for part in parts)
         script = f"{self._connect_line()}\n{command}\nexit\n" if connect else f"{command}\nexit\n"
         result = subprocess.run(
-            [str(sql_path), "-S", "/nolog"],
-            input=script,
-            capture_output=True,
-            text=True,
-            check=False,
+            [str(sql_path), "-S", "/nolog"], input=script, capture_output=True, text=True, check=False
         )
         output = f"{result.stdout}\n{result.stderr}"
         if result.returncode != 0 or self._has_sqlcl_fatal_output(output):
             raise ApexLangError(result.stderr.strip() or result.stdout.strip() or "SQLcl APEXlang command failed")
-        return ApexLangResult(
-            command=command,
-            target_path=target_path,
-            stdout=result.stdout,
-            stderr=result.stderr,
-        )
+        return ApexLangResult(command=command, target_path=target_path, stdout=result.stdout, stderr=result.stderr)
 
     @staticmethod
     def _has_sqlcl_fatal_output(output: str) -> bool:

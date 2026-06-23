@@ -28,17 +28,12 @@ class FakeMetricsService:
             time_series=MetricsTimeSeries(
                 labels=["00:01", "00:02", "00:03"],
                 series=MetricsTimeSeriesPoints(
-                    total_ms=[40.0, 55.0, 30.0],
-                    oracle_ms=[10.0, 15.0, 8.0],
-                    embedding_ms=[25.0, 35.0, 18.0],
+                    total_ms=[40.0, 55.0, 30.0], oracle_ms=[10.0, 15.0, 8.0], embedding_ms=[25.0, 35.0, 18.0]
                 ),
             ),
-            scatter=[
-                MetricsScatterPoint(similarity_score=0.91, total_ms=40.0, oracle_ms=10.0, embedding_ms=25.0)
-            ],
+            scatter=[MetricsScatterPoint(similarity_score=0.91, total_ms=40.0, oracle_ms=10.0, embedding_ms=25.0)],
             breakdown=MetricsBreakdown(
-                labels=["Vertex AI Embedding", "Oracle Vector Search", "Application Logic"],
-                values=[25.0, 10.0, 5.0],
+                labels=["Vertex AI Embedding", "Oracle Vector Search", "Application Logic"], values=[25.0, 10.0, 5.0]
             ),
         )
 

@@ -55,11 +55,7 @@ async def test_explain_plan_returns_plan_lines_and_summary() -> None:
     controller = VectorController(owner=MagicMock())
     request = MagicMock()
     request.query_params = {"query": "dark roast"}
-    response = await VectorController.explain_plan.fn(
-        controller,
-        request=request,
-        vector_search_service=mock_service,
-    )
+    response = await VectorController.explain_plan.fn(controller, request=request, vector_search_service=mock_service)
 
     assert response["plan_lines"][0].startswith("Plan hash value")
     assert "VECTOR" in response["plan_summary"]
@@ -76,24 +72,18 @@ async def test_explain_plan_rejects_empty_query() -> None:
     request = MagicMock()
     request.query_params = {"query": "   "}
     with pytest.raises(ValidationException):
-        await VectorController.explain_plan.fn(
-            controller,
-            request=request,
-            vector_search_service=AsyncMock(),
-        )
+        await VectorController.explain_plan.fn(controller, request=request, vector_search_service=AsyncMock())
 
 
 def test_explain_plan_parser_extracts_table_rows() -> None:
     from app.domain.products.services import OracleVectorSearchService
 
-    rows = OracleVectorSearchService.parse_plan_rows(
-        [
-            "Plan hash value: 12345",
-            "| Id  | Operation                 | Name    | Rows | Bytes | Cost (%CPU)| Time     |",
-            "|   0 | SELECT STATEMENT          |         |    5 |   400 |     3   (0)| 00:00:01 |",
-            "|   2 |   TABLE ACCESS BY VECTOR  | PRODUCT |    5 |   400 |     3   (0)| 00:00:01 |",
-        ]
-    )
+    rows = OracleVectorSearchService.parse_plan_rows([
+        "Plan hash value: 12345",
+        "| Id  | Operation                 | Name    | Rows | Bytes | Cost (%CPU)| Time     |",
+        "|   0 | SELECT STATEMENT          |         |    5 |   400 |     3   (0)| 00:00:01 |",
+        "|   2 |   TABLE ACCESS BY VECTOR  | PRODUCT |    5 |   400 |     3   (0)| 00:00:01 |",
+    ])
 
     assert rows[1].id == "2"
     assert rows[1].operation == "TABLE ACCESS BY VECTOR"

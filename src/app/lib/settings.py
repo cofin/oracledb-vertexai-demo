@@ -87,31 +87,21 @@ class DatabaseSettings:
     WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
     """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
 
-    USER: str = field(
-        default_factory=lambda: os.getenv("DATABASE_USER", "app"),
-    )
+    USER: str = field(default_factory=lambda: os.getenv("DATABASE_USER", "app"))
     """Oracle Database User."""
-    PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
-    )
+    PASSWORD: str = field(default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"))
     """Oracle Database Password."""
-    HOST: str = field(
-        default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"),
-    )
+    HOST: str = field(default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"))
     """Oracle Database Host."""
-    PORT: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PORT", "1521"),
-    )
+    PORT: str = field(default_factory=lambda: os.getenv("DATABASE_PORT", "1521"))
     """Oracle Database Port."""
-    SERVICE_NAME: str = field(
-        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"),
-    )
+    SERVICE_NAME: str = field(default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"))
     """Oracle Database Service Name."""
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
             f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'freepdb1')}",
-        ),
+        )
     )
     """Oracle Database DSN."""
     POOL_MIN_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MIN_SIZE", 5))
@@ -154,11 +144,7 @@ class DatabaseSettings:
                 "dsn": parsed.hostname or "",
                 "wallet_password": self.WALLET_PASSWORD or "",
             }
-        return {
-            "user": self.USER,
-            "password": self.PASSWORD,
-            "dsn": self.DSN,
-        }
+        return {"user": self.USER, "password": self.PASSWORD, "dsn": self.DSN}
 
     def create_config(self) -> OracleAsyncConfig:
         """Create Oracle database configuration based on connection mode (autonomous vs local).
@@ -227,10 +213,7 @@ class DatabaseSettings:
                     "include_memory_migration": self.ADK_ENABLE_MEMORY,
                     "in_memory": self.ADK_IN_MEMORY,
                 },
-                "litestar": {
-                    "session_table": "app_session",
-                    "in_memory": self.LITESTAR_SESSION_IN_MEMORY,
-                },
+                "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
             },
         )
 
@@ -252,7 +235,7 @@ class LogSettings:
             int(os.getenv("LOG_LEVEL", "0"))
             if os.getenv("LOG_LEVEL", "").isdigit()
             else logging.getLevelNamesMapping().get(os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
-        ),
+        )
     )
     """Stdlib log level as int. Accepts numeric (e.g. '20') or named (e.g. 'INFO') via LOG_LEVEL env var."""
     SQLSPEC_LEVEL: int = field(default_factory=lambda: _env_int("SQLSPEC_LOG_LEVEL", 20))
@@ -262,20 +245,11 @@ class LogSettings:
     OBFUSCATE_HEADERS: set[str] = field(default_factory=lambda: {"Authorization", "X-API-KEY", "X-XSRF-TOKEN"})
     """Request header keys to obfuscate."""
     REQUEST_FIELDS: list[RequestExtractorField] = field(
-        default_factory=lambda: [
-            "path",
-            "method",
-            "query",
-            "path_params",
-        ],
+        default_factory=lambda: ["path", "method", "query", "path_params"]
     )
     """Attributes of the [Request][litestar.connection.request.Request] to be
     logged."""
-    RESPONSE_FIELDS: list[ResponseExtractorField] = field(
-        default_factory=lambda: [
-            "status_code",
-        ],
-    )
+    RESPONSE_FIELDS: list[ResponseExtractorField] = field(default_factory=lambda: ["status_code"])
     """Attributes of the [Response][litestar.response.Response] to be
     logged."""
     GRANIAN_ACCESS_LEVEL: int = 30
@@ -291,7 +265,7 @@ class AppSettings:
     DEBUG: bool = field(default_factory=lambda: _env_bool("LITESTAR_DEBUG", False))
     """Run `Litestar` with `debug=True`."""
     SECRET_KEY: str = field(
-        default_factory=lambda: os.getenv("SECRET_KEY", binascii.hexlify(os.urandom(32)).decode(encoding="utf-8")),
+        default_factory=lambda: os.getenv("SECRET_KEY", binascii.hexlify(os.urandom(32)).decode(encoding="utf-8"))
     )
     """Application secret key."""
     NAME: str = field(default_factory=lambda: "app")
@@ -344,9 +318,7 @@ class AISettings:
     """Vertex AI chat model."""
     intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
     """Optional override for the single-call intent-classification model."""
-    embedding_model: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2")
-    )
+    embedding_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2"))
     """Vertex AI embedding model."""
     embedding_dimensions: int = 3072
     """Embedding vector dimensions (gemini-embedding-2 native output)."""
@@ -390,9 +362,7 @@ class ViteSettings:
     DEV_MODE: bool = field(default_factory=lambda: _env_bool("VITE_DEV_MODE", False))
     """Enable Vite dev server mode."""
     BUNDLE_DIR: Path = field(
-        default_factory=lambda: Path(
-            os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static")),
-        ),
+        default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static")))
     )
     """Vite bundle directory."""
 

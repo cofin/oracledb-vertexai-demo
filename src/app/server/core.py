@@ -39,18 +39,16 @@ class ApplicationCore(InitPluginProtocol):
         app_config.middleware.append(config.session_config.middleware)
         app_config.template_config = config.template
 
-        app_config.plugins.extend(
-            [
-                plugins.granian,
-                plugins.db,
-                plugins.structlog,
-                plugins.problem_details,
-                plugins.vite,
-                plugins.htmx,
-                plugins.flash,
-                plugins.domain,
-            ],
-        )
+        app_config.plugins.extend([
+            plugins.granian,
+            plugins.db,
+            plugins.structlog,
+            plugins.problem_details,
+            plugins.vite,
+            plugins.htmx,
+            plugins.flash,
+            plugins.domain,
+        ])
 
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
@@ -65,15 +63,13 @@ class ApplicationCore(InitPluginProtocol):
         from app.domain.products.services import OracleVectorSearchService, ProductService
         from app.domain.system.services import CacheService, MetricsService
 
-        app_config.signature_namespace.update(
-            {
-                "OracleAsyncDriver": OracleAsyncDriver,
-                "ProductService": ProductService,
-                "CacheService": CacheService,
-                "MetricsService": MetricsService,
-                "OracleVectorSearchService": OracleVectorSearchService,
-                "ADKRunner": ADKRunner,
-            }
-        )
+        app_config.signature_namespace.update({
+            "OracleAsyncDriver": OracleAsyncDriver,
+            "ProductService": ProductService,
+            "CacheService": CacheService,
+            "MetricsService": MetricsService,
+            "OracleVectorSearchService": OracleVectorSearchService,
+            "ADKRunner": ADKRunner,
+        })
 
         return app_config

@@ -41,8 +41,7 @@ EMBEDDING_PURPOSE_INSTRUCTIONS = {
         "Cymbal Coffee menu and store availability documents."
     ),
     "document": (
-        "Task: Generate an embedding for a document that can be retrieved by "
-        "Cymbal Coffee customer search queries."
+        "Task: Generate an embedding for a document that can be retrieved by Cymbal Coffee customer search queries."
     ),
 }
 
@@ -54,12 +53,7 @@ class ProductService(OracleAsyncService):
         return await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product)
 
     async def list_apex_products(
-        self,
-        *,
-        q: str | None = None,
-        category: str | None = None,
-        limit: int = 50,
-        offset: int = 0,
+        self, *, q: str | None = None, category: str | None = None, limit: int = 50, offset: int = 0
     ) -> tuple[list[ApexProduct], int]:
         bounded_limit = max(1, min(limit, 100))
         bounded_offset = max(offset, 0)
@@ -75,23 +69,16 @@ class ProductService(OracleAsyncService):
         return rows, int(total or 0)
 
     async def get_vector_readiness(self) -> ApexVectorReadiness:
-        return await self.driver.select_one(
-            db_manager.get_sql("get-vector-readiness"),
-            schema_type=ApexVectorReadiness,
-        )
+        return await self.driver.select_one(db_manager.get_sql("get-vector-readiness"), schema_type=ApexVectorReadiness)
 
     async def get_by_id(self, product_id: int) -> Product | None:
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-product").where("id = :id"),
-            id=product_id,
-            schema_type=Product,
+            db_manager.get_sql("get-product").where("id = :id"), id=product_id, schema_type=Product
         )
 
     async def get_by_name(self, name: str) -> Product | None:
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-product").where("name = :name"),
-            name=name,
-            schema_type=Product,
+            db_manager.get_sql("get-product").where("name = :name"), name=name, schema_type=Product
         )
 
     async def get_products_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
@@ -104,9 +91,7 @@ class ProductService(OracleAsyncService):
         return [dict(row) for row in rows], len(rows)
 
     async def update_embedding(self, product_id: int, embedding: list[float]) -> bool:
-        result = await self.driver.execute(
-            sql.update("product").set(embedding=embedding).where_eq("id", product_id),
-        )
+        result = await self.driver.execute(sql.update("product").set(embedding=embedding).where_eq("id", product_id))
         await self.driver.commit()
         return result.rows_affected > 0
 
@@ -120,18 +105,10 @@ class ProductService(OracleAsyncService):
         store_id: int | None = None,
     ) -> list[ProductMatch]:
         sql_key = "vector-search-products-by-store" if store_id is not None else "vector-search-products"
-        binds: dict[str, Any] = {
-            "query_vector": query_embedding,
-            "threshold": similarity_threshold,
-            "limit": limit,
-        }
+        binds: dict[str, Any] = {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit}
         if store_id is not None:
             binds["store_id"] = store_id
-        return await self.driver.select(
-            db_manager.get_sql(sql_key),
-            **binds,
-            schema_type=ProductMatch,
-        )
+        return await self.driver.select(db_manager.get_sql(sql_key), **binds, schema_type=ProductMatch)
 
     # docs:end-search-by-vector
 
@@ -150,17 +127,10 @@ class StoreService(OracleAsyncService):
 
     async def list_inventory_summary(self) -> list[ApexInventorySummaryRow]:
         return await self.driver.select(
-            db_manager.get_sql("list-inventory-summary"),
-            schema_type=ApexInventorySummaryRow,
+            db_manager.get_sql("list-inventory-summary"), schema_type=ApexInventorySummaryRow
         )
 
-    async def search_store_inventory(
-        self,
-        *,
-        store_id: int,
-        q: str,
-        limit: int = 5,
-    ) -> list[ProductAvailability]:
+    async def search_store_inventory(self, *, store_id: int, q: str, limit: int = 5) -> list[ProductAvailability]:
         return await self.driver.select(
             db_manager.get_sql("search-store-inventory"),
             store_id=store_id,
@@ -170,45 +140,27 @@ class StoreService(OracleAsyncService):
         )
 
     async def find_stores_by_location(
-        self,
-        *,
-        city: str | None = None,
-        state: str | None = None,
-        zip_code: str | None = None,
+        self, *, city: str | None = None, state: str | None = None, zip_code: str | None = None
     ) -> list[Store]:
         return await self.driver.select(
-            db_manager.get_sql("find-stores-by-location"),
-            city=city,
-            state=state,
-            zip_code=zip_code,
-            schema_type=Store,
+            db_manager.get_sql("find-stores-by-location"), city=city, state=state, zip_code=zip_code, schema_type=Store
         )
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-store-by-id"),
-            id=store_id,
-            schema_type=Store,
+            db_manager.get_sql("get-store-by-id"), id=store_id, schema_type=Store
         )
 
     async def get_store_hours(self, store_id: int) -> StoreHours | None:
         store = await self.get_store_by_id(store_id)
         if store is None:
             return None
-        return StoreHours(
-            store_id=store.id,
-            store_name=store.name,
-            timezone=store.timezone,
-            hours=store.hours or {},
-        )
+        return StoreHours(store_id=store.id, store_name=store.name, timezone=store.timezone, hours=store.hours or {})
 
     async def find_nearest_stores(self, latitude: float, longitude: float, limit: int = 5) -> list[StoreDistance]:
         stores = await self.get_all_stores()
         ranked = [
-            StoreDistance(
-                **asdict(store),
-                distance_miles=round(haversine_miles(latitude, longitude, store), 2),
-            )
+            StoreDistance(**asdict(store), distance_miles=round(haversine_miles(latitude, longitude, store), 2))
             for store in stores
             if store.latitude is not None and store.longitude is not None
         ]
@@ -216,10 +168,7 @@ class StoreService(OracleAsyncService):
         return ranked[:limit]
 
     async def resolve_store(
-        self,
-        *,
-        location_hint: str | None = None,
-        coordinates: tuple[float, float] | None = None,
+        self, *, location_hint: str | None = None, coordinates: tuple[float, float] | None = None
     ) -> Store | None:
         """Resolve a single store by location hint (priority) or nearest to coordinates."""
         if location_hint:
@@ -235,11 +184,7 @@ class StoreService(OracleAsyncService):
         return None
 
     async def find_stores_with_product(
-        self,
-        product_id: int,
-        *,
-        latitude: float | None = None,
-        longitude: float | None = None,
+        self, product_id: int, *, latitude: float | None = None, longitude: float | None = None
     ) -> list[ProductAvailability]:
         rows = await self.driver.select(
             db_manager.get_sql("find-stores-with-product-inventory"),
@@ -250,17 +195,11 @@ class StoreService(OracleAsyncService):
 
     async def list_store_inventory(self, store_id: int) -> list[ProductAvailability]:
         return await self.driver.select(
-            db_manager.get_sql("list-store-inventory"),
-            store_id=store_id,
-            schema_type=ProductAvailability,
+            db_manager.get_sql("list-store-inventory"), store_id=store_id, schema_type=ProductAvailability
         )
 
     async def find_product_availability(
-        self,
-        query: str,
-        *,
-        location_hint: str | None = None,
-        coordinates: tuple[float, float] | None = None,
+        self, query: str, *, location_hint: str | None = None, coordinates: tuple[float, float] | None = None
     ) -> list[ProductAvailability]:
         rows = await self.driver.select(
             db_manager.get_sql("find-product-availability-by-query"),
@@ -272,10 +211,7 @@ class StoreService(OracleAsyncService):
 
     @staticmethod
     def _rank_availability(
-        rows: list[ProductAvailability],
-        *,
-        latitude: float | None = None,
-        longitude: float | None = None,
+        rows: list[ProductAvailability], *, latitude: float | None = None, longitude: float | None = None
     ) -> list[ProductAvailability]:
         if latitude is None or longitude is None:
             return rows
@@ -295,12 +231,7 @@ class VertexAIService:
     """Service for interacting with Google Vertex AI."""
 
     def __init__(
-        self,
-        client: Client,
-        model: str,
-        embedding_model: str,
-        embedding_dimensions: int,
-        cache_service: Any,
+        self, client: Client, model: str, embedding_model: str, embedding_dimensions: int, cache_service: Any
     ) -> None:
         self.client = client
         self.model = model
@@ -310,11 +241,7 @@ class VertexAIService:
 
     # docs:start-vertex-embedding
     async def get_text_embedding(
-        self,
-        text: str,
-        *,
-        embedding_purpose: str = "document",
-        return_cache_status: bool = False,
+        self, text: str, *, embedding_purpose: str = "document", return_cache_status: bool = False
     ) -> Any:
         cached = await self.cache_service.get_embedding(text, self.embedding_model)
         if cached:
@@ -324,9 +251,7 @@ class VertexAIService:
         config_kwargs: dict[str, Any] = {"output_dimensionality": self.embedding_dimensions}
 
         response = await self.client.aio.models.embed_content(
-            model=self.embedding_model,
-            contents=content,
-            config=EmbedContentConfig(**config_kwargs),
+            model=self.embedding_model, contents=content, config=EmbedContentConfig(**config_kwargs)
         )
         embedding_list = response.embeddings
         if not embedding_list or not embedding_list[0].values:
@@ -337,13 +262,7 @@ class VertexAIService:
 
     # docs:end-vertex-embedding
 
-    async def generate_structured_content(
-        self,
-        *,
-        model: str,
-        contents: str,
-        config: GenerateContentConfig,
-    ) -> Any:
+    async def generate_structured_content(self, *, model: str, contents: str, config: GenerateContentConfig) -> Any:
         """Generate structured content through the shared Vertex AI client."""
         return await self.client.aio.models.generate_content(model=model, contents=contents, config=config)
 
@@ -365,12 +284,7 @@ class OracleVectorSearchService:
         self.product_service = product_service
 
     async def similarity_search(
-        self,
-        query: str,
-        k: int = 5,
-        threshold: float = 0.5,
-        *,
-        store_id: int | None = None,
+        self, query: str, k: int = 5, threshold: float = 0.5, *, store_id: int | None = None
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         start_time = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
@@ -380,10 +294,7 @@ class OracleVectorSearchService:
 
         oracle_start = time.time()
         results = await self.product_service.search_by_vector(
-            embedding,
-            similarity_threshold=threshold,
-            limit=k,
-            store_id=store_id,
+            embedding, similarity_threshold=threshold, limit=k, store_id=store_id
         )
         oracle_ms = (time.time() - oracle_start) * 1000
 
@@ -441,10 +352,7 @@ class OracleVectorSearchService:
             query, embedding_purpose="query", return_cache_status=True
         )
         await self.product_service.driver.execute(
-            db_manager.get_sql("explain-plan-vector-search"),
-            query_vector=embedding,
-            threshold=0.5,
-            limit=5,
+            db_manager.get_sql("explain-plan-vector-search"), query_vector=embedding, threshold=0.5, limit=5
         )
         rows = await self.product_service.driver.select(db_manager.get_sql("explain-plan-display"))
         plan_lines = [str(row["plan_table_output"]) for row in rows]

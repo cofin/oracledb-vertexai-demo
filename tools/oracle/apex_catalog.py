@@ -30,10 +30,7 @@ def build_apex_catalog(openapi_document: dict[str, Any], *, server_url: str | No
 
     catalog: dict[str, Any] = {
         "openapi": openapi_document.get("openapi", "3.1.0"),
-        "info": {
-            "title": DEFAULT_APEX_CATALOG_TITLE,
-            "version": _document_version(openapi_document),
-        },
+        "info": {"title": DEFAULT_APEX_CATALOG_TITLE, "version": _document_version(openapi_document)},
         "servers": [
             {
                 "url": _normalize_server_url(server_url or _default_server_url()),
@@ -51,10 +48,7 @@ def build_apex_catalog(openapi_document: dict[str, Any], *, server_url: str | No
 
 
 def export_apex_openapi_catalog(
-    openapi_document: dict[str, Any],
-    *,
-    output_path: Path = DEFAULT_APEX_OPENAPI_PATH,
-    server_url: str | None = None,
+    openapi_document: dict[str, Any], *, output_path: Path = DEFAULT_APEX_OPENAPI_PATH, server_url: str | None = None
 ) -> Path:
     """Write a filtered APEX catalog OpenAPI artifact and return its path."""
     catalog = build_apex_catalog(openapi_document, server_url=server_url)
@@ -64,16 +58,10 @@ def export_apex_openapi_catalog(
 
 
 def export_current_app_apex_catalog(
-    *,
-    output_path: Path = DEFAULT_APEX_OPENAPI_PATH,
-    server_url: str | None = None,
+    *, output_path: Path = DEFAULT_APEX_OPENAPI_PATH, server_url: str | None = None
 ) -> Path:
     """Create the app OpenAPI schema and export its APEX REST Source Catalog subset."""
-    return export_apex_openapi_catalog(
-        _current_app_openapi_document(),
-        output_path=output_path,
-        server_url=server_url,
-    )
+    return export_apex_openapi_catalog(_current_app_openapi_document(), output_path=output_path, server_url=server_url)
 
 
 def _current_app_openapi_document() -> dict[str, Any]:

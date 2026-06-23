@@ -71,19 +71,13 @@ That is how tool calls use the same Oracle session as the rest of the request.
 A representative tool:
 
 ```python
-async def search_products_by_vector(
-    query: str,
-    limit: int = 5,
-    similarity_threshold: float = 0.7,
-) -> dict[str, Any]:
+async def search_products_by_vector(query: str, limit: int = 5, similarity_threshold: float = 0.7) -> dict[str, Any]:
     """Search the Cymbal Coffee menu with vector RAG.
 
     Use for menu, catalog, recommendation, flavor, roast, price, caffeine,
     availability, dietary substitution, and idiomatic preference requests.
     """
-    result = await tools_service.search_products_by_vector(
-        query, limit, similarity_threshold,
-    )
+    result = await tools_service.search_products_by_vector(query, limit, similarity_threshold)
     _record_product_search_result(metric_state, result, query)
     return result
 ```

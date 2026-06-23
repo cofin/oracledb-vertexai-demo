@@ -52,9 +52,7 @@ def test_integrations_provider_builds_runner_from_injected_dependencies(monkeypa
     captured: dict[str, object] = {}
 
     class FakeRunner:
-        def __init__(
-            self, session_service: object, classifier: object, persona_manager: object
-        ) -> None:
+        def __init__(self, session_service: object, classifier: object, persona_manager: object) -> None:
             captured["session_service"] = session_service
             captured["classifier"] = classifier
             captured["persona_manager"] = persona_manager

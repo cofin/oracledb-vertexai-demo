@@ -40,11 +40,13 @@ class LitestarPersistenceProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_config(self) -> OracleAsyncConfig:
         from app import config
+
         return config.db
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:
         from app import config
+
         session_context = config.db_manager.provide_session(config.db)
         # Dishka owns async-generator provider cleanup; SQLSpec exposes only an
         # async context manager, so entering it manually avoids yielding inside
@@ -66,11 +68,7 @@ class IntegrationsProvider(Provider):
     def provide_genai_client(self) -> Client:
         settings = get_settings()
         if settings.ai.project_id:
-            return Client(
-                vertexai=True,
-                project=settings.ai.project_id,
-                location=settings.ai.location,
-            )
+            return Client(vertexai=True, project=settings.ai.project_id, location=settings.ai.location)
         return Client(api_key=settings.ai.api_key)
 
     @provide(scope=Scope.APP)
@@ -96,11 +94,7 @@ class IntegrationsProvider(Provider):
         classifier: FlashLiteIntentClassifier,
         persona_manager: PersonaManager,
     ) -> ADKRunner:
-        return ADKRunner(
-            session_service=session_service,
-            classifier=classifier,
-            persona_manager=persona_manager,
-        )
+        return ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
 
 
 class DomainServiceProvider(Provider):
@@ -140,11 +134,7 @@ class DomainServiceProvider(Provider):
         return QueryContext(query_id=qid)
 
 
-PROVIDERS: tuple[type[Provider], ...] = (
-    LitestarPersistenceProvider,
-    IntegrationsProvider,
-    DomainServiceProvider,
-)
+PROVIDERS: tuple[type[Provider], ...] = (LitestarPersistenceProvider, IntegrationsProvider, DomainServiceProvider)
 
 
 def make_container(*extra_providers: Provider) -> AsyncContainer:

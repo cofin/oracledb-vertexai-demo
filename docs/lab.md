@@ -353,10 +353,7 @@ class CoffeeChatController(Controller):
 
     @post(path="/api/chat/stream", name="chat.api.stream")
     async def stream_chat_message(
-        self,
-        adk_runner: Inject[ADKRunner],
-        tools_service: Inject[AgentToolsService],
-        request: HTMXRequest,
+        self, adk_runner: Inject[ADKRunner], tools_service: Inject[AgentToolsService], request: HTMXRequest
     ) -> ServerSentEvent:
         """Stream chat response events for the browser chat UI."""
         data = await chat_form_from_request(request)
@@ -412,9 +409,7 @@ class CoffeeChatController(Controller):
 
             except Exception as exc:  # noqa: BLE001
                 await logger.aexception(
-                    "Chat stream failed after response started",
-                    error_type=type(exc).__name__,
-                    detail=str(exc),
+                    "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
                 )
                 yield {
                     "event": "error",
@@ -504,8 +499,7 @@ class PageController(Controller):
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
     async def explore_page(self, q: FromQuery[str | None] = None) -> HTMXTemplate:
         return HTMXTemplate(
-            template_name="pages/explore.html.j2",
-            context={"query": q or "", "settings": get_settings()},
+            template_name="pages/explore.html.j2", context={"query": q or "", "settings": get_settings()}
         )
 ```
 

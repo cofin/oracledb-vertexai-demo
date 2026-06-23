@@ -93,12 +93,7 @@ async def test_apex_products_apply_catalog_filters() -> None:
         offset=5,
     )
 
-    products_service.list_apex_products.assert_awaited_once_with(
-        q="nitro",
-        category="Cold Coffee",
-        limit=10,
-        offset=5,
-    )
+    products_service.list_apex_products.assert_awaited_once_with(q="nitro", category="Cold Coffee", limit=10, offset=5)
     assert response.total == 1
     assert response.limit == 10
     assert response.offset == 5
@@ -134,11 +129,7 @@ async def test_apex_inventory_and_availability_are_json_data() -> None:
     stores = await ApexController.list_stores.fn(controller, stores_service=stores_service)
     summary = await ApexController.inventory_summary.fn(controller, stores_service=stores_service)
     inventory = await ApexController.store_inventory.fn(controller, stores_service=stores_service, store_id=16)
-    availability = await ApexController.product_availability.fn(
-        controller,
-        stores_service=stores_service,
-        product_id=1,
-    )
+    availability = await ApexController.product_availability.fn(controller, stores_service=stores_service, product_id=1)
 
     assert stores.items[0].google_place_id == "ChIJ-safe-demo"
     assert summary.items[0].in_stock_count == 2
@@ -180,12 +171,7 @@ async def test_apex_recommendations_use_store_aware_vector_search() -> None:
         data=ApexRecommendationRequest(query="nitro cold brew", store_id=16, limit=3),
     )
 
-    vector_search_service.similarity_search.assert_awaited_once_with(
-        "nitro cold brew",
-        k=3,
-        threshold=0.5,
-        store_id=16,
-    )
+    vector_search_service.similarity_search.assert_awaited_once_with("nitro cold brew", k=3, threshold=0.5, store_id=16)
     products_service.list_apex_products.assert_not_awaited()
     assert response.mode == "vector"
     assert response.cache_hit is False
@@ -267,9 +253,7 @@ async def test_apex_status_endpoints_report_catalog_and_vector_readiness() -> No
     controller = ApexController(owner=MagicMock())
 
     vector_status = await ApexController.vector_status.fn(
-        controller,
-        products_service=products_service,
-        vector_search_service=vector_search_service,
+        controller, products_service=products_service, vector_search_service=vector_search_service
     )
     catalog_status = await ApexController.openapi_status.fn(controller)
 
@@ -287,10 +271,7 @@ async def test_apex_service_helpers_use_named_sql_and_typed_rows(mock_driver) ->
     mock_driver.select = AsyncMock(return_value=[_product()])
     mock_driver.select_value = AsyncMock(return_value=1)
     products = await ProductService(mock_driver).list_apex_products(
-        q="nitro",
-        category="Cold Coffee",
-        limit=10,
-        offset=5,
+        q="nitro", category="Cold Coffee", limit=10, offset=5
     )
 
     rows, total = products

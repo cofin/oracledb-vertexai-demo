@@ -54,11 +54,7 @@ class TestSQLSpecConnection:
     @pytest.mark.parametrize(
         "case",
         [
-            SelectCase(
-                sql="SELECT 1 as test_value FROM dual",
-                params={},
-                assert_result=_assert_basic_select,
-            ),
+            SelectCase(sql="SELECT 1 as test_value FROM dual", params={}, assert_result=_assert_basic_select),
             SelectCase(
                 sql="""
                 SELECT
@@ -122,9 +118,7 @@ class TestSQLSpecConnection:
 
         # Insert and check rowcount
         result = await driver.execute(
-            "INSERT INTO test_sqlspec_tmp (id, value) VALUES (:id, :value)",
-            id=1,
-            value="test",
+            "INSERT INTO test_sqlspec_tmp (id, value) VALUES (:id, :value)", id=1, value="test"
         )
 
         assert result.rows_affected == 1
@@ -195,10 +189,7 @@ class TestSQLSpecConnection:
         )
 
         # Verify insert
-        result = await driver.select_one_or_none(
-            "SELECT value FROM test_merge_tmp WHERE id = :id",
-            id=1,
-        )
+        result = await driver.select_one_or_none("SELECT value FROM test_merge_tmp WHERE id = :id", id=1)
         assert result["value"] == "first"
 
         # Update via MERGE
@@ -217,10 +208,7 @@ class TestSQLSpecConnection:
         )
 
         # Verify update
-        result = await driver.select_one_or_none(
-            "SELECT value FROM test_merge_tmp WHERE id = :id",
-            id=1,
-        )
+        result = await driver.select_one_or_none("SELECT value FROM test_merge_tmp WHERE id = :id", id=1)
         assert result["value"] == "updated"
 
         # Cleanup
@@ -248,10 +236,7 @@ class TestSQLSpecConnection:
         )
 
         value = "test_returning"
-        insert_result = await driver.execute(
-            "INSERT INTO test_returning_tmp (value) VALUES (:value)",
-            value=value,
-        )
+        insert_result = await driver.execute("INSERT INTO test_returning_tmp (value) VALUES (:value)", value=value)
         assert insert_result.rows_affected == 1
 
         result = await driver.select_one_or_none(
@@ -317,7 +302,10 @@ class TestSQLSpecConnection:
         assert annotation_map.get(("PRODUCT", "EMBEDDING", "EMBEDDING_DIMENSIONS")) == "3072"
         assert annotation_map.get(("PRODUCT", "EMBEDDING", "EMBEDDING_PURPOSE")) == "document"
         assert annotation_map.get(("EMBEDDING_CACHE", "EMBEDDING", "EMBEDDING_MODEL")) == "gemini-embedding-2"
-        assert annotation_map.get(("STORE_PRODUCT_INVENTORY", "STOCK_STATUS", "ENUM_VALUES")) == "IN_STOCK, LOW_STOCK, OUT_OF_STOCK"
+        assert (
+            annotation_map.get(("STORE_PRODUCT_INVENTORY", "STOCK_STATUS", "ENUM_VALUES"))
+            == "IN_STOCK, LOW_STOCK, OUT_OF_STOCK"
+        )
 
         # Assert index annotations (product_in_stock_idx is parsed from the annotation list)
         assert annotation_map.get(("PRODUCT_IN_STOCK_IDX", None, "DISPLAY")) == "Product stock lookup"

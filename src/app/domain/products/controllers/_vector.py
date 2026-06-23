@@ -19,11 +19,7 @@ from app.domain.products.controllers._vector_helpers import (
     unavailable_plan,
     vector_query_from_request,
 )
-from app.domain.products.schemas import (
-    ExplainPlan,
-    VectorDemo,
-    VectorDemoMatch,
-)
+from app.domain.products.schemas import ExplainPlan, VectorDemo, VectorDemoMatch
 from app.domain.products.services import OracleVectorSearchService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
@@ -150,11 +146,13 @@ class VectorController(Controller):
                 cache_hit=embedding_cache_hit,
                 performance_level=performance_level,
                 debug_timings={k: round(v, 2) for k, v in detailed_timings.items()},
-            ),
+            )
         )
 
     @get(path="/api/explain-plan", name="vector.explain_plan", exclude_from_auth=True)
-    async def explain_plan(self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]) -> ExplainPlan:
+    async def explain_plan(
+        self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]
+    ) -> ExplainPlan:
         """Return the Oracle EXPLAIN PLAN for the vector-search SQL."""
         query = self.validate_message(payload_value(request.query_params, "query"))
         try:

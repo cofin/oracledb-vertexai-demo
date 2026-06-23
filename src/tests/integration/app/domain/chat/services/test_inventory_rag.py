@@ -35,11 +35,7 @@ def _seed_embedding() -> list[float]:
 
 
 async def _seed_product_with_inventory(
-    driver: OracleAsyncDriver,
-    sku: str,
-    store_id: int,
-    qty: int,
-    status: str,
+    driver: OracleAsyncDriver, sku: str, store_id: int, qty: int, status: str
 ) -> int:
     """Insert a uniquely keyed product and inventory row for testing."""
     await driver.execute(
@@ -107,11 +103,7 @@ class FakeVertexAIService:
         return await self.client.aio.models.generate_content(**kwargs)
 
     async def get_text_embedding(
-        self,
-        text: str,
-        *,
-        embedding_purpose: str = "document",
-        return_cache_status: bool = False,
+        self, text: str, *, embedding_purpose: str = "document", return_cache_status: bool = False
     ) -> Any:
         del text, embedding_purpose
         embedding = _seed_embedding()
@@ -123,17 +115,10 @@ def _fake_llm_agent(**kwargs: Any) -> FunctionNode:
 
     async def coffee_turn(ctx: Any, node_input: str) -> types.Content:
         del ctx
-        result = await tools["search_products_by_vector"](
-            node_input,
-            limit=5,
-            similarity_threshold=0.5,
-        )
+        result = await tools["search_products_by_vector"](node_input, limit=5, similarity_threshold=0.5)
         products = result["products"]
         assert products, "product RAG must return at least one Oracle-backed match"
-        return types.Content(
-            role="model",
-            parts=[types.Part(text=f"Selected {products[0]['name']}")],
-        )
+        return types.Content(role="model", parts=[types.Part(text=f"Selected {products[0]['name']}")])
 
     return FunctionNode(func=coffee_turn, name=str(kwargs["name"]), parameter_binding="state")
 
@@ -141,11 +126,7 @@ def _fake_llm_agent(**kwargs: Any) -> FunctionNode:
 def _chat_settings() -> SimpleNamespace:
     """Return deterministic settings for the inventory RAG integration path."""
     return SimpleNamespace(
-        ai=SimpleNamespace(
-            project_id="test-project",
-            api_key=None,
-            chat_model="gemini-3.1-flash-lite",
-        ),
+        ai=SimpleNamespace(project_id="test-project", api_key=None, chat_model="gemini-3.1-flash-lite"),
         chat=SimpleNamespace(
             session_app_name="coffee_assistant",
             response_cache_version="menu-grounded-v2",
@@ -186,12 +167,14 @@ async def test_inventory_aware_rag_recommends_and_annotates(
 
     # 3. Setup mock configs
     from app.domain.chat.services import adk as adk_module
+
     monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
     configured = _chat_settings()
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
     monkeypatch.setattr("app.domain.chat.services._adk_grounding.get_settings", lambda: configured)
 
     from app.config import db
+
     store = OracleAsyncADKStore(config=db)
     await store.ensure_tables()
     session_service = SQLSpecSessionService(store)

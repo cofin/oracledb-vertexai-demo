@@ -107,13 +107,7 @@ class ApexMediaConfig:
 def _httpx_fetch(url: str, dest: Path) -> int:
     """Stream ``url`` into ``dest`` with a progress bar; return declared length or -1."""
     import httpx
-    from rich.progress import (
-        BarColumn,
-        DownloadColumn,
-        Progress,
-        TextColumn,
-        TransferSpeedColumn,
-    )
+    from rich.progress import BarColumn, DownloadColumn, Progress, TextColumn, TransferSpeedColumn
 
     declared = -1
     with httpx.stream("GET", url, follow_redirects=True, timeout=_DOWNLOAD_TIMEOUT_SECONDS) as response:
@@ -123,10 +117,7 @@ def _httpx_fetch(url: str, dest: Path) -> int:
         with (
             dest.open("wb") as handle,
             Progress(
-                TextColumn("[bold blue]{task.description}"),
-                BarColumn(),
-                DownloadColumn(),
-                TransferSpeedColumn(),
+                TextColumn("[bold blue]{task.description}"), BarColumn(), DownloadColumn(), TransferSpeedColumn()
             ) as progress,
         ):
             total = declared if declared >= 0 else None
@@ -141,11 +132,7 @@ class ApexMedia:
     """Acquire, verify, extract, and stage APEX release media on the host."""
 
     def __init__(
-        self,
-        config: ApexMediaConfig | None = None,
-        *,
-        fetcher: Fetcher | None = None,
-        console: Console | None = None,
+        self, config: ApexMediaConfig | None = None, *, fetcher: Fetcher | None = None, console: Console | None = None
     ) -> None:
         self.config = config or ApexMediaConfig()
         self._fetch = fetcher or _httpx_fetch
@@ -174,10 +161,7 @@ class ApexMedia:
         if actual == 0:
             problem = f"Downloaded APEX archive is empty: {archive}"
         elif declared >= 0 and actual != declared:
-            problem = (
-                f"APEX download size mismatch for {archive}: "
-                f"expected {declared} bytes, received {actual}"
-            )
+            problem = f"APEX download size mismatch for {archive}: expected {declared} bytes, received {actual}"
         if problem is not None:
             archive.unlink(missing_ok=True)
             raise ApexMediaError(problem)
@@ -219,9 +203,7 @@ class ApexMedia:
         except zipfile.BadZipFile as exc:
             raise ApexMediaError(f"Not a valid zip archive: {archive}") from exc
         if not self.config.apexins_path.exists():
-            raise ApexMediaError(
-                f"APEX archive {archive} did not yield {self.config.apexins_path} after extraction"
-            )
+            raise ApexMediaError(f"APEX archive {archive} did not yield {self.config.apexins_path} after extraction")
         return apex_dir
 
     def ensure(self, *, force: bool = False) -> ApexMediaPaths:
@@ -247,12 +229,7 @@ class ApexMedia:
             apexins=self.config.apexins_path.resolve(),
         )
 
-    def container_mounts(
-        self,
-        *,
-        db_target: str | None = None,
-        ords_images_target: str | None = None,
-    ) -> list[str]:
+    def container_mounts(self, *, db_target: str | None = None, ords_images_target: str | None = None) -> list[str]:
         """Return ``host:container`` bind-mount specs for Ch2 install / Ch3 ORDS.
 
         Pure data: this never starts a container. ``db_target`` mounts the whole

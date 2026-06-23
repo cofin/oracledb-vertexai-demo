@@ -103,11 +103,11 @@ Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
 Workflow(
     name="coffee_workflow",
     edges=[
-        ("START", intent, join),   # FunctionNode: re-classify intent
-        ("START", coffee, join),   # LlmAgent: generate + call tools
-        (join, merge),             # combine intent + answer
+        ("START", intent, join),  # FunctionNode: re-classify intent
+        ("START", coffee, join),  # LlmAgent: generate + call tools
+        (join, merge),  # combine intent + answer
     ],
-    max_concurrency=2,             # intent ∥ coffee run in parallel
+    max_concurrency=2,  # intent ∥ coffee run in parallel
 )
 ```
 

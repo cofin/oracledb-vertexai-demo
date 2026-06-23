@@ -9,11 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.domain.chat.services.classifier import (
-    INTENT_VALUES,
-    FlashLiteIntentClassifier,
-    IntentLabel,
-)
+from app.domain.chat.services.classifier import INTENT_VALUES, FlashLiteIntentClassifier, IntentLabel
 
 pytestmark = pytest.mark.anyio
 

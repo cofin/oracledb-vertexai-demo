@@ -89,21 +89,13 @@ class OracleDatabase:
     """Manage the local Oracle Database Free container lifecycle."""
 
     def __init__(
-        self,
-        runtime: ContainerRuntime,
-        config: DatabaseConfig | None = None,
-        console: Console | None = None,
+        self, runtime: ContainerRuntime, config: DatabaseConfig | None = None, console: Console | None = None
     ) -> None:
         self.runtime = runtime
         self.config = config or DatabaseConfig.from_env()
         self.console = console or Console()
 
-    def start(
-        self,
-        *,
-        pull: bool = False,
-        recreate: bool = False,
-    ) -> None:
+    def start(self, *, pull: bool = False, recreate: bool = False) -> None:
         """Start the Oracle database container.
 
         Args:
@@ -192,12 +184,7 @@ class OracleDatabase:
         self.runtime.run_command(["restart", "-t", str(timeout), self.config.container_name])
         self.console.print("[green]✓[/green] Container restarted")
 
-    def remove(
-        self,
-        *,
-        volumes: bool = False,
-        force: bool = False,
-    ) -> None:
+    def remove(self, *, volumes: bool = False, force: bool = False) -> None:
         """Remove the Oracle database container.
 
         Args:
@@ -224,13 +211,7 @@ class OracleDatabase:
             self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
             self.console.print("[green]✓[/green] Volume removed")
 
-    def logs(
-        self,
-        *,
-        follow: bool = False,
-        tail: int | None = None,
-        since: str | None = None,
-    ) -> None:
+    def logs(self, *, follow: bool = False, tail: int | None = None, since: str | None = None) -> None:
         """Stream container logs.
 
         Raises:
@@ -293,19 +274,13 @@ class OracleDatabase:
 
         try:
             _, stdout, _ = self.runtime.run_command(
-                ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name],
-                check=False,
+                ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name], check=False
             )
             return stdout.strip() == "healthy"
         except Exception:  # noqa: BLE001
             return False
 
-    def wait_for_healthy(
-        self,
-        timeout: int = 300,
-        *,
-        show_progress: bool = True,
-    ) -> bool:
+    def wait_for_healthy(self, timeout: int = 300, *, show_progress: bool = True) -> bool:
         """Wait for the container to become healthy.
 
         Returns:
@@ -391,9 +366,13 @@ class OracleDatabase:
         )
         command = f"sqlplus -S -L / as sysdba <<'SQL'\n{sql}\nexit\nSQL\n"
         try:
-            _returncode, stdout, stderr = self.runtime.run_command(
-                ["exec", self.config.container_name, "bash", "-c", command]
-            )
+            _returncode, stdout, stderr = self.runtime.run_command([
+                "exec",
+                self.config.container_name,
+                "bash",
+                "-c",
+                command,
+            ])
         except Exception as e:
             raise ContainerStartError(f"Failed to align APP user credentials: {e}") from e
         output = f"{stdout}\n{stderr}"

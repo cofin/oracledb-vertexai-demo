@@ -337,10 +337,7 @@ def test_container_mounts_both_targets_in_order(tmp_path: Path) -> None:
     config = ApexMediaConfig(version="26.1", cache_root=tmp_path)
     media = ApexMedia(config, fetcher=_exploding_fetcher())
 
-    mounts = media.container_mounts(
-        db_target="/opt/oracle/apex",
-        ords_images_target="/opt/oracle/apex/images",
-    )
+    mounts = media.container_mounts(db_target="/opt/oracle/apex", ords_images_target="/opt/oracle/apex/images")
 
     assert mounts == [
         f"{config.extracted_apex_dir.resolve()}:/opt/oracle/apex",

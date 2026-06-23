@@ -17,10 +17,7 @@ class FakeMetricsService:
     async def get_performance_stats(self, hours: int) -> PerformanceStats:
         del hours
         return PerformanceStats(
-            total_searches=42,
-            avg_search_time_ms=73.0,
-            avg_oracle_time_ms=12.0,
-            avg_similarity_score=0.91,
+            total_searches=42, avg_search_time_ms=73.0, avg_oracle_time_ms=12.0, avg_similarity_score=0.91
         )
 
 
@@ -32,9 +29,7 @@ class FakeCacheService:
 @pytest.mark.anyio
 async def test_get_metrics_summary_returns_cards_array() -> None:
     result = await MetricsController.get_metrics_summary.fn(
-        MetricsController(owner=MagicMock()),
-        metrics_service=FakeMetricsService(),
-        cache_service=FakeCacheService(),
+        MetricsController(owner=MagicMock()), metrics_service=FakeMetricsService(), cache_service=FakeCacheService()
     )
 
     assert hasattr(result, "cards")

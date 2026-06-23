@@ -74,13 +74,7 @@ def _summarize_vector(values: Any) -> str:
 
 
 def _sql_phase(
-    *,
-    label: str,
-    sql_key: str,
-    binds: dict[str, Any],
-    row_count: int,
-    runtime_ms: float,
-    cache_status: str,
+    *, label: str, sql_key: str, binds: dict[str, Any], row_count: int, runtime_ms: float, cache_status: str
 ) -> dict[str, Any]:
     return {
         "label": label,

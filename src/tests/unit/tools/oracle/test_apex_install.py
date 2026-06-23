@@ -8,12 +8,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from tools.oracle.apex_install import (
-    ApexInstallConfig,
-    ApexInstaller,
-    ApexInstallError,
-    compare_versions,
-)
+from tools.oracle.apex_install import ApexInstallConfig, ApexInstaller, ApexInstallError, compare_versions
 from tools.oracle.container import ContainerRuntime
 from tools.oracle.database import DatabaseConfig, OracleDatabase
 
@@ -461,9 +456,5 @@ def test_apex_validate_command_invokes_apexlang_wrapper() -> None:
 
     assert result.exit_code == 0
     build.return_value.validate.assert_called_once_with(
-        alias="ops",
-        input_path=None,
-        workspace=None,
-        deployment=None,
-        debug=False,
+        alias="ops", input_path=None, workspace=None, deployment=None, debug=False
     )

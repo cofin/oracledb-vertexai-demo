@@ -44,9 +44,7 @@ async def test_explore_page_loads_dynamic_store_inventory_selector() -> None:
     stores_service.get_all_stores = AsyncMock(return_value=stores)
 
     response = await PageController.explore_page.fn(
-        PageController(owner=MagicMock()),
-        stores_service=stores_service,
-        q="dark roast",
+        PageController(owner=MagicMock()), stores_service=stores_service, q="dark roast"
     )
 
     stores_service.get_all_stores.assert_awaited_once_with()
@@ -59,9 +57,7 @@ async def test_explore_page_renders_when_store_selector_is_unavailable() -> None
     stores_service.get_all_stores = AsyncMock(side_effect=RuntimeError("database unavailable"))
 
     response = await PageController.explore_page.fn(
-        PageController(owner=MagicMock()),
-        stores_service=stores_service,
-        q=None,
+        PageController(owner=MagicMock()), stores_service=stores_service, q=None
     )
 
     stores_service.get_all_stores.assert_awaited_once_with()

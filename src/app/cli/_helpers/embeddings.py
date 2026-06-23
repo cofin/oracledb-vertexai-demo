@@ -21,10 +21,7 @@ logger = structlog.get_logger()
 
 
 async def generate_product_embeddings(
-    batch_size: int,
-    force: bool,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
+    batch_size: int, force: bool, product_service: ProductService, vertex_ai_service: VertexAIService
 ) -> None:
     """Generate document-purpose embeddings for product rows."""
     validate_batch_size(batch_size)
@@ -50,11 +47,7 @@ async def generate_product_embeddings(
         products,
         batch_size,
         lambda batch, start_idx, total: process_product_batch(
-            batch,
-            product_service,
-            vertex_ai_service,
-            start_idx,
-            total,
+            batch, product_service, vertex_ai_service, start_idx, total
         ),
     )
     print_embedding_results(success, errors)
@@ -127,8 +120,7 @@ async def update_product_embedding(
 ) -> tuple[int, int]:
     """Generate and store one product embedding, returning updated counters."""
     embedding = await vertex_ai_service.get_text_embedding(
-        f"{product_name}: {description}",
-        embedding_purpose="document",
+        f"{product_name}: {description}", embedding_purpose="document"
     )
     updated = await product_service.update_embedding(product_id, embedding)
     if not updated:
@@ -144,11 +136,7 @@ def validate_batch_size(batch_size: int) -> None:
         raise click.ClickException(msg)
 
 
-async def embed_in_batches(
-    items: list[Any],
-    batch_size: int,
-    processor: BatchProcessor,
-) -> tuple[int, int]:
+async def embed_in_batches(items: list[Any], batch_size: int, processor: BatchProcessor) -> tuple[int, int]:
     """Iterate items in batches and aggregate (success, error) counts."""
     console = get_console()
     total_success = 0

@@ -25,21 +25,11 @@ import sys
 import rich_click as click
 from rich.console import Console
 from tools.cli import doctor_command, init_command, install_group
-from tools.oracle import (
-    apex_group as oracle_apex_group,
-)
-from tools.oracle import (
-    connect_group as oracle_connect_group,
-)
-from tools.oracle import (
-    database_group as oracle_container_group,
-)
-from tools.oracle import (
-    ords_group as oracle_ords_group,
-)
-from tools.oracle import (
-    wallet_group as oracle_wallet_group,
-)
+from tools.oracle import apex_group as oracle_apex_group
+from tools.oracle import connect_group as oracle_connect_group
+from tools.oracle import database_group as oracle_container_group
+from tools.oracle import ords_group as oracle_ords_group
+from tools.oracle import wallet_group as oracle_wallet_group
 
 from app.__metadata__ import __version__
 

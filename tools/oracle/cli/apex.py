@@ -45,11 +45,7 @@ def _build_apex_lang() -> ApexLang:
     from tools.oracle.apex_lang import ApexLang, ApexLangConfig
     from tools.oracle.sqlcl_installer import SQLclInstaller
 
-    return ApexLang(
-        installer=SQLclInstaller(console=console),
-        config=ApexLangConfig.from_env(),
-        console=console,
-    )
+    return ApexLang(installer=SQLclInstaller(console=console), config=ApexLangConfig.from_env(), console=console)
 
 
 @click.group(name="apex")
@@ -108,9 +104,7 @@ def apex_status() -> None:
     help="OpenAPI catalog JSON artifact path",
 )
 @click.option(
-    "--server-url",
-    default=None,
-    help="Base URL APEX should use for the Litestar app (default APP_URL/LITESTAR_PORT)",
+    "--server-url", default=None, help="Base URL APEX should use for the Litestar app (default APP_URL/LITESTAR_PORT)"
 )
 def apex_export_openapi(output_path: str, server_url: str | None) -> None:
     """Export the /api/apex OpenAPI subset for APEX REST Source Catalog import."""
@@ -130,22 +124,12 @@ def apex_export_openapi(output_path: str, server_url: str | None) -> None:
 @click.option("--schema", default=None, help="Parsing schema")
 @click.option("--force", is_flag=True, help="Remove and recreate existing generated files")
 def apex_generate(
-    app_alias: str,
-    app_name: str | None,
-    app_id: int | None,
-    workspace: str | None,
-    schema: str | None,
-    force: bool,
+    app_alias: str, app_name: str | None, app_id: int | None, workspace: str | None, schema: str | None, force: bool
 ) -> None:
     """Generate starter APEXlang source files with SQLcl 26.1.2+ against APEX 26.1+."""
     try:
         result = _build_apex_lang().generate(
-            alias=app_alias,
-            app_name=app_name,
-            app_id=app_id,
-            workspace=workspace,
-            schema=schema,
-            force=force,
+            alias=app_alias, app_name=app_name, app_id=app_id, workspace=workspace, schema=schema, force=force
         )
         console.print(f"[green]✓ Generated APEXlang source at {result.target_path}[/green]")
     except Exception as e:
@@ -174,11 +158,7 @@ def apex_export(app_id: int, app_alias: str, clean: bool) -> None:
 @click.option("--deployment", default=None, help="Deployment file name or path")
 @click.option("--debug", is_flag=True, help="Enable SQLcl APEX validation debug output")
 def apex_validate(
-    app_alias: str,
-    input_path: str | None,
-    workspace: str | None,
-    deployment: str | None,
-    debug: bool,
+    app_alias: str, input_path: str | None, workspace: str | None, deployment: str | None, debug: bool
 ) -> None:
     """Validate APEXlang source with SQLcl 26.1.2+ against APEX 26.1+."""
     try:

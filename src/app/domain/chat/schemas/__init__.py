@@ -3,10 +3,6 @@
 
 """Chat domain schemas package."""
 
-from ._chat import (
-    ChatMessage,
-)
+from ._chat import ChatMessage
 
-__all__ = (
-    "ChatMessage",
-)
+__all__ = ("ChatMessage",)

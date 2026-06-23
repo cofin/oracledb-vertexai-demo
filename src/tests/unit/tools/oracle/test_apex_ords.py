@@ -327,11 +327,7 @@ def test_wait_for_healthy_retries_inconclusive_version_probe() -> None:
     sidecar, runtime = _sidecar()
     runtime.container_running.return_value = True
     runtime.container_exists.return_value = True
-    runtime.run_command.side_effect = [
-        (0, "", ""),
-        (0, "", ""),
-        (0, "ORDS Release 26.1.2.r123", ""),
-    ]
+    runtime.run_command.side_effect = [(0, "", ""), (0, "", ""), (0, "ORDS Release 26.1.2.r123", "")]
 
     with patch.object(sidecar, "_http_ready", return_value=True), patch("tools.oracle.ords.time.sleep"):
         assert sidecar.wait_for_healthy(timeout=1, interval=0) is True

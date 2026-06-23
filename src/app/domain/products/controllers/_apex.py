@@ -47,12 +47,7 @@ class ApexController(Controller):
     path = "/api/apex"
     tags = [_APEX_TAG]
 
-    @get(
-        "/products",
-        operation_id="ApexListProducts",
-        name="apex:products",
-        summary="APEX Product Catalog",
-    )
+    @get("/products", operation_id="ApexListProducts", name="apex:products", summary="APEX Product Catalog")
     async def list_products(
         self,
         products_service: Inject[ProductService],
@@ -65,19 +60,11 @@ class ApexController(Controller):
         limit = _bounded_limit(limit, default=50)
         offset = _bounded_offset(offset)
         items, total = await products_service.list_apex_products(
-            q=_blank_to_none(q),
-            category=_blank_to_none(category),
-            limit=limit,
-            offset=offset,
+            q=_blank_to_none(q), category=_blank_to_none(category), limit=limit, offset=offset
         )
         return ApexProductList(items=items, total=total, limit=limit, offset=offset)
 
-    @get(
-        "/stores",
-        operation_id="ApexListStores",
-        name="apex:stores",
-        summary="APEX Store Catalog",
-    )
+    @get("/stores", operation_id="ApexListStores", name="apex:stores", summary="APEX Store Catalog")
     async def list_stores(self, stores_service: Inject[StoreService]) -> ApexStoreList:
         """Return seeded demo stores with safe map coordinates and place IDs."""
         items = await stores_service.get_all_stores()
@@ -100,11 +87,7 @@ class ApexController(Controller):
         name="apex:store_inventory",
         summary="APEX Store Inventory",
     )
-    async def store_inventory(
-        self,
-        stores_service: Inject[StoreService],
-        store_id: FromPath[int],
-    ) -> ApexInventoryList:
+    async def store_inventory(self, stores_service: Inject[StoreService], store_id: FromPath[int]) -> ApexInventoryList:
         """Return inventory rows for one store."""
         items = await stores_service.list_store_inventory(store_id)
         return ApexInventoryList(items=items, total=len(items))
@@ -116,9 +99,7 @@ class ApexController(Controller):
         summary="APEX Product Availability",
     )
     async def product_availability(
-        self,
-        stores_service: Inject[StoreService],
-        product_id: FromPath[int],
+        self, stores_service: Inject[StoreService], product_id: FromPath[int]
     ) -> ApexInventoryList:
         """Return availability across stores for one product."""
         items = await stores_service.find_stores_with_product(product_id)
@@ -145,10 +126,7 @@ class ApexController(Controller):
 
         try:
             matches, cache_hit, timings = await vector_search_service.similarity_search(
-                query,
-                k=limit,
-                threshold=0.5,
-                store_id=data.store_id,
+                query, k=limit, threshold=0.5, store_id=data.store_id
             )
         except Exception as exc:
             if not is_expected_service_unavailable(exc):
@@ -187,25 +165,16 @@ class ApexController(Controller):
             oracle_time_ms=round(timings.get("oracle_ms", 0.0), 2),
         )
 
-    @get(
-        "/vector/status",
-        operation_id="ApexVectorStatus",
-        name="apex:vector_status",
-        summary="APEX Vector Status",
-    )
+    @get("/vector/status", operation_id="ApexVectorStatus", name="apex:vector_status", summary="APEX Vector Status")
     async def vector_status(
-        self,
-        products_service: Inject[ProductService],
-        vector_search_service: Inject[OracleVectorSearchService],
+        self, products_service: Inject[ProductService], vector_search_service: Inject[OracleVectorSearchService]
     ) -> ApexVectorStatus:
         """Return embedding/provider and Oracle vector readiness status."""
         readiness = await products_service.get_vector_readiness()
         settings = get_settings()
         vertex_ai_service = vector_search_service.vertex_ai_service
         embedding_model = str(getattr(vertex_ai_service, "embedding_model", settings.ai.embedding_model))
-        embedding_dimensions = int(
-            getattr(vertex_ai_service, "embedding_dimensions", settings.ai.embedding_dimensions)
-        )
+        embedding_dimensions = int(getattr(vertex_ai_service, "embedding_dimensions", settings.ai.embedding_dimensions))
         return ApexVectorStatus(
             embedding_model=embedding_model,
             embedding_dimensions=embedding_dimensions,
@@ -215,12 +184,7 @@ class ApexController(Controller):
             embedded_product_count=readiness.embedded_product_count,
         )
 
-    @get(
-        "/openapi/status",
-        operation_id="ApexOpenAPIStatus",
-        name="apex:openapi_status",
-        summary="APEX OpenAPI Status",
-    )
+    @get("/openapi/status", operation_id="ApexOpenAPIStatus", name="apex:openapi_status", summary="APEX OpenAPI Status")
     async def openapi_status(self) -> ApexOpenAPIStatus:
         """Return APEX catalog metadata and operation IDs."""
         return ApexOpenAPIStatus(
@@ -279,11 +243,7 @@ async def _fallback_recommendations(
         for row in products
     ]
     return ApexRecommendationResponse(
-        query=query,
-        mode="fallback",
-        items=items,
-        total=len(items),
-        fallback_reason=reason,
+        query=query, mode="fallback", items=items, total=len(items), fallback_reason=reason
     )
 
 

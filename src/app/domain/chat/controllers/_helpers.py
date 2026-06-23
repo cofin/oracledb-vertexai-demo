@@ -95,9 +95,7 @@ def location_context_from_form(data: CoffeeChatForm) -> dict[str, Any]:
         return context
     if data.latitude is None or data.longitude is None:
         raise ValidationException(detail="Location coordinates require latitude and longitude")
-    if not _MIN_LATITUDE <= data.latitude <= _MAX_LATITUDE or not (
-        _MIN_LONGITUDE <= data.longitude <= _MAX_LONGITUDE
-    ):
+    if not _MIN_LATITUDE <= data.latitude <= _MAX_LATITUDE or not (_MIN_LONGITUDE <= data.longitude <= _MAX_LONGITUDE):
         raise ValidationException(detail="Invalid location coordinates")
 
     coordinates = {"latitude": data.latitude, "longitude": data.longitude}

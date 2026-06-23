@@ -45,17 +45,8 @@ def install_group() -> None:
     type=click.Choice(["managed", "external"], case_sensitive=False),
     help="Install prerequisites for specific mode (auto-detect if not specified)",
 )
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Force reinstall even if already installed",
-)
-@click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    help="Skip confirmation prompts",
-)
+@click.option("--force", is_flag=True, help="Force reinstall even if already installed")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 def install_all_command(mode: str | None, force: bool, yes: bool) -> None:
     """Install all prerequisites for deployment mode.
 
@@ -116,24 +107,9 @@ def install_list_command() -> None:
     table.add_column("Modes", width=30)
     table.add_column("Description")
 
-    table.add_row(
-        "java",
-        "[yellow]Optional[/yellow]",
-        "managed, external",
-        "Java 11+ (required for SQLcl)",
-    )
-    table.add_row(
-        "sqlcl",
-        "[yellow]Optional[/yellow]",
-        "managed, external",
-        "Oracle SQL command-line tool",
-    )
-    table.add_row(
-        "docker",
-        "[yellow]Optional[/yellow]",
-        "managed",
-        "Container runtime (not auto-installed)",
-    )
+    table.add_row("java", "[yellow]Optional[/yellow]", "managed, external", "Java 11+ (required for SQLcl)")
+    table.add_row("sqlcl", "[yellow]Optional[/yellow]", "managed, external", "Oracle SQL command-line tool")
+    table.add_row("docker", "[yellow]Optional[/yellow]", "managed", "Container runtime (not auto-installed)")
     table.add_row(
         "mcp-toolbox",
         "[yellow]Optional[/yellow]",
@@ -148,17 +124,8 @@ def install_list_command() -> None:
 
 
 @install_group.command(name="sqlcl")
-@click.option(
-    "--dir",
-    "install_dir",
-    type=click.Path(),
-    help="Installation directory (default: ~/.local/bin)",
-)
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Reinstall even if already installed",
-)
+@click.option("--dir", "install_dir", type=click.Path(), help="Installation directory (default: ~/.local/bin)")
+@click.option("--force", is_flag=True, help="Reinstall even if already installed")
 @click.option(
     "--connection-name",
     default="cymbal_coffee",
@@ -178,7 +145,9 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     console.print("[yellow]📦 Checking SQLcl installation...[/yellow]")
     console.print()
     if connection_name != "cymbal_coffee":
-        console.print("[dim]Antigravity MCP config uses SQLcl directly and does not write saved connection names.[/dim]")
+        console.print(
+            "[dim]Antigravity MCP config uses SQLcl directly and does not write saved connection names.[/dim]"
+        )
         console.print()
 
     # Check for Java before proceeding
@@ -255,22 +224,12 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
 
 
 @install_group.command(name="mcp-toolbox")
+@click.option("--dry-run", is_flag=True, help="Print MCP Toolbox and Oracle Skills guidance without writing config.")
 @click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Print MCP Toolbox and Oracle Skills guidance without writing config.",
+    "--workspace", "workspace", is_flag=True, help="Write workspace Antigravity config to .agents/mcp_config.json."
 )
 @click.option(
-    "--workspace",
-    "workspace",
-    is_flag=True,
-    help="Write workspace Antigravity config to .agents/mcp_config.json.",
-)
-@click.option(
-    "--ide",
-    "ide",
-    is_flag=True,
-    help="Write explicit IDE Antigravity config to ~/.gemini/config/mcp_config.json.",
+    "--ide", "ide", is_flag=True, help="Write explicit IDE Antigravity config to ~/.gemini/config/mcp_config.json."
 )
 @click.option(
     "--cli-global",
@@ -278,13 +237,7 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     is_flag=True,
     help="Write explicit Antigravity CLI global config to ~/.gemini/antigravity-cli/mcp_config.json.",
 )
-def install_mcp_toolbox_command(
-    *,
-    dry_run: bool,
-    workspace: bool,
-    ide: bool,
-    cli_global: bool,
-) -> None:
+def install_mcp_toolbox_command(*, dry_run: bool, workspace: bool, ide: bool, cli_global: bool) -> None:
     """Prepare Antigravity MCP config for MCP Toolbox Oracle.
 
     This command prints install guidance by default. Use --workspace, --ide, or

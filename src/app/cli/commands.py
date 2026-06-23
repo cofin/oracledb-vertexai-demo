@@ -49,9 +49,7 @@ async def _clear_application_cache(force: bool, cache_service: CacheService) -> 
             console.print(f"  • {table}")
 
         confirm = Prompt.ask(
-            "\n[bold red]Are you sure you want to clear these caches?[/bold red]",
-            choices=["y", "n"],
-            default="n",
+            "\n[bold red]Are you sure you want to clear these caches?[/bold red]", choices=["y", "n"], default="n"
         )
         if confirm.lower() != "y":
             console.print("[yellow]Operation cancelled.[/yellow]")
@@ -134,10 +132,7 @@ def _show_model_info(vertex_ai_service: VertexAIService) -> None:
 @click.option("--force", "-f", is_flag=True, help="Re-embed all products, even when embeddings already exist.")
 @async_inject
 async def bulk_embed_cmd(
-    batch_size: int,
-    force: bool,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
+    batch_size: int, force: bool, product_service: ProductService, vertex_ai_service: VertexAIService
 ) -> None:
     """Generate document-purpose embeddings for product rows."""
     await generate_product_embeddings(batch_size, force, product_service, vertex_ai_service)
@@ -163,11 +158,7 @@ async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # noqa: R
 @click.option("--no-fixtures", is_flag=True, help="Skip fixture loading after migration")
 @click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
 @async_inject
-async def upgrade_cmd(
-    revision: str,
-    no_fixtures: bool,
-    dry_run: bool,
-) -> None:
+async def upgrade_cmd(revision: str, no_fixtures: bool, dry_run: bool) -> None:
     """Upgrade database to a specific revision and optionally load fixtures."""
     await _upgrade_database(revision, no_fixtures, dry_run)
 
@@ -191,12 +182,7 @@ async def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
 @click.option("--no-compress", is_flag=True, help="Export uncompressed JSON. Default is gzipped.")
 @click.option("--list", "list_tables", is_flag=True, help="List available tables for export")
 @async_inject
-async def export_fixtures_cmd(
-    tables: str | None,
-    output_dir: str | None,
-    no_compress: bool,
-    list_tables: bool,
-) -> None:
+async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_compress: bool, list_tables: bool) -> None:
     """Export coffee shop fixture tables for committed demo data."""
     if list_tables:
         display_available_tables()

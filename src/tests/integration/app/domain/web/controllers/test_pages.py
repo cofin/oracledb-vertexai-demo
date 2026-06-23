@@ -37,8 +37,7 @@ async def test_chat_page_renders(client: AsyncTestClient) -> None:
 
 
 async def test_chat_page_renders_persisted_session_history(
-    client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
+    client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domain.chat.schemas import ChatMessage
     from app.domain.chat.services import ADKRunner
@@ -48,10 +47,7 @@ async def test_chat_page_renders_persisted_session_history(
 
     async def _history(self: object, *args: object, **kwargs: object) -> list[ChatMessage]:
         del self, args, kwargs
-        return [
-            ChatMessage(source="human", message="old question"),
-            ChatMessage(source="ai", message="old answer"),
-        ]
+        return [ChatMessage(source="human", message="old question"), ChatMessage(source="ai", message="old answer")]
 
     monkeypatch.setattr(ADKRunner, "__init__", _noop_init)
     monkeypatch.setattr(ADKRunner, "get_history", _history, raising=False)
@@ -65,10 +61,7 @@ async def test_chat_page_renders_persisted_session_history(
     assert "Welcome back. Tell me what sounds good" not in body
 
 
-async def test_chat_page_renders_fallback_history(
-    client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_chat_page_renders_fallback_history(client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.domain.chat.services import ADKRunner
 
     def _noop_init(self: object, *args: object, **kwargs: object) -> None:

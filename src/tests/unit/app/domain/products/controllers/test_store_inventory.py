@@ -37,9 +37,7 @@ async def test_store_inventory_returns_htmx_partial() -> None:
     )
 
     response = await StoreController.store_inventory.fn(
-        StoreController(owner=MagicMock()),
-        stores_service=stores_service,
-        store_id=16,
+        StoreController(owner=MagicMock()), stores_service=stores_service, store_id=16
     )
 
     stores_service.list_store_inventory.assert_awaited_once_with(16)

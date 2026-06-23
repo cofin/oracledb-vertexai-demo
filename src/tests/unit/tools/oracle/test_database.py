@@ -125,10 +125,7 @@ def test_start_reuses_already_running_container_without_recreate() -> None:
     """Starting an already-running container also realigns APP credentials."""
     runtime = MagicMock(spec=ContainerRuntime)
     runtime.container_running.return_value = True
-    runtime.run_command.side_effect = [
-        (0, "healthy\n", ""),
-        (0, "", ""),
-    ]
+    runtime.run_command.side_effect = [(0, "healthy\n", ""), (0, "", "")]
     db = _database(runtime)
 
     db.start()  # idempotent: reuses the running container instead of raising

@@ -188,12 +188,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
 def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
     """Run shell command and return exit code, stdout, stderr."""
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=check,
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, check=check)
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout, e.stderr
     except Exception as e:  # noqa: BLE001
@@ -226,10 +221,7 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
 
 
 def get_antigravity_mcp_config_path(
-    target: AntigravityMCPConfigTarget = "workspace",
-    *,
-    workspace_root: Path | None = None,
-    home: Path | None = None,
+    target: AntigravityMCPConfigTarget = "workspace", *, workspace_root: Path | None = None, home: Path | None = None
 ) -> Path:
     """Return the Antigravity MCP config path for the requested target."""
     if target == "workspace":
@@ -261,11 +253,7 @@ def build_mcp_toolbox_oracle_server_config() -> dict[str, Any]:
     }
 
 
-def build_antigravity_mcp_config(
-    *,
-    include_sqlcl: bool = True,
-    include_mcp_toolbox: bool = True,
-) -> dict[str, Any]:
+def build_antigravity_mcp_config(*, include_sqlcl: bool = True, include_mcp_toolbox: bool = True) -> dict[str, Any]:
     """Build an Antigravity MCP config document for this demo."""
     mcp_servers: dict[str, Any] = {}
     if include_sqlcl:
@@ -285,10 +273,7 @@ def write_antigravity_mcp_config(
 ) -> Path:
     """Merge this demo's MCP servers into an Antigravity MCP config file."""
     config_path = get_antigravity_mcp_config_path(target, workspace_root=workspace_root, home=home)
-    generated = build_antigravity_mcp_config(
-        include_sqlcl=include_sqlcl,
-        include_mcp_toolbox=include_mcp_toolbox,
-    )
+    generated = build_antigravity_mcp_config(include_sqlcl=include_sqlcl, include_mcp_toolbox=include_mcp_toolbox)
 
     existing: dict[str, Any] = {}
     if config_path.exists():

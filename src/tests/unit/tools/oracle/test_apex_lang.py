@@ -21,11 +21,7 @@ TEST_PASSWORD = "SuperSecret1"  # noqa: S105
 
 def _capable_status() -> SQLclCapabilityStatus:
     return SQLclCapabilityStatus(
-        installed=True,
-        capable=True,
-        version="26.1.2.0",
-        minimum="26.1.2",
-        message="SQLcl 26.1.2.0 supports APEXlang",
+        installed=True, capable=True, version="26.1.2.0", minimum="26.1.2", message="SQLcl 26.1.2.0 supports APEXlang"
     )
 
 
@@ -148,9 +144,9 @@ def test_sqlcl_connection_failure_raises_even_with_zero_exit(tmp_path: Path) -> 
         stderr="",
     )
 
-    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
-        ApexLangError,
-        match="Connection failed",
+    with (
+        patch("tools.oracle.apex_lang.subprocess.run", return_value=failed),
+        pytest.raises(ApexLangError, match="Connection failed"),
     ):
         wrapper.import_app(alias="cymbal-coffee-ops")
 
@@ -165,9 +161,9 @@ def test_sqlcl_apexlang_compile_errors_raise_even_with_zero_exit(tmp_path: Path)
         stderr="",
     )
 
-    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
-        ApexLangError,
-        match="APEXLang Compile Errors",
+    with (
+        patch("tools.oracle.apex_lang.subprocess.run", return_value=failed),
+        pytest.raises(ApexLangError, match="APEXLang Compile Errors"),
     ):
         wrapper.import_app(alias="cymbal-coffee-ops")
 
@@ -176,14 +172,11 @@ def test_sqlcl_apexlang_import_errors_raise_even_with_zero_exit(tmp_path: Path) 
     """SQLcl can report APEXlang import errors while still exiting zero."""
     wrapper, _installer, _sql_path = _wrapper(tmp_path)
     failed = SimpleNamespace(
-        args=[],
-        returncode=0,
-        stdout="APEXLang Import Errors:\nFile:\nError: ORA-06550\n",
-        stderr="",
+        args=[], returncode=0, stdout="APEXLang Import Errors:\nFile:\nError: ORA-06550\n", stderr=""
     )
 
-    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
-        ApexLangError,
-        match="APEXLang Import Errors",
+    with (
+        patch("tools.oracle.apex_lang.subprocess.run", return_value=failed),
+        pytest.raises(ApexLangError, match="APEXLang Import Errors"),
     ):
         wrapper.import_app(alias="cymbal-coffee-ops")

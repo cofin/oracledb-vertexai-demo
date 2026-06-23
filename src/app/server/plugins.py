@@ -83,11 +83,7 @@ def _initialize() -> None:
     g["htmx"] = _HTMXPlugin()
     g["flash"] = _FlashPlugin(config=_FlashConfig(template_config=config.template))
     g["domain"] = _DomainPlugin(
-        _DomainPluginConfig(
-            domain_packages=["app.domain"],
-            discover_controllers=True,
-            use_dishka_router=True,
-        ),
+        _DomainPluginConfig(domain_packages=["app.domain"], discover_controllers=True, use_dishka_router=True)
     )
     _initialized = True
 
@@ -96,16 +92,7 @@ def _reset() -> None:
     """Discard cached plugin instances so they are re-created on next access."""
     global _initialized  # noqa: PLW0603
 
-    lazy_names = (
-        "structlog",
-        "granian",
-        "problem_details",
-        "db",
-        "vite",
-        "htmx",
-        "flash",
-        "domain",
-    )
+    lazy_names = ("structlog", "granian", "problem_details", "db", "vite", "htmx", "flash", "domain")
     g = globals()
     for name in lazy_names:
         g.pop(name, None)

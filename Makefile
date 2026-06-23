@@ -256,6 +256,7 @@ lint: ## Run all linting and type checking (Python + frontend)
 format: ## Run code formatters
 	@echo "${INFO} Running code formatters... 🔧"
 	@uv run ruff check --fix --unsafe-fixes
+	@uv run ruff format
 	@echo "${OK} Code formatting complete ✨"
 
 .PHONY: mypy

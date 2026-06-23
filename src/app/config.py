@@ -109,11 +109,7 @@ def _initialize() -> None:
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
     from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
-    from litestar.logging.config import (
-        LoggingConfig,
-        StructLoggingConfig,
-        default_logger_factory,
-    )
+    from litestar.logging.config import LoggingConfig, StructLoggingConfig, default_logger_factory
     from litestar.middleware.logging import LoggingMiddlewareConfig
     from litestar.middleware.session.server_side import ServerSideSessionConfig as _SessionConfig
     from litestar.plugins.jinja import JinjaTemplateEngine
@@ -135,6 +131,7 @@ def _initialize() -> None:
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
 
     from typing import cast
+
     store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
 
     structlog_config = _StructlogConfig(
@@ -172,7 +169,7 @@ def _initialize() -> None:
                     "standard": {
                         "()": "structlog.stdlib.ProcessorFormatter",
                         "processors": log_conf.stdlib_logger_processors(as_json=log_as_json),
-                    },
+                    }
                 },
                 loggers={
                     "sqlspec": {
@@ -196,21 +193,9 @@ def _initialize() -> None:
                         "level": settings.log.GRANIAN_ACCESS_LEVEL,
                         "handlers": ["queue_listener"],
                     },
-                    "google.adk": {
-                        "propagate": False,
-                        "level": settings.log.LEVEL,
-                        "handlers": ["queue_listener"],
-                    },
-                    "google.genai": {
-                        "propagate": False,
-                        "level": settings.log.LEVEL,
-                        "handlers": ["queue_listener"],
-                    },
-                    "google_genai": {
-                        "propagate": False,
-                        "level": settings.log.LEVEL,
-                        "handlers": ["queue_listener"],
-                    },
+                    "google.adk": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
+                    "google.genai": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
+                    "google_genai": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
                     "google_genai.types": {
                         "propagate": False,
                         "level": settings.log.LEVEL,
@@ -220,8 +205,7 @@ def _initialize() -> None:
             ),
         ),
         middleware_logging_config=LoggingMiddlewareConfig(
-            request_log_fields=["method", "path", "path_params", "query"],
-            response_log_fields=["status_code"],
+            request_log_fields=["method", "path", "path_params", "query"], response_log_fields=["status_code"]
         ),
     )
 
@@ -241,10 +225,7 @@ def _initialize() -> None:
     g["problem_details"] = _ProblemDetailsConfig(enable_for_all_http_exceptions=True)
     g["vite"] = settings.vite.get_config()
     g["log"] = structlog_config
-    g["template"] = _TemplateConfig(
-        engine=JinjaTemplateEngine,
-        directory=BASE_DIR / "domain" / "web" / "templates",
-    )
+    g["template"] = _TemplateConfig(engine=JinjaTemplateEngine, directory=BASE_DIR / "domain" / "web" / "templates")
     _initialized = True
 
 

@@ -71,22 +71,14 @@ def _openapi_document() -> dict[str, object]:
             "schemas": {
                 "ApexProductList": {
                     "type": "object",
-                    "properties": {
-                        "items": {
-                            "type": "array",
-                            "items": {"$ref": "#/components/schemas/ApexProduct"},
-                        }
-                    },
+                    "properties": {"items": {"type": "array", "items": {"$ref": "#/components/schemas/ApexProduct"}}},
                 },
                 "ApexProduct": {"type": "object", "properties": {"name": {"type": "string"}}},
                 "ApexRecommendationRequest": {"type": "object", "properties": {"query": {"type": "string"}}},
                 "ApexRecommendationResponse": {
                     "type": "object",
                     "properties": {
-                        "items": {
-                            "type": "array",
-                            "items": {"$ref": "#/components/schemas/ApexRecommendation"},
-                        }
+                        "items": {"type": "array", "items": {"$ref": "#/components/schemas/ApexRecommendation"}}
                     },
                 },
                 "ApexRecommendation": {"type": "object", "properties": {"name": {"type": "string"}}},
@@ -106,10 +98,7 @@ def test_build_apex_catalog_filters_paths_and_referenced_components() -> None:
     assert "/api/chat/stream" not in catalog["paths"]
     assert "/api/products" not in catalog["paths"]
     assert catalog["servers"] == [
-        {
-            "url": "http://localhost:8000",
-            "description": "Local Litestar app for APEX REST Source Catalog import",
-        }
+        {"url": "http://localhost:8000", "description": "Local Litestar app for APEX REST Source Catalog import"}
     ]
     assert catalog["info"] == {"title": "Cymbal Coffee APEX REST Source Catalog", "version": "1.2.3"}
     assert catalog["tags"] == [{"name": "APEX REST Catalog"}]
@@ -129,9 +118,7 @@ def test_export_apex_openapi_catalog_writes_deterministic_json(tmp_path: Path) -
     output_path = tmp_path / "generated" / "apex-catalog.openapi.json"
 
     result = export_apex_openapi_catalog(
-        _openapi_document(),
-        output_path=output_path,
-        server_url="http://127.0.0.1:5006",
+        _openapi_document(), output_path=output_path, server_url="http://127.0.0.1:5006"
     )
 
     assert Path(".agents/generated/apex-catalog.openapi.json") == DEFAULT_APEX_OPENAPI_PATH
