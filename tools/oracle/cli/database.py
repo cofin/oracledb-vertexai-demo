@@ -262,3 +262,14 @@ def _database_status(*, verbose: bool) -> None:
         console.print(f"[bold]Uptime:[/bold] {status_info.uptime}")
     if status_info.ports:
         console.print(f"[bold]Ports:[/bold] {status_info.ports}")
+    ords_status = _build_ords_sidecar(db).status()
+    console.print("\n[bold]ORDS Sidecar:[/bold]")
+    if ords_status is None:
+        console.print("[yellow]Container oracle-ords does not exist[/yellow]")
+        return
+    console.print(f"[bold]Container:[/bold] {ords_status.get('name', 'oracle-ords')}")
+    console.print(f"[bold]Status:[/bold] {ords_status.get('status', 'unknown')}")
+    if image := ords_status.get("image"):
+        console.print(f"[bold]Image:[/bold] {image}")
+    if ports := ords_status.get("ports"):
+        console.print(f"[bold]Ports:[/bold] {ports}")

@@ -281,3 +281,38 @@ def test_infra_remove_also_removes_ords() -> None:
 
     assert result.exit_code == 0
     sidecar.remove.assert_called_once()
+
+
+def test_infra_status_reports_ords_sidecar() -> None:
+    """`infra status --verbose` includes ORDS sidecar state with the DB status."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import database as cli_db
+
+    runner = CliRunner()
+    db = MagicMock()
+    db.config.container_name = "oracle-free-db"
+    db.status.return_value.exists = True
+    db.status.return_value.running = True
+    db.status.return_value.healthy = True
+    db.status.return_value.image = "gvenzl/oracle-free:latest"
+    db.status.return_value.created_at = "2026-06-23"
+    db.status.return_value.uptime = "1 hour"
+    db.status.return_value.ports = "1521/tcp"
+    sidecar = MagicMock()
+    sidecar.status.return_value = {
+        "name": "oracle-ords",
+        "running": "true",
+        "image": "container-registry.oracle.com/database/ords:latest",
+        "ports": "8443/tcp",
+    }
+    with (
+        patch.object(cli_db, "_database", return_value=db),
+        patch.object(cli_db, "_build_ords_sidecar", return_value=sidecar),
+    ):
+        result = runner.invoke(cli_db.database_status, ["--verbose"])
+
+    assert result.exit_code == 0
+    assert "ORDS Sidecar" in result.output
+    assert "oracle-ords" in result.output
+    assert "8443/tcp" in result.output
+    sidecar.status.assert_called_once()

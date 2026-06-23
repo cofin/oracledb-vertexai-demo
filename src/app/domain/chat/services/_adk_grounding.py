@@ -93,11 +93,32 @@ def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
         answer += f": {description}"
     else:
         answer += "."
+    stock_sentence = _format_product_match_stock_sentence(first)
+    if stock_sentence:
+        answer += f" {stock_sentence}"
 
     if len(menu_products) > 1:
         second = menu_products[1]
         answer += f" Another good menu option is {second['name']}{_format_price(second.get('price'))}."
     return answer
+
+
+def _format_product_match_stock_sentence(product: dict[str, Any]) -> str:
+    store_name = _get_field(product, "store_name")
+    status = _get_field(product, "stock_status")
+    if not store_name or not status:
+        return ""
+    status_str = str(status).replace("_", " ").title()
+    answer = f"At {store_name}, this is {status_str.lower()}"
+    quantity = _get_field(product, "quantity_available")
+    if isinstance(quantity, int | float):
+        answer += f" with {int(quantity)} on hand"
+    pickup_available = _get_field(product, "pickup_available")
+    if pickup_available is True:
+        answer += " and pickup available"
+    elif pickup_available is False:
+        answer += " and pickup unavailable"
+    return answer + "."
 
 
 _GROUNDED_ANSWER_TEMPERATURE = 0
@@ -562,6 +583,9 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
     products = _coerce_products(result.get("products"))
     if products:
         metric_state["rag_products"] = products
+        inventory_products = [product for product in products if _get_field(product, "store_id") is not None]
+        if inventory_products:
+            metric_state["inventory_results"] = inventory_products
     products_found = int(result.get("results_count") or len(products))
     search_metrics = metric_state.setdefault("search_metrics", {})
     tool_metrics = result.get("search_metrics")
@@ -579,10 +603,14 @@ async def _ground_product_rag_turn(
     query: str,
     metric_state: dict[str, Any],
     tools_service: Any,
+    *,
+    store_id: int | None = None,
 ) -> str:
     products = _coerce_products(metric_state.get("rag_products"))
+    if store_id is not None and not any(_get_field(product, "store_id") == store_id for product in products):
+        products = []
     if not products:
-        fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5)
+        fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5, store_id=store_id)
         _record_product_search_result(metric_state, fallback_result, query)
         products = _coerce_products(metric_state.get("rag_products"))
     return await _compose_grounded_answer(query, products, tools_service, metric_state)

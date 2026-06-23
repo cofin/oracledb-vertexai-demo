@@ -125,6 +125,19 @@ async def test_find_stores_with_product_returns_typed_rows_and_sorts_by_coordina
     assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
 
 
+async def test_list_store_inventory_uses_named_query_and_typed_rows(mock_driver) -> None:
+    mock_driver.select = AsyncMock(return_value=[])
+    service = StoreService(mock_driver)
+
+    rows = await service.list_store_inventory(16)
+
+    assert rows == []
+    statement = mock_driver.select.await_args.args[0]
+    assert "WHERE spi.store_id = :store_id" in str(statement.sql)
+    assert mock_driver.select.await_args.kwargs["store_id"] == 16
+    assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
+
+
 async def test_find_product_availability_does_not_filter_location_hint(mock_driver) -> None:
     mock_driver.select = AsyncMock(
         return_value=[

@@ -115,7 +115,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
         embedding_purpose="query",
         return_cache_status=True,
     )
-    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2)
+    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=None)
     metrics_service.record_search.assert_awaited_once()
     metrics = metrics_service.record_search.await_args.args[0]
     assert metrics.user_id == "chat"
@@ -134,6 +134,40 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     assert result["sql_phases"][1]["binds"]["query_vector"].startswith("<VECTOR[2 FLOAT32], sha256=")
     assert result["sql_phases"][1]["binds"]["query_vector"].endswith(">")
     assert result["sql_phases"][1]["binds"]["query_vector"] != str([0.1, 0.2])
+
+
+async def test_agent_tools_vector_search_passes_store_id_and_records_store_sql_key(mock_driver) -> None:
+    from app.domain.chat.services.adk import AgentToolsService
+
+    product_service = MagicMock()
+    product_service.search_by_vector = AsyncMock(
+        return_value=[{"id": 1, "name": "Midnight Brew", "store_id": 16}]
+    )
+    vertex_ai_service = MagicMock()
+    vertex_ai_service.embedding_model = "gemini-embedding-2-preview"
+    vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], False))
+    metrics_service = MagicMock()
+    metrics_service.record_search = AsyncMock()
+
+    tools_service = AgentToolsService(
+        driver=mock_driver,
+        product_service=product_service,
+        metrics_service=metrics_service,
+        vertex_ai_service=vertex_ai_service,
+        store_service=MagicMock(),
+        cache_service=MagicMock(),
+    )
+
+    result = await tools_service.search_products_by_vector(
+        "dark roast",
+        limit=2,
+        similarity_threshold=0.4,
+        store_id=16,
+    )
+
+    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=16)
+    assert result["sql_phases"][1]["sql_key"] == "vector-search-products-by-store"
+    assert result["sql_phases"][1]["binds"]["store_id"] == 16
 
 
 async def test_get_product_details_closure_delegates_to_tools_service() -> None:
@@ -223,6 +257,35 @@ async def test_agent_tools_store_query_results_include_masked_sql_phases(mock_dr
     assert result["sql_phases"][0]["binds"] == {"origin": "<REQUEST_COORDINATES>", "limit": 5}
 
 
+async def test_stream_request_skips_response_cache_for_safe_location_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    allow_vertex_config(monkeypatch, adk_module)
+    session_service = make_session_service(session=make_session())
+    tools_service = make_tools_service()
+    tools_service.get_cached_chat_response = AsyncMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="chat:key")
+    classifier = MagicMock()
+    classifier.classify.return_value = "ORDER_STATUS"
+    runner = make_runner(session_service=session_service, classifier=classifier)
+
+    events = [
+        event
+        async for event in runner.stream_request(
+            "where can I get an order in Dallas?",
+            user_id="u1",
+            session_id="s1",
+            persona="friendly",
+            tools_service=tools_service,
+            location_context={"city": "Dallas"},
+        )
+    ]
+
+    assert events[-1]["intent_detected"] == "ORDER_STATUS"
+    tools_service.make_response_cache_key.assert_not_called()
+    tools_service.get_cached_chat_response.assert_not_awaited()
+
+
 def test_build_workflow_wires_agent_instruction_temperature_and_credential_guard() -> None:
     from google.adk import Workflow
 
@@ -301,7 +364,7 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
     assert [event["type"] for event in events] == ["final"]
     assert "Wakey Wakey Waffles" in events[0]["answer"]
     assert events[0]["intent_detected"] == "PRODUCT_RAG"
-    tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5)
+    tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5, store_id=None)
 
 
 async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(monkeypatch: Any) -> None:

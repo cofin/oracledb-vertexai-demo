@@ -19,3 +19,13 @@
   SQLSpec loader smoke for `migrate-0001-up`/`migrate-0001-down`, and
   `make docs`. Oracle runtime migration smoke remains pending because it needs
   a clean Oracle 26ai schema.
+
+## 2026-06-23
+
+- Do not archive `oracle-schema-annotations` until a clean Oracle 26ai runtime
+  migration has asserted the annotations in `USER_ANNOTATIONS_USAGE` or the
+  repo's equivalent runtime metadata query. Static SQL/unit/docs checks are not
+  enough for this flow's open verification gate.
+- This flow still has no matching Beads epic, so archive or closeout work first
+  needs Beads reconciliation before the markdown registry can be treated as
+  complete.

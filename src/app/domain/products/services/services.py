@@ -82,13 +82,24 @@ class ProductService(OracleAsyncService):
 
     # docs:start-search-by-vector
     async def search_by_vector(
-        self, query_embedding: list[float], similarity_threshold: float = 0.7, limit: int = 5
+        self,
+        query_embedding: list[float],
+        similarity_threshold: float = 0.7,
+        limit: int = 5,
+        *,
+        store_id: int | None = None,
     ) -> list[ProductMatch]:
+        sql_key = "vector-search-products-by-store" if store_id is not None else "vector-search-products"
+        binds: dict[str, Any] = {
+            "query_vector": query_embedding,
+            "threshold": similarity_threshold,
+            "limit": limit,
+        }
+        if store_id is not None:
+            binds["store_id"] = store_id
         return await self.driver.select(
-            db_manager.get_sql("vector-search-products"),
-            query_vector=query_embedding,
-            threshold=similarity_threshold,
-            limit=limit,
+            db_manager.get_sql(sql_key),
+            **binds,
             schema_type=ProductMatch,
         )
 
@@ -185,6 +196,13 @@ class StoreService(OracleAsyncService):
             schema_type=ProductAvailability,
         )
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
+
+    async def list_store_inventory(self, store_id: int) -> list[ProductAvailability]:
+        return await self.driver.select(
+            db_manager.get_sql("list-store-inventory"),
+            store_id=store_id,
+            schema_type=ProductAvailability,
+        )
 
     async def find_product_availability(
         self,

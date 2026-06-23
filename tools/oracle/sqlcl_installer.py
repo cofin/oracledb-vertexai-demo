@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import shutil
 import tempfile
 import zipfile
@@ -41,6 +42,17 @@ class SQLclConfig:
         """Set derived paths."""
         if self.sqlcl_dir is None:
             self.sqlcl_dir = self.install_dir.parent / "sqlcl"
+
+
+@dataclass(frozen=True)
+class SQLclCapabilityStatus:
+    """SQLcl APEXlang capability details."""
+
+    installed: bool
+    capable: bool
+    version: str | None
+    minimum: str
+    message: str
 
 
 class SQLclInstaller:
@@ -141,8 +153,15 @@ class SQLclInstaller:
         Returns:
             bool: True if sql command exists in install directory
         """
+        return self.sql_path() is not None
+
+    def sql_path(self) -> Path | None:
+        """Resolve the SQLcl ``sql`` executable from the install dir or PATH."""
         sql_path = self.config.install_dir / "sql"
-        return sql_path.exists()
+        if sql_path.exists():
+            return sql_path
+        resolved = shutil.which("sql")
+        return Path(resolved) if resolved else None
 
     def get_version(self) -> str | None:
         """Get installed SQLcl version.
@@ -152,14 +171,15 @@ class SQLclInstaller:
 
         Executes: sql -V
         """
-        if not self.is_installed():
+        sql_path = self.sql_path()
+        if sql_path is None:
             return None
 
         with contextlib.suppress(Exception):
             import subprocess
 
             result = subprocess.run(
-                [str(self.config.install_dir / "sql"), "-V"],
+                [str(sql_path), "-V"],
                 capture_output=True,
                 text=True,
                 timeout=5,
@@ -169,6 +189,65 @@ class SQLclInstaller:
                 return result.stdout.strip()
 
         return None
+
+    @staticmethod
+    def parse_version(output: str) -> tuple[int, ...] | None:
+        """Parse a SQLcl version tuple from ``sql -V`` output."""
+        match = re.search(r"(?:Release|Version)\s+(\d+(?:\.\d+)+)", output, re.IGNORECASE)
+        if not match:
+            return None
+        return tuple(int(part) for part in match.group(1).split("."))
+
+    @staticmethod
+    def _normalise_version(version: tuple[int, ...], width: int) -> tuple[int, ...]:
+        """Pad a version tuple to a comparable width."""
+        return (*version, *((0,) * max(width - len(version), 0)))
+
+    @classmethod
+    def _format_version(cls, version: tuple[int, ...] | None) -> str | None:
+        """Format a parsed version tuple for messages."""
+        if version is None:
+            return None
+        return ".".join(str(part) for part in version)
+
+    def apexlang_status(self, *, minimum: str = "26.1.2") -> SQLclCapabilityStatus:
+        """Return whether the installed SQLcl can run APEXlang commands."""
+        raw_version = self.get_version()
+        if raw_version is None:
+            return SQLclCapabilityStatus(
+                installed=False,
+                capable=False,
+                version=None,
+                minimum=minimum,
+                message="SQLcl is not installed. Run: uv run python manage.py install sqlcl",
+            )
+
+        parsed = self.parse_version(raw_version)
+        minimum_tuple = tuple(int(part) for part in minimum.split("."))
+        width = max(len(parsed or ()), len(minimum_tuple))
+        capable = parsed is not None and self._normalise_version(parsed, width) >= self._normalise_version(
+            minimum_tuple, width
+        )
+        version = self._format_version(parsed)
+        if capable:
+            return SQLclCapabilityStatus(
+                installed=True,
+                capable=True,
+                version=version,
+                minimum=minimum,
+                message=f"SQLcl {version} supports APEXlang",
+            )
+        return SQLclCapabilityStatus(
+            installed=True,
+            capable=False,
+            version=version,
+            minimum=minimum,
+            message=f"SQLcl {minimum} or newer is required for APEXlang. Found: {raw_version}",
+        )
+
+    def is_apexlang_capable(self, *, minimum: str = "26.1.2") -> bool:
+        """Return ``True`` when SQLcl meets the APEXlang version floor."""
+        return self.apexlang_status(minimum=minimum).capable
 
     def download(self, dest_dir: Path) -> Path:
         """Download SQLcl zip file.

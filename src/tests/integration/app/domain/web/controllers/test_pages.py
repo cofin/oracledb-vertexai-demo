@@ -100,6 +100,7 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
     for panel_id in (
         "panel-vector-search",
         "panel-explain-plan",
+        "panel-store-inventory",
         "panel-metrics-summary",
         "panel-latency-chart",
         "panel-vector-calculator",
@@ -107,6 +108,9 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
         assert f'id="{panel_id}"' in body, f"explore page must render panel {panel_id}"
     assert 'data-ui-panel="vector-search"' in body
     assert 'data-ui-panel="explain-plan"' in body
+    assert 'data-ui-panel="store-inventory"' in body
+    assert 'hx-get="/api/stores/' in body
+    assert 'id="store-inventory-results"' in body
     assert 'data-ui-panel="vector-calculator"' in body
     assert "Vector storage calculator" in body
     assert "1 ·" not in body

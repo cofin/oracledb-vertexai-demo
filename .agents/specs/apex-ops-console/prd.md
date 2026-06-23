@@ -112,6 +112,11 @@ Findings:
 
 - Oracle publishes `oracle/skills` as source-backed, installable skills for
   Oracle technologies.
+- Oracle's documented install shape is `npx skills add oracle/skills/<domain>`.
+  Because `apex` and `db` are root-level domain folders, the exact commands for
+  this PRD are:
+  - `npx skills add oracle/skills/apex`
+  - `npx skills add oracle/skills/db`
 - The official top-level skills to use for this work are `apex` and `db`.
   There is not a separate top-level ORDS skill; ORDS guidance lives under the
   Database skill in `db/ords/`.
@@ -122,10 +127,14 @@ Findings:
   DBMS_VECTOR, Oracle container images, and agent-safe database workflows.
 - The Database skill's recommended MCP path is SQLcl basics, least-privilege
   privileges, then `db/sqlcl/sqlcl-mcp-server.md`.
-- The repository ships a Claude plugin marketplace for `apex` and `db`. For
-  this PRD, treat Oracle Skills as official guidance to install or reference,
-  not as vendored application source, unless a later implementation decision
-  deliberately vendors a pinned copy.
+- The repository ships `.claude-plugin/marketplace.json`, including Claude
+  plugin entries for `apex` and `db`. Treat that file as useful source
+  inventory for Claude Code only; it is not the Antigravity plugin contract.
+- For this PRD, treat Oracle Skills as official guidance to install or
+  reference, not as vendored application source. Do not copy or sync Oracle
+  Skills into this repo's `.agents/skills/`, and do not create
+  `.agents/plugins/oracle-skills/`, unless a later PRD deliberately owns a
+  pinned-vendor policy.
 
 ### APEX REST Source Catalogs and OpenAPI
 
@@ -156,9 +165,19 @@ Findings:
 - Antigravity CLI global MCP config is `~/.gemini/antigravity-cli/mcp_config.json`.
 - Antigravity CLI workspace MCP config is `.agents/mcp_config.json`.
 - Antigravity plugins can include a plugin-root `mcp_config.json`.
+- Antigravity IDE workspace skills live under
+  `<workspace-root>/.agents/skills/<skill-folder>/`; IDE global skills live
+  under `~/.gemini/antigravity/skills/<skill-folder>/`.
 - Antigravity CLI keeps workspace rules in `AGENTS.md` / `GEMINI.md`, moves
   workspace skills from `.gemini/skills/` to `.agents/skills/`, and supports
   workspace MCP in `.agents/mcp_config.json`.
+- Antigravity CLI global skills live under
+  `~/.gemini/antigravity-cli/skills/`. CLI workspace skills live under
+  `.agents/skills/`.
+- Antigravity CLI plugins are installable bundles with `plugin.json` and
+  optional `mcp_config.json`, but the documented install flow stages plugins in
+  the user's global Antigravity CLI config. A checked-in workspace plugin is
+  unnecessary for Oracle Skills guidance in this demo.
 - Modern remote MCP config uses `serverUrl`. Legacy `url` or `httpUrl` keys
   are migration-era details and should not be emitted by this repo.
 
@@ -315,11 +334,20 @@ Finding:
    cache behavior.
 
 9. **Use official Oracle Skills as the APEX/ORDS/SQLcl guidance layer.**
-   Document and optionally install the Oracle `apex` and `db` skills for
-   Antigravity/Codex-compatible agent workflows. Do not invent local APEXlang or
-   ORDS instructions when the official skills already cover the topic. Keep MCP
+   Document the Oracle `apex` and `db` skills for Antigravity/Codex-compatible
+   agent workflows using `npx skills add oracle/skills/apex` and
+   `npx skills add oracle/skills/db`. Do not invent local APEXlang or ORDS
+   instructions when the official skills already cover the topic. Keep MCP
    Toolbox support because it demonstrates Google's database MCP path; pair it
    with Oracle SQLcl MCP rather than replacing one with the other.
+
+10. **Do not vendor Oracle Skills in this PRD.**
+    The installer/docs may print exact Oracle Skills commands and Antigravity
+    skill paths, but implementation must not add
+    `manage.py install oracle-skills --workspace`, must not sync Oracle Skills
+    into `.agents/skills/`, and must not create a workspace plugin at
+    `.agents/plugins/oracle-skills/`. That keeps Oracle's guidance current via
+    the official source while avoiding stale vendored copies in this demo repo.
 
 ---
 
@@ -384,7 +412,10 @@ Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
 - Add clean Antigravity MCP config generation for SQLcl MCP, MCP Toolbox for
   Oracle, and optional app MCP.
 - Re-add `manage.py install mcp-toolbox` or a clearly named equivalent.
-- Add install/check guidance for the official Oracle `apex` and `db` skills.
+- Add print-only install/check guidance for the official Oracle `apex` and
+  `db` skills, including the exact `npx skills add oracle/skills/apex` and
+  `npx skills add oracle/skills/db` commands. Do not add an Oracle Skills
+  workspace sync command or plugin.
 - Remove the implementation path that writes Gemini CLI MCP config to
   `~/.gemini/settings.json`.
 
@@ -412,7 +443,8 @@ Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
 - Add Sphinx docs for the APEX app, APEXlang lifecycle, REST Source Catalog
   bridge, and "MCP configuration and usage in Antigravity".
 - Add a documented "official Oracle Skills" section that explains `apex` and
-  `db`, where ORDS lives, and how they complement SQLcl MCP and MCP Toolbox.
+  `db`, the exact `npx skills add` commands, where ORDS lives, and why the demo
+  does not vendor those skills into `.agents/skills/` or an Antigravity plugin.
 - Keep the formal lab content uploadable as one markdown file; Sphinx should
   include or reference that single markdown source rather than splitting it
   into many lab fragments.
@@ -455,7 +487,9 @@ Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
   the current MCP Toolbox package, and emits Oracle config guidance.
 - Official Oracle `apex` and `db` skills are documented as the source-backed
   agent guidance for APEXlang, ORDS, SQLcl MCP, vector search, and container
-  selection.
+  selection. The docs show `npx skills add oracle/skills/apex` and
+  `npx skills add oracle/skills/db`, and the implementation does not vendor or
+  sync Oracle Skills into repo-local Antigravity paths.
 - Old Gemini CLI MCP config writes to `~/.gemini/settings.json` are gone from
   touched installer paths.
 - `make lint` and `make test` pass for code changes, with additional APEX/ORDS
@@ -484,3 +518,5 @@ No product decision blocks implementation. Defaults:
 - Generate both Antigravity IDE and CLI MCP configs, with workspace config in
   `.agents/mcp_config.json` and plugin examples as optional docs.
 - Keep MCP Toolbox and APEX REST Source Catalogs separate in UI text and docs.
+- Keep Oracle Skills guidance source-backed and print-only; no workspace skill
+  sync or `.agents/plugins/oracle-skills/` package in this PRD.

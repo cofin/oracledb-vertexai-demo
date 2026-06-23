@@ -67,6 +67,12 @@
   status.
 - Store/location/inventory work stays in the products domain: seed coordinates,
   Dallas, and curated inventory; route store answers from service facts.
+- Store selectors and inventory UI must be driven by `StoreService` and fixture
+  data. Do not hardcode a few store IDs in Jinja as "presets"; that silently
+  narrows the demo to those locations and drifts from the seeded store list.
+- Store-aware product RAG must vary or bypass response-cache reads whenever
+  safe location/store context is present, so one store's inventory answer is not
+  reused for another store.
 - Maps URLs are the no-key baseline. Browser coordinates are opt-in and
   request-scoped; embeds require a separate restricted Maps Embed key.
 - Frontend pages are HTMX + Jinja + Tailwind v4 + vanilla JavaScript/ApexCharts

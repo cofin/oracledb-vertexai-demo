@@ -25,12 +25,23 @@ Official guidance to include:
 
 - Oracle APEX 26.1 APEXlang docs.
 - Oracle Skills `apex` and `db` domains:
+  - `npx skills add oracle/skills/apex`
+  - `npx skills add oracle/skills/db`
   - APEXlang generation
   - ORDS
   - SQLcl MCP
   - Oracle vector search
   - container selection
-- Antigravity MCP config docs.
+- Antigravity MCP config docs:
+  - IDE custom MCP config: `~/.gemini/config/mcp_config.json`
+  - CLI global MCP config: `~/.gemini/antigravity-cli/mcp_config.json`
+  - CLI workspace MCP config: `.agents/mcp_config.json`
+  - plugin-root MCP config: `mcp_config.json`
+- Antigravity skill path docs:
+  - IDE workspace skills: `<workspace-root>/.agents/skills/<skill-folder>/`
+  - IDE global skills: `~/.gemini/antigravity/skills/<skill-folder>/`
+  - CLI workspace skills: `.agents/skills/`
+  - CLI global skills: `~/.gemini/antigravity-cli/skills/`
 - Google MCP Toolbox Oracle docs.
 
 ## Requirements
@@ -60,6 +71,7 @@ Official guidance to include:
   - MCP Toolbox for Oracle
   - optional app MCP
   - clean config examples, no Gemini CLI migration
+  - source-backed Oracle Skills install guidance; no vendored workspace copy
 - `docs/reference/brand-assets.md`
   - official-logo sources and usage notes
 - `docs/lab.md`
@@ -86,6 +98,8 @@ editing.
   `uv run python manage.py install mcp-toolbox --dry-run`
 - Antigravity workspace config:
   `test -f .agents/mcp_config.json`
+- Oracle Skills are not vendored:
+  `test ! -d .agents/plugins/oracle-skills`
 - Docs:
   `make docs`
 
@@ -96,6 +110,13 @@ editing.
 - [ ] Add the "MCP configuration and usage in Antigravity" section.
 - [ ] Add official Oracle Skills section explaining `apex`, `db`, and that ORDS
   lives under `db/ords/`.
+- [ ] Include exact Oracle Skills install commands:
+  `npx skills add oracle/skills/apex` and
+  `npx skills add oracle/skills/db`.
+- [ ] Explain that the demo does not add
+  `manage.py install oracle-skills --workspace`, does not sync Oracle Skills
+  into `.agents/skills/`, and does not create
+  `.agents/plugins/oracle-skills/`.
 - [ ] Add smoke verification command block and expected outcomes.
 - [ ] Ensure the formal lab remains a single markdown file.
 - [ ] Run docs build and targeted smoke checks where runtime is available.
@@ -104,7 +125,7 @@ editing.
 
 - Sphinx exposes the latest formal lab and the APEX/MCP teaching sections.
 - Docs clearly distinguish APEX REST Source Catalogs from MCP.
-- Oracle Skills are documented as the official Oracle guidance path.
+- Oracle Skills are documented as the official Oracle guidance path with exact
+  install commands and no repo-local vendored copy.
 - Runtime smoke commands are documented and run where possible.
 - The lab content remains uploadable as a single markdown file.
-

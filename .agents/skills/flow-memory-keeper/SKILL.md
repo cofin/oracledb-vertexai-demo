@@ -121,3 +121,6 @@ Before claiming a task, phase, or flow is complete, verify:
   When recreating missing local Flow records with explicit IDs, use that prefix
   and attach hierarchy after creation with `bd update <id> --parent <parent>`;
   `bd create --id ... --parent ...` is rejected by this Beads version.
+- Inventory UI selectors must be data-driven from `StoreService`/fixtures, not
+  hardcoded store preset arrays. Treat user pushback on fixed location lists as
+  a workflow correction that belongs in `.agents/patterns.md`.

@@ -1,0 +1,44 @@
+{#
+SPDX-FileCopyrightText: 2026 Google LLC
+SPDX-License-Identifier: Apache-2.0
+#}
+
+{% if inventory %}
+  <div class="space-y-2" data-inventory-list="true" data-store-id="{{ store_id }}">
+    {% for item in inventory %}
+      {% set status = item.stock_status | replace("_", " ") | title %}
+      <article class="rounded-lg border border-border bg-surface-strong/55 px-3 py-2">
+        <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
+          <div class="min-w-0">
+            <h3 class="truncate text-sm font-semibold text-strong">{{ item.product_name }}</h3>
+            <p class="mt-1 text-xs text-muted">
+              {{ item.store_name }}{% if item.product_category %} · {{ item.product_category }}{% endif %}
+            </p>
+          </div>
+          <span class="telemetry-chip border-border bg-surface text-muted">{{ status }}</span>
+        </div>
+        <dl class="mt-2 grid grid-cols-3 gap-2 text-xs">
+          <div>
+            <dt class="text-muted">On hand</dt>
+            <dd class="font-semibold text-strong">{{ item.quantity_available }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted">Pickup</dt>
+            <dd class="font-semibold text-strong">{{ "Yes" if item.pickup_available else "No" }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted">Price</dt>
+            <dd class="font-semibold text-strong">
+              {% if item.product_price is not none %}${{ "%.2f"|format(item.product_price) }}{% else %}—{% endif %}
+            </dd>
+          </div>
+        </dl>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="rounded-lg border border-dashed border-border bg-surface px-3 py-2 text-xs text-muted"
+    data-inventory-empty="true" data-store-id="{{ store_id }}">
+    No live inventory rows are available for this store yet.
+  </p>
+{% endif %}

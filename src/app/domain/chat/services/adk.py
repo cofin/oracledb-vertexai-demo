@@ -30,7 +30,6 @@ from app.domain.chat.services._adk_grounding import (
     _format_store_location_answer,
     _get_field,
     _ground_product_rag_turn,
-    _has_browser_coordinates,
     _record_product_search_result,
     _request_coordinates,
     _safe_location_context,
@@ -137,6 +136,15 @@ def _final_event(
     }
 
 
+def _inventory_response_payload(metric_state: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """Return inventory rows and map actions recorded during store-aware RAG."""
+    inventory_results = _coerce_dict_rows(metric_state.get("inventory_results"))
+    return {
+        "inventory_results": inventory_results,
+        "map_actions": _build_map_actions(inventory_results),
+    }
+
+
 class AgentToolsService(OracleAsyncService):
     """Business logic invoked by closure-bound ADK tools."""
 
@@ -157,7 +165,12 @@ class AgentToolsService(OracleAsyncService):
         self.cache_service = cache_service
 
     async def search_products_by_vector(
-        self, query: str, limit: int | None = None, similarity_threshold: float | None = None
+        self,
+        query: str,
+        limit: int | None = None,
+        similarity_threshold: float | None = None,
+        *,
+        store_id: int | None = None,
     ) -> dict[str, Any]:
         chat = get_settings().chat
         limit = chat.product_search_limit if limit is None else limit
@@ -171,10 +184,23 @@ class AgentToolsService(OracleAsyncService):
         embedding_ms = (time.time() - embedding_start) * 1000
 
         oracle_start = time.time()
-        products = await self.product_service.search_by_vector(embedding, similarity_threshold, limit)
+        products = await self.product_service.search_by_vector(
+            embedding,
+            similarity_threshold,
+            limit,
+            store_id=store_id,
+        )
         oracle_ms = (time.time() - oracle_start) * 1000
         tool_total_ms = embedding_ms + oracle_ms
         model = str(getattr(self.vertex_ai_service, "embedding_model", "unknown"))
+        vector_sql_key = "vector-search-products-by-store" if store_id is not None else "vector-search-products"
+        vector_binds: dict[str, Any] = {
+            "query_vector": _summarize_vector(embedding),
+            "threshold": similarity_threshold,
+            "limit": limit,
+        }
+        if store_id is not None:
+            vector_binds["store_id"] = store_id
         await self.metrics_service.record_search(
             SearchMetricsCreate(
                 query_id=str(uuid.uuid4()),
@@ -208,12 +234,8 @@ class AgentToolsService(OracleAsyncService):
                 ),
                 _sql_phase(
                     label="Oracle vector search",
-                    sql_key="vector-search-products",
-                    binds={
-                        "query_vector": _summarize_vector(embedding),
-                        "threshold": similarity_threshold,
-                        "limit": limit,
-                    },
+                    sql_key=vector_sql_key,
+                    binds=vector_binds,
                     row_count=len(products),
                     runtime_ms=oracle_ms,
                     cache_status="miss",
@@ -652,13 +674,20 @@ class ADKRunner:
         location_context: dict[str, Any] | None,
     ) -> dict[str, Any]:
         metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
-        answer = await _ground_product_rag_turn(query, metric_state, tools_service)
+        target_store = await self._resolve_rag_store(tools_service=tools_service, query=query, location_context=location_context)
+        answer = await _ground_product_rag_turn(
+            query,
+            metric_state,
+            tools_service,
+            store_id=target_store.id if target_store else None,
+        )
         elapsed_ms = (time.time() - start) * 1000
         search_metrics = dict(metric_state.get("search_metrics", {}))
         search_metrics["total_ms"] = round(elapsed_ms)
         product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
         products = metric_state.get("rag_products", [])
         last_products = [p["name"] for p in products] if products else None
+        inventory_payload = _inventory_response_payload(metric_state)
         response_data = {
             "answer": answer,
             "intent_detected": _PRODUCT_RAG_INTENT,
@@ -666,8 +695,7 @@ class ADKRunner:
             "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
             "sql_phases": product_sql_phases,
             "store_results": [],
-            "inventory_results": [],
-            "map_actions": [],
+            **inventory_payload,
             "last_products": last_products,
         }
         if answer:
@@ -689,6 +717,8 @@ class ADKRunner:
             search_metrics=search_metrics,
             sql_phases=([response_cache_phase] if response_cache_phase else []) + product_sql_phases,
             embedding_cache_hit=bool(metric_state.get("embedding_cache_hit")),
+            inventory_results=inventory_payload["inventory_results"],
+            map_actions=inventory_payload["map_actions"],
             location_context=location_context,
         )
 
@@ -884,6 +914,25 @@ class ADKRunner:
             )
         return None
 
+    async def _resolve_rag_store(
+        self,
+        *,
+        tools_service: AgentToolsService,
+        query: str,
+        location_context: dict[str, Any] | None,
+    ) -> Any | None:
+        coordinates = _request_coordinates(location_context)
+        location_hint = (location_context or {}).get("store_name") if location_context else None
+        if not location_hint:
+            filters = _extract_location_filters(query, location_context)
+            location_hint = " ".join(str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]) or None
+        if not location_hint and not coordinates:
+            return None
+        return await tools_service.store_service.resolve_store(
+            location_hint=str(location_hint) if location_hint else None,
+            coordinates=coordinates,
+        )
+
     async def stream_request(
         self,
         query: str,
@@ -914,11 +963,11 @@ class ADKRunner:
                 app_name=get_settings().chat.session_app_name, user_id=user_id, session_id=session_id
             )
 
-        # Browser coordinates are request-scoped, so consented turns skip the response cache.
+        # Location context is request-scoped to the turn, so store-specific answers skip the response cache.
         cache_key: str | None = None
         response_cache_phase: dict[str, Any] | None = None
         cached_response: dict[str, Any] | None = None
-        if not _has_browser_coordinates(location_context):
+        if not _safe_location_context(location_context):
             cache_key = tools_service.make_response_cache_key(query, persona)
             cache_start = time.time()
             cached_response = await tools_service.get_cached_chat_response(cache_key)
@@ -996,14 +1045,19 @@ class ADKRunner:
             ClientError: If the Gemini client fails for a non-credential reason.
             ValueError: If ADK raises a non-credential validation error.
         """
-        instruction = self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION)
-
         metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
         tools = self._make_tool_factories(tools_service, metric_state)
-        workflow = self._build_workflow(instruction, self._persona_manager.get_temperature(persona), tools)
+        workflow = self._build_workflow(
+            self._persona_manager.get_system_prompt(persona, BASE_SYSTEM_INSTRUCTION),
+            self._persona_manager.get_temperature(persona),
+            tools,
+        )
 
-        runner = Runner(node=workflow, app_name=get_settings().chat.session_app_name, session_service=self._session_service)
-        events = runner.run_async(
+        events = Runner(
+            node=workflow,
+            app_name=get_settings().chat.session_app_name,
+            session_service=self._session_service,
+        ).run_async(
             user_id=user_id,
             session_id=session.id,
             new_message=types.Content(role="user", parts=[types.Part(text=query)]),
@@ -1039,13 +1093,24 @@ class ADKRunner:
             product_sql_phases,
         )
         if intent_detected == _PRODUCT_RAG_INTENT:
-            answer = await _ground_product_rag_turn(query, metric_state, tools_service)
+            target_store = await self._resolve_rag_store(
+                tools_service=tools_service,
+                query=query,
+                location_context=location_context,
+            )
+            answer = await _ground_product_rag_turn(
+                query,
+                metric_state,
+                tools_service,
+                store_id=target_store.id if target_store else None,
+            )
             elapsed_ms = (time.time() - start) * 1000
             search_metrics = dict(metric_state.get("search_metrics", {}))
             search_metrics["total_ms"] = round(elapsed_ms)
             product_sql_phases = _coerce_sql_phases(metric_state.get("sql_phases"))
         sql_phases = ([response_cache_phase] if response_cache_phase else []) + product_sql_phases
 
+        inventory_payload = _inventory_response_payload(metric_state)
         if answer:
             if cache_key:
                 await tools_service.set_cached_chat_response(
@@ -1057,8 +1122,7 @@ class ADKRunner:
                         "embedding_cache_hit": bool(metric_state.get("embedding_cache_hit")),
                         "sql_phases": product_sql_phases,
                         "store_results": [],
-                        "inventory_results": [],
-                        "map_actions": [],
+                        **inventory_payload,
                     },
                 )
             await self._append_display_history(
@@ -1077,6 +1141,8 @@ class ADKRunner:
             search_metrics=search_metrics,
             sql_phases=sql_phases,
             embedding_cache_hit=bool(metric_state.get("embedding_cache_hit")),
+            inventory_results=inventory_payload["inventory_results"],
+            map_actions=inventory_payload["map_actions"],
             location_context=location_context,
         )
 

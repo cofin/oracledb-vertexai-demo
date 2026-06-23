@@ -114,6 +114,11 @@ class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
     description: str
     price: float
     similarity_score: float
+    store_id: int | None = None
+    store_name: str | None = None
+    quantity_available: int | None = None
+    stock_status: StockStatus | None = None
+    pickup_available: bool | None = None
 
 
 class VectorDemoMatch(CamelizedBaseStruct, omit_defaults=True):

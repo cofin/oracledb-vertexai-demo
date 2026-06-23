@@ -16,6 +16,8 @@ from app.domain.chat.services._adk_grounding import (
     _build_map_actions,
     _compose_grounded_answer,
     _format_availability_answer,
+    _ground_product_rag_turn,
+    _grounded_product_answer,
 )
 
 
@@ -195,6 +197,54 @@ def test_format_availability_no_target_all_out_of_stock_uses_unavailable_wording
 
     assert ans == "Nitro Cold Brew is out of stock at Dallas Arts District. I couldn't find any other stores with stock nearby."
     assert "is available" not in ans
+
+
+def test_grounded_product_answer_includes_store_stock_context() -> None:
+    answer = _grounded_product_answer(
+        "dark roast in Dallas",
+        [
+            {
+                "id": 1,
+                "name": "Midnight Brew",
+                "price": 4.5,
+                "description": "bold dark roast",
+                "storeName": "Cymbal Coffee Dallas",
+                "stockStatus": "LOW_STOCK",
+                "quantityAvailable": 3,
+                "pickupAvailable": True,
+            }
+        ],
+    )
+
+    assert "Midnight Brew ($4.50)" in answer
+    assert "At Cymbal Coffee Dallas, this is low stock with 3 on hand and pickup available." in answer
+
+
+@pytest.mark.anyio
+async def test_ground_product_rag_turn_passes_store_id_to_fallback_search() -> None:
+    tools_service = MagicMock()
+    tools_service.search_products_by_vector = AsyncMock(
+        return_value={
+            "products": [
+                {
+                    "id": 1,
+                    "name": "Midnight Brew",
+                    "storeId": 16,
+                    "storeName": "Cymbal Coffee Dallas",
+                    "stockStatus": "IN_STOCK",
+                }
+            ],
+            "results_count": 1,
+        }
+    )
+    tools_service.vertex_ai_service.generate_structured_content = AsyncMock(side_effect=TimeoutError)
+    metric_state: dict[str, Any] = {}
+
+    answer = await _ground_product_rag_turn("dark roast", metric_state, tools_service, store_id=16)
+
+    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5, store_id=16)
+    assert "Cymbal Coffee Dallas" in answer
+    assert metric_state["inventory_results"][0]["storeId"] == 16
 
 
 _HOUSE_BLEND = {"id": 1, "name": "House Blend", "price": 3.75, "description": "classic medium roast"}

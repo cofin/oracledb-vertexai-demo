@@ -38,6 +38,17 @@ def _vector_search_query() -> str:
     return match.group("body")
 
 
+def _vector_search_by_store_query() -> str:
+    text = PRODUCTS_SQL.read_text()
+    match = re.search(
+        r"--\s*name:\s*vector-search-products-by-store\s*\n(?P<body>.+?)(?=\n--\s*name:|\Z)",
+        text,
+        flags=re.DOTALL,
+    )
+    assert match, "vector-search-products-by-store named query missing from products.sql"
+    return match.group("body")
+
+
 def test_vector_search_query_projects_price_not_current_price() -> None:
     body = _vector_search_query()
 
@@ -60,6 +71,17 @@ def test_vector_search_query_projects_similarity_score_alias() -> None:
     assert not re.search(r"AS\s+distance\b", body, flags=re.IGNORECASE), (
         "vector-search-products must not project a 'distance' column; callers use similarity_score"
     )
+
+
+def test_vector_search_by_store_projects_inventory_context() -> None:
+    body = _vector_search_by_store_query()
+
+    assert "store_product_inventory" in body
+    assert re.search(r"\bspi\.store_id\s*=\s*:store_id\b", body), "store-aware vector search must bind store_id"
+    for alias in ("store_id", "store_name", "quantity_available", "stock_status", "pickup_available"):
+        assert re.search(rf"\bAS\s+{alias}\b|\b{alias}\b", body, flags=re.IGNORECASE), (
+            f"store-aware vector search must project {alias}"
+        )
 
 
 @pytest.mark.anyio
@@ -104,6 +126,21 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
         )
         assert row.price > 0, "ProductMatch must preserve 'price' from the SQL projection"
         assert 0 <= row.similarity_score <= 1, "similarity_score must be in [0, 1]"
+
+
+@pytest.mark.anyio
+async def test_product_service_search_by_vector_uses_store_aware_named_sql(mock_driver) -> None:
+    from app.domain.products.services import ProductService
+
+    mock_driver.select = AsyncMock(return_value=[])
+    service = ProductService(mock_driver)
+
+    await service.search_by_vector([0.1] * 3072, similarity_threshold=0.4, limit=3, store_id=16)
+
+    statement = mock_driver.select.await_args.args[0]
+    assert "store_product_inventory" in str(statement.sql)
+    assert mock_driver.select.await_args.kwargs["store_id"] == 16
+    assert mock_driver.select.await_args.kwargs["schema_type"] is ProductMatch
 
 
 @pytest.mark.anyio

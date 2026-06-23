@@ -26,12 +26,24 @@ Current anchors:
 Official guidance to use:
 
 - APEX REST Source Catalog docs for OpenAPI import/refresh.
+- Oracle Skills README install pattern:
+  - `npx skills add oracle/skills/apex`
+  - `npx skills add oracle/skills/db`
+- Oracle Skills `apex` and `db` domains:
+  - `apex/apexlang/references/workflows/apex-generation.md`
+  - `db/ords/*`
+  - `db/sqlcl/sqlcl-mcp-server.md`
 - Antigravity MCP docs:
   - IDE custom MCP config: `~/.gemini/config/mcp_config.json`
   - CLI global MCP config: `~/.gemini/antigravity-cli/mcp_config.json`
   - CLI workspace MCP config: `.agents/mcp_config.json`
   - plugin MCP config: plugin-root `mcp_config.json`
-- Oracle Skills `db/sqlcl/sqlcl-mcp-server.md` plus Oracle SQLcl MCP docs.
+- Antigravity skills docs:
+  - IDE workspace skills: `<workspace-root>/.agents/skills/<skill-folder>/`
+  - IDE global skills: `~/.gemini/antigravity/skills/<skill-folder>/`
+  - CLI workspace skills: `.agents/skills/`
+  - CLI global skills: `~/.gemini/antigravity-cli/skills/`
+- Oracle SQLcl MCP docs.
 - Google MCP Toolbox Oracle prebuilt config docs.
 
 ## Requirements
@@ -45,7 +57,13 @@ Official guidance to use:
   - optional Litestar app MCP if enabled later
 - Re-add a current installer command such as:
   `uv run python manage.py install mcp-toolbox`.
-- Add install/check guidance for official Oracle `apex` and `db` skills.
+- Add print-only install/check guidance for official Oracle `apex` and `db`
+  skills:
+  - `npx skills add oracle/skills/apex`
+  - `npx skills add oracle/skills/db`
+- Do not add `manage.py install oracle-skills --workspace`.
+- Do not sync Oracle Skills into `.agents/skills/`.
+- Do not create `.agents/plugins/oracle-skills/`.
 - Remove touched code paths that write Gemini CLI MCP config to
   `~/.gemini/settings.json`.
 
@@ -77,10 +95,23 @@ Official guidance to use:
 
 - Extend `manage.py install` with:
   - `mcp-toolbox` or `mcp`
-  - optionally `oracle-skills` for documented install/check of `oracle/skills/apex`
-    and `oracle/skills/db`
+  - print-only Oracle Skills guidance in the MCP/APEX docs or dry-run output
 - Commands should verify availability and emit exact config paths. They should
   not perform Gemini CLI migration.
+- Oracle Skills remain source-backed and user-installed through Oracle's
+  published commands. The installer should not vendor or sync those skills.
+
+### Oracle Skills Decision
+
+- Chosen approach: print guidance only.
+- Rejected approach: `manage.py install oracle-skills --workspace`, because it
+  would vendor/sync external guidance into this repo and create stale copies.
+- Rejected approach: `.agents/plugins/oracle-skills/`, because Oracle Skills
+  are skills, not this app's Antigravity plugin, and the official Oracle repo's
+  `.claude-plugin/marketplace.json` is a Claude Code marketplace manifest, not
+  an Antigravity plugin manifest.
+- Documentation must still show the Antigravity skill locations so users can
+  choose a workspace or global install manually when their host supports it.
 
 ## Implementation Tasks
 
@@ -89,7 +120,8 @@ Official guidance to use:
 - [ ] Replace old Gemini MCP config helpers with Antigravity config helpers in
   touched installer paths.
 - [ ] Add `manage.py install mcp-toolbox` or equivalent.
-- [ ] Add official Oracle Skills install/check guidance.
+- [ ] Add official Oracle Skills install/check guidance using exact
+  `npx skills add` commands, with no workspace sync or plugin creation.
 - [ ] Add tests for config paths, no-secret output, and no writes to
   `~/.gemini/settings.json`.
 
@@ -111,6 +143,7 @@ uv run python manage.py install mcp-toolbox --dry-run
 uv run python manage.py install mcp-toolbox --workspace
 uv run python manage.py infra apex export-openapi
 test -f .agents/mcp_config.json
+test ! -d .agents/plugins/oracle-skills
 ```
 
 ## Done
@@ -121,4 +154,5 @@ test -f .agents/mcp_config.json
 - Oracle SQLcl MCP and Google MCP Toolbox are both demonstrable without mixing
   them with APEX REST Source Catalogs.
 - Old Gemini CLI config writes are removed from touched installer paths.
-
+- Oracle Skills guidance is exact and source-backed, without repo-local
+  vendored copies.

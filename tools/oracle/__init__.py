@@ -27,6 +27,7 @@ __all__ = [
     "HealthStatus",
     "OracleDatabase",
     "RuntimeType",
+    "SQLclCapabilityStatus",
     "SQLclConfig",
     "SQLclInstaller",
     "SystemHealth",
@@ -55,5 +56,5 @@ from tools.oracle.connection import ConnectionConfig, ConnectionTester, Deployme
 from tools.oracle.container import ContainerRuntime, RuntimeType
 from tools.oracle.database import DatabaseConfig, OracleDatabase
 from tools.oracle.health import HealthChecker, HealthStatus, SystemHealth
-from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
+from tools.oracle.sqlcl_installer import SQLclCapabilityStatus, SQLclConfig, SQLclInstaller
 from tools.oracle.wallet import WalletConfig, WalletConfigurator, WalletInfo

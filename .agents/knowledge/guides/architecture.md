@@ -11,6 +11,8 @@ Cymbal Coffee is a two-page Litestar application:
 - `/api/chat/stream` streams Server-Sent Events from the ADK workflow.
 - `/api/vector-demo` returns either HTMX partials or JSON vector-search results.
 - `/api/explain-plan` returns Oracle `DBMS_XPLAN.DISPLAY()` output for the vector query.
+- `/api/stores/{store_id}/inventory` returns the HTMX inventory partial for one
+  store.
 
 The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
 Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
@@ -171,12 +173,14 @@ separate store app. The shipped components are:
   timezone, optional Google place IDs, Dallas store data, explicit product stock
   booleans, and curated `store_product_inventory` rows;
 - store and inventory query services behind named SQL and typed schemas;
+- store-aware vector search that joins curated inventory rows for active store
+  context;
 - closure-bound ADK tools for store lookup, hours, nearest stores, and product
   availability;
 - deterministic `STORE_LOCATION` and `PRODUCT_AVAILABILITY` routes beside the
   deterministic `PRODUCT_RAG` path;
-- HTMX/Jinja chat rendering for store cards, inventory cards, and directions
-  links.
+- HTMX/Jinja chat rendering for store cards, inventory cards, directions links,
+  and the `/explore` live store-inventory panel.
 
 Maps URLs are the default integration and need no API key. Browser coordinates
 are request-scoped and require explicit consent. The optional one-at-a-time Maps
