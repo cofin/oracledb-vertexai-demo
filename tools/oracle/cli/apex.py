@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 import rich_click as click
 from rich.console import Console
 
+from tools.oracle.apex_catalog import DEFAULT_APEX_OPENAPI_PATH, export_current_app_apex_catalog
+
 if TYPE_CHECKING:
     from tools.oracle.apex_install import ApexInstaller
     from tools.oracle.apex_lang import ApexLang
@@ -96,6 +98,30 @@ def apex_status() -> None:
         raise click.Abort from e
 
 
+@apex_group.command(name="export-openapi")
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(dir_okay=False),
+    default=str(DEFAULT_APEX_OPENAPI_PATH),
+    show_default=True,
+    help="OpenAPI catalog JSON artifact path",
+)
+@click.option(
+    "--server-url",
+    default=None,
+    help="Base URL APEX should use for the Litestar app (default APP_URL/LITESTAR_PORT)",
+)
+def apex_export_openapi(output_path: str, server_url: str | None) -> None:
+    """Export the /api/apex OpenAPI subset for APEX REST Source Catalog import."""
+    try:
+        catalog_path = export_current_app_apex_catalog(output_path=Path(output_path), server_url=server_url)
+        console.print(f"[green]✓ Exported APEX OpenAPI catalog to {catalog_path}[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ APEX OpenAPI export failed: {e}[/red]")
+        raise click.Abort from e
+
+
 @apex_group.command(name="generate")
 @click.option("--alias", "app_alias", default="cymbal-coffee-ops", show_default=True, help="APEX app alias")
 @click.option("--app-name", default=None, help="Starter application display name")
@@ -111,7 +137,7 @@ def apex_generate(
     schema: str | None,
     force: bool,
 ) -> None:
-    """Generate starter APEXlang source files with SQLcl 26.1.2+."""
+    """Generate starter APEXlang source files with SQLcl 26.1.2+ against APEX 26.1+."""
     try:
         result = _build_apex_lang().generate(
             alias=app_alias,
@@ -132,7 +158,7 @@ def apex_generate(
 @click.option("--alias", "app_alias", default="cymbal-coffee-ops", show_default=True, help="APEX app alias")
 @click.option("--clean/--no-clean", default=True, show_default=True, help="Use SQLcl -force for stable output")
 def apex_export(app_id: int, app_alias: str, clean: bool) -> None:
-    """Export an existing APEX app as APEXlang source with SQLcl 26.1.2+."""
+    """Export an existing APEX 26.1+ app as APEXlang source with SQLcl 26.1.2+."""
     try:
         result = _build_apex_lang().export(app_id=app_id, alias=app_alias, clean=clean)
         console.print(f"[green]✓ Exported APEXlang source to {result.target_path}[/green]")
@@ -154,7 +180,7 @@ def apex_validate(
     deployment: str | None,
     debug: bool,
 ) -> None:
-    """Validate APEXlang source with SQLcl 26.1.2+."""
+    """Validate APEXlang source with SQLcl 26.1.2+ against APEX 26.1+."""
     try:
         result = _build_apex_lang().validate(
             alias=app_alias,
@@ -188,7 +214,7 @@ def apex_import(
     deployment: str | None,
     debug: bool,
 ) -> None:
-    """Import APEXlang source into APEX with SQLcl 26.1.2+."""
+    """Import APEXlang source into APEX 26.1+ with SQLcl 26.1.2+."""
     try:
         result = _build_apex_lang().import_app(
             alias=app_alias,

@@ -3,7 +3,7 @@
 *Beads: `oracledb-vertexai-apxg.5` (chapter epic)*
 *Parent PRD: [../apex-gvenzl-install/prd.md](../apex-gvenzl-install/prd.md)*
 *Depends on: Ch2 (install engine), Ch4 (APEXlang) — exercises the whole stack*
-*Status: Drafted — refresh before implementation (see contract update)*
+*Status: Reconciled — verified settings/unit gates closed; smoke/docs/final work deferred to `apex-demo-verification-docs`*
 
 ---
 
@@ -72,13 +72,20 @@ gate. **`lab.md` is excluded** — it belongs to the concurrent `adb-podman-lab-
 
 ## 4.0 Implementation Plan (TDD)
 
-- [ ] **Task 5.1** — Settings/env alignment for gvenzl (`SERVICE_NAME=FREEPDB1`, no wallet) +
+- [x] **Task 5.1** — Settings/env alignment for gvenzl (`SERVICE_NAME=FREEPDB1`, no wallet) +
   `utils.py` managed defaults; coordinate with revert. Unit tests: `is_autonomous` false, DSN shape.
-- [ ] **Task 5.2** — Green the combined unit suites for Ch1–Ch4 modules (fix any cross-module drift).
-- [ ] **Task 5.3** — Integration smoke test + `make apex-smoke` (install→workspace→ORDS→26.1→round-trip).
-- [ ] **Task 5.4** — Docs: quickstart + architecture + oracle-vector-search + `CLAUDE.md` (exclude `lab.md`).
-- [ ] **Task 5.5** — Final aggregate gate (`make lint` + `make test`) + record outcome in
+- [x] **Task 5.2** — Green the combined unit suites for Ch1–Ch4 modules (fix any cross-module drift).
+- [-] **Task 5.3** — Integration smoke test + `make apex-smoke` (install→workspace→ORDS→26.1→round-trip).
+- [-] **Task 5.4** — Docs: quickstart + architecture + oracle-vector-search + `CLAUDE.md` (exclude `lab.md`).
+- [-] **Task 5.5** — Final aggregate gate (`make lint` + `make test`) + record outcome in
   `.agents/specs/apex-gvenzl-install/learnings.md`.
+
+2026-06-23 reconciliation: Task 5.1 was closed after focused settings/env
+tests passed with 46 tests. Task 5.2 was closed after the named Ch1-Ch4 APEX
+unit suites passed with 116 tests. Tasks 5.3-5.5 are deferred, not complete:
+the current smoke/docs/final verification scope is owned by
+`apex-demo-verification-docs` (`oracledb-vertexai-apxo.6`), and should only be
+closed there with runtime smoke evidence.
 
 ---
 

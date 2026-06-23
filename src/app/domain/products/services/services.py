@@ -14,6 +14,9 @@ from sqlspec import sql
 
 from app.config import db_manager
 from app.domain.products.schemas import (
+    ApexInventorySummaryRow,
+    ApexProduct,
+    ApexVectorReadiness,
     ExplainPlan,
     ExplainPlanRow,
     Product,
@@ -49,6 +52,33 @@ class ProductService(OracleAsyncService):
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
         return await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product)
+
+    async def list_apex_products(
+        self,
+        *,
+        q: str | None = None,
+        category: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[ApexProduct], int]:
+        bounded_limit = max(1, min(limit, 100))
+        bounded_offset = max(offset, 0)
+        rows = await self.driver.select(
+            db_manager.get_sql("list-apex-products"),
+            q=q,
+            category=category,
+            limit=bounded_limit,
+            offset=bounded_offset,
+            schema_type=ApexProduct,
+        )
+        total = await self.driver.select_value(db_manager.get_sql("count-apex-products"), q=q, category=category)
+        return rows, int(total or 0)
+
+    async def get_vector_readiness(self) -> ApexVectorReadiness:
+        return await self.driver.select_one(
+            db_manager.get_sql("get-vector-readiness"),
+            schema_type=ApexVectorReadiness,
+        )
 
     async def get_by_id(self, product_id: int) -> Product | None:
         return await self.driver.select_one_or_none(
@@ -117,6 +147,27 @@ class StoreService(OracleAsyncService):
 
     async def get_all_stores(self) -> list[Store]:
         return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
+
+    async def list_inventory_summary(self) -> list[ApexInventorySummaryRow]:
+        return await self.driver.select(
+            db_manager.get_sql("list-inventory-summary"),
+            schema_type=ApexInventorySummaryRow,
+        )
+
+    async def search_store_inventory(
+        self,
+        *,
+        store_id: int,
+        q: str,
+        limit: int = 5,
+    ) -> list[ProductAvailability]:
+        return await self.driver.select(
+            db_manager.get_sql("search-store-inventory"),
+            store_id=store_id,
+            q=q,
+            limit=max(1, min(limit, 100)),
+            schema_type=ProductAvailability,
+        )
 
     async def find_stores_by_location(
         self,
@@ -314,7 +365,12 @@ class OracleVectorSearchService:
         self.product_service = product_service
 
     async def similarity_search(
-        self, query: str, k: int = 5, threshold: float = 0.5
+        self,
+        query: str,
+        k: int = 5,
+        threshold: float = 0.5,
+        *,
+        store_id: int | None = None,
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         start_time = time.time()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
@@ -323,7 +379,12 @@ class OracleVectorSearchService:
         embedding_ms = (time.time() - start_time) * 1000
 
         oracle_start = time.time()
-        results = await self.product_service.search_by_vector(embedding, similarity_threshold=threshold, limit=k)
+        results = await self.product_service.search_by_vector(
+            embedding,
+            similarity_threshold=threshold,
+            limit=k,
+            store_id=store_id,
+        )
         oracle_ms = (time.time() - oracle_start) * 1000
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}

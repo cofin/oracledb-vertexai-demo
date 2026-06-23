@@ -90,6 +90,7 @@ class ProductAvailability(StoreProductInventory, omit_defaults=True):
     timezone: str | None = None
     google_place_id: str | None = None
     product_name: str = ""
+    product_description: str = ""
     product_category: str | None = None
     product_sku: str | None = None
     product_price: float | None = None

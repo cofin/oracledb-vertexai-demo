@@ -14,7 +14,7 @@
     "latest_sqlcl_release": "SQLcl 26.1.2 includes APEXlang lifecycle command support",
     "apexlang_layout": "Official APEXlang source uses shared_components and supporting_objects directories",
     "gemini_embedding_candidate": "Google docs list gemini-embedding-2 with 3072-dimensional output; repo still defaults to gemini-embedding-2-preview",
-    "repo_gap": "Optional APEX/ORDS runtime exists, but ORDS is image latest, src/apex is absent, and Litestar MCP is a dependency but not wired"
+    "repo_gap": "APEX/ORDS runtime and SQLcl APEXlang lifecycle are implemented; remaining roadmap gaps are the APEX-safe API, schema bridge, source-controlled APEX app, and live verification/docs"
   },
   "files_analyzed": [
     "Makefile",
@@ -30,8 +30,8 @@
     "src/app/domain/products/controllers/_vector.py",
     "src/app/domain/chat/controllers/_chat.py",
     ".agents/specs/apex-gvenzl-install/prd.md",
-    ".agents/specs/apex-ords-sidecar/spec.md",
-    ".agents/specs/apexlang-source/spec.md"
+    ".agents/specs/apex-ops-console/prd.md",
+    ".agents/specs/apex-demo-verification-docs/spec.md"
   ],
   "linked_flow": null,
   "linked_prd": null

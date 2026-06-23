@@ -3,7 +3,7 @@
 *Beads: `oracledb-vertexai-apxo.5`*
 *Parent PRD: [../apex-ops-console/prd.md](../apex-ops-console/prd.md)*
 *Depends on: `apexlang-lifecycle`, `apex-ops-api`, `apex-schema-bridge`*
-*Status: Planned - implementation-ready after dependencies*
+*Status: In progress - source-controlled app complete; REST Source Catalog round trip blocked*
 
 ---
 
@@ -84,13 +84,34 @@ Primary pages:
 
 ## Implementation Tasks
 
-- [ ] Generate initial APEXlang app source using Oracle's APEX skill workflow.
-- [ ] Validate the generated source with SQLcl before import.
-- [ ] Import into local APEX and verify pages render.
-- [ ] Wire REST Source Catalog entries to the filtered OpenAPI artifact.
-- [ ] Refine page labels, reports, and navigation for an operations-console
+- [x] Generate initial APEXlang app source using Oracle's APEX skill workflow.
+- [x] Validate the generated source with SQLcl before import.
+- [x] Import into local APEX and verify pages render.
+- [!] Wire REST Source Catalog entries to the filtered OpenAPI artifact.
+- [x] Refine page labels, reports, and navigation for an operations-console
   workflow.
-- [ ] Re-export and commit stable APEXlang source.
+- [x] Re-export stable APEXlang source.
+
+## Current Implementation Note
+
+The checked-in APEX Operations Console source now validates, imports, and
+re-exports from local APEX 26.1 as SQL-backed interactive reports over the
+seeded Oracle tables for products, stores, inventory, OpenAPI/catalog status,
+and vector/model readiness. The `/api/apex` bridge endpoints remain visible in
+the app pages.
+
+REST Data Source Catalog wiring is still open: SQLcl/APEX 26.1 validates
+app-level `restDataSource` APEXlang, but import rolls back with
+`WWV_WEBSRC_MODULE_RSERVER_FK` when those REST sources reference a
+`restDataSourceServer`, even after pre-creating workspace remote servers and
+using `APEX_APPLICATION_INSTALL.SET_REMOTE_SERVER`. Do not close the REST
+Source Catalog task until a generated App Builder round trip or Oracle patch
+produces an importable source shape.
+
+Beads status on 2026-06-23: `oracledb-vertexai-apxo.5.1` is closed with
+verification evidence, and `oracledb-vertexai-apxo.5.2` is blocked on the REST
+Source Catalog import rollback. The Ch5 epic remains open and must not be
+archived while `.5.2` is blocked.
 
 ## Verification
 
@@ -99,6 +120,7 @@ Automated:
 ```bash
 uv run python manage.py infra apex validate --alias cymbal-coffee-ops
 make lint
+make test
 ```
 
 Manual, when local APEX runtime is available:
@@ -119,3 +141,5 @@ git diff -- src/apex/cymbal-coffee-ops
 - Pages demonstrate the same Cymbal Coffee product, store, inventory, vector,
   and model/status data as the Litestar app.
 - SQLcl validation passes before import.
+- REST Source Catalog import round trip is completed, skipped by explicit
+  decision, or remains represented by a blocked Beads task.

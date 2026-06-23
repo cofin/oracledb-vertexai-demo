@@ -17,6 +17,12 @@ from tools.oracle.sqlcl_installer import SQLclInstaller
 
 DEFAULT_APEX_ALIAS = "cymbal-coffee-ops"
 MINIMUM_APEXLANG_SQLCL = "26.1.2"
+SQLCL_FATAL_OUTPUT_MARKERS = (
+    "APEXLang Compile Errors:",
+    "APEXLang Import Errors:",
+    "Connection failed",
+    "SP2-0640: Not connected",
+)
 
 
 @dataclass
@@ -80,7 +86,7 @@ class ApexLang:
     ) -> ApexLangResult:
         """Generate starter APEXlang files."""
         target = self.target_path(alias)
-        parts = ["generate", "-dir", str(target), "-alias", alias]
+        parts = ["generate", "-dir", str(self.config.src_root), "-alias", alias]
         if app_name:
             parts.extend(["-name", app_name])
         if app_id is not None:
@@ -109,7 +115,7 @@ class ApexLang:
             "-exptype",
             "APEXLANG",
             "-dir",
-            str(target),
+            str(self.config.src_root),
         ]
         if clean:
             parts.append("-force")
@@ -133,7 +139,7 @@ class ApexLang:
             parts.extend(["-deployment", deployment])
         if debug:
             parts.append("-debug")
-        return self._run_apex(parts, target_path=target)
+        return self._run_apex(parts, target_path=target, connect=False)
 
     def import_app(
         self,
@@ -185,11 +191,11 @@ class ApexLang:
         dsn = f"//{self.config.host}:{self.config.port}/{self.config.service_name}"
         return f"connect {user}/{password}@{dsn}"
 
-    def _run_apex(self, parts: list[str], *, target_path: Path) -> ApexLangResult:
+    def _run_apex(self, parts: list[str], *, target_path: Path, connect: bool = True) -> ApexLangResult:
         """Run one SQLcl APEX command."""
         sql_path = self._sql_path()
         command = "apex " + " ".join(shlex.quote(part) for part in parts)
-        script = f"{self._connect_line()}\n{command}\nexit\n"
+        script = f"{self._connect_line()}\n{command}\nexit\n" if connect else f"{command}\nexit\n"
         result = subprocess.run(
             [str(sql_path), "-S", "/nolog"],
             input=script,
@@ -197,7 +203,8 @@ class ApexLang:
             text=True,
             check=False,
         )
-        if result.returncode != 0:
+        output = f"{result.stdout}\n{result.stderr}"
+        if result.returncode != 0 or self._has_sqlcl_fatal_output(output):
             raise ApexLangError(result.stderr.strip() or result.stdout.strip() or "SQLcl APEXlang command failed")
         return ApexLangResult(
             command=command,
@@ -205,6 +212,11 @@ class ApexLang:
             stdout=result.stdout,
             stderr=result.stderr,
         )
+
+    @staticmethod
+    def _has_sqlcl_fatal_output(output: str) -> bool:
+        """Return true for SQLcl errors that can still exit with status zero."""
+        return any(marker in output for marker in SQLCL_FATAL_OUTPUT_MARKERS)
 
 
 class ApexLangError(RuntimeError):

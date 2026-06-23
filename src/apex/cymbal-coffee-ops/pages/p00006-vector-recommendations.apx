@@ -1,0 +1,45 @@
+page 6 (
+    name: Vector Recommendations
+    alias: VECTOR-RECOMMENDATIONS
+    title: Vector Recommendations
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region recommendations-api (
+        name: /api/apex/recommendations
+        title: /api/apex/recommendations
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region vector-recommendations (
+        name: Vector Recommendations
+        title: Vector Recommendations
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+)

@@ -18,7 +18,7 @@ This file tracks all PRDs (Product Requirements Documents) for the project. Each
 
 ---
 
-## [~] PRD: apex-gvenzl-install
+## [-] PRD: apex-gvenzl-install
 *Link: [./specs/apex-gvenzl-install/](./specs/apex-gvenzl-install/)*
 *Beads: oracledb-vertexai-apxg (master epic)*
 *Research: [./research/research_apex_upgrade/](./research/research_apex_upgrade/)*
@@ -27,26 +27,22 @@ Install/upgrade Oracle APEX 26.1 + ORDS into the reverted `gvenzl/oracle-free` c
 `manage.py infra apex`, and adopt APEXlang source at `src/apex/`. Precondition: container base
 revert (adb-free → gvenzl) owned by a separate agent (task `oracledb-vertexai-2q0`).
 
-### Chapters (Ch1 done; Ch2–Ch5 specced, gated on gvenzl revert)
-- [x] **Chapter 1: APEX media staging (`apex-media-staging`)** — done (32 tests; commits 56cb007..1c157c6)
-  *Link: [./specs/apex-media-staging/](./specs/apex-media-staging/)*
+### Chapters (Ch1-Ch4 done/reconciled; Ch5 remains active under the new APEX ops roadmap)
+- [x] **Chapter 1: APEX media staging (`apex-media-staging`)** — done (32 tests; commits 56cb007..1c157c6); archived locally 2026-06-23
   *Beads: oracledb-vertexai-apxg.1 (5/5 tasks closed)*
-- [x] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — done (29 tests; commits 31c444f..427a091; database.py untouched)
-  *Link: [./specs/apex-install-upgrade/](./specs/apex-install-upgrade/)*
+- [x] **Chapter 2: APEX install/upgrade engine + infra apex CLI (`apex-install-upgrade`)** — done (29 tests; commits 31c444f..427a091; database.py untouched); archived locally 2026-06-23
   *Beads: oracledb-vertexai-apxg.2 (5/5 tasks closed)*
-- [ ] **Chapter 3: ORDS sidecar runtime via Python CLI (`apex-ords-sidecar`)** — implementation-ready, blocked by Ch1+Ch2
-  *Link: [./specs/apex-ords-sidecar/](./specs/apex-ords-sidecar/)*
-  *Beads: oracledb-vertexai-apxg.3 (5 tasks)*
-- [ ] **Chapter 4: APEXlang source layout + export/import (`apexlang-source`)** — implementation-ready, blocked by Ch2+Ch3
-  *Link: [./specs/apexlang-source/](./specs/apexlang-source/)*
-  *Beads: oracledb-vertexai-apxg.4 (5 tasks)*
-- [ ] **Chapter 5: Verification, settings alignment & docs (`apex-verify-docs`)** — implementation-ready, blocked by Ch2+Ch4
+- [x] **Chapter 3: ORDS sidecar runtime via Python CLI (`apex-ords-sidecar`)** — done/reconciled into `apex-runtime-hardening`; archived locally 2026-06-23
+  *Beads: oracledb-vertexai-apxg.3 (5/5 tasks closed)*
+- [x] **Chapter 4: APEXlang source layout + export/import (`apexlang-source`)** — absorbed by `apexlang-lifecycle`; archived locally 2026-06-23 after SQLcl/APEXlang wrapper, CLI lifecycle, and `src/apex/` root landed
+  *Beads: oracledb-vertexai-apxg.4 (superseded by oracledb-vertexai-apxo.2)*
+- [-] **Chapter 5: Verification, settings alignment & docs (`apex-verify-docs`)** — reconciled/deferred: settings/unit gates closed; smoke/docs/final work deferred to `apex-demo-verification-docs`
   *Link: [./specs/apex-verify-docs/](./specs/apex-verify-docs/)*
-  *Beads: oracledb-vertexai-apxg.5 (5 tasks)*
+  *Beads: oracledb-vertexai-apxg.5 (2 closed, 3 deferred)*
 
 ---
 
-## [ ] PRD: apex-ops-console
+## [~] PRD: apex-ops-console
 *Link: [./specs/apex-ops-console/](./specs/apex-ops-console/)*
 *Beads: oracledb-vertexai-apxo (master epic)*
 *Research: [./research/research_apex26_ords_apexlang_schema_bridge/](./research/research_apex26_ords_apexlang_schema_bridge/)*
@@ -58,15 +54,15 @@ examples. This PRD is not Gemini CLI migration support; it replaces old Gemini
 CLI config writes with clean Antigravity config paths.
 
 ### Chapters
-- [ ] **Chapter 1: APEX runtime hardening and Flow reconciliation (`apex-runtime-hardening`)** — implementation-ready, related to `apex-gvenzl-install`
-  *Link: [./specs/apex-runtime-hardening/](./specs/apex-runtime-hardening/)* · *Beads: oracledb-vertexai-apxo.1*
-- [ ] **Chapter 2: SQLcl 26.1.2 APEXlang lifecycle (`apexlang-lifecycle`)** — implementation-ready, blocked by Ch1
-  *Link: [./specs/apexlang-lifecycle/](./specs/apexlang-lifecycle/)* · *Beads: oracledb-vertexai-apxo.2*
-- [ ] **Chapter 3: APEX-safe coffee data API and OpenAPI contract (`apex-ops-api`)** — implementation-ready, blocked by Ch1
+- [x] **Chapter 1: APEX runtime hardening and Flow reconciliation (`apex-runtime-hardening`)** — done; archived locally 2026-06-23
+  *Beads: oracledb-vertexai-apxo.1*
+- [x] **Chapter 2: SQLcl 26.1.2 APEXlang lifecycle (`apexlang-lifecycle`)** — implemented and archived locally 2026-06-23
+  *Beads: oracledb-vertexai-apxo.2*
+- [x] **Chapter 3: APEX-safe coffee data API and OpenAPI contract (`apex-ops-api`)** — implemented and archived locally 2026-06-23
   *Link: [./specs/apex-ops-api/](./specs/apex-ops-api/)* · *Beads: oracledb-vertexai-apxo.3*
-- [ ] **Chapter 4: Schema bridge and Antigravity MCP configuration (`apex-schema-bridge`)** — implementation-ready, blocked by Ch3
+- [x] **Chapter 4: Schema bridge and Antigravity MCP configuration (`apex-schema-bridge`)** — implemented and archived locally 2026-06-23
   *Link: [./specs/apex-schema-bridge/](./specs/apex-schema-bridge/)* · *Beads: oracledb-vertexai-apxo.4*
-- [ ] **Chapter 5: Cymbal Coffee APEX Operations Console app (`apex-ops-app`)** — implementation-ready, blocked by Ch2+Ch3+Ch4
+- [~] **Chapter 5: Cymbal Coffee APEX Operations Console app (`apex-ops-app`)** — SQL-backed source app complete; REST Source Catalog import round trip blocked
   *Link: [./specs/apex-ops-app/](./specs/apex-ops-app/)* · *Beads: oracledb-vertexai-apxo.5*
 - [ ] **Chapter 6: APEX demo verification and docs (`apex-demo-verification-docs`)** — implementation-ready, blocked by Ch1-Ch5
   *Link: [./specs/apex-demo-verification-docs/](./specs/apex-demo-verification-docs/)* · *Beads: oracledb-vertexai-apxo.6*
@@ -166,3 +162,26 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   `tools/oracle/on_startup/`, documented in
   `.agents/knowledge/guides/oracle-vector-search.md`.
 - `oracle-schema-annotations` completed and archived locally on 2026-06-23. All chapters (schema-annotations-ddl, schema-annotations-docs, schema-annotations-verification) closed with verification. Annotations are verified on Oracle 26ai using USER_ANNOTATIONS_USAGE dictionary view.
+- `apex-media-staging` (`oracledb-vertexai-apxg.1`) completed and archived
+  locally on 2026-06-23. Durable APEX media/ORDS image-serving guidance is in
+  `.agents/patterns.md`.
+- `apex-install-upgrade` (`oracledb-vertexai-apxg.2`) completed and archived
+  locally on 2026-06-23. Durable APEX install/upgrade CLI guidance is in
+  `.agents/patterns.md`.
+- `apex-ords-sidecar` (`oracledb-vertexai-apxg.3`) completed and archived
+  locally on 2026-06-23 after final CLI task 3.5 was reconciled into
+  `apex-runtime-hardening`.
+- `apex-runtime-hardening` (`oracledb-vertexai-apxo.1`) completed and archived
+  locally on 2026-06-23. Current ORDS version/readiness/lifecycle guidance is
+  synthesized in `.agents/patterns.md`; live Oracle smoke is carried by
+  `apex-demo-verification-docs`.
+- `apexlang-lifecycle` (`oracledb-vertexai-apxo.2`) completed and archived
+  locally on 2026-06-23. Current APEXlang lifecycle guidance is in
+  `.agents/patterns.md`; live Oracle round-trip smoke is carried by
+  `apex-demo-verification-docs`.
+- `apexlang-source` (`oracledb-vertexai-apxg.4`) was absorbed by
+  `apexlang-lifecycle` (`oracledb-vertexai-apxo.2`) on 2026-06-23. Current
+  APEXlang lifecycle guidance uses SQLcl 26.1.2+, `manage.py infra apex
+  generate|export|validate|import`, and `src/apex/cymbal-coffee-ops/` with
+  SQLcl-generated hyphenated directories such as `shared-components/` and
+  `supporting-objects/`.

@@ -62,7 +62,7 @@ def test_export_runs_sqlcl_with_apexlang_export_command(tmp_path: Path) -> None:
     assert TEST_PASSWORD not in " ".join(argv)
     assert f"connect app/{TEST_PASSWORD}@//localhost:1521/freepdb1" in stdin
     assert "apex export -applicationid 105 -exptype APEXLANG" in stdin
-    assert f"-dir {tmp_path / 'apex' / 'cymbal-coffee-ops'}" in stdin
+    assert f"-dir {tmp_path / 'apex'}" in stdin
     assert "-force" in stdin
     assert result.target_path == tmp_path / "apex" / "cymbal-coffee-ops"
 
@@ -76,6 +76,7 @@ def test_generate_runs_sqlcl_with_official_options(tmp_path: Path) -> None:
 
     stdin = run.call_args.kwargs["input"]
     assert "apex generate" in stdin
+    assert f"-dir {tmp_path / 'apex'}" in stdin
     assert "-alias cymbal-coffee-ops" in stdin
     assert "-name 'Cymbal Ops'" in stdin
     assert "-id 100" in stdin
@@ -97,6 +98,18 @@ def test_validate_and_import_target_alias_directory(tmp_path: Path) -> None:
     assert f"apex import -input {target}" in import_stdin
     assert "-workspace COFFEE" in import_stdin
     assert "-schema app" in import_stdin
+
+
+def test_validate_does_not_require_database_connection(tmp_path: Path) -> None:
+    """SQLcl can validate APEXlang source without connecting to Oracle."""
+    wrapper, _installer, _sql_path = _wrapper(tmp_path)
+
+    with patch("tools.oracle.apex_lang.subprocess.run", return_value=_completed()) as run:
+        wrapper.validate(alias="cymbal-coffee-ops")
+
+    stdin = run.call_args.kwargs["input"]
+    assert "apex validate" in stdin
+    assert "connect app/" not in stdin
 
 
 def test_missing_or_old_sqlcl_fails_before_subprocess(tmp_path: Path) -> None:
@@ -123,3 +136,54 @@ def test_sqlcl_nonzero_exit_raises(tmp_path: Path) -> None:
 
     with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(ApexLangError):
         wrapper.validate(alias="cymbal-coffee-ops")
+
+
+def test_sqlcl_connection_failure_raises_even_with_zero_exit(tmp_path: Path) -> None:
+    """SQLcl can report connection errors on stdout while still exiting zero."""
+    wrapper, _installer, _sql_path = _wrapper(tmp_path)
+    failed = SimpleNamespace(
+        args=[],
+        returncode=0,
+        stdout="Connection failed\nORA-12541: Cannot connect.\nSP2-0640: Not connected\n",
+        stderr="",
+    )
+
+    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
+        ApexLangError,
+        match="Connection failed",
+    ):
+        wrapper.import_app(alias="cymbal-coffee-ops")
+
+
+def test_sqlcl_apexlang_compile_errors_raise_even_with_zero_exit(tmp_path: Path) -> None:
+    """SQLcl can report APEXlang compile errors while still exiting zero."""
+    wrapper, _installer, _sql_path = _wrapper(tmp_path)
+    failed = SimpleNamespace(
+        args=[],
+        returncode=0,
+        stdout="APEXLang Compile Errors:\nFile: application.apx\nError: Invalid property\n",
+        stderr="",
+    )
+
+    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
+        ApexLangError,
+        match="APEXLang Compile Errors",
+    ):
+        wrapper.import_app(alias="cymbal-coffee-ops")
+
+
+def test_sqlcl_apexlang_import_errors_raise_even_with_zero_exit(tmp_path: Path) -> None:
+    """SQLcl can report APEXlang import errors while still exiting zero."""
+    wrapper, _installer, _sql_path = _wrapper(tmp_path)
+    failed = SimpleNamespace(
+        args=[],
+        returncode=0,
+        stdout="APEXLang Import Errors:\nFile:\nError: ORA-06550\n",
+        stderr="",
+    )
+
+    with patch("tools.oracle.apex_lang.subprocess.run", return_value=failed), pytest.raises(
+        ApexLangError,
+        match="APEXLang Import Errors",
+    ):
+        wrapper.import_app(alias="cymbal-coffee-ops")

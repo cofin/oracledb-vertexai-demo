@@ -1,0 +1,66 @@
+page 3 (
+    name: Stores
+    alias: STORES
+    title: Stores
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region stores (
+        name: Stores
+        title: Stores
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select id,
+                       name,
+                       city,
+                       state,
+                       timezone
+                  from store
+                 order by name
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635162368664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
+    region stores-api (
+        name: /api/apex/stores
+        title: /api/apex/stores
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+)

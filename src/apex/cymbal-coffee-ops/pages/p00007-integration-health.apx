@@ -1,0 +1,96 @@
+page 7 (
+    name: Integration Health
+    alias: INTEGRATION-HEALTH
+    title: Integration Health
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region catalog-status-api (
+        name: /api/apex/openapi/status
+        title: /api/apex/openapi/status
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select 'Cymbal Coffee APEX REST API' as title,
+                       '/api/apex' as base_path,
+                       '/api/apex/openapi/status' as endpoint
+                  from dual
+                ```
+        }
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635716241664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
+    region integration-health (
+        name: Integration Health
+        title: Integration Health
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region vector-status-api (
+        name: /api/apex/vector/status
+        title: /api/apex/vector/status
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select 'gemini-embedding-2' as embedding_model,
+                       3072 as embedding_dimensions,
+                       count(*) as product_count,
+                       sum(case when embedding is not null then 1 else 0 end) as embedded_product_count
+                  from product
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635868625664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
+)

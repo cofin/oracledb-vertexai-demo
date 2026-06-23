@@ -122,14 +122,36 @@ def test_start_existing_stopped_container_starts_and_returns() -> None:
 
 
 def test_start_reuses_already_running_container_without_recreate() -> None:
-    """Starting an already-running container without --recreate reuses it (idempotent)."""
+    """Starting an already-running container also realigns APP credentials."""
     runtime = MagicMock(spec=ContainerRuntime)
     runtime.container_running.return_value = True
+    runtime.run_command.side_effect = [
+        (0, "healthy\n", ""),
+        (0, "", ""),
+    ]
     db = _database(runtime)
 
     db.start()  # idempotent: reuses the running container instead of raising
 
-    runtime.run_command.assert_not_called()
+    issued = [call.args[0] for call in runtime.run_command.call_args_list]
+    assert ["inspect", "--format", "{{.State.Health.Status}}", CONTAINER_NAME] in issued
+    assert any(cmd[:4] == ["exec", CONTAINER_NAME, "bash", "-c"] and "ALTER USER APP" in cmd[4] for cmd in issued)
+
+
+def test_align_app_user_credentials_grants_and_resets_password() -> None:
+    """The local DB lifecycle repairs stale APP passwords on reused volumes."""
+    runtime = MagicMock(spec=ContainerRuntime)
+    runtime.container_running.return_value = True
+    runtime.run_command.return_value = (0, "", "")
+    db = _database(runtime, app_user="app", app_user_password=DEMO_PASSWORD)
+
+    db._align_app_user_credentials()
+
+    command = runtime.run_command.call_args.args[0]
+    assert command[:4] == ["exec", CONTAINER_NAME, "bash", "-c"]
+    sql = command[4]
+    assert 'ALTER USER APP IDENTIFIED BY "SuperSecret1" ACCOUNT UNLOCK' in sql
+    assert "GRANT DB_DEVELOPER_ROLE TO APP" in sql
 
 
 def test_start_raises_when_health_check_times_out() -> None:

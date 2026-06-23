@@ -1,0 +1,45 @@
+page 5 (
+    name: Availability Lookup
+    alias: AVAILABILITY
+    title: Availability Lookup
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region availability-api (
+        name: /api/apex/products/{product_id}/availability
+        title: /api/apex/products/{product_id}/availability
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region availability-lookup (
+        name: Availability Lookup
+        title: Availability Lookup
+        type: staticContent
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+)

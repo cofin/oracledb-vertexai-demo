@@ -28,10 +28,44 @@ SELECT id,
        updated_at
 FROM product;
 
+-- name: list-apex-products
+SELECT id,
+       name,
+       description,
+       price,
+       category,
+       sku,
+       in_stock,
+       metadata,
+       created_at,
+       updated_at
+FROM product
+WHERE (:q IS NULL
+       OR LOWER(name) LIKE '%' || LOWER(:q) || '%'
+       OR LOWER(description) LIKE '%' || LOWER(:q) || '%'
+       OR LOWER(sku) = LOWER(:q))
+  AND (:category IS NULL OR LOWER(category) = LOWER(:category))
+ORDER BY name
+OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;
+
+-- name: count-apex-products
+SELECT COUNT(*) AS total
+FROM product
+WHERE (:q IS NULL
+       OR LOWER(name) LIKE '%' || LOWER(:q) || '%'
+       OR LOWER(description) LIKE '%' || LOWER(:q) || '%'
+       OR LOWER(sku) = LOWER(:q))
+  AND (:category IS NULL OR LOWER(category) = LOWER(:category));
+
 -- name: list-products-for-embedding
 SELECT id, name, description
 FROM product
 ORDER BY id;
+
+-- name: get-vector-readiness
+SELECT COUNT(*) AS product_count,
+       COALESCE(SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END), 0) AS embedded_product_count
+FROM product;
 
 -- docs:start-vector-search-sql
 -- name: vector-search-products

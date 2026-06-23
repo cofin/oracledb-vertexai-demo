@@ -183,6 +183,12 @@
   configure this before migrations create vector indexes.
 - Oracle Free Edition has a hard SGA/PGA cap; the project default vector pool is
   sized to fit the demo dataset instead of trying to raise SGA targets.
+- Local APEX/ORDS stays optional: `make start-infra` is DB-only, while
+  APEX-enabled flows start ORDS through the shared `OrdsSidecar` used by
+  `manage.py infra ords`. ORDS startup must probe the runtime version and fail
+  clearly below 26.1.1; inconclusive version probes are retryable until timeout.
+  `/ords/` readiness may accept routed non-5xx responses, but `/i/` static media
+  readiness must reject 403/404 because the smoke check uses `curl -fsS`.
 - `V$SGAINFO` reports the vector pool as `Vector Memory Area`; verification SQL
   should accept that label.
 - `VECTOR(N, FLOAT32)` DDL, `EMBEDDING_DIMENSIONS`, and committed fixture vector
@@ -197,6 +203,18 @@
 - Flow sync/status is a Flow skill workflow backed by Beads state and `.agents/`
   docs; do not assume a `flow sync` shell command exists, and do not run
   `bd sync` because Beads does not expose that command.
+- APEXlang lifecycle commands require SQLcl 26.1.2+ and live under
+  `manage.py infra apex generate|export|validate|import`. Keep source-controlled
+  APEX assets under `src/apex/<alias>/`. SQLcl 26.1.2 generated this repo's
+  APEXlang project with hyphenated directories such as `shared-components/` and
+  `supporting-objects/`; treat generated SQLcl output as authoritative when
+  docs and older notes disagree.
+- APEX 26.1 can validate app-level `restDataSource` APEXlang, but this local
+  runtime currently rolls back import with
+  `WWV_WEBSRC_MODULE_RSERVER_FK` when REST Data Sources reference a
+  `restDataSourceServer`. Use SQL-backed APEX reports for importable demo pages
+  and keep REST Source Catalog wiring open until a generated App Builder
+  round-trip or Oracle patch proves the server/data-source import path.
 - Logging must use `app.lib.log` processors, set Litestar/Granian env defaults,
   exclude static-asset logs, and filter only known ADK/Authlib warning noise.
 - PyApp onefile releases use the custom Bundle-Patch-Compile path, not

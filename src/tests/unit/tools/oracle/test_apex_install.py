@@ -125,9 +125,7 @@ def _orchestration_installer(*run_outputs: tuple[int, str, str]):
 
 def _execed_scripts(runtime: MagicMock) -> str:
     """Concatenate every bash -c script passed to run_command (for sequence asserts)."""
-    return "\n".join(
-        call.args[0][4] for call in runtime.run_command.call_args_list if call.args[0][0] == "exec"
-    )
+    return "\n".join(call.args[0][4] for call in runtime.run_command.call_args_list if call.args[0][0] == "exec")
 
 
 def test_install_runs_full_sequence_when_absent() -> None:
@@ -336,7 +334,7 @@ def test_start_skip_apex_flag_skips_autoinstall() -> None:
     runner = CliRunner()
     with patch.object(cli_db, "_database") as mk_db, patch.object(cli_db, "_auto_install_apex") as auto:
         mk_db.return_value = MagicMock()
-        result = runner.invoke(cli_db.database_start, ["--skip-apex"])
+        result = runner.invoke(cli_db.database_start, ["--skip-apex", "--skip-ords"])
 
     assert result.exit_code == 0
     auto.assert_not_called()
@@ -348,7 +346,11 @@ def test_start_runs_autoinstall_by_default() -> None:
     from tools.oracle.cli import database as cli_db
 
     runner = CliRunner()
-    with patch.object(cli_db, "_database") as mk_db, patch.object(cli_db, "_auto_install_apex") as auto:
+    with (
+        patch.object(cli_db, "_database") as mk_db,
+        patch.object(cli_db, "_auto_install_apex") as auto,
+        patch.object(cli_db, "_start_ords"),
+    ):
         mk_db.return_value = MagicMock()
         result = runner.invoke(cli_db.database_start, [])
 
@@ -363,7 +365,29 @@ def test_apex_group_has_expected_commands() -> None:
     """The apex_group exposes install/upgrade/status plus APEXlang commands."""
     from tools.oracle.cli.apex import apex_group
 
-    assert set(apex_group.commands) == {"export", "generate", "import", "install", "status", "upgrade", "validate"}
+    assert set(apex_group.commands) == {
+        "export",
+        "export-openapi",
+        "generate",
+        "import",
+        "install",
+        "status",
+        "upgrade",
+        "validate",
+    }
+
+
+@pytest.mark.parametrize("command", ["generate", "export", "validate", "import"])
+def test_apexlang_command_help_lists_sqlcl_and_apex_prerequisites(command: str) -> None:
+    """APEXlang lifecycle help names both local tool and runtime prerequisites."""
+    from click.testing import CliRunner
+    from tools.oracle.cli import apex as apex_cli
+
+    result = CliRunner().invoke(apex_cli.apex_group, [command, "--help"])
+
+    assert result.exit_code == 0
+    assert "SQLcl 26.1.2+" in result.output
+    assert "APEX 26.1+" in result.output
 
 
 def test_apex_group_is_reexported() -> None:

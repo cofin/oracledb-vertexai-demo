@@ -1,0 +1,69 @@
+page 4 (
+    name: Store Inventory
+    alias: STORE-INVENTORY
+    title: Store Inventory
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region inventory-api (
+        name: /api/apex/inventory/summary
+        title: /api/apex/inventory/summary
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    region inventory-summary (
+        name: Store Inventory
+        title: Store Inventory
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select s.name as store_name,
+                       count(spi.product_id) as product_count,
+                       sum(case when spi.stock_status = 'IN_STOCK' then 1 else 0 end) as in_stock_count,
+                       sum(case when spi.stock_status = 'LOW_STOCK' then 1 else 0 end) as low_stock_count,
+                       sum(case when spi.stock_status = 'OUT_OF_STOCK' then 1 else 0 end) as out_of_stock_count,
+                       sum(spi.quantity_available) as total_quantity
+                  from store s
+                  left join store_product_inventory spi on spi.store_id = s.id
+                 group by s.id, s.name
+                 order by s.name
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635396455664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
+)

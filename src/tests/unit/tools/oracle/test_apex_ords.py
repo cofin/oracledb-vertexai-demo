@@ -15,6 +15,7 @@ from tools.oracle.ords import OrdsConfig, OrdsSidecar
 
 def _sidecar(config: OrdsConfig | None = None) -> tuple[OrdsSidecar, MagicMock]:
     runtime = MagicMock(spec=ContainerRuntime)
+    runtime.get_container_ip.return_value = None
     sidecar = OrdsSidecar(runtime, config or OrdsConfig(apex_images_path="/host/apex/images"))
     return sidecar, runtime
 
@@ -23,7 +24,9 @@ def test_ords_config_defaults() -> None:
     """ORDS targets the gvenzl DB over the host gateway, freepdb1, HTTPS 8443."""
     config = OrdsConfig()
 
-    assert "ords" in config.image
+    assert config.image == "container-registry.oracle.com/database/ords:26.1.2"
+    assert config.minimum_version == "26.1.1"
+    assert config.preferred_version == "26.1.2"
     assert config.container_name == "oracle-ords"
     assert config.db_container == "oracle-free-db"
     assert config.service_name == "freepdb1"
@@ -83,6 +86,89 @@ def test_from_env_uses_oracle_password_for_install(monkeypatch: pytest.MonkeyPat
     assert "app-secret" not in joined
 
 
+def test_build_run_command_prefers_running_db_container_ip() -> None:
+    """Rootless Docker sidecars can reach the DB container IP when host-gateway cannot."""
+    sidecar, runtime = _sidecar()
+    runtime.get_container_ip.return_value = "172.17.0.3"
+
+    cmd = sidecar._build_run_command()
+
+    joined = " ".join(cmd)
+    assert "DBHOST=172.17.0.3" in joined
+    assert "DBHOST=host.docker.internal" not in joined
+
+
+def test_build_run_command_preserves_explicit_db_host_override() -> None:
+    """A caller-supplied DB host is respected even if the DB container has an IP."""
+    sidecar, runtime = _sidecar(OrdsConfig(db_host="oracle.example.test"))
+    runtime.get_container_ip.return_value = "172.17.0.3"
+
+    cmd = sidecar._build_run_command()
+
+    joined = " ".join(cmd)
+    assert "DBHOST=oracle.example.test" in joined
+    assert "DBHOST=172.17.0.3" not in joined
+
+
+def test_from_env_keeps_ords_image_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ORDS_IMAGE overrides the default image while preserving runtime version policy."""
+    monkeypatch.setenv("ORDS_IMAGE", "container-registry.oracle.com/database/ords:26.1.2")
+
+    config = OrdsConfig.from_env()
+
+    assert config.image == "container-registry.oracle.com/database/ords:26.1.2"
+    assert config.minimum_version == "26.1.1"
+    assert config.preferred_version == "26.1.2"
+
+
+@pytest.mark.parametrize(
+    ("probed", "expected"),
+    [
+        ("ORDS Release 26.1.2.r123", True),
+        ("Oracle REST Data Services version 26.1.1", True),
+        ("Oracle REST Data Services version 26.1", True),
+        ("Oracle REST Data Services version 25.4.0", False),
+        ("", False),
+    ],
+)
+def test_ords_version_probe_enforces_minimum(probed: str, expected: bool) -> None:
+    """Runtime version probes must not silently accept ORDS below 26.1.1."""
+    sidecar, runtime = _sidecar()
+    runtime.run_command.return_value = (0, probed, "")
+
+    assert sidecar.version_satisfies_minimum() is expected
+
+
+def test_major_minor_probe_uses_explicit_image_patch_version() -> None:
+    """The ORDS image can report 26.1 even when the explicit tag is 26.1.2."""
+    sidecar, runtime = _sidecar(OrdsConfig(image="container-registry.oracle.com/database/ords:26.1.2"))
+    runtime.run_command.return_value = (0, "Oracle REST Data Services version 26.1", "")
+
+    assert sidecar.runtime_version() == "26.1.2"
+    assert sidecar.version_satisfies_minimum() is True
+
+
+def test_ords_status_includes_runtime_version_policy() -> None:
+    """status() enriches container status with runtime version and policy details."""
+    sidecar, runtime = _sidecar()
+    runtime.container_exists.return_value = True
+    runtime.get_container_status.return_value = {
+        "name": "oracle-ords",
+        "status": "running",
+        "image": OrdsConfig().image,
+        "ports": "8181/tcp",
+    }
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
+
+    status = sidecar.status()
+
+    assert status is not None
+    assert status["ords_version"] == "26.1.2"
+    assert status["minimum_version"] == "26.1.1"
+    assert status["preferred_version"] == "26.1.2"
+    assert status["version_status"] == "ok"
+
+
 def test_build_run_command_omits_mount_without_images_path() -> None:
     """With no images path configured, no image bind-mount is emitted."""
     sidecar, _ = _sidecar(OrdsConfig())
@@ -117,20 +203,47 @@ def test_start_runs_container_when_absent() -> None:
     sidecar, runtime = _sidecar()
     runtime.container_running.side_effect = [False, True]  # absent at first; healthy after run
     runtime.container_exists.return_value = False
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
-    sidecar.start()
+    with patch.object(sidecar, "_http_ready", return_value=True):
+        sidecar.start()
 
-    assert runtime.run_command.call_args.args[0][0] == "run"
+    issued = [call.args[0] for call in runtime.run_command.call_args_list]
+    assert any(cmd[0] == "run" for cmd in issued)
 
 
 def test_start_is_idempotent_when_running() -> None:
-    """start() is a no-op when ORDS is already running."""
+    """start() does not recreate a running ORDS sidecar that passes readiness."""
     sidecar, runtime = _sidecar()
     runtime.container_running.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
-    sidecar.start()
+    with patch.object(sidecar, "_http_ready", return_value=True):
+        sidecar.start()
 
-    runtime.run_command.assert_not_called()
+    assert not any(call.args[0][0] == "run" for call in runtime.run_command.call_args_list)
+
+
+def test_start_rejects_running_sidecar_below_minimum() -> None:
+    """start() must not silently accept an already-running ORDS below 26.1.1."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 25.4.0", "")
+
+    with pytest.raises(ContainerStartError, match=r"25\.4\.0.*below required minimum 26\.1\.1"):
+        sidecar.start()
+
+
+def test_start_reports_created_sidecar_below_minimum() -> None:
+    """A freshly-created below-minimum ORDS reports the version policy failure."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.side_effect = [False, True]
+    runtime.container_exists.return_value = False
+    runtime.run_command.return_value = (0, "ORDS Release 25.4.0", "")
+    runtime.get_runtime_command.return_value = "docker"
+
+    with pytest.raises(ContainerStartError, match=r"25\.4\.0.*below required minimum 26\.1\.1"):
+        sidecar.start()
 
 
 def test_start_restarts_existing_stopped_container_that_recovers() -> None:
@@ -138,10 +251,13 @@ def test_start_restarts_existing_stopped_container_that_recovers() -> None:
     sidecar, runtime = _sidecar()
     runtime.container_running.side_effect = [False, True]  # stopped, then healthy after restart
     runtime.container_exists.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
-    sidecar.start()
+    with patch.object(sidecar, "_http_ready", return_value=True):
+        sidecar.start()
 
-    assert runtime.run_command.call_args.args[0] == ["start", "oracle-ords"]
+    issued = [call.args[0] for call in runtime.run_command.call_args_list]
+    assert ["start", "oracle-ords"] in issued
 
 
 def test_start_recreates_stopped_container_that_stays_down() -> None:
@@ -150,13 +266,15 @@ def test_start_recreates_stopped_container_that_stays_down() -> None:
     # top check: stopped; restart wait: still down; create wait: healthy
     runtime.container_running.side_effect = [False, False, True]
     runtime.container_exists.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
-    sidecar.start()
+    with patch.object(sidecar, "_http_ready", return_value=True):
+        sidecar.start()
 
     issued = [call.args[0] for call in runtime.run_command.call_args_list]
     assert ["start", "oracle-ords"] in issued
     assert ["rm", "-f", "oracle-ords"] in issued
-    assert issued[-1][0] == "run"  # recreated as the final action
+    assert any(cmd[0] == "run" for cmd in issued)
 
 
 def test_start_raises_when_sidecar_never_comes_up() -> None:
@@ -191,12 +309,84 @@ def test_remove_force() -> None:
     assert runtime.run_command.call_args.args[0] == ["rm", "-f", "oracle-ords"]
 
 
-def test_wait_for_healthy_true_when_running() -> None:
-    """wait_for_healthy returns True promptly once the container is running."""
+def test_wait_for_healthy_requires_container_version_and_http_ready() -> None:
+    """wait_for_healthy requires running container, minimum ORDS version, /ords/, and /i/."""
     sidecar, runtime = _sidecar()
     runtime.container_running.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
-    assert sidecar.wait_for_healthy(timeout=10) is True
+    with patch.object(sidecar, "_http_ready", return_value=True) as http_ready:
+        assert sidecar.wait_for_healthy(timeout=10) is True
+
+    http_ready.assert_any_call("/ords/")
+    http_ready.assert_any_call("/i/")
+
+
+def test_wait_for_healthy_retries_inconclusive_version_probe() -> None:
+    """An unknown version probe is warning-level and can recover before timeout."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = True
+    runtime.container_exists.return_value = True
+    runtime.run_command.side_effect = [
+        (0, "", ""),
+        (0, "", ""),
+        (0, "ORDS Release 26.1.2.r123", ""),
+    ]
+
+    with patch.object(sidecar, "_http_ready", return_value=True), patch("tools.oracle.ords.time.sleep"):
+        assert sidecar.wait_for_healthy(timeout=1, interval=0) is True
+
+
+def test_wait_for_healthy_rejects_unready_ords_http() -> None:
+    """A running, version-valid container is not healthy until /ords/ is non-5xx."""
+    sidecar, runtime = _sidecar()
+    runtime.container_running.return_value = True
+    runtime.container_exists.return_value = True
+    runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
+
+    with patch.object(sidecar, "_http_ready", return_value=False):
+        assert sidecar.wait_for_healthy(timeout=0.01, interval=0) is False
+
+
+def test_http_ready_accepts_non_5xx_for_ords() -> None:
+    """The ORDS endpoint is ready on any routed non-5xx HTTP response."""
+    sidecar, _ = _sidecar()
+
+    with patch("tools.oracle.ords.urlopen") as urlopen:
+        urlopen.return_value.__enter__.return_value.status = 404
+
+        assert sidecar._http_ready("/ords/") is True
+
+
+def test_http_ready_accepts_apex_images_success() -> None:
+    """The APEX images endpoint is ready when /i/ returns a curl -f compatible success."""
+    sidecar, _ = _sidecar()
+
+    with patch("tools.oracle.ords.urlopen") as urlopen:
+        urlopen.return_value.__enter__.return_value.status = 200
+
+        assert sidecar._http_ready("/i/") is True
+
+
+@pytest.mark.parametrize("status", [403, 404])
+def test_http_ready_rejects_apex_images_client_errors(status: int) -> None:
+    """The APEX images endpoint is not ready when /i/ is forbidden or missing."""
+    sidecar, _ = _sidecar()
+
+    with patch("tools.oracle.ords.urlopen") as urlopen:
+        urlopen.return_value.__enter__.return_value.status = status
+
+        assert sidecar._http_ready("/i/") is False
+
+
+def test_http_ready_rejects_server_errors() -> None:
+    """Server errors on either readiness URL are not treated as healthy."""
+    sidecar, _ = _sidecar()
+
+    with patch("tools.oracle.ords.urlopen") as urlopen:
+        urlopen.return_value.__enter__.return_value.status = 503
+
+        assert sidecar._http_ready("/ords/") is False
 
 
 def test_wait_for_healthy_times_out() -> None:
@@ -304,6 +494,10 @@ def test_infra_status_reports_ords_sidecar() -> None:
         "running": "true",
         "image": "container-registry.oracle.com/database/ords:latest",
         "ports": "8443/tcp",
+        "ords_version": "26.1.2",
+        "minimum_version": "26.1.1",
+        "preferred_version": "26.1.2",
+        "version_status": "ok",
     }
     with (
         patch.object(cli_db, "_database", return_value=db),
@@ -315,4 +509,8 @@ def test_infra_status_reports_ords_sidecar() -> None:
     assert "ORDS Sidecar" in result.output
     assert "oracle-ords" in result.output
     assert "8443/tcp" in result.output
+    assert "ORDS Version" in result.output
+    assert "26.1.2" in result.output
+    assert "APEX Media" in result.output
+    assert "APEX Patch" in result.output
     sidecar.status.assert_called_once()

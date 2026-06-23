@@ -4,8 +4,7 @@
 *Beads: `oracledb-vertexai-apxg` (master epic)*
 *Research: [../../research/research_apex_upgrade/](../../research/research_apex_upgrade/)*
 *Created: 2026-06-14*
-*Status: In progress — Ch1 shipped (32 tests). gvenzl revert landed; Ch2 spec refreshed to the real
-contract; Ch3–Ch5 carry contract-update banners pending their turn.*
+*Status: Reconciled — Ch1-Ch4 completed or absorbed by the active APEX ops roadmap; Ch5 settings/unit gates verified and smoke/docs/final work deferred to `apex-demo-verification-docs`.*
 
 ---
 
@@ -82,30 +81,38 @@ is a **precondition consumer**, not the owner of that revert).
 Acquire and stage APEX media for the container. Version-parameterized download of `apex_<ver>.zip` from
 the public OTN URL (default 26.1), integrity verification, per-version host cache, extraction, and a
 defined staging layout/mount points consumed by Ch2 (install) and Ch3 (ORDS `/i/` images).
-**Status: implementation-ready (spec drafted).**
+**Status: completed and archived locally 2026-06-23.**
 
 ### Chapter 2 — `apex-install-upgrade` (`oracledb-vertexai-apxg.2`)
 Idempotent install/upgrade engine: `apexins.sql` / `apex_rest_config.sql` / `apxchpwd.sql` via container
 SYSDBA into `FREEPDB1`; `APEX_RELEASE` detection to skip-or-upgrade; instance-admin password; COFFEE
 workspace + dev user provisioning (ported from the removed script). Command surface `manage.py infra apex
 install|upgrade|status`; auto-install hook on `infra start` when APEX is absent.
+**Status: completed and archived locally 2026-06-23.**
 
 ### Chapter 3 — `apex-ords-sidecar` (`oracledb-vertexai-apxg.3`)
 ORDS sidecar lifecycle launched by the Python CLI: connect to gvenzl `FREEPDB1`, serve `/ords` and APEX
 static images at `/i/` from staged `apex/images`, expose HTTPS/HTTP, health-check, and integrate into
 `infra start/stop/remove/status`. Pin a compatible ORDS↔APEX pairing.
+**Status: completed and archived locally 2026-06-23; final standalone CLI task was reconciled into `apex-runtime-hardening`.**
 
 ### Chapter 4 — `apexlang-source` (`oracledb-vertexai-apxg.4`)
-Define `src/apex/<alias>/` (`application.apx`, `pages/`, `shared-components/`, `supporting-objects/`,
-`deployments/`, `.apex/`). Add `manage.py infra apex export|import` wrapping SQLcl
-`apex export -applicationid <id> -exptype apexlang -dir src/apex/<alias>` (+ import), reusing the SQLcl
-integration. Verify a full-app round-trip on APEX 26.1.
+Absorbed by the post-research `apexlang-lifecycle` chapter on 2026-06-23. The
+current source root is `src/apex/<alias>/`; SQLcl 26.1.2 generated this repo's
+APEXlang source with hyphenated directories such as `shared-components/` and
+`supporting-objects/`. The
+local CLI now exposes `manage.py infra apex generate|export|validate|import`
+wrapping SQLcl APEXlang commands; live Oracle round-trip verification is carried
+by `apex-demo-verification-docs`.
 
 ### Chapter 5 — `apex-verify-docs` (`oracledb-vertexai-apxg.5`)
 Unit/integration tests (mocked SYSDBA/container exec + a real smoke path: install → workspace → ORDS →
 `apex_release=26.1` → export round-trip). Align env/settings for the gvenzl revert (ports, `FREEPDB1`,
 no wallet/mTLS). Update `quickstart` / `architecture` / `oracle-vector-search` guides + `CLAUDE.md`.
 Excludes `lab.md`.
+**Status: reconciled 2026-06-23.** Settings/env and Ch1-Ch4 unit gates are
+verified and closed; smoke/docs/final verification are deferred to
+`apex-demo-verification-docs` (`oracledb-vertexai-apxo.6`), not completed here.
 
 ---
 
@@ -146,7 +153,7 @@ Excludes `lab.md`.
 - The COFFEE workspace + dev user exist after install (ported provisioning).
 - `manage.py infra apex upgrade --apex-version <newer>` upgrades in place, idempotently.
 - `manage.py infra apex export --app-id <id>` writes a diffable APEXlang tree under
-  `src/apex/<alias>/`; `import` round-trips it back on APEX 26.1.
+  `src/apex/<alias>/`; `validate` and `import` round-trip it back on APEX 26.1.
 - `make lint` and `make test` pass; the documented smoke path succeeds end-to-end.
 
 ---
@@ -164,5 +171,7 @@ Excludes `lab.md`.
 
 ## Next Step
 
-Chapter 1 (`apex-media-staging`) is implementation-ready. Run **`/flow:implement`** to begin, or
-**`/flow:plan`** to draft specs for Chapters 2–5.
+Chapters 1–3 are complete and archived. Treat the post-research
+`apex-ops-console` roadmap as the active source for next implementation work:
+`apexlang-lifecycle`, `apex-ops-api`, and `apex-demo-verification-docs` carry
+the remaining APEXlang, API, smoke, and docs work.

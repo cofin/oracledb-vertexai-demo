@@ -251,6 +251,25 @@ class ContainerRuntime:
 
         return status_dict
 
+    def get_container_ip(self, container_name: str) -> str | None:
+        """Return the first container network IP, or None when unavailable."""
+        try:
+            returncode, stdout, _stderr = self.run_command(
+                [
+                    "inspect",
+                    "--format",
+                    "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+                    container_name,
+                ],
+                check=False,
+            )
+        except (subprocess.CalledProcessError, NoRuntimeAvailableError):
+            return None
+        if returncode != 0:
+            return None
+        ip_address = stdout.strip()
+        return ip_address or None
+
     def volume_exists(self, volume_name: str) -> bool:
         """Check if a volume exists.
 

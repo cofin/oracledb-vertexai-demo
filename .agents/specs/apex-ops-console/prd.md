@@ -91,9 +91,10 @@ Findings:
 - Oracle's APEXlang guide explicitly points developers toward APEX skills for
   popular AI coding agents, SQLcl validation, blueprints, and import/export
   workflows.
-- Official APEXlang directories use underscores, including
-  `shared_components/` and `supporting_objects/`. Any older plan text with
-  hyphenated names must be corrected.
+- The SQLcl 26.1.2 exporter generated this repo's APEXlang source with
+  hyphenated directories, including `shared-components/` and
+  `supporting-objects/`. Treat generated SQLcl output as authoritative when
+  planning notes or docs disagree.
 - SQLcl MCP support still exists, but the repo's old Gemini CLI config writer
   targets `~/.gemini/settings.json`; that is no longer the clean Antigravity
   shape.
@@ -305,8 +306,8 @@ Finding:
    SQLcl 26.1.2+ for APEXlang. Implementation must probe runtime versions.
 
 4. **APEXlang source lives under `src/apex/`.**
-   Use `src/apex/cymbal-coffee-ops/` with official underscore directories:
-   `shared_components/`, `supporting_objects/`, `deployments/`, `.apex/`,
+   Use `src/apex/cymbal-coffee-ops/` with the SQLcl-generated layout:
+   `shared-components/`, `supporting-objects/`, `deployments/`, `.apex/`,
    `pages/`, and `application.apx`.
 
 5. **OpenAPI is the APEX bridge. MCP is the agent/tooling bridge.**
@@ -355,14 +356,16 @@ Finding:
 
 | Ch | Flow | Beads | Depends on | Risk |
 | --- | --- | --- | --- | --- |
-| 1 | APEX runtime hardening and Flow reconciliation (`apex-runtime-hardening`) | `oracledb-vertexai-apxo.1` | related to `apex-gvenzl-install` | high |
-| 2 | SQLcl 26.1.2 APEXlang lifecycle (`apexlang-lifecycle`) | `oracledb-vertexai-apxo.2` | Ch1 | medium |
-| 3 | APEX-safe coffee data API and OpenAPI contract (`apex-ops-api`) | `oracledb-vertexai-apxo.3` | Ch1 | medium |
+| 1 | APEX runtime hardening and Flow reconciliation (`apex-runtime-hardening`) | `oracledb-vertexai-apxo.1` | completed 2026-06-23 | high |
+| 2 | SQLcl 26.1.2 APEXlang lifecycle (`apexlang-lifecycle`) | `oracledb-vertexai-apxo.2` | implemented 2026-06-23 | medium |
+| 3 | APEX-safe coffee data API and OpenAPI contract (`apex-ops-api`) | `oracledb-vertexai-apxo.3` | Ch1 complete | medium |
 | 4 | Schema bridge and Antigravity MCP configuration (`apex-schema-bridge`) | `oracledb-vertexai-apxo.4` | Ch3 | medium |
 | 5 | Cymbal Coffee APEX Operations Console app (`apex-ops-app`) | `oracledb-vertexai-apxo.5` | Ch2, Ch3, Ch4 | high |
 | 6 | APEX demo verification and docs (`apex-demo-verification-docs`) | `oracledb-vertexai-apxo.6` | Ch1-Ch5 | medium |
 
-Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
+Open chapters have implementation worksheets at `.agents/specs/<flow>/spec.md`;
+completed chapter worksheets are archived locally after durable guidance is
+synthesized into `.agents/patterns.md` or `.agents/knowledge/`.
 
 ---
 
@@ -370,28 +373,30 @@ Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
 
 ### Chapter 1 - `apex-runtime-hardening`
 
-- Refresh the current ORDS sidecar plan against the already-landed code.
-- Replace `:latest` as the default ORDS image policy with an explicit version
+- Completed 2026-06-23 and archived locally after Beads sync.
+- Refreshed the current ORDS sidecar plan against the already-landed code.
+- Replaced `:latest` as the default ORDS image policy with an explicit version
   target or a documented runtime verification strategy.
-- Add ORDS/APEX HTTP readiness probes for `/ords/` and `/i/`.
-- Add explicit `manage.py infra ords start|stop|restart|status|logs|remove`
+- Added ORDS/APEX HTTP readiness probes for `/ords/` and `/i/`.
+- Added explicit `manage.py infra ords start|stop|restart|status|logs|remove`
   or equivalent nested commands instead of hiding ORDS only inside DB start.
-- Record the APEX 26.1 re-release and optional APEX 26.1.1 patch handling in
+- Recorded the APEX 26.1 re-release and optional APEX 26.1.1 patch handling in
   docs and installer status output.
-- Reconcile the old `apex-gvenzl-install` open chapters so implementation
+- Reconciled the old `apex-gvenzl-install` open chapters so implementation
   does not duplicate stale tasks.
-- Route ORDS and container guidance through Oracle's `db` skill files:
+- Routed ORDS and container guidance through Oracle's `db` skill files:
   `db/ords/*` and `db/containers/ords.md`.
 
 ### Chapter 2 - `apexlang-lifecycle`
 
-- Add SQLcl 26.1.2+ version parsing and APEXlang capability verification.
-- Add APEXlang generate/export/validate/import wrappers under
+- Implemented 2026-06-23 with SQLcl 26.1.2+ version parsing and APEXlang
+  capability verification.
+- Added APEXlang generate/export/validate/import wrappers under
   `manage.py infra apex`.
-- Create `src/apex/cymbal-coffee-ops/` using official APEXlang layout names.
-- Make the app source round-trip deterministic in tests where possible and in
-  Oracle smoke verification where required.
-- Route APEX app generation through Oracle's `apex` skill and APEXlang
+- Created `src/apex/cymbal-coffee-ops/` using official APEXlang layout names.
+- Mocked subprocess tests verify the lifecycle wrapper; live Oracle round-trip
+  smoke is carried by Ch6 verification docs.
+- Routed APEX app generation through Oracle's `apex` skill and APEXlang
   workflow references.
 
 ### Chapter 3 - `apex-ops-api`
@@ -458,7 +463,8 @@ Each chapter has an implementation worksheet at `.agents/specs/<flow>/spec.md`.
 - Do not add Gemini CLI migration support. Replace old hooks with current
   Antigravity config paths.
 - Do not put APEX app source outside `src/apex/`.
-- Do not use hyphenated APEXlang official directory names.
+- Do not rewrite SQLcl-generated APEXlang directory names by hand; this repo's
+  generated source uses hyphenated shared/supporting component directories.
 - Do not persist browser coordinates. APEX-facing APIs can expose seeded store
   coordinates but must not log or store user coordinates.
 - Do not make APEX depend on SSE chat.

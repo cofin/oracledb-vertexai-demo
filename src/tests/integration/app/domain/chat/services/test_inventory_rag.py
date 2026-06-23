@@ -73,6 +73,13 @@ async def _seed_product_with_inventory(
     return product_id
 
 
+async def _dallas_store(driver: OracleAsyncDriver) -> tuple[int, str]:
+    """Return the seeded Dallas store used by inventory RAG fixtures."""
+    stores = await driver.select("SELECT id, name FROM store WHERE name LIKE '%Dallas%'")
+    assert stores, "Dallas store must be seeded in database"
+    return int(stores[0]["id"]), str(stores[0]["name"])
+
+
 class FakeIntentClassifier:
     async def classify(self, phrase: str) -> IntentLabel:
         return IntentLabel.PRODUCT_RAG
@@ -131,28 +138,9 @@ def _fake_llm_agent(**kwargs: Any) -> FunctionNode:
     return FunctionNode(func=coffee_turn, name=str(kwargs["name"]), parameter_binding="state")
 
 
-async def test_inventory_aware_rag_recommends_and_annotates(
-    monkeypatch: pytest.MonkeyPatch,
-    driver: OracleAsyncDriver,
-    unique_test_id: str,
-    tracked_product_skus: Callable[[str], None],
-) -> None:
-    # 1. Resolve a valid store (e.g. Dallas store from fixtures, ID is usually 1)
-    stores = await driver.select("SELECT id, name FROM store WHERE name LIKE '%Dallas%'")
-    assert stores, "Dallas store must be seeded in database"
-    dallas_store = stores[0]
-    dallas_store_id = int(dallas_store["id"])
-    dallas_store_name = str(dallas_store["name"])
-
-    # 2. Seed product + inventory at Dallas store (IN_STOCK)
-    sku = f"RAG-INV-{unique_test_id}"
-    tracked_product_skus(sku)
-    product_id = await _seed_product_with_inventory(driver, sku, dallas_store_id, qty=42, status="IN_STOCK")
-
-    # 3. Setup mock configs
-    from app.domain.chat.services import adk as adk_module
-    monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
-    configured = SimpleNamespace(
+def _chat_settings() -> SimpleNamespace:
+    """Return deterministic settings for the inventory RAG integration path."""
+    return SimpleNamespace(
         ai=SimpleNamespace(
             project_id="test-project",
             api_key=None,
@@ -168,6 +156,38 @@ async def test_inventory_aware_rag_recommends_and_annotates(
             display_history_limit=40,
         ),
     )
+
+
+def _tools_service(driver: OracleAsyncDriver) -> AgentToolsService:
+    """Build the request-scoped tool service with deterministic Vertex behavior."""
+    return AgentToolsService(
+        driver=driver,
+        product_service=ProductService(driver),
+        metrics_service=MetricsService(driver),
+        vertex_ai_service=FakeVertexAIService(),  # type: ignore[arg-type]
+        store_service=StoreService(driver),
+        cache_service=CacheService(driver),
+    )
+
+
+async def test_inventory_aware_rag_recommends_and_annotates(
+    monkeypatch: pytest.MonkeyPatch,
+    driver: OracleAsyncDriver,
+    unique_test_id: str,
+    tracked_product_skus: Callable[[str], None],
+) -> None:
+    # 1. Resolve a valid store (e.g. Dallas store from fixtures, ID is usually 1)
+    dallas_store_id, dallas_store_name = await _dallas_store(driver)
+
+    # 2. Seed product + inventory at Dallas store (IN_STOCK)
+    sku = f"RAG-INV-{unique_test_id}"
+    tracked_product_skus(sku)
+    product_id = await _seed_product_with_inventory(driver, sku, dallas_store_id, qty=42, status="IN_STOCK")
+
+    # 3. Setup mock configs
+    from app.domain.chat.services import adk as adk_module
+    monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
+    configured = _chat_settings()
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
     monkeypatch.setattr("app.domain.chat.services._adk_grounding.get_settings", lambda: configured)
 
@@ -180,30 +200,19 @@ async def test_inventory_aware_rag_recommends_and_annotates(
         classifier=FakeIntentClassifier(),  # type: ignore[arg-type]
         persona_manager=PersonaManager(),
     )
-    tools_service = AgentToolsService(
-        driver=driver,
-        product_service=ProductService(driver),
-        metrics_service=MetricsService(driver),
-        vertex_ai_service=FakeVertexAIService(),  # type: ignore[arg-type]
-        store_service=StoreService(driver),
-        cache_service=CacheService(driver),
-    )
+    tools_service = _tools_service(driver)
 
     # 4. Request with location context targeting Dallas
-    location_context = {
-        "store_name": dallas_store_name,
-    }
-    query = "Give me something bold"
     session_id = f"integration-rag-inv-{uuid.uuid4().hex}"
 
     result: dict[str, Any] | None = None
     async for event in runner.stream_request(
-        query=query,
+        query="Give me something bold",
         user_id="integration-user",
         session_id=session_id,
         persona="enthusiast",
         tools_service=tools_service,
-        location_context=location_context,
+        location_context={"store_name": dallas_store_name},
     ):
         if event.get("type") == "final":
             result = event

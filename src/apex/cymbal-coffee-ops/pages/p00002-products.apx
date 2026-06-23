@@ -1,0 +1,66 @@
+page 2 (
+    name: Product Catalog
+    alias: PRODUCTS
+    title: Product Catalog
+    appearance {
+        pageTemplate: @/standard
+        templateOptions: #DEFAULT#
+    }
+    navigation {
+        cursorFocus: doNotFocusCursor
+    }
+    security {
+        pageAccessProtection: argumentsMustHaveChecksum
+        formAutoComplete: false
+    }
+
+    region product-catalog (
+        name: Product Catalog
+        title: Product Catalog
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select id,
+                       name,
+                       category,
+                       price,
+                       case when in_stock then 'Yes' else 'No' end as in_stock
+                  from product
+                 order by name
+                ```
+        }
+        layout {
+            sequence: 10
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3634989706664501
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
+    region products-api (
+        name: /api/apex/products
+        title: /api/apex/products
+        type: staticContent
+        layout {
+            sequence: 20
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+)
