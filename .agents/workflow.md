@@ -299,38 +299,37 @@ Before marking any task complete, verify:
 
 ## Development Commands
 
-**AI AGENT INSTRUCTION: This section should be adapted to the project's specific language, framework, and build tools.**
-
 ### Setup
 
 ```bash
-# Example: Commands to set up the development environment (e.g., install dependencies, configure database)
-# e.g., for a Node.js project: npm install
-# e.g., for a Go project: go mod tidy
+make install
+uv run python manage.py init --run-install
 ```
 
 ### Daily Development
 
 ```bash
-# Replace these examples with the repo's actual canonical commands.
-# Prefer aggregate entrypoints like make/just/task/package scripts before raw tool invocations.
-# Examples:
-# make dev
-# make test
-# make lint
-# npm run dev
-# just check
+make start-infra
+uv run coffee upgrade
+uv run coffee run
 ```
 
 ### Before Committing
 
 ```bash
-# Prefer the single canonical verification command when the repo has one.
-# Examples:
-# make check
-# just check
-# task verify
-# npm run check
+make format
+make lint
+make typecheck
+make test
+```
+
+### APEX Development (Optional)
+
+```bash
+make apex
+uv run python manage.py infra apex validate --alias cymbal-coffee-ops
+uv run python manage.py infra apex import --alias cymbal-coffee-ops
+uv run python manage.py infra apex export --app-id <app-id> --alias cymbal-coffee-ops
 ```
 
 ## Testing Requirements

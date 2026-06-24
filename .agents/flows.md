@@ -27,7 +27,7 @@ current single-VM lab is preserved as the GCE-only path.
 
 ---
 
-## [~] PRD: adb-podman-lab-hardening
+## [x] PRD: adb-podman-lab-hardening
 *Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
 *Beads: oracledb-vertexai-9p5 (master epic)*
 *Research: [./research/research_adb_hooks_ux_lab/](./research/research_adb_hooks_ux_lab/)*
@@ -35,7 +35,7 @@ current single-VM lab is preserved as the GCE-only path.
 ### Chapters
 - [x] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — superseded by gvenzl revert; archived locally 2026-06-23
   *Beads: oracledb-vertexai-9p5.1*
-- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft; needs revision after gvenzl revert
+- [x] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — skipped in favor of CoS direct deploy; archived locally 2026-06-24
   *Link: [./specs/oraclelinux-podman-lab/](./specs/oraclelinux-podman-lab/)*
   *Beads: oracledb-vertexai-9p5.2*
 - [x] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — completed, archived locally 2026-06-23
