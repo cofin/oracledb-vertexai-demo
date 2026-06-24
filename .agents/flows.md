@@ -12,7 +12,7 @@ private GCE VM + a Cloud Build deploy pipeline over a private VPC. Additive; the
 current single-VM lab is preserved as the GCE-only path.
 
 ### Chapters
-- [ ] **Chapter 1: Cloud Run app/image readiness (`cloudrun-app-readiness`)** — planned
+- [x] **Chapter 1: Cloud Run app/image readiness (`cloudrun-app-readiness`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.1*
 - [ ] **Chapter 2: GCE Oracle DB appliance (`gce-oracle-appliance`)** — planned
   *Link: [./specs/gce-oracle-appliance/](./specs/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
