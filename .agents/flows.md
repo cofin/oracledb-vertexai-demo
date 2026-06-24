@@ -16,7 +16,7 @@ current single-VM lab is preserved as the GCE-only path.
   *Beads: oracledb-vertexai-jw0.1*
 - [x] **Chapter 2: GCE Oracle DB appliance (`gce-oracle-appliance`)** — implemented, archived locally 2026-06-24
   *Link: [./specs/gce-oracle-appliance/](./specs/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
-- [ ] **Chapter 3: Cloud Build + Cloud Run deploy pipeline (`cloudbuild-cloudrun-pipeline`)** — planned, depends on Ch1, Ch2
+- [x] **Chapter 3: Cloud Build + Cloud Run deploy pipeline (`cloudbuild-cloudrun-pipeline`)** — implemented, archived locally 2026-06-24
   *Link: [./specs/cloudbuild-cloudrun-pipeline/](./specs/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
 - [x] **Chapter 4: Rename current lab to GCE-only (`lab-gce-rename`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.4*
