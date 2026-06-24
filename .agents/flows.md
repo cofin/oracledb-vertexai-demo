@@ -20,7 +20,7 @@ current single-VM lab is preserved as the GCE-only path.
   *Link: [./specs/cloudbuild-cloudrun-pipeline/](./specs/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
 - [x] **Chapter 4: Rename current lab to GCE-only (`lab-gce-rename`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.4*
-- [ ] **Chapter 5: Author new Cloud Run lab module (`cloudrun-lab-authoring`)** — planned, depends on Ch2, Ch3, Ch4
+- [x] **Chapter 5: Author new Cloud Run lab module (`cloudrun-lab-authoring`)** — implemented, archived locally 2026-06-24
   *Link: [./specs/cloudrun-lab-authoring/](./specs/cloudrun-lab-authoring/)* · *Beads: oracledb-vertexai-jw0.5*
 - [ ] **Chapter 6: Cloud Run lab verification + teardown (`cloudrun-lab-verification-teardown`)** — planned, depends on Ch3, Ch5
   *Beads: oracledb-vertexai-jw0.6*
