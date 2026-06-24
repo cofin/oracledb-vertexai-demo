@@ -19,7 +19,7 @@ dependencies = [
     "litestar[jinja,jwt,cryptography,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp",
-    "sqlspec[adk,mypyc,oracledb,performance]==0.50.0",
+    "sqlspec[adk,mypyc,oracledb,performance]",
 
     "python-dotenv",
     "google-adk>=2.0.0",
@@ -359,3 +359,6 @@ exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 extraPaths = ["src"]
 include = ["src/app", "src/tests"]
 reportMissingImports = "information"
+
+[tool.uv.sources]
+sqlspec = { git = "https://github.com/litestar-org/sqlspec", branch = "main" }

@@ -167,7 +167,7 @@ Oracle INMEMORY settings are separate from vector indexes:
 
 | Environment variable | Target |
 | --- | --- |
-| `ORACLE_ADK_IN_MEMORY` | Defaults true; ADK `adk_sessions`, `adk_events`, and optional memory table |
+| `ORACLE_ADK_IN_MEMORY` | Defaults true; ADK `adk_session`, `adk_event`, and optional memory table |
 | `ORACLE_LITESTAR_SESSION_IN_MEMORY` | Defaults true; Litestar server-side `app_session` table |
 | `ADK_ENABLE_MEMORY` | Includes SQLSpec ADK memory migration/table |
 

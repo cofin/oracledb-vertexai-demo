@@ -15,6 +15,7 @@ import structlog
 from google.adk import Runner
 from google.adk.agents import LlmAgent
 from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.events import Event, EventActions
 from google.genai import errors as genai_errors
 from google.genai import types
 from sqlspec.adapters.oracledb import OracleAsyncDriver  # noqa: TC002
@@ -582,23 +583,27 @@ class ADKRunner:
         if not session:
             return
 
-        state = dict(getattr(session, "state", None) or {})
-        if intent_detected:
-            state["intent"] = intent_detected
-        if last_products is not None:
-            state["last_products"] = last_products
+        existing = _coerce_history_messages((getattr(session, "state", None) or {}).get(_DISPLAY_HISTORY_STATE_KEY))
         history = [
-            *[
-                {"source": message.source, "message": message.message}
-                for message in _coerce_history_messages(state.get(_DISPLAY_HISTORY_STATE_KEY))
-            ],
+            *[{"source": m.source, "message": m.message} for m in existing],
             {"source": "human", "message": query},
             {"source": "ai", "message": answer},
-        ]
-        state[_DISPLAY_HISTORY_STATE_KEY] = history[-get_settings().chat.display_history_limit :]
-        result = self._session_service.store.update_session_state(session_id, state)
-        if isawaitable(result):
-            await result
+        ][-get_settings().chat.display_history_limit :]
+
+        state_delta: dict[str, Any] = {_DISPLAY_HISTORY_STATE_KEY: history}
+        if intent_detected:
+            state_delta["intent"] = intent_detected
+        if last_products is not None:
+            state_delta["last_products"] = last_products
+
+        await self._session_service.append_event(
+            session,
+            Event(
+                author="system",
+                invocation_id=f"display-{uuid.uuid4().hex}",
+                actions=EventActions(state_delta=state_delta),
+            ),
+        )
 
     async def _cached_response_event(
         self,

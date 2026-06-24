@@ -268,12 +268,12 @@ async def _seed_marker_product(session: OracleAsyncDriver) -> None:
 
 async def _assert_sqlspec_extension_tables(session: OracleAsyncDriver) -> None:
     """Fail fast when SQLSpec migrations did not materialize extension tables."""
-    expected = {"APP_SESSION", "ADK_SESSIONS", "ADK_EVENTS"}
+    expected = {"APP_SESSION", "ADK_SESSION", "ADK_EVENT"}
     rows = await session.select(
         """
         SELECT table_name
           FROM user_tables
-         WHERE table_name IN ('APP_SESSION', 'ADK_SESSIONS', 'ADK_EVENTS')
+         WHERE table_name IN ('APP_SESSION', 'ADK_SESSION', 'ADK_EVENT')
         """
     )
     present = {str(row["table_name"]).upper() for row in rows}

@@ -55,8 +55,8 @@ Litestar request scope.
 The browser session and ADK session are separate stores:
 
 - Litestar server-side session table: `app_session`
-- ADK session/event tables: `adk_sessions`, `adk_events`
-- Optional ADK memory table: `adk_memory_entries`
+- ADK session/event tables: `adk_session`, `adk_event`
+- Optional ADK memory table: `adk_memory`
 
 `app.domain.chat.session.adk_session_identity()` bridges them by storing:
 
@@ -96,9 +96,6 @@ The Oracle-specific table names and INMEMORY flags live in `DatabaseSettings`:
 
 ```python
 "adk": {
-    "session_table": "adk_sessions",
-    "events_table": "adk_events",
-    "memory_table": "adk_memory_entries",
     "enable_memory": settings.db.ADK_ENABLE_MEMORY,
     "include_memory_migration": settings.db.ADK_ENABLE_MEMORY,
     "in_memory": settings.db.ADK_IN_MEMORY,

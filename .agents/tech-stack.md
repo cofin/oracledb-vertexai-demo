@@ -24,7 +24,7 @@
 - **Data Access:** SQLSpec (with `python-oracledb` and `mypyc` optimizations)
 - **Browser Sessions:** Litestar server-side sessions backed by SQLSpec Oracle
   storage
-- **Agent Sessions:** SQLSpec Oracle ADK store (`adk_sessions`, `adk_events`,
+- **Agent Sessions:** SQLSpec Oracle ADK store (`adk_session`, `adk_event`,
   optional memory tables)
 
 ## Chat Runner Flow
