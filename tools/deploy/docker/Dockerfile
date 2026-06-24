@@ -61,7 +61,8 @@ ENV PATH="/app/bin:$PATH" \
     LD_LIBRARY_PATH="/opt/oracle/instantclient" \
     TNS_ADMIN=/app/wallet \
     WALLET_LOCATION=/app/wallet \
-    TMPDIR=/tmp
+    TMPDIR=/tmp \
+    PORT=8080
 
 COPY --from=prep /runtime-libs/lib/ /lib/
 COPY --from=prep /runtime-libs/usr/lib/ /usr/lib/
@@ -83,7 +84,7 @@ EXPOSE 8080
 VOLUME ["/app/wallet"]
 
 ENTRYPOINT ["/usr/local/bin/tini", "--", "coffee"]
-CMD ["run", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["run", "--host", "0.0.0.0"]
 
 LABEL org.opencontainers.image.title="Cymbal Coffee Demo" \
       org.opencontainers.image.description="Distroless container wrapping the PyApp onefile release" \

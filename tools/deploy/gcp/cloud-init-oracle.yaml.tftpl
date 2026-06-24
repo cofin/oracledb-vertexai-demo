@@ -1,0 +1,120 @@
+#cloud-config
+# COS cloud-config for the Cymbal Coffee Oracle 26ai DB appliance.
+# Rendered by tools/deploy/terraform/db_vm.tf via templatefile().
+# COS runs write_files + runcmd on EVERY boot, so every step is idempotent.
+
+write_files:
+  - path: /var/lib/oracle-hooks/on_init/00_configure_vector_memory.sql
+    permissions: "0644"
+    content: |
+      ${indent(8, init_vector_sql)}
+  - path: /var/lib/oracle-hooks/on_init/db_init.sql
+    permissions: "0644"
+    content: |
+      ${indent(8, init_db_sql)}
+  - path: /var/lib/oracle-hooks/on_startup/00_verify_vector_memory.sql
+    permissions: "0644"
+    content: |
+      ${indent(8, startup_verify_sql)}
+  - path: /var/lib/oracle-hooks/on_startup/01_startup_test.sql
+    permissions: "0644"
+    content: |
+      ${indent(8, startup_test_sql)}
+
+  # Script lives under /etc (exec-allowed). COS mounts /var noexec, so a
+  # /var/lib script cannot be execve()'d directly (see C1). We also invoke it
+  # via `bash <path>` from runcmd so the path is read, not executed.
+  - path: /etc/oracle/start-oracle.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      log() { echo "[start-oracle] $*"; }
+
+      DISK_DEV="/dev/disk/by-id/google-coffee-db-data"
+      MNT="/mnt/disks/oradata"
+      CONTAINER="oracle-free"
+      IMAGE="${oracle_image}"
+      PROJECT="${project_id}"
+      APP_SECRET_ID="${app_password_secret_id}"
+      SYS_SECRET_ID="${system_password_secret_id}"
+
+      # access_secret <secret-id> — read latest version via metadata token +
+      # the Secret Manager REST API (COS has no gcloud). Extraction is anchored
+      # to the JSON field names and base64-decoded; empty result is fatal.
+      access_secret() {
+        local sid="$1" token data
+        token="$(curl -fsS -H 'Metadata-Flavor: Google' \
+          'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' \
+          | grep -o '"access_token"[[:space:]]*:[[:space:]]*"[^"]*"' \
+          | head -n1 | sed 's/.*"\([^"]*\)"$/\1/')"
+        [ -n "$token" ] || { log "ERROR: no metadata access token."; return 1; }
+        # The payload.data field is the base64 secret; dataCrc32c is a sibling.
+        data="$(curl -fsS -H "Authorization: Bearer $token" \
+          "https://secretmanager.googleapis.com/v1/projects/$PROJECT/secrets/$sid/versions/latest:access" \
+          | grep -o '"data"[[:space:]]*:[[:space:]]*"[^"]*"' \
+          | head -n1 | sed 's/.*"\([^"]*\)"$/\1/' | base64 -d)"
+        [ -n "$data" ] || { log "ERROR: empty secret $sid."; return 1; }
+        printf '%s' "$data"
+      }
+
+      # --- 1. Wait for the data disk device symlink (avoid mkfs race, I2) -----
+      for i in $(seq 1 30); do
+        [ -e "$DISK_DEV" ] && break
+        log "Waiting for $DISK_DEV ($i/30)..."; sleep 2
+      done
+      [ -e "$DISK_DEV" ] || { log "ERROR: $DISK_DEV never appeared."; exit 1; }
+
+      # --- 2. Idempotent format + mount (format ONLY if no filesystem) --------
+      # No -F: refuse to clobber an existing fs. blkid is the format guard.
+      if ! blkid "$DISK_DEV" >/dev/null 2>&1; then
+        log "No filesystem on $DISK_DEV; creating ext4."
+        mkfs.ext4 "$DISK_DEV"
+      fi
+      mkdir -p "$MNT"
+      if ! mountpoint -q "$MNT"; then
+        log "Mounting $DISK_DEV at $MNT."
+        mount -o discard,defaults "$DISK_DEV" "$MNT"
+      fi
+      # gvenzl runs as the 'oracle' uid 54321; make oradata writable.
+      chown -R 54321:54321 "$MNT" || true
+
+      # --- 3. Fetch both passwords from Secret Manager (never templated) ------
+      APP_USER_PASSWORD="$(access_secret "$APP_SECRET_ID")" \
+        || { log "ERROR: could not read APP password."; exit 1; }
+      ORACLE_PASSWORD="$(access_secret "$SYS_SECRET_ID")" \
+        || { log "ERROR: could not read SYS password."; exit 1; }
+
+      # --- 4. Run the Oracle container (idempotent: replace, never duplicate) -
+      if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
+        log "Removing existing $CONTAINER container before re-create."
+        docker rm -f "$CONTAINER" || true
+      fi
+      log "Pulling $IMAGE."
+      docker pull "$IMAGE"
+      log "Starting $CONTAINER."
+      docker run -d \
+        --name "$CONTAINER" \
+        --hostname coffee-db \
+        --restart always \
+        -p 1521:1521 \
+        -e ORACLE_PASSWORD="$ORACLE_PASSWORD" \
+        -e APP_USER='${app_user}' \
+        -e APP_USER_PASSWORD="$APP_USER_PASSWORD" \
+        -v "$MNT":/opt/oracle/oradata \
+        -v /var/lib/oracle-hooks/on_init:/container-entrypoint-initdb.d \
+        -v /var/lib/oracle-hooks/on_startup:/container-entrypoint-startdb.d \
+        --health-cmd healthcheck.sh \
+        --health-interval 10s \
+        --health-timeout 5s \
+        --health-retries 10 \
+        --log-opt max-size=10m \
+        --log-opt max-file=3 \
+        "$IMAGE"
+      log "Done."
+
+runcmd:
+  - systemctl is-active docker || systemctl start docker
+  # Invoke via bash so the /etc path is read, not execve'd (belt-and-braces
+  # alongside placing the script on the exec-allowed /etc mount — C1).
+  - ['bash', '/etc/oracle/start-oracle.sh']

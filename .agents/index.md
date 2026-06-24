@@ -22,15 +22,10 @@ not behind archive links.
 | Code Style | [code-styleguides/html-css.md](./code-styleguides/html-css.md) | HTML/CSS style guide |
 | Code Style | [code-styleguides/typescript.md](./code-styleguides/typescript.md) | TypeScript style guide |
 | Skill | [skills/flow-memory-keeper/SKILL.md](./skills/flow-memory-keeper/SKILL.md) | Project-local Flow memory keeper |
-| Setup | [setup-state.json](./setup-state.json) | Flow setup state |
 | Beads | [beads.json](./beads.json) | Beads task database |
 | Active Spec | [specs/vhs-demo-recordings_20260429/prd.md](./specs/vhs-demo-recordings_20260429/prd.md) | VHS demo recording plan |
-| Active Spec | [specs/settings-config-consolidation_20260501/prd.md](./specs/settings-config-consolidation_20260501/prd.md) | Settings and configuration consolidation plan |
-| Active Spec | [specs/inventory-data/spec.md](./specs/inventory-data/spec.md) | Inventory data foundation |
-| Active Spec | [specs/inventory-grounding/spec.md](./specs/inventory-grounding/spec.md) | Deterministic availability routing (Active) |
-| Active Spec | [specs/inventory-rag/spec.md](./specs/inventory-rag/spec.md) | Inventory-aware RAG |
-| Active Spec | [specs/inventory-ui/spec.md](./specs/inventory-ui/spec.md) | Live inventory dashboard |
-| Active Spec | [specs/oracle-apex-integration/spec.md](./specs/oracle-apex-integration/spec.md) | Oracle APEX and Autonomous container migration |
+| Active Spec | [specs/apex-ops-console/prd.md](./specs/apex-ops-console/prd.md) | APEX Operations Console master PRD |
+| Active Spec | [specs/apex-ops-app/spec.md](./specs/apex-ops-app/spec.md) | APEX Operations Console app (Active chapter) |
 
 | Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
 | Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |

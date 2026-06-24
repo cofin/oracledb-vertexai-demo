@@ -99,6 +99,10 @@
   `commands.py`. Do not add compatibility shim or facade modules.
 - `sanitize_for_json` camel-cases msgspec Struct keys for wire encoding. In the chat domain (like `ADKRunner` and grounding formatting helpers), check both snake_case and camelCase keys using `_get_field(row, snake_name)` to remain resilient to case conversion differences between unit test mocks and runtime database responses.
 - Product availability lookups (`PRODUCT_AVAILABILITY`) resolve product names via exact match first, falling back to pronoun resolution from `last_products` in session history, and finally using Vertex AI vector search to resolve partial/imprecise product names (e.g. 'Gemini' -> 'Gemini Rush') before checking store inventory.
+- ORDS Stateless Deployment on Cloud Run: Deploy ORDS on Cloud Run stateless, peered via Direct VPC, utilizing Secret Manager for the database system password (`DATABASE_SYSTEM_PASSWORD`) to enable automatic schema registration/validation on container boot. (derived from cloudrun-ords-deploy)
+- Oracle CDN for APEX Assets: Set `IMAGE_PREFIX` to Oracle's public APEX CDN (`https://apex.oracle.com/i/` or version-specific URL) via database script. This keeps the ORDS container stateless and avoids the need for mounting static asset directories or using Cloud Storage FUSE. (derived from cloudrun-ords-deploy)
+- Image Re-hosting for Private Deployments: When deploying to Cloud Run in restricted environments where external registry authentication is unavailable or unreliable at deployment time, re-host official images (like `container-registry.oracle.com/database/ords:<version>`) in GCP Artifact Registry. (derived from cloudrun-ords-deploy)
+- AutoREST Table Enablement: Utilize Oracle ORDS `AutoREST` capability to expose database tables (e.g., `PRODUCTS`) as REST endpoints directly via SQLSpec migrations or startup scripts using simple PL/SQL calls (`ORDS.enable_object`), providing a zero-code private data access path. (derived from cloudrun-ords-deploy)
 
 
 ## Code Style

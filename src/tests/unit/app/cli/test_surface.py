@@ -30,4 +30,4 @@ def test_coffee_cli_keeps_end_user_upgrade_but_not_downgrade() -> None:
 def test_cli_helpers_only_keep_substantial_workflow_modules() -> None:
     helper_files = {path.name for path in (Path(cli_package.__file__).parent / "_helpers").glob("*.py")}
 
-    assert helper_files == {"__init__.py", "embeddings.py", "fixtures.py"}
+    assert helper_files == {"__init__.py", "embeddings.py", "fixtures.py", "ords.py"}

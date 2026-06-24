@@ -2,8 +2,8 @@
 
 This file tracks all PRDs (Product Requirements Documents) for the project. Each PRD has its own detailed plan in its respective folder.
 
-## [ ] PRD: cloudrun-gce-lab
-*Link: [./specs/cloudrun-gce-lab/](./specs/cloudrun-gce-lab/)*
+## [x] PRD: cloudrun-gce-lab
+*Link: [./archive/cloudrun-gce-lab/](./archive/cloudrun-gce-lab/)*
 *Beads: oracledb-vertexai-jw0 (master epic)*
 *Research: [./research/research_cloudrun_gce_lab_overhaul/](./research/research_cloudrun_gce_lab_overhaul/)*
 
@@ -12,22 +12,22 @@ private GCE VM + a Cloud Build deploy pipeline over a private VPC. Additive; the
 current single-VM lab is preserved as the GCE-only path.
 
 ### Chapters
-- [ ] **Chapter 1: Cloud Run app/image readiness (`cloudrun-app-readiness`)** — planned
+- [x] **Chapter 1: Cloud Run app/image readiness (`cloudrun-app-readiness`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.1*
-- [ ] **Chapter 2: GCE Oracle DB appliance (`gce-oracle-appliance`)** — planned
-  *Link: [./specs/gce-oracle-appliance/](./specs/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
-- [ ] **Chapter 3: Cloud Build + Cloud Run deploy pipeline (`cloudbuild-cloudrun-pipeline`)** — planned, depends on Ch1, Ch2
-  *Link: [./specs/cloudbuild-cloudrun-pipeline/](./specs/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
-- [ ] **Chapter 4: Rename current lab to GCE-only (`lab-gce-rename`)** — planned
+- [x] **Chapter 2: GCE Oracle DB appliance (`gce-oracle-appliance`)** — implemented, archived locally 2026-06-24
+  *Link: [./archive/gce-oracle-appliance/](./archive/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
+- [x] **Chapter 3: Cloud Build + Cloud Run deploy pipeline (`cloudbuild-cloudrun-pipeline`)** — implemented, archived locally 2026-06-24
+  *Link: [./archive/cloudbuild-cloudrun-pipeline/](./archive/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
+- [x] **Chapter 4: Rename current lab to GCE-only (`lab-gce-rename`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.4*
-- [ ] **Chapter 5: Author new Cloud Run lab module (`cloudrun-lab-authoring`)** — planned, depends on Ch2, Ch3, Ch4
-  *Link: [./specs/cloudrun-lab-authoring/](./specs/cloudrun-lab-authoring/)* · *Beads: oracledb-vertexai-jw0.5*
-- [ ] **Chapter 6: Cloud Run lab verification + teardown (`cloudrun-lab-verification-teardown`)** — planned, depends on Ch3, Ch5
+- [x] **Chapter 5: Author new Cloud Run lab module (`cloudrun-lab-authoring`)** — implemented, archived locally 2026-06-24
+  *Link: [./archive/cloudrun-lab-authoring/](./archive/cloudrun-lab-authoring/)* · *Beads: oracledb-vertexai-jw0.5*
+- [x] **Chapter 6: Cloud Run lab verification + teardown (`cloudrun-lab-verification-teardown`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.6*
 
 ---
 
-## [~] PRD: adb-podman-lab-hardening
+## [x] PRD: adb-podman-lab-hardening
 *Link: [./specs/adb-podman-lab-hardening/](./specs/adb-podman-lab-hardening/)*
 *Beads: oracledb-vertexai-9p5 (master epic)*
 *Research: [./research/research_adb_hooks_ux_lab/](./research/research_adb_hooks_ux_lab/)*
@@ -35,7 +35,7 @@ current single-VM lab is preserved as the GCE-only path.
 ### Chapters
 - [x] **Chapter 1: ADB-Free vector-memory startup hardening + podman/OL runtime validation (`adb-vector-memory-hardening`)** — superseded by gvenzl revert; archived locally 2026-06-23
   *Beads: oracledb-vertexai-9p5.1*
-- [ ] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — draft; needs revision after gvenzl revert
+- [x] **Chapter 2: Lab overhaul — Oracle Linux + podman + accuracy fixes (`oraclelinux-podman-lab`)** — skipped in favor of CoS direct deploy; archived locally 2026-06-24
   *Link: [./specs/oraclelinux-podman-lab/](./specs/oraclelinux-podman-lab/)*
   *Beads: oracledb-vertexai-9p5.2*
 - [x] **Chapter 3: UI UX/correctness fixes (`ui-quality-fixes`)** — completed, archived locally 2026-06-23
@@ -91,6 +91,7 @@ branch while it is unmerged, and update the default chat/classifier model to
 
 ---
 
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
@@ -100,7 +101,7 @@ branch while it is unmerged, and update the default chat/classifier model to
 Archived specs are disposable local history and may be ignored or removed from
 the repository. Durable learnings belong in `.agents/knowledge/` and
 `.agents/patterns.md`; do not point active Flow guidance at archive paths.
-
+- `cloudrun-ords-deploy` (`oracledb-vertexai-ords`) completed and archived locally on 2026-06-24. All four chapters are closed in Beads: `ords-image-prep` (`oracledb-vertexai-ords.2`), `ords-terraform` (`oracledb-vertexai-ords.3`), `ords-pipeline` (`oracledb-vertexai-ords.4`), and `ords-lab-walkthrough` (`oracledb-vertexai-ords.5`). Deploying ORDS to Cloud Run enables REST APIs against the private GCE database VM. Documentation walkthrough is updated.
 - `demo-source-organization_20260501` (`oracledb-vertexai-8jt`) completed and
   archived locally on 2026-05-02.
 - `ruff-copyright-modernization` (`oracledb-vertexai-a0l`) completed and
