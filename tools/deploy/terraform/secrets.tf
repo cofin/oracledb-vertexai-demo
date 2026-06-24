@@ -11,7 +11,7 @@ resource "google_secret_manager_secret" "coffee_db_password" {
 
 resource "google_secret_manager_secret_version" "coffee_db_password" {
   secret      = google_secret_manager_secret.coffee_db_password.id
-  secret_data = "placeholder-app-password"
+  secret_data = var.db_password
 }
 
 resource "google_secret_manager_secret" "coffee_db_system_password" {
@@ -24,5 +24,6 @@ resource "google_secret_manager_secret" "coffee_db_system_password" {
 
 resource "google_secret_manager_secret_version" "coffee_db_system_password" {
   secret      = google_secret_manager_secret.coffee_db_system_password.id
-  secret_data = "placeholder-system-password"
+  secret_data = var.db_system_password
 }
+

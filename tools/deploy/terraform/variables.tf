@@ -44,3 +44,16 @@ variable "system_password_secret_id" {
   default     = "coffee-db-system-password"
   description = "Secret Manager secret holding the Oracle SYS/SYSTEM password (created in Ch3)."
 }
+
+variable "db_password" {
+  type        = string
+  description = "Oracle APP-user password (DATABASE_PASSWORD). Consumed by Cloud Run, the build migrate step, and the DB VM app user. LAB ONLY: set in gitignored terraform.tfvars."
+  sensitive   = true
+}
+
+variable "db_system_password" {
+  type        = string
+  description = "Oracle SYS/system password. Consumed ONLY by the Ch2 DB VM cloud-init at boot; never reaches Cloud Run or the build pool. LAB ONLY: set in gitignored terraform.tfvars."
+  sensitive   = true
+}
+

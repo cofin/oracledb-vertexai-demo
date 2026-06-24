@@ -1,6 +1,5 @@
-# Terraform local state, plans, and provider plugins (may hold secrets)
-.terraform/
+terraform.tfvars
 *.tfstate
 *.tfstate.*
-*.tfvars
-crash.log
+.terraform/
+.terraform.lock.hcl

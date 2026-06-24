@@ -13,8 +13,8 @@ resource "google_service_account" "coffee_db_sa" {
 locals {
   cloud_init = templatefile("${path.module}/../gcp/cloud-init-oracle.yaml.tftpl", {
     app_user                  = "app"
-    app_password_secret_id    = var.db_password_secret_id        # coffee-db-password (Ch3)
-    system_password_secret_id = var.system_password_secret_id    # coffee-db-system-password (Ch3)
+    app_password_secret_id    = var.db_password_secret_id     # coffee-db-password (Ch3)
+    system_password_secret_id = var.system_password_secret_id # coffee-db-system-password (Ch3)
     project_id                = var.project_id
     oracle_image              = "gvenzl/oracle-free:latest"
     init_vector_sql           = file("${path.module}/../../oracle/on_init/00_configure_vector_memory.sql")
@@ -63,8 +63,8 @@ resource "google_compute_instance" "coffee_db" {
   }
 
   metadata = {
-    user-data                  = local.cloud_init
-    google-logging-enabled     = "true"
+    user-data                 = local.cloud_init
+    google-logging-enabled    = "true"
     google-monitoring-enabled = "true"
   }
 
