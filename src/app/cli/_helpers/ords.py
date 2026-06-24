@@ -83,12 +83,7 @@ def configure_apex_cdn_helper(system_password: str) -> None:
     console.print(f"[yellow]Connecting to {dsn} as SYSDBA...[/yellow]")
 
     try:
-        connection = oracledb.connect(
-            user="SYS",
-            password=system_password,
-            dsn=dsn,
-            mode=oracledb.AUTH_MODE_SYSDBA,
-        )
+        connection = oracledb.connect(user="SYS", password=system_password, dsn=dsn, mode=oracledb.AUTH_MODE_SYSDBA)
     except Exception as e:
         console.print(f"[red]Connection failed: {e}[/red]")
         raise

@@ -11,6 +11,7 @@ This lab is advanced and follows the [Single-VM GCE lab](lab-gce.md). We recomme
 ## Prerequisites & Audience Expectations
 
 - **GCP Knowledge**: Comfort with Google Cloud Platform, including basic familiarity with Google Cloud Run, Cloud Build, Artifact Registry, virtual private clouds (VPCs), and Terraform.
+- **ORDS & APEX**: Understanding that deploying Oracle REST Data Services (ORDS) on Cloud Run is part of the lab.
 - **Tools Required**: A web browser and access to a Google Cloud Console account with billing or credits enabled.
 
 > **Note:** Unlike the single-VM lab, this architecture provisions a persistent, standard VM instance and regional networking services that do not scale to zero. Be sure to follow the cleanup instructions at the end of the lab to avoid ongoing charges.
@@ -22,14 +23,14 @@ This lab is advanced and follows the [Single-VM GCE lab](lab-gce.md). We recomme
 In this first step, you will initialize your cloud workspace and export the environment variables required for the deployment commands.
 
 1. Log into the **Google Cloud Console** (`https://console.cloud.google.com`) using your workshop credentials.
-2. In the top navigation bar, click the **Activate Cloud Shell** icon (a small terminal icon `>_`). Wait a few moments for the terminal environment to provision and connect.
-3. Set your active project using the following command (replace `[YOUR-PROJECT-ID]` with your actual GCP project ID shown on your console dashboard):
+1. In the top navigation bar, click the **Activate Cloud Shell** icon (a small terminal icon `>_`). Wait a few moments for the terminal environment to provision and connect.
+1. Set your active project using the following command (replace `[YOUR-PROJECT-ID]` with your actual GCP project ID shown on your console dashboard):
 
 ```shell
 gcloud config set project [YOUR-PROJECT-ID]
 ```
 
-4. Define the geographic deployment region and zone defaults:
+1. Define the geographic deployment region and zone defaults:
 
 ```shell
 export REGION=us-central1
@@ -99,8 +100,8 @@ EOF
 ```
 
 > **Note:** The `terraform.tfvars` file is explicitly ignored by version control (.gitignore) to prevent sensitive secrets from being committed to public repositories. In a production environment, you should use cryptographically secure passwords.
-
-> **Note:** `db_password` represents the Oracle application user password (`DATABASE_PASSWORD`) which will be accessed by Cloud Run, the build pool migration step, and the VM container initialization. `db_system_password` represents the Oracle administrative SYS/SYSTEM password, which is consumed only by the GCE VM cloud-init process at boot.
+>
+> `db_password` represents the Oracle application user password (`DATABASE_PASSWORD`) which will be accessed by Cloud Run, the build pool migration step, and the VM container initialization. `db_system_password` represents the Oracle administrative SYS/SYSTEM password, which is consumed only by the GCE VM cloud-init process at boot.
 
 ---
 
@@ -114,27 +115,61 @@ In this step, you will initialize the Terraform providers and apply the configur
 terraform init
 ```
 
-2. Review and apply the configuration:
+1. Review and apply the configuration:
 
 ```shell
 terraform apply -auto-approve
 ```
 
 Once the application of the infrastructure finishes, Terraform will have provisioned the following resources:
+
 - **Networking** — A custom VPC (`coffee-vpc`) with a subnet for the DB VM (`coffee-subnet`, `10.10.0.0/24`), a subnet for Cloud Run egress (`coffee-run-subnet`, `10.10.1.0/24`), a Cloud Router/NAT for internet access, and a peered range (`10.30.0.0/24`) for the Cloud Build private pool.
 - **Database VM** — A Container-Optimized OS VM (`coffee-db`) with a static internal IP (`10.10.0.10`) and a persistent data disk mounted at `/opt/oracle/oradata`. It runs the `gvenzl/oracle-free` database image container on port 1521.
 - **Artifact Registry & Build Pool** — A Docker repository (`coffee-artifacts`) and a Cloud Build private worker pool (`coffee-build-pool`) peered to the custom VPC.
 - **Secrets & IAM** — The `coffee-db-password` secret in Secret Manager and service accounts with minimal necessary permissions.
 
 > **Note:** The Oracle database VM is private by design. It does not possess a public external IP. Ingress is restricted via firewall rules (`coffee-allow-run-to-db`) to only allow traffic on port 1521 from the Cloud Run egress subnet (`10.10.1.0/24`) and the Cloud Build private pool range (`10.30.0.0/24`). SSH access is allowed only via Identity-Aware Proxy (IAP) tunnels.
+>
+> The initial boot of the Oracle DB container can take 3 to 5 minutes as it sets up the container entrypoints and mounts the persistent disk.
 
-> **Note:** The initial boot of the Oracle DB container can take 3 to 5 minutes as it sets up the container entrypoints and mounts the persistent disk.
+---
+
+## Step 5b: Re-host the Oracle ORDS Image to Artifact Registry
+
+Because Google Cloud Run cannot pull directly from the authenticated Oracle Container Registry, you must first re-host the official Oracle ORDS container image inside your project's private Google Artifact Registry repository.
+
+1. Configure Docker to authenticate with the regional Artifact Registry:
+
+```shell
+gcloud auth configure-docker us-central1-docker.pkg.dev
+```
+
+1. Pull the official ORDS 26.1.2 image from the Oracle Container Registry:
+
+```shell
+docker pull container-registry.oracle.com/database/ords:26.1.2
+```
+
+1. Tag the image for your project's private Artifact Registry repository:
+
+```shell
+docker tag container-registry.oracle.com/database/ords:26.1.2 \
+  us-central1-docker.pkg.dev/${PROJECT_ID}/coffee-artifacts/ords:26.1.2
+```
+
+1. Push the tagged image to your Artifact Registry:
+
+```shell
+docker push us-central1-docker.pkg.dev/${PROJECT_ID}/coffee-artifacts/ords:26.1.2
+```
+
+> **Note:** Re-hosting the image ensures that the Cloud Run deployment in Step 6 has secure, high-bandwidth access to the container image without requiring external registry credentials at runtime.
 
 ---
 
 ## Step 6: Build and Deploy with Cloud Build
 
-In this step, you will submit your build to the Cloud Build private pool. The build pipeline compiles the application Docker image, pushes it to your Artifact Registry, executes database migrations, and deploys the Cloud Run service.
+In this step, you will submit your build to the Cloud Build private pool. The build pipeline compiles the application Docker image, pushes it to your Artifact Registry, executes database migrations, configures the APEX CDN, and deploys both the application and the ORDS services on Cloud Run.
 
 1. Run the build submission from the `tools/deploy/terraform` directory:
 
@@ -145,10 +180,13 @@ gcloud builds submit \
   --substitutions=_PROJECT=$PROJECT_ID,_REGION=$REGION
 ```
 
-The pipeline operates in three stages:
-1. **Build and Push** — Builds the app container image and pushes tags for both the Git SHA and `:latest` to `us-central1-docker.pkg.dev/$PROJECT_ID/coffee-artifacts/coffee-app`.
-2. **Migrate** — Spawns the container on the peered private pool and runs `coffee upgrade` to apply database migrations and load committed-embedding fixtures.
-3. **Deploy** — Configures the Cloud Run service (`coffee-app`) with Direct VPC egress, wires Secret Manager credentials, and connects it to the Vertex AI platform.
+The pipeline operates in the following stages:
+
+- **Build and Push** — Builds the app container image and pushes tags for both the Git SHA and `:latest` to `us-central1-docker.pkg.dev/$PROJECT_ID/coffee-artifacts/coffee-app`.
+- **Migrate** — Spawns the container on the peered private pool and runs `coffee upgrade` to apply database migrations and load committed-embedding fixtures.
+- **APEX CDN Configuration** — Runs a post-migration task (`configure-apex-cdn`) against the database to update the APEX static image prefix to point to the public Oracle CDN.
+- **Deploy ORDS** — Configures and deploys the ORDS Cloud Run service (`coffee-ords`) using the re-hosted ORDS image, pointing to the private database `10.10.0.10` via Direct VPC egress.
+- **Deploy Application** — Configures the Cloud Run service (`coffee-app`) with Direct VPC egress, wires Secret Manager credentials, and connects it to the Vertex AI platform.
 
 > **Note:** The migration step successfully reaches the private database because it runs on the peered regional worker pool (`coffee-build-pool`) rather than the default public Google shared builders. Because our committed fixtures under `src/app/db/fixtures/` already contain pre-calculated vector embeddings, database migration executes immediately without requiring any external Vertex AI API calls at build time.
 
@@ -166,14 +204,56 @@ gcloud run services describe coffee-app \
   --format='value(status.url)'
 ```
 
-2. Open the printed URL in a new browser tab.
-3. In the chat interface, enter a query such as:
-   ```
+1. Open the printed URL in a new browser tab.
+1. In the chat interface, enter a query such as:
+
+   ```text
    I need something bold
    ```
-4. Press Enter. Confirm that the application returns a response containing specific coffee suggestions (like a French Roast or Dark Roast Espresso) from the database.
+
+1. Press Enter. Confirm that the application returns a response containing specific coffee suggestions (like a French Roast or Dark Roast Espresso) from the database.
 
 > **Note:** The successful response proves that the public-facing Cloud Run service successfully routed requests through its Direct VPC egress interface to query the private database at `10.10.0.10:1521/freepdb1` and leveraged Vertex AI to embed your chat search query.
+
+---
+
+## Step 7b: Access the Oracle REST Data Services (ORDS)
+
+In this step, you will retrieve the public URL of the ORDS service, verify that the REST metadata catalog is reachable, and access the Oracle APEX administration interface.
+
+1. Retrieve the public HTTPS endpoint URL of your ORDS service:
+
+```shell
+gcloud run services describe coffee-ords \
+  --region=$REGION \
+  --format='value(status.url)'
+```
+
+1. Store the URL in an environment variable and verify connectivity by querying the ORDS metadata catalog:
+
+```shell
+export ORDS_URL=$(gcloud run services describe coffee-ords \
+  --region=$REGION \
+  --format='value(status.url)')
+
+curl -f -s "$ORDS_URL/ords/" | grep -o '"title":"Oracle REST Data Services"'
+```
+
+   Expected output:
+
+   ```text
+   "title":"Oracle REST Data Services"
+   ```
+
+   A successful response proves that the ORDS Cloud Run service successfully routes requests through the private network (`coffee-vpc`) to query the Oracle database instance.
+
+1. You can also view the Oracle APEX administration login screen by navigating to the following URL in your browser:
+
+```text
+[YOUR-ORDS-URL]/ords/apex
+```
+
+> **Note:** Because the database was configured with the APEX CDN in Step 6, the APEX page will load its static assets directly from Oracle's public CDN, ensuring quick load times and maintaining a completely stateless container profile.
 
 ---
 
@@ -292,6 +372,7 @@ These checks prove two things at once: the app works end-to-end, and the Oracle 
    ```
 
    Expected output:
+
    ```text
    https://coffee-app-xxxxxx-uc.a.run.app
    200
@@ -322,6 +403,7 @@ These checks prove two things at once: the app works end-to-end, and the Oracle 
    The output is **empty**. An empty `accessConfigs` means `coffee-db` has no external IP at all — there is no public address the internet could dial.
 
    Expected output:
+
    ```text
 
    ```
@@ -404,11 +486,18 @@ For a smaller footprint you can right-size the VM (e.g. a smaller machine type) 
    terraform destroy
    ```
 
-   Review the plan and confirm with `yes`. Terraform removes, in dependency order: the Cloud Run service `coffee-app`, the Cloud Build private pool `coffee-build-pool`, the `coffee-db` VM and its `coffee-db-data` disk, the Artifact Registry repo `coffee-artifacts` (and the images in it), the VPC `coffee-vpc` with its subnets/firewall/router/NAT, the reserved internal IP `coffee-db-ip` and peering range `coffee-buildpool-range`, the IAM bindings, and the `coffee-db-password` secret.
+   Review the plan and confirm with `yes`. Terraform removes, in dependency order: the Cloud Run services `coffee-app` and `coffee-ords`, the Cloud Build private pool `coffee-build-pool`, the `coffee-db` VM and its `coffee-db-data` disk, the Artifact Registry repo `coffee-artifacts` (and the images in it), the VPC `coffee-vpc` with its subnets/firewall/router/NAT, the reserved internal IP `coffee-db-ip` and peering range `coffee-buildpool-range`, the IAM bindings, and the secrets `coffee-db-password` and `coffee-db-system-password`.
 
 4. **Sweep up anything Terraform left behind.** Most resources are gone after `terraform destroy`. A few can linger if they were created outside Terraform or guarded — delete them explicitly so nothing keeps billing:
 
    ```shell
+   # Cloud Run services (if they outlived the destroy)
+   gcloud run services delete coffee-app --region us-central1 --quiet 2>/dev/null || true
+   gcloud run services delete coffee-ords --region us-central1 --quiet 2>/dev/null || true
+
+   # Service accounts (if they outlived the destroy)
+   gcloud iam service-accounts delete coffee-ords-sa@${PROJECT_ID}.iam.gserviceaccount.com --quiet 2>/dev/null || true
+
    # Artifact Registry images (if the repo or images outlived the repo resource)
    gcloud artifacts repositories delete coffee-artifacts \
      --location us-central1 --quiet 2>/dev/null || true
@@ -419,8 +508,9 @@ For a smaller footprint you can right-size the VM (e.g. a smaller machine type) 
    gcloud compute addresses delete coffee-buildpool-range \
      --global --quiet 2>/dev/null || true
 
-   # The DB password secret
+   # Secrets
    gcloud secrets delete coffee-db-password --quiet 2>/dev/null || true
+   gcloud secrets delete coffee-db-system-password --quiet 2>/dev/null || true
    ```
 
 5. **Confirm nothing is left.** Each command below should return **no `coffee-*` rows**:
