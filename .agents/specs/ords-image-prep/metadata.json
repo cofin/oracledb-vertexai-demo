@@ -1,0 +1,10 @@
+{
+  "flow_id": "ords-image-prep",
+  "type": "chapter",
+  "status": "planned",
+  "parent_prd": "cloudrun-ords-deploy",
+  "beads_epic_id": "oracledb-vertexai-ords.2",
+  "created_at": "2026-06-24T20:46:00Z",
+  "updated_at": "2026-06-24T20:46:00Z",
+  "description": "Image re-hosting preparation and APEX CDN configuration script"
+}
