@@ -10,6 +10,7 @@ small command-local helpers live here with their commands.
 
 from __future__ import annotations
 
+import os
 from typing import Any, cast
 
 import rich_click as click
@@ -65,7 +66,11 @@ async def _clear_application_cache(force: bool, cache_service: CacheService) -> 
 
 
 def _create_run_command() -> click.Command:
-    """Build the ``run`` command by copying granian's params and wrapping its callback."""
+    """Build the ``run`` command by copying granian's params and wrapping its callback.
+
+    Mutates the copied '--port' option default to look up the Cloud Run PORT
+    environment variable before falling back to the standard default.
+    """
     original_command = litestar_run_command
 
     @click.pass_context  # type: ignore[arg-type]
@@ -80,7 +85,18 @@ def _create_run_command() -> click.Command:
             original_command.callback(app=env.app, ctx=ctx, **kwargs)
 
     new_command = click.command(name="run", help=original_command.help)(wrapped_run)
-    new_command.params = original_command.params.copy()
+    import copy
+
+    new_params: list[click.Parameter] = []
+    for param in original_command.params:
+        if isinstance(param, click.Option) and "--port" in param.opts:
+            param_copy = copy.copy(param)
+            granian_default = param_copy.default
+            param_copy.default = lambda _d=granian_default: int(os.getenv("PORT") or _d)
+            new_params.append(param_copy)
+        else:
+            new_params.append(param)
+    new_command.params = new_params
     return new_command
 
 

@@ -276,3 +276,33 @@ def test_get_settings_cache_and_reset(monkeypatch: MonkeyPatch) -> None:
         assert third is not first
     finally:
         Settings.from_env.cache_clear()
+
+
+@pytest.mark.parametrize("unset", ["DATABASE_URL", "WALLET_PASSWORD"])
+def test_cloud_run_env_uses_standard_dsn(monkeypatch: MonkeyPatch, unset: str) -> None:
+    """Verify that when DATABASE_URL and WALLET_PASSWORD are unset (Cloud Run env),
+
+    DatabaseSettings is_autonomous is False and we resolve to the standard DSN.
+    """
+    from app.lib.settings import DatabaseSettings
+
+    for key, value in {
+        "DATABASE_HOST": "10.10.0.10",
+        "DATABASE_PORT": "1521",
+        "DATABASE_SERVICE_NAME": "freepdb1",
+        "DATABASE_USER": "app",
+        "DATABASE_PASSWORD": "secret-from-secret-manager",
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("WALLET_PASSWORD", raising=False)
+    monkeypatch.delenv("DATABASE_DSN", raising=False)
+
+    settings = DatabaseSettings()
+
+    assert settings.is_autonomous is False
+    params = settings.get_connection_params()
+    assert params["dsn"] == "10.10.0.10:1521/freepdb1"
+    assert params["user"] == "app"
+    assert "wallet_password" not in params
