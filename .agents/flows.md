@@ -2,8 +2,8 @@
 
 This file tracks all PRDs (Product Requirements Documents) for the project. Each PRD has its own detailed plan in its respective folder.
 
-## [ ] PRD: cloudrun-gce-lab
-*Link: [./specs/cloudrun-gce-lab/](./specs/cloudrun-gce-lab/)*
+## [x] PRD: cloudrun-gce-lab
+*Link: [./archive/cloudrun-gce-lab/](./archive/cloudrun-gce-lab/)*
 *Beads: oracledb-vertexai-jw0 (master epic)*
 *Research: [./research/research_cloudrun_gce_lab_overhaul/](./research/research_cloudrun_gce_lab_overhaul/)*
 
@@ -15,13 +15,13 @@ current single-VM lab is preserved as the GCE-only path.
 - [x] **Chapter 1: Cloud Run app/image readiness (`cloudrun-app-readiness`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.1*
 - [x] **Chapter 2: GCE Oracle DB appliance (`gce-oracle-appliance`)** — implemented, archived locally 2026-06-24
-  *Link: [./specs/gce-oracle-appliance/](./specs/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
+  *Link: [./archive/gce-oracle-appliance/](./archive/gce-oracle-appliance/)* · *Beads: oracledb-vertexai-jw0.2*
 - [x] **Chapter 3: Cloud Build + Cloud Run deploy pipeline (`cloudbuild-cloudrun-pipeline`)** — implemented, archived locally 2026-06-24
-  *Link: [./specs/cloudbuild-cloudrun-pipeline/](./specs/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
+  *Link: [./archive/cloudbuild-cloudrun-pipeline/](./archive/cloudbuild-cloudrun-pipeline/)* · *Beads: oracledb-vertexai-jw0.3*
 - [x] **Chapter 4: Rename current lab to GCE-only (`lab-gce-rename`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.4*
 - [x] **Chapter 5: Author new Cloud Run lab module (`cloudrun-lab-authoring`)** — implemented, archived locally 2026-06-24
-  *Link: [./specs/cloudrun-lab-authoring/](./specs/cloudrun-lab-authoring/)* · *Beads: oracledb-vertexai-jw0.5*
+  *Link: [./archive/cloudrun-lab-authoring/](./archive/cloudrun-lab-authoring/)* · *Beads: oracledb-vertexai-jw0.5*
 - [x] **Chapter 6: Cloud Run lab verification + teardown (`cloudrun-lab-verification-teardown`)** — implemented, archived locally 2026-06-24
   *Beads: oracledb-vertexai-jw0.6*
 
