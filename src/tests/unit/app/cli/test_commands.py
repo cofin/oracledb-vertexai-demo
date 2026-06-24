@@ -6,6 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from app.cli.commands import _create_run_command
+from app.cli.main import cli
 
 
 def _resolve_port(monkeypatch: pytest.MonkeyPatch, args: list[str], env: dict[str, str | None]) -> int:
@@ -42,3 +43,49 @@ def _resolve_port(monkeypatch: pytest.MonkeyPatch, args: list[str], env: dict[st
 )
 def test_run_port_resolution(monkeypatch, args, env, expected):
     assert _resolve_port(monkeypatch, args, env) == expected
+
+
+def test_configure_apex_cdn_command_success(monkeypatch):
+    from unittest.mock import MagicMock
+
+    import oracledb
+
+    # Mock parse_plsql_block
+    mock_parse = MagicMock(return_value="DECLARE NULL; END;")
+    monkeypatch.setattr("app.cli._helpers.ords.parse_plsql_block", mock_parse)
+
+    # Mock oracledb connection and cursor
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_conn.cursor.return_value = mock_cursor
+
+    mock_num_lines_var = MagicMock()
+    mock_num_lines_var.getvalue.side_effect = [1, 0]
+    mock_cursor.var.return_value = mock_num_lines_var
+
+    mock_lines_var = MagicMock()
+    mock_lines_var.getvalue.side_effect = [["APEX IMAGE_PREFIX successfully updated to CDN"], []]
+    mock_cursor.arrayvar.return_value = mock_lines_var
+
+    mock_connect = MagicMock(return_value=mock_conn)
+    monkeypatch.setattr("oracledb.connect", mock_connect)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["configure-apex-cdn"], env={"DATABASE_SYSTEM_PASSWORD": "test-password"})
+
+    assert result.exit_code == 0
+    assert "APEX IMAGE_PREFIX successfully updated to CDN" in result.output
+    assert "✓ APEX CDN configuration completed successfully!" in result.output
+    mock_connect.assert_called_once()
+    assert mock_connect.call_args[1]["user"] == "SYS"
+    assert mock_connect.call_args[1]["password"] == "test-password"  # noqa: S105
+    assert mock_connect.call_args[1]["mode"] == oracledb.AUTH_MODE_SYSDBA
+
+
+def test_configure_apex_cdn_command_missing_password(monkeypatch):
+    runner = CliRunner()
+    result = runner.invoke(cli, ["configure-apex-cdn"])
+
+    assert result.exit_code != 0
+    assert "DATABASE_SYSTEM_PASSWORD environment variable is not set" in result.output

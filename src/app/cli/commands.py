@@ -21,6 +21,7 @@ from rich.prompt import Prompt
 from sqlspec.migrations.commands import create_migration_commands
 
 import app.config as app_config
+from app.cli._helpers import configure_apex_cdn_helper
 from app.cli._helpers.embeddings import generate_product_embeddings
 from app.cli._helpers.fixtures import (
     display_available_tables,
@@ -205,6 +206,17 @@ async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_com
         return
 
     await export_fixture_data(tables, output_dir, no_compress)
+
+
+@cli.command(name="configure-apex-cdn", help="Run APEX CDN configuration against the database as SYSDBA.")
+def configure_apex_cmd() -> None:
+    """Run APEX CDN configuration against the database as SYSDBA."""
+    system_password = os.getenv("DATABASE_SYSTEM_PASSWORD")
+    if not system_password:
+        msg = "DATABASE_SYSTEM_PASSWORD environment variable is not set"
+        raise click.ClickException(msg)
+
+    configure_apex_cdn_helper(system_password)
 
 
 cli.add_command(_create_run_command())

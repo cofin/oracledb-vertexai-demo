@@ -22,7 +22,7 @@ BEGIN
     -- 2. Retrieve current parameter value dynamically to prevent compilation errors in CDB$ROOT
     EXECUTE IMMEDIATE 'BEGIN :1 := apex_instance_admin.get_parameter(''IMAGE_PREFIX''); END;'
         USING OUT v_current_prefix;
-    
+
     -- 3. Update parameter if not already pointing to target local path
     IF v_current_prefix IS NULL OR v_current_prefix != v_target_prefix THEN
         EXECUTE IMMEDIATE 'BEGIN apex_instance_admin.set_parameter(''IMAGE_PREFIX'', :1); END;'
