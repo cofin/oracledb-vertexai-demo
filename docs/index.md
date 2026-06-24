@@ -80,8 +80,7 @@ calls.
 :link: lab
 :link-type: doc
 
-The single-file workshop guide for running Cymbal Coffee with Oracle 26ai and
-Vertex AI.
+Choose your deployment path: single-VM GCE or production-shaped Cloud Run.
 :::
 
 :::{grid-item-card} {octicon}`terminal;1.1em` Antigravity MCP
@@ -117,6 +116,8 @@ mcp-antigravity
 :caption: Lab
 
 lab
+lab-gce
+lab-cloud-run
 ```
 
 ```{toctree}
