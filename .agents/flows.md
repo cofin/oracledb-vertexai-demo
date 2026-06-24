@@ -91,6 +91,27 @@ branch while it is unmerged, and update the default chat/classifier model to
 
 ---
 
+## [ ] PRD: cloudrun-ords-deploy
+*Link: [./specs/cloudrun-ords-deploy/](./specs/cloudrun-ords-deploy/)*
+*Beads: oracledb-vertexai-ords (master epic)*
+*Research: [./research/research_ords_cloudrun_deploy/](./research/research_ords_cloudrun_deploy/)*
+
+Deploy Oracle REST Data Services (ORDS) on Google Cloud Run to provide a scalable,
+serverless HTTP front-end for the GCE database, enabling Oracle APEX applications
+and REST APIs.
+
+### Chapters
+- [ ] **Chapter 1: Image Re-hosting and script prep (`ords-image-prep`)** — planned
+  *Beads: oracledb-vertexai-ords.2*
+- [ ] **Chapter 2: Terraform Infrastructure (`ords-terraform`)** — planned, depends on Ch1
+  *Beads: oracledb-vertexai-ords.3*
+- [ ] **Chapter 3: Pipeline Integration (`ords-pipeline`)** — planned, depends on Ch2
+  *Beads: oracledb-vertexai-ords.4*
+- [ ] **Chapter 4: Lab Walkthrough & Verification (`ords-lab-walkthrough`)** — planned, depends on Ch3
+  *Beads: oracledb-vertexai-ords.5*
+
+---
+
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
