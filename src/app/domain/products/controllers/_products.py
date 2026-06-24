@@ -3,7 +3,8 @@
 
 from litestar import Controller, get
 from litestar.di import NamedDependency
-from litestar.params import SkipValidation
+from litestar.params import FromPath, SkipValidation
+from litestar.plugins.htmx import HTMXTemplate
 
 from app.domain.products.schemas import Product, Store
 from app.domain.products.services import ProductService, StoreService
@@ -29,9 +30,7 @@ class ProductController(Controller):
 
     @get("/", operation_id="ListProducts", name="products:list", summary="List Products")
     async def list_products(
-        self,
-        products_service: Inject[ProductService],
-        filters: NamedDependency[SkipValidation[list[FilterTypes]]],
+        self, products_service: Inject[ProductService], filters: NamedDependency[SkipValidation[list[FilterTypes]]]
     ) -> OffsetPagination[Product]:
         """List products with pagination, search, and filtering."""
         return await products_service.list_with_count(*filters)
@@ -55,9 +54,15 @@ class StoreController(Controller):
 
     @get("/", operation_id="ListStores", name="stores:list", summary="List Stores")
     async def list_stores(
-        self,
-        stores_service: Inject[StoreService],
-        filters: NamedDependency[SkipValidation[list[FilterTypes]]],
+        self, stores_service: Inject[StoreService], filters: NamedDependency[SkipValidation[list[FilterTypes]]]
     ) -> OffsetPagination[Store]:
         """List stores with pagination, search, and filtering."""
         return await stores_service.list_with_count(*filters)
+
+    @get("/{store_id:int}/inventory", operation_id="StoreInventory", name="stores:inventory", summary="Store Inventory")
+    async def store_inventory(self, stores_service: Inject[StoreService], store_id: FromPath[int]) -> HTMXTemplate:
+        """Render current product inventory for one store."""
+        inventory = await stores_service.list_store_inventory(store_id)
+        return HTMXTemplate(
+            template_name="partials/_inventory_list.html.j2", context={"inventory": inventory, "store_id": store_id}
+        )

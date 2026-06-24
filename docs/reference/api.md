@@ -9,7 +9,7 @@ generated docs.
 ## ADK runner
 
 The per-request chat runner that ties the Litestar chat controller to
-Flash-Lite intent routing, deterministic grounded routes, Google ADK 2.0
+Flash-Lite intent routing, grounded row-rendered routes, Google ADK 2.0
 fallbacks, and closure-bound tools.
 
 ```{eval-rst}
@@ -20,8 +20,8 @@ fallbacks, and closure-bound tools.
 ## Services
 
 `OracleAsyncService` subclasses that own the named-SQL queries and result
-mapping for products, the embedding/response caches, and the per-message
-metrics surfaced on `/explore`.
+mapping for products, the embedding/response caches, structured Vertex AI
+selection calls, and the per-message metrics surfaced on `/explore`.
 
 ```{eval-rst}
 .. autoclass:: app.domain.products.services.services.ProductService

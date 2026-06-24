@@ -5,12 +5,14 @@
 
 from __future__ import annotations
 
+import json
+import re
 import uuid
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from google.adk.workflow._function_node import FunctionNode
+from google.adk.workflow import FunctionNode
 from google.genai import types
 from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
 from sqlspec.extensions.adk import SQLSpecSessionService
@@ -61,17 +63,33 @@ class FakeIntentClassifier:
         return IntentLabel.PRODUCT_RAG
 
 
+class _FakeGenAiModels:
+    """Stub Gemini models endpoint that returns a guard-passing product selection."""
+
+    async def generate_content(self, **kwargs: Any) -> Any:
+        contents = str(kwargs.get("contents") or "")
+        product_id = re.search(r"id=([^;]+);", contents)
+        payload = {
+            "mode": "recommend",
+            "off_menu_term": "",
+            "selected_product_ids": [product_id.group(1)] if product_id else [],
+        }
+        return SimpleNamespace(text=json.dumps(payload))
+
+
 class FakeVertexAIService:
     """Embedding service stub that keeps the Oracle/vector path live."""
 
     model = "integration-test-chat-model"
 
+    def __init__(self) -> None:
+        self.client = SimpleNamespace(aio=SimpleNamespace(models=_FakeGenAiModels()))
+
+    async def generate_structured_content(self, **kwargs: Any) -> Any:
+        return await self.client.aio.models.generate_content(**kwargs)
+
     async def get_text_embedding(
-        self,
-        text: str,
-        *,
-        embedding_purpose: str = "document",
-        return_cache_status: bool = False,
+        self, text: str, *, embedding_purpose: str = "document", return_cache_status: bool = False
     ) -> Any:
         del text, embedding_purpose
         embedding = _seed_embedding()
@@ -84,16 +102,11 @@ def _fake_llm_agent(**kwargs: Any) -> FunctionNode:
 
     async def coffee_turn(ctx: Any, node_input: str) -> types.Content:
         del ctx
-        result = await tools["search_products_by_vector"](
-            node_input,
-            limit=5,
-            similarity_threshold=0.5,
-        )
+        result = await tools["search_products_by_vector"](node_input, limit=5, similarity_threshold=0.5)
         products = result["products"]
         assert products, "product RAG must return at least one Oracle-backed match"
         return types.Content(
-            role="model",
-            parts=[types.Part(text=f"{products[0]['name']} is a good fit for a bold coffee request.")],
+            role="model", parts=[types.Part(text=f"{products[0]['name']} is a good fit for a bold coffee request.")]
         )
 
     return FunctionNode(func=coffee_turn, name=str(kwargs["name"]), parameter_binding="state")
@@ -115,21 +128,19 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
 
     monkeypatch.setattr(adk_module, "LlmAgent", _fake_llm_agent)
     configured = SimpleNamespace(
-        ai=SimpleNamespace(
-            project_id="test-project",
-            api_key=None,
-            chat_model="gemini-2.5-flash-lite",
-        ),
+        ai=SimpleNamespace(project_id="test-project", api_key=None, chat_model="gemini-3.1-flash-lite"),
         chat=SimpleNamespace(
             session_app_name="coffee_assistant",
-            response_cache_version="menu-grounded-v1",
+            response_cache_version="menu-grounded-v2",
             response_cache_ttl_minutes=60,
             product_search_limit=5,
             product_search_threshold=0.7,
+            grounded_answer_timeout_seconds=2.5,
             display_history_limit=40,
         ),
     )
     monkeypatch.setattr(adk_module, "get_settings", lambda: configured)
+    monkeypatch.setattr("app.domain.chat.services._adk_grounding.get_settings", lambda: configured)
 
     from app.config import db
 
@@ -201,9 +212,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
     assert classifier.phrases == [query]
 
     persisted = await session_service.get_session(
-        app_name="coffee_assistant",
-        user_id="integration-user",
-        session_id=session_id,
+        app_name="coffee_assistant", user_id="integration-user", session_id=session_id
     )
     assert persisted is not None
     assert persisted.state["intent"] == IntentLabel.PRODUCT_RAG.value

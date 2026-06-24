@@ -71,29 +71,16 @@ class WalletConfig:
             ]
 
         if self.required_files is None:
-            self.required_files = [
-                "cwallet.sso",
-                "tnsnames.ora",
-                "sqlnet.ora",
-            ]
+            self.required_files = ["cwallet.sso", "tnsnames.ora", "sqlnet.ora"]
 
         if self.optional_files is None:
-            self.optional_files = [
-                "ewallet.p12",
-                "keystore.jks",
-                "truststore.jks",
-                "ojdbc.properties",
-            ]
+            self.optional_files = ["ewallet.p12", "keystore.jks", "truststore.jks", "ojdbc.properties"]
 
 
 class WalletConfigurator:
     """Configure and validate Oracle Autonomous Database wallets."""
 
-    def __init__(
-        self,
-        config: WalletConfig | None = None,
-        console: Console | None = None,
-    ) -> None:
+    def __init__(self, config: WalletConfig | None = None, console: Console | None = None) -> None:
         """Initialize wallet configurator.
 
         Args:
@@ -103,12 +90,7 @@ class WalletConfigurator:
         self.config = config or WalletConfig()
         self.console = console or Console()
 
-    def configure(
-        self,
-        wallet_path: Path | None = None,
-        *,
-        interactive: bool = True,
-    ) -> WalletInfo:
+    def configure(self, wallet_path: Path | None = None, *, interactive: bool = True) -> WalletInfo:
         """Interactive wallet configuration wizard.
 
         Args:
@@ -193,10 +175,7 @@ class WalletConfigurator:
 
         return wallet_info
 
-    def find_wallet(
-        self,
-        start_path: Path | None = None,
-    ) -> Path | None:
+    def find_wallet(self, start_path: Path | None = None) -> Path | None:
         """Search for wallet directory or zip file.
 
         Args:
@@ -242,11 +221,7 @@ class WalletConfigurator:
 
         return None
 
-    def extract_wallet(
-        self,
-        zip_path: Path,
-        dest_dir: Path | None = None,
-    ) -> Path:
+    def extract_wallet(self, zip_path: Path, dest_dir: Path | None = None) -> Path:
         """Extract wallet zip file.
 
         Args:
@@ -303,11 +278,7 @@ class WalletConfigurator:
         # Check directory exists
         if not wallet_dir.exists():
             errors.append(f"Wallet directory not found: {wallet_dir}")
-            return WalletInfo(
-                wallet_dir=wallet_dir,
-                is_valid=False,
-                validation_errors=errors,
-            )
+            return WalletInfo(wallet_dir=wallet_dir, is_valid=False, validation_errors=errors)
 
         # Check for required files
         has_cwallet = (wallet_dir / "cwallet.sso").exists()
@@ -379,12 +350,7 @@ class WalletConfigurator:
         except Exception as e:
             raise TNSParseError(f"Failed to parse tnsnames.ora: {e}") from e
 
-    def list_services(
-        self,
-        wallet_dir: Path,
-        *,
-        display: bool = True,
-    ) -> list[str]:
+    def list_services(self, wallet_dir: Path, *, display: bool = True) -> list[str]:
         """List available database services in wallet.
 
         Args:
@@ -421,11 +387,7 @@ class WalletConfigurator:
 
         return services
 
-    def get_env_config(
-        self,
-        wallet_dir: Path,
-        service_name: str | None = None,
-    ) -> dict[str, str]:
+    def get_env_config(self, wallet_dir: Path, service_name: str | None = None) -> dict[str, str]:
         """Generate environment variable configuration.
 
         Args:
@@ -441,10 +403,7 @@ class WalletConfigurator:
 
         Can be written to .env file or displayed to user.
         """
-        env_vars = {
-            "WALLET_LOCATION": str(wallet_dir.absolute()),
-            "TNS_ADMIN": str(wallet_dir.absolute()),
-        }
+        env_vars = {"WALLET_LOCATION": str(wallet_dir.absolute()), "TNS_ADMIN": str(wallet_dir.absolute())}
 
         if service_name:
             env_vars["DATABASE_SERVICE_NAME"] = service_name
@@ -465,11 +424,7 @@ class WalletConfigurator:
         os.environ["WALLET_LOCATION"] = wallet_path
         self.console.print(f"[green]✓ Set TNS_ADMIN={wallet_path}[/green]")
 
-    def display_configuration_help(
-        self,
-        wallet_info: WalletInfo,
-        env_vars: dict[str, str],
-    ) -> None:
+    def display_configuration_help(self, wallet_info: WalletInfo, env_vars: dict[str, str]) -> None:
         """Display configuration instructions to user.
 
         Args:
@@ -496,13 +451,7 @@ class WalletConfigurator:
         self.console.print("  DATABASE_PASSWORD=<your_password>")
         self.console.print()
 
-    def test_wallet(
-        self,
-        wallet_dir: Path,
-        service_name: str,
-        username: str,
-        password: str,
-    ) -> bool:
+    def test_wallet(self, wallet_dir: Path, service_name: str, username: str, password: str) -> bool:
         """Test wallet connectivity.
 
         Args:
@@ -536,11 +485,7 @@ class WalletConfigurator:
         import oracledb
 
         with (
-            oracledb.connect(
-                user=username,
-                password=password,
-                dsn=service_name,
-            ) as connection,
+            oracledb.connect(user=username, password=password, dsn=service_name) as connection,
             connection.cursor() as cursor,
         ):
             cursor.execute("SELECT 1 FROM DUAL")

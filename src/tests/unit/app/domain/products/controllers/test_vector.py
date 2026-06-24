@@ -30,11 +30,18 @@ PRODUCTS_SQL = APP_ROOT / "db" / "sql" / "products.sql"
 def _vector_search_query() -> str:
     text = PRODUCTS_SQL.read_text()
     match = re.search(
-        r"--\s*name:\s*vector-search-products\s*\n(?P<body>.+?)(?=\n--\s*name:|\Z)",
-        text,
-        flags=re.DOTALL,
+        r"--\s*name:\s*vector-search-products\s*\n(?P<body>.+?)(?=\n--\s*name:|\Z)", text, flags=re.DOTALL
     )
     assert match, "vector-search-products named query missing from products.sql"
+    return match.group("body")
+
+
+def _vector_search_by_store_query() -> str:
+    text = PRODUCTS_SQL.read_text()
+    match = re.search(
+        r"--\s*name:\s*vector-search-products-by-store\s*\n(?P<body>.+?)(?=\n--\s*name:|\Z)", text, flags=re.DOTALL
+    )
+    assert match, "vector-search-products-by-store named query missing from products.sql"
     return match.group("body")
 
 
@@ -62,6 +69,17 @@ def test_vector_search_query_projects_similarity_score_alias() -> None:
     )
 
 
+def test_vector_search_by_store_projects_inventory_context() -> None:
+    body = _vector_search_by_store_query()
+
+    assert "store_product_inventory" in body
+    assert re.search(r"\bspi\.store_id\s*=\s*:store_id\b", body), "store-aware vector search must bind store_id"
+    for alias in ("store_id", "store_name", "quantity_available", "stock_status", "pickup_available"):
+        assert re.search(rf"\bAS\s+{alias}\b|\b{alias}\b", body, flags=re.IGNORECASE), (
+            f"store-aware vector search must project {alias}"
+        )
+
+
 @pytest.mark.anyio
 async def test_similarity_search_returns_typed_product_matches() -> None:
     """Service must return ProductMatch instances straight from the driver — no band-aid mutation."""
@@ -71,26 +89,11 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
 
     mock_product_service = AsyncMock()
     mock_product_service.search_by_vector.return_value = [
-        ProductMatch(
-            id=1,
-            name="Cold Brew",
-            description="smooth dark cold brew",
-            price=5.25,
-            similarity_score=0.91,
-        ),
-        ProductMatch(
-            id=2,
-            name="Mocha",
-            description="chocolate espresso",
-            price=4.75,
-            similarity_score=0.83,
-        ),
+        ProductMatch(id=1, name="Cold Brew", description="smooth dark cold brew", price=5.25, similarity_score=0.91),
+        ProductMatch(id=2, name="Mocha", description="chocolate espresso", price=4.75, similarity_score=0.83),
     ]
 
-    service = OracleVectorSearchService(
-        vertex_ai_service=mock_vertex,
-        product_service=mock_product_service,
-    )
+    service = OracleVectorSearchService(vertex_ai_service=mock_vertex, product_service=mock_product_service)
 
     results, cache_hit, timings = await service.similarity_search("dark roast", k=5)
 
@@ -99,11 +102,24 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
     assert len(results) == 2
 
     for row in results:
-        assert isinstance(row, ProductMatch), (
-            f"service must return ProductMatch instances, got {type(row).__name__}"
-        )
+        assert isinstance(row, ProductMatch), f"service must return ProductMatch instances, got {type(row).__name__}"
         assert row.price > 0, "ProductMatch must preserve 'price' from the SQL projection"
         assert 0 <= row.similarity_score <= 1, "similarity_score must be in [0, 1]"
+
+
+@pytest.mark.anyio
+async def test_product_service_search_by_vector_uses_store_aware_named_sql(mock_driver) -> None:
+    from app.domain.products.services import ProductService
+
+    mock_driver.select = AsyncMock(return_value=[])
+    service = ProductService(mock_driver)
+
+    await service.search_by_vector([0.1] * 3072, similarity_threshold=0.4, limit=3, store_id=16)
+
+    statement = mock_driver.select.await_args.args[0]
+    assert "store_product_inventory" in str(statement.sql)
+    assert mock_driver.select.await_args.kwargs["store_id"] == 16
+    assert mock_driver.select.await_args.kwargs["schema_type"] is ProductMatch
 
 
 @pytest.mark.anyio
@@ -118,19 +134,9 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
     mock_vector_search.similarity_search.return_value = (
         [
             ProductMatch(
-                id=1,
-                name="Cold Brew",
-                description="smooth dark cold brew",
-                price=5.25,
-                similarity_score=0.91,
+                id=1, name="Cold Brew", description="smooth dark cold brew", price=5.25, similarity_score=0.91
             ),
-            ProductMatch(
-                id=2,
-                name="Mocha",
-                description="chocolate espresso",
-                price=4.75,
-                similarity_score=0.83,
-            ),
+            ProductMatch(id=2, name="Mocha", description="chocolate espresso", price=4.75, similarity_score=0.83),
         ],
         False,
         {"embedding_ms": 12.0, "oracle_ms": 4.0},

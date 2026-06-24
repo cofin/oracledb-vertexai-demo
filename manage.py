@@ -25,18 +25,11 @@ import sys
 import rich_click as click
 from rich.console import Console
 from tools.cli import doctor_command, init_command, install_group
-from tools.oracle import (
-    apex_group as oracle_apex_group,
-)
-from tools.oracle import (
-    connect_group as oracle_connect_group,
-)
-from tools.oracle import (
-    database_group as oracle_container_group,
-)
-from tools.oracle import (
-    wallet_group as oracle_wallet_group,
-)
+from tools.oracle import apex_group as oracle_apex_group
+from tools.oracle import connect_group as oracle_connect_group
+from tools.oracle import database_group as oracle_container_group
+from tools.oracle import ords_group as oracle_ords_group
+from tools.oracle import wallet_group as oracle_wallet_group
 
 from app.__metadata__ import __version__
 
@@ -94,6 +87,7 @@ for src_name, dst_name in _INFRA_RENAME.items():
 
 # APEX install/upgrade/status as a nested subgroup: `manage.py infra apex …`
 infra_group.add_command(oracle_apex_group, name="apex")
+infra_group.add_command(oracle_ords_group, name="ords")
 
 
 # =============================================================================

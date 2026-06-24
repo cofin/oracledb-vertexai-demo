@@ -23,9 +23,7 @@ def connect_group() -> None:
 
 @connect_group.command(name="test")
 @click.option(
-    "--mode",
-    type=click.Choice(["managed", "external"]),
-    help="Deployment mode (auto-detect if not specified)",
+    "--mode", type=click.Choice(["managed", "external"]), help="Deployment mode (auto-detect if not specified)"
 )
 @click.option("--timeout", default=10, help="Connection timeout in seconds")
 def connect_test(mode: str | None, timeout: int) -> None:

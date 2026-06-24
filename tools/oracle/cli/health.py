@@ -13,11 +13,7 @@ console = Console()
 
 @click.command(name="status")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed diagnostics")
-@click.option(
-    "--mode",
-    type=click.Choice(["managed", "external"]),
-    help="Check specific deployment mode",
-)
+@click.option("--mode", type=click.Choice(["managed", "external"]), help="Check specific deployment mode")
 def status_command(verbose: bool, mode: str | None) -> None:
     """Check overall system health.
 

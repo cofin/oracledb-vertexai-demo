@@ -1,0 +1,49 @@
+{
+  "research_id": "research_grounded_product_rag_guard",
+  "topic": "Hardening dynamic Product RAG responses with current SQLSpec ADK, ADK 2.0 workflow/state guidance, and Gemini structured output",
+  "type": "Integration / Refactoring",
+  "created_at": "2026-06-22T00:00:00Z",
+  "branch": "fix/product-improve",
+  "libraries_researched": [
+    "google-adk",
+    "google-genai",
+    "sqlspec"
+  ],
+  "files_analyzed": [
+    "src/app/domain/chat/services/_adk_grounding.py",
+    "src/app/domain/chat/services/adk.py",
+    "src/app/domain/chat/services/workflow.py",
+    "src/app/lib/settings.py",
+    "pyproject.toml",
+    "uv.lock",
+    "src/tests/unit/app/domain/chat/services/test_adk_grounding.py",
+    "src/tests/integration/app/domain/chat/services/test_chat_workflow.py",
+    "AGENTS.md",
+    "README.md",
+    "docs/index.md",
+    "docs/tour.md",
+    "docs/concepts/rag.md",
+    "docs/concepts/agent-flow.md",
+    "docs/reference/internals.md",
+    "docs/reference/api.md",
+    ".agents/patterns.md",
+    ".agents/tech-stack.md",
+    ".agents/specs/docs-accuracy/spec.md",
+    ".agents/knowledge/project-guide.md",
+    ".agents/knowledge/guides/adk-agent-patterns.md",
+    ".agents/knowledge/guides/architecture.md",
+    ".agents/knowledge/guides/oracle-vector-search.md"
+  ],
+  "recommendations": [
+    "Use Gemini structured output for product selection, not final answer text",
+    "Render final Product RAG customer copy from validated candidate rows in Python",
+    "Add timeout and deterministic fallback for the extra composition call",
+    "Move GenAI generate_content access behind a service boundary",
+    "Bump CHAT_RESPONSE_CACHE_VERSION for changed response semantics",
+    "Use public google.adk.workflow imports",
+    "Revisit direct ADK store.update_session_state writes",
+    "Update active agent guidance and published docs so Product RAG grounding claims match the implemented guard"
+  ],
+  "linked_prd": null,
+  "linked_flow": null
+}

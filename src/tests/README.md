@@ -22,7 +22,7 @@ Examples:
 
 - `app.domain.chat.services.adk` -> `unit/app/domain/chat/services/test_adk.py`
 - `app.domain.products.controllers._vector` -> `unit/app/domain/products/controllers/test_vector.py`
-- `/api/chat` through `AsyncTestClient` -> `integration/app/domain/chat/controllers/test_chat_http.py`
+- `/api/chat/stream` through `AsyncTestClient` -> `integration/app/domain/chat/controllers/test_chat_http.py`
 
 Shared test-only helpers belong under `src/tests/support/`. Keep helper modules
 private to the suite; do not add production helpers solely for tests.

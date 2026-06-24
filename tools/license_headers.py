@@ -22,24 +22,14 @@ HEADER_SCAN_BYTES: Final = 4096
 
 COPYRIGHT_RE: Final = re.compile(
     r"(?i)(?:Copyright|SPDX-FileCopyrightText:)\s+"
-    r"(?:Copyright\s+)?(?:\(C\)\s+)?\d{4}(?:[-,]\s*\d{4})*\s+Google LLC",
+    r"(?:Copyright\s+)?(?:\(C\)\s+)?\d{4}(?:[-,]\s*\d{4})*\s+Google LLC"
 )
 LICENSE_RE: Final = re.compile(r"SPDX-License-Identifier:\s+Apache-2\.0")
 CODING_RE: Final = re.compile(r"coding[:=]\s*[-\w.]+")
 DOCKERFILE_DIRECTIVE_RE: Final = re.compile(r"#\s*(?:syntax|escape|check)=")
 
-LINE_PREFIX_BY_SUFFIX: Final = {
-    ".py": "#",
-    ".pyi": "#",
-    ".sh": "#",
-    ".toml": "#",
-    ".yaml": "#",
-    ".yml": "#",
-}
-LINE_PREFIX_BY_NAME: Final = {
-    ".pre-commit-config.yaml": "#",
-    "Makefile": "#",
-}
+LINE_PREFIX_BY_SUFFIX: Final = {".py": "#", ".pyi": "#", ".sh": "#", ".toml": "#", ".yaml": "#", ".yml": "#"}
+LINE_PREFIX_BY_NAME: Final = {".pre-commit-config.yaml": "#", "Makefile": "#"}
 SLASH_SUFFIXES: Final = frozenset({".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"})
 SQL_SUFFIXES: Final = frozenset({".sql"})
 CSS_SUFFIXES: Final = frozenset({".css"})
@@ -54,22 +44,17 @@ DEFAULT_TARGETS: Final = (
     "src/resources",
     "tools",
 )
-SKIP_PARTS: Final = frozenset(
-    {
-        ".git",
-        ".mypy_cache",
-        ".pytest_cache",
-        ".ruff_cache",
-        ".venv",
-        "__pycache__",
-        "dist",
-        "node_modules",
-    }
-)
-SKIP_PART_WINDOWS: Final = (
-    ("src", "resources", "generated"),
-    ("src", "resources", "public"),
-)
+SKIP_PARTS: Final = frozenset({
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "dist",
+    "node_modules",
+})
+SKIP_PART_WINDOWS: Final = (("src", "resources", "generated"), ("src", "resources", "public"))
 
 
 @dataclass(frozen=True, slots=True)

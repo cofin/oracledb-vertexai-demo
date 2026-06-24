@@ -42,6 +42,14 @@ def _env_int(name: str, default: int) -> int:
     return int(raw)
 
 
+def _env_float(name: str, default: float) -> float:
+    """Parse an environment variable as a float, falling back to the default."""
+    raw = os.getenv(name)
+    if not raw:
+        return default
+    return float(raw)
+
+
 def _env_str(name: str, default: str) -> str:
     """Read an environment variable as a string with a default."""
     return os.getenv(name, default)
@@ -79,31 +87,21 @@ class DatabaseSettings:
     WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
     """Oracle Database Wallet Location (for Autonomous DB). Falls back to TNS_ADMIN if set."""
 
-    USER: str = field(
-        default_factory=lambda: os.getenv("DATABASE_USER", "app"),
-    )
+    USER: str = field(default_factory=lambda: os.getenv("DATABASE_USER", "app"))
     """Oracle Database User."""
-    PASSWORD: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"),
-    )
+    PASSWORD: str = field(default_factory=lambda: os.getenv("DATABASE_PASSWORD", "SuperSecret1"))
     """Oracle Database Password."""
-    HOST: str = field(
-        default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"),
-    )
+    HOST: str = field(default_factory=lambda: os.getenv("DATABASE_HOST", "localhost"))
     """Oracle Database Host."""
-    PORT: str = field(
-        default_factory=lambda: os.getenv("DATABASE_PORT", "1521"),
-    )
+    PORT: str = field(default_factory=lambda: os.getenv("DATABASE_PORT", "1521"))
     """Oracle Database Port."""
-    SERVICE_NAME: str = field(
-        default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"),
-    )
+    SERVICE_NAME: str = field(default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"))
     """Oracle Database Service Name."""
     DSN: str = field(
         default_factory=lambda: os.getenv(
             "DATABASE_DSN",
             f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'freepdb1')}",
-        ),
+        )
     )
     """Oracle Database DSN."""
     POOL_MIN_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MIN_SIZE", 5))
@@ -146,11 +144,7 @@ class DatabaseSettings:
                 "dsn": parsed.hostname or "",
                 "wallet_password": self.WALLET_PASSWORD or "",
             }
-        return {
-            "user": self.USER,
-            "password": self.PASSWORD,
-            "dsn": self.DSN,
-        }
+        return {"user": self.USER, "password": self.PASSWORD, "dsn": self.DSN}
 
     def create_config(self) -> OracleAsyncConfig:
         """Create Oracle database configuration based on connection mode (autonomous vs local).
@@ -219,10 +213,7 @@ class DatabaseSettings:
                     "include_memory_migration": self.ADK_ENABLE_MEMORY,
                     "in_memory": self.ADK_IN_MEMORY,
                 },
-                "litestar": {
-                    "session_table": "app_session",
-                    "in_memory": self.LITESTAR_SESSION_IN_MEMORY,
-                },
+                "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
             },
         )
 
@@ -244,7 +235,7 @@ class LogSettings:
             int(os.getenv("LOG_LEVEL", "0"))
             if os.getenv("LOG_LEVEL", "").isdigit()
             else logging.getLevelNamesMapping().get(os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
-        ),
+        )
     )
     """Stdlib log level as int. Accepts numeric (e.g. '20') or named (e.g. 'INFO') via LOG_LEVEL env var."""
     SQLSPEC_LEVEL: int = field(default_factory=lambda: _env_int("SQLSPEC_LOG_LEVEL", 20))
@@ -254,20 +245,11 @@ class LogSettings:
     OBFUSCATE_HEADERS: set[str] = field(default_factory=lambda: {"Authorization", "X-API-KEY", "X-XSRF-TOKEN"})
     """Request header keys to obfuscate."""
     REQUEST_FIELDS: list[RequestExtractorField] = field(
-        default_factory=lambda: [
-            "path",
-            "method",
-            "query",
-            "path_params",
-        ],
+        default_factory=lambda: ["path", "method", "query", "path_params"]
     )
     """Attributes of the [Request][litestar.connection.request.Request] to be
     logged."""
-    RESPONSE_FIELDS: list[ResponseExtractorField] = field(
-        default_factory=lambda: [
-            "status_code",
-        ],
-    )
+    RESPONSE_FIELDS: list[ResponseExtractorField] = field(default_factory=lambda: ["status_code"])
     """Attributes of the [Response][litestar.response.Response] to be
     logged."""
     GRANIAN_ACCESS_LEVEL: int = 30
@@ -283,7 +265,7 @@ class AppSettings:
     DEBUG: bool = field(default_factory=lambda: _env_bool("LITESTAR_DEBUG", False))
     """Run `Litestar` with `debug=True`."""
     SECRET_KEY: str = field(
-        default_factory=lambda: os.getenv("SECRET_KEY", binascii.hexlify(os.urandom(32)).decode(encoding="utf-8")),
+        default_factory=lambda: os.getenv("SECRET_KEY", binascii.hexlify(os.urandom(32)).decode(encoding="utf-8"))
     )
     """Application secret key."""
     NAME: str = field(default_factory=lambda: "app")
@@ -309,7 +291,7 @@ class MapsSettings:
 
     @property
     def embed_enabled(self) -> bool:
-        """Return true only when embed rendering is explicitly enabled and keyed."""
+        """True only when embed rendering is explicitly enabled and keyed."""
         return self.ENABLE_EMBED and bool(self.EMBED_API_KEY.strip())
 
 
@@ -332,20 +314,18 @@ class AISettings:
     """Vertex AI location/region."""
     api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-2.5-flash-lite"))
+    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3.1-flash-lite"))
     """Vertex AI chat model."""
     intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
     """Optional override for the single-call intent-classification model."""
-    embedding_model: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2-preview")
-    )
+    embedding_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_EMBEDDING_MODEL", "gemini-embedding-2"))
     """Vertex AI embedding model."""
     embedding_dimensions: int = 3072
-    """Embedding vector dimensions (gemini-embedding-2-preview native output)."""
+    """Embedding vector dimensions (gemini-embedding-2 native output)."""
 
     @property
     def intent_model(self) -> str:
-        """Return the intent-classification model, falling back to the chat model."""
+        """Intent-classification model, falling back to the chat model."""
         return self.intent_model_override or self.chat_model
 
 
@@ -356,7 +336,7 @@ class ChatSettings:
     session_app_name: str = field(default_factory=lambda: os.getenv("CHAT_SESSION_APP_NAME", "coffee_assistant"))
     """ADK app name used for session lookups and the per-request Runner."""
     response_cache_version: str = field(
-        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v1")
+        default_factory=lambda: os.getenv("CHAT_RESPONSE_CACHE_VERSION", "menu-grounded-v2")
     )
     """Cache-key namespace bumped to invalidate stale grounded responses."""
     response_cache_ttl_minutes: int = field(default_factory=lambda: _env_int("CHAT_RESPONSE_CACHE_TTL_MINUTES", 60))
@@ -367,6 +347,10 @@ class ChatSettings:
         default_factory=lambda: float(os.getenv("CHAT_PRODUCT_SEARCH_THRESHOLD", "0.7"))
     )
     """Default product vector-search similarity threshold."""
+    grounded_answer_timeout_seconds: float = field(
+        default_factory=lambda: _env_float("CHAT_GROUNDED_ANSWER_TIMEOUT_SECONDS", 2.5)
+    )
+    """Maximum time allowed for Product RAG structured selection before falling back."""
     display_history_limit: int = field(default_factory=lambda: _env_int("CHAT_DISPLAY_HISTORY_LIMIT", 40))
     """Maximum number of display-history messages retained per session."""
 
@@ -378,9 +362,7 @@ class ViteSettings:
     DEV_MODE: bool = field(default_factory=lambda: _env_bool("VITE_DEV_MODE", False))
     """Enable Vite dev server mode."""
     BUNDLE_DIR: Path = field(
-        default_factory=lambda: Path(
-            os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static")),
-        ),
+        default_factory=lambda: Path(os.getenv("VITE_BUNDLE_DIR", str(BASE_DIR / "domain" / "web" / "static")))
     )
     """Vite bundle directory."""
 

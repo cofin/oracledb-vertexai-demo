@@ -106,12 +106,7 @@ class ContainerRuntime:
         return self._command  # type: ignore[return-value]
 
     def run_command(
-        self,
-        args: list[str],
-        *,
-        capture_output: bool = True,
-        check: bool = True,
-        timeout: int | None = None,
+        self, args: list[str], *, capture_output: bool = True, check: bool = True, timeout: int | None = None
     ) -> tuple[int, str, str]:
         """Run a container runtime command.
 
@@ -132,13 +127,7 @@ class ContainerRuntime:
         cmd = self.get_runtime_command()
         full_cmd = [cmd, *args]
 
-        result = subprocess.run(
-            full_cmd,
-            capture_output=capture_output,
-            timeout=timeout,
-            check=check,
-            text=True,
-        )
+        result = subprocess.run(full_cmd, capture_output=capture_output, timeout=timeout, check=check, text=True)
 
         stdout = result.stdout if capture_output else ""
         stderr = result.stderr if capture_output else ""
@@ -165,16 +154,14 @@ class ContainerRuntime:
         """
         try:
             returncode, _, _ = self.run_command(
-                ["ps", "-a", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"],
-                check=False,
+                ["ps", "-a", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"], check=False
             )
             if returncode != 0:
                 return False
 
             # Check if any output (container exists)
             _, stdout, _ = self.run_command(
-                ["ps", "-a", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"],
-                check=False,
+                ["ps", "-a", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"], check=False
             )
             return container_name in stdout.strip()
         except (subprocess.CalledProcessError, NoRuntimeAvailableError):
@@ -191,8 +178,7 @@ class ContainerRuntime:
         """
         try:
             _, stdout, _ = self.run_command(
-                ["ps", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"],
-                check=False,
+                ["ps", "--filter", f"name=^{container_name}$", "--format", "{{.Names}}"], check=False
             )
             return container_name in stdout.strip()
         except (subprocess.CalledProcessError, NoRuntimeAvailableError):
@@ -243,13 +229,24 @@ class ContainerRuntime:
         }
 
         # Get port mappings
-        _, ports_output, _ = self.run_command(
-            ["port", container_name],
-            check=False,
-        )
+        _, ports_output, _ = self.run_command(["port", container_name], check=False)
         status_dict["ports"] = ports_output.strip() if ports_output else "none"
 
         return status_dict
+
+    def get_container_ip(self, container_name: str) -> str | None:
+        """Return the first container network IP, or None when unavailable."""
+        try:
+            returncode, stdout, _stderr = self.run_command(
+                ["inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container_name],
+                check=False,
+            )
+        except (subprocess.CalledProcessError, NoRuntimeAvailableError):
+            return None
+        if returncode != 0:
+            return None
+        ip_address = stdout.strip()
+        return ip_address or None
 
     def volume_exists(self, volume_name: str) -> bool:
         """Check if a volume exists.
@@ -262,8 +259,7 @@ class ContainerRuntime:
         """
         try:
             _, stdout, _ = self.run_command(
-                ["volume", "ls", "--filter", f"name=^{volume_name}$", "--format", "{{.Name}}"],
-                check=False,
+                ["volume", "ls", "--filter", f"name=^{volume_name}$", "--format", "{{.Name}}"], check=False
             )
             return volume_name in stdout.strip()
         except (subprocess.CalledProcessError, NoRuntimeAvailableError):

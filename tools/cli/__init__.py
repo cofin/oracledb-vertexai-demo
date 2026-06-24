@@ -17,6 +17,7 @@ __all__ = [
     "install_all_command",
     "install_group",
     "install_list_command",
+    "install_mcp_toolbox_command",
     "install_sqlcl_command",
 ]
 
@@ -26,5 +27,6 @@ from tools.cli.install import (
     install_all_command,
     install_group,
     install_list_command,
+    install_mcp_toolbox_command,
     install_sqlcl_command,
 )

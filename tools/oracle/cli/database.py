@@ -48,6 +48,17 @@ def _build_ords_sidecar(db: OracleDatabase) -> OrdsSidecar:
     return build_ords_sidecar(db.runtime, media, console=console)
 
 
+def _apex_media_status() -> tuple[str, str]:
+    """Return a concise APEX media and patch-state summary for status output."""
+    from tools.oracle.apex_media import ApexMediaConfig
+
+    config = ApexMediaConfig.from_env()
+    media_state = "ready" if config.images_dir.exists() else "missing"
+    media = f"{config.version} ({media_state}: {config.images_dir})"
+    patch_state = "APEX 26.1.1 MOS patch state not verified locally"
+    return media, patch_state
+
+
 def _start_ords(db: OracleDatabase) -> None:
     """Start the ORDS sidecar (idempotent) so APEX has an HTTP front end."""
     _build_ords_sidecar(db).start()
@@ -114,9 +125,7 @@ def database_start(pull: bool, recreate: bool, env_file: str | None, skip_apex: 
     ORDS sidecar for the APEX HTTP front end (--skip-ords to opt out).
     """
     try:
-        _database_start(
-            pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex, skip_ords=skip_ords
-        )
+        _database_start(pull=pull, recreate=recreate, env_file=env_file, skip_apex=skip_apex, skip_ords=skip_ords)
     except Exception as e:
         console.print(f"[red]✗ Failed to start database: {e}[/red]")
         raise click.Abort from e
@@ -262,3 +271,21 @@ def _database_status(*, verbose: bool) -> None:
         console.print(f"[bold]Uptime:[/bold] {status_info.uptime}")
     if status_info.ports:
         console.print(f"[bold]Ports:[/bold] {status_info.ports}")
+    ords_status = _build_ords_sidecar(db).status()
+    console.print("\n[bold]ORDS Sidecar:[/bold]")
+    if ords_status is None:
+        console.print("[yellow]Container oracle-ords does not exist[/yellow]")
+        return
+    console.print(f"[bold]Container:[/bold] {ords_status.get('name', 'oracle-ords')}")
+    console.print(f"[bold]Status:[/bold] {ords_status.get('status', 'unknown')}")
+    if image := ords_status.get("image"):
+        console.print(f"[bold]Image:[/bold] {image}")
+    if ports := ords_status.get("ports"):
+        console.print(f"[bold]Ports:[/bold] {ports}")
+    console.print(f"[bold]ORDS Version:[/bold] {ords_status.get('ords_version', 'unknown')}")
+    console.print(f"[bold]Minimum ORDS:[/bold] {ords_status.get('minimum_version', '26.1.1')}")
+    console.print(f"[bold]Preferred ORDS:[/bold] {ords_status.get('preferred_version', '26.1.2')}")
+    console.print(f"[bold]Version Status:[/bold] {ords_status.get('version_status', 'unknown')}")
+    media, patch_state = _apex_media_status()
+    console.print(f"[bold]APEX Media:[/bold] {media}")
+    console.print(f"[bold]APEX Patch:[/bold] {patch_state}")

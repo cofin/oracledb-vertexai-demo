@@ -5,11 +5,21 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import re
+import time
 from typing import Any, TypedDict
 
+import structlog
+from google.genai import types
+
+from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services._adk_support import _coerce_sql_phases
 from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+from app.lib.settings import get_settings
+
+logger = structlog.get_logger()
 
 
 class _StoreFields(TypedDict):
@@ -43,14 +53,40 @@ _PRODUCT_QUERY_ALIASES: tuple[tuple[str, str], ...] = (
     ("nitro", "Cold Brew Nitro"),
     ("espresso", "Espresso Romano"),
 )
-_PRODUCT_QUERY_STOP_WORDS = frozenset(
-    {
-        "where", "can", "i", "pick", "up", "near", "me", "is", "are",
-        "available", "availability", "which", "cafe", "store", "has",
-        "have", "in", "at", "do", "you", "the", "a", "an", "that",
-        "this", "it", "them", "those", "stock", "nearby", "here", "there",
-    }
-)
+_PRODUCT_QUERY_STOP_WORDS = frozenset({
+    "where",
+    "can",
+    "i",
+    "pick",
+    "up",
+    "near",
+    "me",
+    "is",
+    "are",
+    "available",
+    "availability",
+    "which",
+    "cafe",
+    "store",
+    "has",
+    "have",
+    "in",
+    "at",
+    "do",
+    "you",
+    "the",
+    "a",
+    "an",
+    "that",
+    "this",
+    "it",
+    "them",
+    "those",
+    "stock",
+    "nearby",
+    "here",
+    "there",
+})
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0
 _MIN_LONGITUDE = -180.0
@@ -83,10 +119,219 @@ def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
         answer += f": {description}"
     else:
         answer += "."
+    stock_sentence = _format_product_match_stock_sentence(first)
+    if stock_sentence:
+        answer += f" {stock_sentence}"
 
     if len(menu_products) > 1:
         second = menu_products[1]
         answer += f" Another good menu option is {second['name']}{_format_price(second.get('price'))}."
+    return answer
+
+
+def _format_product_match_stock_sentence(product: dict[str, Any]) -> str:
+    store_name = _get_field(product, "store_name")
+    status = _get_field(product, "stock_status")
+    if not store_name or not status:
+        return ""
+    status_str = str(status).replace("_", " ").title()
+    answer = f"At {store_name}, this is {status_str.lower()}"
+    quantity = _get_field(product, "quantity_available")
+    if isinstance(quantity, int | float):
+        answer += f" with {int(quantity)} on hand"
+    pickup_available = _get_field(product, "pickup_available")
+    if pickup_available is True:
+        answer += " and pickup available"
+    elif pickup_available is False:
+        answer += " and pickup unavailable"
+    return answer + "."
+
+
+_GROUNDED_ANSWER_TEMPERATURE = 0
+_GROUNDED_SELECTION_MODES = frozenset({"recommend", "off_menu_alternative"})
+_GROUNDED_ANSWER_INSTRUCTION = """You are a Cymbal Coffee product selector. Choose from ONLY the candidate products provided.
+
+Rules:
+- Do NOT write the final customer response.
+- Return product ids from the candidate list only.
+- Use mode "off_menu_alternative" only when the customer names a specific brand or product Cymbal Coffee does not carry, such as Folgers or Starbucks.
+- Use mode "recommend" for preferences such as "something bold", "for breakfast", or "what should I get".
+- Never invent products, ids, prices, descriptions, or availability.
+
+Respond as JSON: mode, selected_product_ids, off_menu_term."""
+_GROUNDED_ANSWER_SCHEMA: dict[str, Any] = {
+    "type": "OBJECT",
+    "properties": {
+        "mode": {"type": "STRING", "enum": sorted(_GROUNDED_SELECTION_MODES)},
+        "selected_product_ids": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "off_menu_term": {"type": "STRING"},
+    },
+    "required": ["mode", "selected_product_ids", "off_menu_term"],
+}
+
+
+def _candidate_id(product: dict[str, Any]) -> str:
+    for key in ("id", "product_id", "sku", "name"):
+        value = product.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return str(product["name"]).strip()
+
+
+def _candidate_block(products: list[dict[str, Any]]) -> str:
+    """Render candidate products as the only menu items the model may select.
+
+    Returns:
+        A newline-delimited list of id/name/price/description rows.
+    """
+    lines: list[str] = []
+    for product in products:
+        name = str(product.get("name") or "").strip()
+        if not name:
+            continue
+        description = str(product.get("description") or "").strip()
+        line = f"- id={_candidate_id(product)}; name={name}{_format_price(product.get('price'))}"
+        if description:
+            line += f"; description={description}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _response_payload(response: Any) -> dict[str, Any] | None:
+    parsed = getattr(response, "parsed", None)
+    if isinstance(parsed, dict):
+        return parsed
+    text = getattr(response, "text", "")
+    try:
+        payload = json.loads(str(text))
+    except (TypeError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _selected_products(payload: dict[str, Any], products: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    mode = str(payload.get("mode") or "").strip()
+    if mode not in _GROUNDED_SELECTION_MODES:
+        return None
+    selected_ids = payload.get("selected_product_ids")
+    if not isinstance(selected_ids, list) or not selected_ids:
+        return None
+
+    candidates = {_candidate_id(product): product for product in products}
+    selected: list[dict[str, Any]] = []
+    for raw_id in selected_ids:
+        product = candidates.get(str(raw_id).strip())
+        if product is None:
+            return None
+        selected.append(product)
+    return selected
+
+
+def _clean_off_menu_term(value: Any) -> str:
+    term = re.sub(r"\s+", " ", str(value or "").strip().strip("\"'"))
+    return term[:60] or "that item"
+
+
+def _render_selected_product(product: dict[str, Any]) -> str:
+    name = str(product["name"])
+    return f"{name}{_format_price(product.get('price'))}"
+
+
+def _render_grounded_selection(query: str, payload: dict[str, Any], selected: list[dict[str, Any]]) -> str | None:
+    """Render final copy from trusted candidate rows, never from model text.
+
+    Returns:
+        Customer-facing answer text when the structured selection is valid.
+    """
+    mode = str(payload.get("mode") or "").strip()
+    if mode == "recommend":
+        return _grounded_product_answer(query, selected)
+
+    if mode == "off_menu_alternative":
+        first = selected[0]
+        answer = (
+            f"Cymbal Coffee does not carry {_clean_off_menu_term(payload.get('off_menu_term'))}, "
+            f"but {_render_selected_product(first)} is the closest menu option"
+        )
+        description = str(first.get("description") or "").strip()
+        if description:
+            answer += f": {description}"
+        return answer + "."
+    return None
+
+
+def _record_grounded_answer_metric(
+    metric_state: dict[str, Any] | None, *, mode: str, started: float, error_type: str | None = None
+) -> None:
+    if metric_state is None:
+        return
+    search_metrics = metric_state.setdefault("search_metrics", {})
+    search_metrics["grounded_answer_mode"] = mode
+    search_metrics["grounded_answer_ms"] = round((time.perf_counter() - started) * 1000, 2)
+    if error_type:
+        search_metrics["grounded_answer_error_type"] = error_type
+
+
+async def _compose_grounded_answer(
+    query: str, products: list[dict[str, Any]], tools_service: Any, metric_state: dict[str, Any] | None = None
+) -> str:
+    """Select with the LLM, then render the customer reply from trusted rows.
+
+    The model never writes final product copy. It may only return candidate ids
+    and an off-menu term; Python validates those ids and renders names, prices,
+    and descriptions from the retrieved products.
+
+    Returns:
+        The grounded reply text, or the templated answer when composition fails.
+
+    Raises:
+        AIServiceUnconfigured: If the configured Vertex AI credentials are invalid.
+    """
+    menu_products = _coerce_products(products)
+    started = time.perf_counter()
+    if not menu_products:
+        _record_grounded_answer_metric(metric_state, mode="template", started=started)
+        return _grounded_product_answer(query, menu_products)
+
+    contents = (
+        f"Customer request: {query}\n\nCandidate products (select only these ids):\n{_candidate_block(menu_products)}"
+    )
+    try:
+        async with asyncio.timeout(get_settings().chat.grounded_answer_timeout_seconds):
+            response = await tools_service.vertex_ai_service.generate_structured_content(
+                model=get_settings().ai.chat_model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    temperature=_GROUNDED_ANSWER_TEMPERATURE,
+                    system_instruction=_GROUNDED_ANSWER_INSTRUCTION,
+                    response_mime_type="application/json",
+                    response_schema=_GROUNDED_ANSWER_SCHEMA,
+                ),
+            )
+    except TimeoutError:
+        _record_grounded_answer_metric(metric_state, mode="timeout", started=started, error_type="TimeoutError")
+        await logger.awarning("Grounded answer generation timed out")
+        return _grounded_product_answer(query, menu_products)
+    except Exception as exc:
+        # Lazy import avoids an import cycle: adk.py imports this module at load time.
+        from app.domain.chat.services.adk import _UNCONFIGURED_MESSAGE, _is_credential_error
+
+        if _is_credential_error(exc):
+            raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
+        _record_grounded_answer_metric(metric_state, mode="error", started=started, error_type=type(exc).__name__)
+        await logger.awarning("Grounded answer generation failed", error_type=type(exc).__name__)
+        return _grounded_product_answer(query, menu_products)
+
+    payload = _response_payload(response)
+    selected = _selected_products(payload, menu_products) if payload is not None else None
+    answer = (
+        _render_grounded_selection(query, payload, selected) if payload is not None and selected is not None else None
+    )
+    if answer is None:
+        _record_grounded_answer_metric(metric_state, mode="rejected", started=started)
+        await logger.awarning("Grounded answer rejected by guard")
+        return _grounded_product_answer(query, menu_products)
+    _record_grounded_answer_metric(metric_state, mode="structured", started=started)
     return answer
 
 
@@ -195,20 +440,10 @@ def _build_map_actions(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     actions: list[dict[str, str]] = []
     for row in rows:
         fields = _store_fields(row)
-        actions.extend(
-            (
-                {
-                    "type": "search",
-                    "label": "Open in Google Maps",
-                    "url": build_store_search_url(**fields),
-                },
-                {
-                    "type": "directions",
-                    "label": "Get directions",
-                    "url": build_store_directions_url(**fields),
-                },
-            )
-        )
+        actions.extend((
+            {"type": "search", "label": "Open in Google Maps", "url": build_store_search_url(**fields)},
+            {"type": "directions", "label": "Get directions", "url": build_store_directions_url(**fields)},
+        ))
     return actions
 
 
@@ -255,13 +490,7 @@ def _is_in_stock(row: dict[str, Any]) -> bool:
     return bool(isinstance(qty, int | float) and qty > 0)
 
 
-def _format_in_stock_store(
-    product_name: str,
-    store_name: str,
-    quantity: Any,
-    status: str | None,
-    distance: Any,
-) -> str:
+def _format_in_stock_store(product_name: str, store_name: str, quantity: Any, status: str | None, distance: Any) -> str:
     status_str = str(status or "").replace("_", " ").title()
     answer = f"{product_name} is available at {store_name}"
     if status_str:
@@ -274,11 +503,7 @@ def _format_in_stock_store(
     return answer
 
 
-def _format_out_of_stock_store(
-    product_name: str,
-    store_name: str,
-    alternatives: list[dict[str, Any]],
-) -> str:
+def _format_out_of_stock_store(product_name: str, store_name: str, alternatives: list[dict[str, Any]]) -> str:
     answer = f"{product_name} is out of stock at {store_name}."
     in_stock_alts = [alt for alt in alternatives if _is_in_stock(alt)]
     if in_stock_alts:
@@ -295,9 +520,7 @@ def _format_out_of_stock_store(
 
 
 def _format_availability_answer(
-    target: dict[str, Any] | None,
-    alternatives: list[dict[str, Any]],
-    target_store_name: str | None = None,
+    target: dict[str, Any] | None, alternatives: list[dict[str, Any]], target_store_name: str | None = None
 ) -> str:
     if not target and not alternatives:
         return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
@@ -320,21 +543,13 @@ def _format_availability_answer(
                 status=_get_field(target, "stock_status"),
                 distance=_get_field(target, "distance_miles"),
             )
-        return _format_out_of_stock_store(
-            product_name=product_name,
-            store_name=store_name,
-            alternatives=alternatives,
-        )
+        return _format_out_of_stock_store(product_name=product_name, store_name=store_name, alternatives=alternatives)
 
     available_alternatives = [alt for alt in alternatives if _is_in_stock(alt)]
     if not available_alternatives:
         first = alternatives[0]
         store_name = str(_get_field(first, "store_name") or "a Cymbal Coffee store")
-        return _format_out_of_stock_store(
-            product_name=product_name,
-            store_name=store_name,
-            alternatives=[],
-        )
+        return _format_out_of_stock_store(product_name=product_name, store_name=store_name, alternatives=[])
 
     first = available_alternatives[0]
     store_name = _get_field(first, "store_name") or "a Cymbal Coffee store"
@@ -358,6 +573,9 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
     products = _coerce_products(result.get("products"))
     if products:
         metric_state["rag_products"] = products
+        inventory_products = [product for product in products if _get_field(product, "store_id") is not None]
+        if inventory_products:
+            metric_state["inventory_results"] = inventory_products
     products_found = int(result.get("results_count") or len(products))
     search_metrics = metric_state.setdefault("search_metrics", {})
     tool_metrics = result.get("search_metrics")
@@ -372,13 +590,13 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
 
 
 async def _ground_product_rag_turn(
-    query: str,
-    metric_state: dict[str, Any],
-    tools_service: Any,
+    query: str, metric_state: dict[str, Any], tools_service: Any, *, store_id: int | None = None
 ) -> str:
     products = _coerce_products(metric_state.get("rag_products"))
+    if store_id is not None and not any(_get_field(product, "store_id") == store_id for product in products):
+        products = []
     if not products:
-        fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5)
+        fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5, store_id=store_id)
         _record_product_search_result(metric_state, fallback_result, query)
         products = _coerce_products(metric_state.get("rag_products"))
-    return _grounded_product_answer(query, products)
+    return await _compose_grounded_answer(query, products, tools_service, metric_state)

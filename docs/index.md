@@ -28,7 +28,7 @@ menu rows.
 :::{grid-item-card} {octicon}`zap;1.2em` Vertex AI
 :class-card: hero-pill
 
-`gemini-embedding-2-preview` for retrieval, **Gemini** for the answer.
+`gemini-embedding-2` for retrieval; **Gemini** can assist selection.
 :::
 
 ::::
@@ -37,7 +37,7 @@ menu rows.
 flowchart TD
     U([User question]) --> C[Litestar chat controller]
     C --> I{Flash-Lite intent}
-    I -->|PRODUCT_RAG| P[Product RAG formatter]
+    I -->|PRODUCT_RAG| P[Product RAG selector]
     I -->|STORE_LOCATION| S[Store lookup]
     I -->|PRODUCT_AVAILABILITY| V[Inventory lookup]
     I -->|GENERAL_CONVERSATION| A[ADK 2.0 workflow]
@@ -50,16 +50,17 @@ flowchart TD
     R --> U
 ```
 
-*Product, store, and availability turns are answered from deterministic
-service calls. General conversation falls through to the ADK workflow, where
-the model can still use the same closure-bound tools.*
+*Product, store, and availability turns are grounded in deterministic service
+facts. Product RAG may use structured selection, but final product copy is
+rendered from Oracle rows. General conversation falls through to the ADK
+workflow, where the model can still use the same closure-bound tools.*
 
 ## Where to go next
 
-::::{grid} 1 1 2 2
+::::{grid} 1 1 2 4
 :gutter: 3
 
-:::{grid-item-card} Walkthrough
+:::{grid-item-card} {octicon}`workflow;1.1em` Walkthrough
 :link: tour
 :link-type: doc
 
@@ -67,12 +68,28 @@ One chat message, end to end: question → embedding → Oracle → streamed
 answer.
 :::
 
-:::{grid-item-card} Concepts
+:::{grid-item-card} {octicon}`database;1.1em` Concepts
 :link: concepts/vector-search
 :link-type: doc
 
 Vectors in Oracle, RAG, and how the chat router chooses grounded service
 calls.
+:::
+
+:::{grid-item-card} {octicon}`mortar-board;1.1em` Hands-on lab
+:link: lab
+:link-type: doc
+
+The single-file workshop guide for running Cymbal Coffee with Oracle 26ai and
+Vertex AI.
+:::
+
+:::{grid-item-card} {octicon}`terminal;1.1em` Antigravity MCP
+:link: mcp-antigravity
+:link-type: doc
+
+Clean SQLcl and Google MCP Toolbox configuration for teaching Antigravity
+workflows.
 :::
 
 ::::
@@ -90,6 +107,20 @@ maps
 
 ```{toctree}
 :hidden:
+:caption: MCP
+
+mcp-antigravity
+```
+
+```{toctree}
+:hidden:
+:caption: Lab
+
+lab
+```
+
+```{toctree}
+:hidden:
 :caption: Reference
 
 reference/quickstart
@@ -97,4 +128,5 @@ reference/cli
 reference/api
 reference/internals
 reference/developers
+reference/brand-assets
 ```

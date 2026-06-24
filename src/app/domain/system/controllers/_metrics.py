@@ -13,9 +13,7 @@ class MetricsController(Controller):
 
     @get(path="/api/metrics/summary", name="metrics.summary")
     async def get_metrics_summary(
-        self,
-        metrics_service: Inject[MetricsService],
-        cache_service: Inject[CacheService],
+        self, metrics_service: Inject[MetricsService], cache_service: Inject[CacheService]
     ) -> MetricsSummary:
         """Return summary cards for the metrics summary panel."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
@@ -43,16 +41,13 @@ class MetricsController(Controller):
                     value=f"{perf_stats.avg_search_time_ms:.0f}ms",
                     trend="down" if perf_stats.avg_search_time_ms < 50 else "up",  # noqa: PLR2004
                 ),
-                MetricCard(
-                    label="Oracle Vector Time",
-                    value=f"{perf_stats.avg_oracle_time_ms:.0f}ms",
-                ),
+                MetricCard(label="Oracle Vector Time", value=f"{perf_stats.avg_oracle_time_ms:.0f}ms"),
                 MetricCard(
                     label="Cache Hit Rate",
                     value=f"{cache_stats.cache_hit_rate:.1f}%",
                     trend="up" if cache_stats.cache_hit_rate > 80 else "down",  # noqa: PLR2004
                 ),
-            ],
+            ]
         )
 
     @get(path="/api/metrics/charts", name="metrics.charts")

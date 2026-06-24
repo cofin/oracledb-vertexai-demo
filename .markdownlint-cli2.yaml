@@ -1,0 +1,22 @@
+# Markdown lint config (markdownlint-cli2). Tuned for MyST/Sphinx docs.
+# Ruff (preview) formats Python inside ``` fences; this lints the prose/structure.
+# NOTE: no top-level `globs` — markdownlint-cli2 APPENDS config globs to the
+# pre-commit file list, which would crawl the whole tree (incl. gitignored
+# vendored docs). Let pre-commit pass the tracked files; `ignores` is defense.
+config:
+  default: true
+  MD013: false # line length — prose and long URLs wrap freely
+  MD033: false # inline HTML — docs embed <iframe> (maps) and HTML
+  MD041: false # first line need not be a top-level heading (MyST directives/frontmatter)
+  MD046: false # code block style — MyST mixes ``` fences and ::: colon-fences
+  MD059: false # link-text descriptiveness — too noisy for reference docs
+  MD036: false # bold-as-heading — intentional in SLIDES.md / lab step labels
+  MD060: false # table pipe-spacing — cosmetic; compact tables render fine
+  MD024:
+    siblings_only: true # allow repeated headings under different parents
+ignores:
+  - ".agents/**"
+  - "docs/_build/**"
+  - "node_modules/**"
+  - ".venv/**"
+  - "tools/oracle/downloads/**"

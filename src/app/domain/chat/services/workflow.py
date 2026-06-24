@@ -8,8 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from google.adk import Context, Workflow
-from google.adk.workflow import JoinNode
-from google.adk.workflow._function_node import FunctionNode
+from google.adk.workflow import FunctionNode, JoinNode
 from google.genai import types
 
 if TYPE_CHECKING:
@@ -79,11 +78,7 @@ def make_workflow(classifier: FlashLiteIntentClassifier, agent: LlmAgent) -> Wor
     # docs:start-workflow-fanout
     return Workflow(
         name="coffee_workflow",
-        edges=[
-            ("START", intent, join),
-            ("START", coffee, join),
-            (join, merge),
-        ],
+        edges=[("START", intent, join), ("START", coffee, join), (join, merge)],
         max_concurrency=2,
     )
     # docs:end-workflow-fanout

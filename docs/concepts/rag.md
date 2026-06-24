@@ -10,9 +10,10 @@ aren't on the list.
 flowchart TD
     Q[user question] --> E[embed]
     E --> R[(Oracle 26ai<br/>vector match)]
-    R --> G[grounding context<br/>list&lt;ProductMatch&gt;]
-    G --> M[Gemini]
-    M --> A[grounded answer]
+    R --> G[candidate rows<br/>list&lt;ProductMatch&gt;]
+    G --> S[structured selector]
+    S --> V[Python validator]
+    V --> A[row-rendered<br/>grounded answer]
 ```
 
 ## The three steps
@@ -24,13 +25,15 @@ similarity threshold. See [Vector search in Oracle
 
 **Ground.** The returned rows are formatted into a structured grounding
 context — name, description, price, in-stock flag, similarity score —
-*not* free-form prose. The deterministic route formats the final answer from
+*not* free-form prose. Product RAG may ask Gemini to return structured selected
+product ids, but the app validates those ids and renders the final answer from
 that context; the ADK fallback exposes the same list as tool output.
 
-**Generate.** For `PRODUCT_RAG` turns, the runner takes a deterministic
-shortcut: it formats the final answer directly from the returned products
-and yields a single grounded SSE final event. The model never gets to draft
-a speculative reply that the browser would have to overwrite.
+**Generate.** For `PRODUCT_RAG` turns, the runner takes a grounded shortcut:
+it may use a bounded structured-output call for selection, then formats the
+final answer from the returned products and yields a single grounded SSE final
+event. The model never gets to draft a speculative product reply that the
+browser would have to overwrite.
 
 For `GENERAL_CONVERSATION` turns there's nothing to retrieve — the agent
 streams Gemini's reply normally.
@@ -40,10 +43,10 @@ streams Gemini's reply normally.
 The naive RAG pattern bakes retrieved rows into the prompt and lets the
 model decide what to do with them. Cymbal Coffee inverts that: a small,
 fast classifier reads the user's turn first and routes product, store, and
-availability questions to deterministic handlers. For `PRODUCT_RAG`, the
-handler runs the vector search itself and formats the answer from the returned
-rows — the LLM never gets to draft a speculative reply. That has three
-consequences:
+availability questions to grounded handlers. For `PRODUCT_RAG`, the handler
+runs the vector search itself, validates any structured selection against the
+returned rows, and formats the answer from those rows — the LLM never gets to
+draft a speculative product reply. That has three consequences:
 
 1. Retrieval is gated by intent, not by the LLM's tool reasoning, so
    grounded turns can't silently degrade into ungrounded prose;
@@ -75,6 +78,8 @@ The chat result payload reports both — `embedding_cache_hit` and
 - **The fallback model skips the tool**: the runner's grounding fallback
   re-runs product search and formats the answer from the returned rows rather
   than trusting the model's tool-less draft.
+- **The selector returns malformed JSON, an unknown product id, or takes too
+  long**: the runner falls back to the deterministic row-rendered answer.
 - **The fallback model emits a tool-schema artifact instead of an answer**:
   same fallback. Better an honest grounded answer than a confused one.
 - **No products match**: the threshold filters out weak matches; the

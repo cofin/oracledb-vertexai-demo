@@ -48,7 +48,7 @@ rather than a stack trace.
   init via the `tools/oracle/on_init/00_configure_vector_memory.sql` hook; if
   you bypassed that, set `vector_memory_size` on the SPFILE as SYSDBA and
   bounce the instance (`512M` on Free, up to `4G` on larger Oracle editions).
-- **`gemini-embedding-2-preview` 404** — the project is missing Vertex AI
+- **`gemini-embedding-2` 404** — the project is missing Vertex AI
   permissions or the location doesn't host the embedding model. Try
   `us-central1`.
 - **Empty chat replies on first start** — products haven't been embedded

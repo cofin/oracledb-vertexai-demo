@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import os
 import socket
 import uuid
@@ -103,6 +104,18 @@ def test_settings(
     from app.lib import settings as app_settings
 
     test_dir = tmp_path_factory.mktemp("integration_env")
+    bundle_dir = test_dir / "static"
+    asset_dir = bundle_dir / "assets"
+    asset_dir.mkdir(parents=True)
+    (asset_dir / "styles.css").write_text("/* integration test asset */\n", encoding="utf-8")
+    (asset_dir / "main.js").write_text("// integration test asset\n", encoding="utf-8")
+    (bundle_dir / "manifest.json").write_text(
+        json.dumps({
+            "styles.css": {"file": "assets/styles.css", "src": "styles.css", "isEntry": True},
+            "main.js": {"file": "assets/main.js", "src": "main.js", "isEntry": True},
+        }),
+        encoding="utf-8",
+    )
     test_env = test_dir / ".env.testing"
     test_env.write_text(
         "# Integration test configuration (ephemeral gvenzl/oracle-free)\n"
@@ -119,10 +132,27 @@ def test_settings(
         "LITESTAR_GRANIAN_IN_SUBPROCESS=false\n"
         "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true\n"
         "SECRET_KEY=test-secret-key-32-characters-12\n"
-        "VITE_DEV_MODE=False\n",
+        "VITE_DEV_MODE=False\n"
+        f"VITE_BUNDLE_DIR={bundle_dir}\n",
         encoding="utf-8",
     )
 
+    for key in (
+        "DATABASE_URL",
+        "DATABASE_DSN",
+        "DATABASE_USER",
+        "DATABASE_PASSWORD",
+        "DATABASE_HOST",
+        "DATABASE_PORT",
+        "DATABASE_SERVICE_NAME",
+        "WALLET_LOCATION",
+        "WALLET_PASSWORD",
+        "TNS_ADMIN",
+        "VITE_BUNDLE_DIR",
+        "VITE_DEV_MODE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    app_settings.Settings.from_env.cache_clear()
     settings = app_settings.Settings.from_env(str(test_env))
 
     def get_settings(dotenv_filename: str = ".env.testing") -> object:
@@ -299,17 +329,17 @@ async def oracle_schema(test_settings: object) -> None:
 
 
 @pytest.fixture
-async def client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+async def client(app: Litestar, oracle_seed_data: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create test client."""
-    del oracle_schema
+    del oracle_seed_data
     async with AsyncTestClient(app=app) as c:
         yield c
 
 
 @pytest.fixture
-async def htmx_client(app: Litestar, oracle_schema: None) -> AsyncGenerator[AsyncTestClient, None]:
+async def htmx_client(app: Litestar, oracle_seed_data: None) -> AsyncGenerator[AsyncTestClient, None]:
     """Create an HTMX-flavored test client after schema migration."""
-    del oracle_schema
+    del oracle_seed_data
     async with AsyncTestClient(app=app) as c:
         c.headers["HX-Request"] = "true"
         yield c
@@ -349,6 +379,10 @@ async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
         return
     loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=session, table_order=COFFEE_SHOP_TABLES)
     await loader.load_all_fixtures()
+
+    from app.db.utils import _reset_sequences
+
+    await _reset_sequences(session)
 
 
 @pytest.fixture

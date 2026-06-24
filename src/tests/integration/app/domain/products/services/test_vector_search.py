@@ -66,9 +66,7 @@ async def test_vector_search_returns_typed_product_matches_with_price(
     seed_id = await _seed_product_with_embedding(driver, sku)
 
     matches = await product_service.search_by_vector(
-        query_embedding=_seed_embedding(),
-        similarity_threshold=0.5,
-        limit=5,
+        query_embedding=_seed_embedding(), similarity_threshold=0.5, limit=5
     )
 
     assert matches, "vector search must return at least the seed product when querying with its own embedding"
@@ -96,9 +94,7 @@ async def test_vector_search_returns_typed_product_matches_with_price(
 
 
 async def test_vector_search_named_query_runs_via_db_manager(
-    driver: OracleAsyncDriver,
-    unique_test_id: str,
-    tracked_product_skus: Callable[[str], None],
+    driver: OracleAsyncDriver, unique_test_id: str, tracked_product_skus: Callable[[str], None]
 ) -> None:
     """Exercise the named query end-to-end and confirm the column shape Oracle returns."""
     sku = f"VECTOR-SQL-{unique_test_id}"
@@ -108,10 +104,7 @@ async def test_vector_search_named_query_runs_via_db_manager(
     from app.config import db_manager
 
     rows = await driver.select(
-        db_manager.get_sql("vector-search-products"),
-        query_vector=_seed_embedding(),
-        threshold=0.5,
-        limit=5,
+        db_manager.get_sql("vector-search-products"), query_vector=_seed_embedding(), threshold=0.5, limit=5
     )
 
     assert rows, "vector-search-products must return rows when an embedded product matches"

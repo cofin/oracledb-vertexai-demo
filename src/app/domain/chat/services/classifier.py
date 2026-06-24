@@ -39,9 +39,9 @@ When a coffee or menu request is ambiguous, choose PRODUCT_RAG."""
 
 
 class FlashLiteIntentClassifier:
-    """Single-call intent classifier backed by ``gemini-2.5-flash-lite``."""
+    """Single-call intent classifier backed by ``gemini-3.1-flash-lite``."""
 
-    def __init__(self, client: Client, model: str = "gemini-2.5-flash-lite") -> None:
+    def __init__(self, client: Client, model: str = "gemini-3.1-flash-lite") -> None:
         self._client = client
         self._model = model
 

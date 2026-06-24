@@ -130,12 +130,7 @@ class ConnectionConfig:
     ) -> ConnectionConfig:
         """Create config for managed Docker container database."""
         return cls(
-            mode=DeploymentMode.MANAGED,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            service_name=service_name,
+            mode=DeploymentMode.MANAGED, user=user, password=password, host=host, port=port, service_name=service_name
         )
 
     @classmethod
@@ -226,11 +221,7 @@ class ConnectionTester:
         self.console = console or Console()
 
     def test(
-        self,
-        config: ConnectionConfig | None = None,
-        *,
-        timeout: int = 10,
-        display: bool = True,
+        self, config: ConnectionConfig | None = None, *, timeout: int = 10, display: bool = True
     ) -> ConnectionTestResult:
         """Test database connection.
 
@@ -262,11 +253,7 @@ class ConnectionTester:
 
         return result
 
-    def _do_connection_test(
-        self,
-        config: ConnectionConfig,
-        timeout: int = 10,
-    ) -> ConnectionTestResult:
+    def _do_connection_test(self, config: ConnectionConfig, timeout: int = 10) -> ConnectionTestResult:
         """Test database connection with automatic wallet detection.
 
         Args:
@@ -287,10 +274,7 @@ class ConnectionTester:
                 mode=config.mode,
                 message=f"Wallet directory not found: {config.wallet_location}",
                 error=f"Directory does not exist: {config.wallet_location}",
-                suggestions=[
-                    "Verify WALLET_LOCATION path",
-                    "Extract wallet: python manage.py wallet extract <zip>",
-                ],
+                suggestions=["Verify WALLET_LOCATION path", "Extract wallet: python manage.py wallet extract <zip>"],
             )
 
         try:
@@ -334,11 +318,7 @@ class ConnectionTester:
     @staticmethod
     def _connection_params(config: ConnectionConfig, dsn: str) -> dict[str, Any]:
         """Build python-oracledb connection parameters."""
-        conn_params = {
-            "user": config.user,
-            "password": config.password,
-            "dsn": dsn,
-        }
+        conn_params = {"user": config.user, "password": config.password, "dsn": dsn}
         if config.wallet_password:
             conn_params["wallet_password"] = config.wallet_password
         if config.wallet_location:
@@ -349,10 +329,7 @@ class ConnectionTester:
 
     @staticmethod
     def _successful_connection_result(
-        config: ConnectionConfig,
-        dsn: str,
-        version: str,
-        connection_time_ms: float,
+        config: ConnectionConfig, dsn: str, version: str, connection_time_ms: float
     ) -> ConnectionTestResult:
         """Build a successful connection-test result."""
         mode_desc = "managed container" if config.mode == DeploymentMode.MANAGED else "external database"
@@ -366,10 +343,7 @@ class ConnectionTester:
             server_version=version,
         )
 
-    def get_connection_info(
-        self,
-        config: ConnectionConfig | None = None,
-    ) -> ConnectionInfo:
+    def get_connection_info(self, config: ConnectionConfig | None = None) -> ConnectionInfo:
         """Get detailed connection information.
 
         Args:
@@ -394,10 +368,7 @@ class ConnectionTester:
             database_url=config.database_url,
         )
 
-    def display_test_result(
-        self,
-        result: ConnectionTestResult,
-    ) -> None:
+    def display_test_result(self, result: ConnectionTestResult) -> None:
         """Display connection test results with Rich formatting.
 
         Args:
@@ -426,10 +397,7 @@ class ConnectionTester:
                     self.console.print(f"  • {suggestion}")
         self.console.print()
 
-    def display_connection_info(
-        self,
-        info: ConnectionInfo,
-    ) -> None:
+    def display_connection_info(self, info: ConnectionInfo) -> None:
         """Display connection information with Rich formatting.
 
         Args:
@@ -455,10 +423,7 @@ class ConnectionTester:
 
         self.console.print(table)
 
-    def validate_credentials(
-        self,
-        config: ConnectionConfig,
-    ) -> bool:
+    def validate_credentials(self, config: ConnectionConfig) -> bool:
         """Quick validation of credentials without full connection.
 
         Args:
@@ -489,11 +454,7 @@ class ConnectionTester:
         # For non-wallet connections, check standard fields
         return not (not config.wallet_location and (not config.host or not config.port or not config.service_name))
 
-    def _connect(
-        self,
-        config: ConnectionConfig,
-        timeout: int,
-    ) -> Any:
+    def _connect(self, config: ConnectionConfig, timeout: int) -> Any:
         """Internal method to establish connection.
 
         Args:
@@ -595,11 +556,7 @@ def detect_deployment_mode() -> DeploymentMode:
     return DeploymentMode.MANAGED
 
 
-def get_connection_suggestions(
-    mode: DeploymentMode,
-    error: str,
-    has_wallet: bool = False,
-) -> list[str]:
+def get_connection_suggestions(mode: DeploymentMode, error: str, has_wallet: bool = False) -> list[str]:
     """Get troubleshooting suggestions for connection failures.
 
     Args:

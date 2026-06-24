@@ -15,12 +15,13 @@ from rich.prompt import Confirm
 from rich.table import Table
 
 from tools.lib.utils import (
-    configure_gemini_mcp_sqlcl,
-    configure_sqlcl_connection_with_password,
+    AntigravityMCPConfigTarget,
+    build_antigravity_mcp_config,
     detect_deployment_mode,
-    is_mcp_server_configured,
+    get_antigravity_mcp_config_path,
     is_tool_installed,
     run_command,
+    write_antigravity_mcp_config,
 )
 
 if TYPE_CHECKING:
@@ -44,17 +45,8 @@ def install_group() -> None:
     type=click.Choice(["managed", "external"], case_sensitive=False),
     help="Install prerequisites for specific mode (auto-detect if not specified)",
 )
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Force reinstall even if already installed",
-)
-@click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    help="Skip confirmation prompts",
-)
+@click.option("--force", is_flag=True, help="Force reinstall even if already installed")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 def install_all_command(mode: str | None, force: bool, yes: bool) -> None:
     """Install all prerequisites for deployment mode.
 
@@ -115,23 +107,14 @@ def install_list_command() -> None:
     table.add_column("Modes", width=30)
     table.add_column("Description")
 
+    table.add_row("java", "[yellow]Optional[/yellow]", "managed, external", "Java 11+ (required for SQLcl)")
+    table.add_row("sqlcl", "[yellow]Optional[/yellow]", "managed, external", "Oracle SQL command-line tool")
+    table.add_row("docker", "[yellow]Optional[/yellow]", "managed", "Container runtime (not auto-installed)")
     table.add_row(
-        "java",
+        "mcp-toolbox",
         "[yellow]Optional[/yellow]",
         "managed, external",
-        "Java 11+ (required for SQLcl)",
-    )
-    table.add_row(
-        "sqlcl",
-        "[yellow]Optional[/yellow]",
-        "managed, external",
-        "Oracle SQL command-line tool",
-    )
-    table.add_row(
-        "docker",
-        "[yellow]Optional[/yellow]",
-        "managed",
-        "Container runtime (not auto-installed)",
+        "Antigravity MCP config for SQLcl and MCP Toolbox Oracle",
     )
 
     console.print(table)
@@ -141,23 +124,14 @@ def install_list_command() -> None:
 
 
 @install_group.command(name="sqlcl")
-@click.option(
-    "--dir",
-    "install_dir",
-    type=click.Path(),
-    help="Installation directory (default: ~/.local/bin)",
-)
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Reinstall even if already installed",
-)
+@click.option("--dir", "install_dir", type=click.Path(), help="Installation directory (default: ~/.local/bin)")
+@click.option("--force", is_flag=True, help="Reinstall even if already installed")
 @click.option(
     "--connection-name",
     default="cymbal_coffee",
-    help="Name for saved SQLcl connection (default: cymbal_coffee)",
+    help="Retained for compatibility; Antigravity MCP config does not save credentials.",
 )
-def install_sqlcl_command(install_dir: str | None, force: bool, connection_name: str) -> None:  # noqa: C901
+def install_sqlcl_command(install_dir: str | None, force: bool, connection_name: str) -> None:
     """Install Oracle SQLcl command-line tool.
 
     Idempotent: Safe to run multiple times. Skips installation if SQLcl is already
@@ -170,6 +144,11 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     """
     console.print("[yellow]📦 Checking SQLcl installation...[/yellow]")
     console.print()
+    if connection_name != "cymbal_coffee":
+        console.print(
+            "[dim]Antigravity MCP config uses SQLcl directly and does not write saved connection names.[/dim]"
+        )
+        console.print()
 
     # Check for Java before proceeding
     java_path = shutil.which("java")
@@ -211,30 +190,7 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         sqlcl_path = shutil.which("sql")
         console.print(f"[dim]  Location: {sqlcl_path}[/dim]")
         console.print("[dim]  Use --force to reinstall[/dim]")
-
-        # Still check for Gemini MCP configuration
-        gemini_path = shutil.which("gemini")
-        if gemini_path:
-            console.print()
-            console.print("[yellow]🔐 Checking Gemini MCP integration...[/yellow]")
-
-            # Check if already configured
-            if is_mcp_server_configured("sqlcl"):
-                console.print("[green]✓ SQLcl MCP server already configured[/green]")
-            else:
-                console.print("[yellow]🔐 Configuring SQLcl for Gemini MCP...[/yellow]")
-
-                # Step 1: Configure saved connection with password
-                success, message = configure_sqlcl_connection_with_password(connection_name)
-                if success:
-                    console.print(f"[green]✓ {message}[/green]")
-                else:
-                    console.print(f"[yellow]⚠ Password configuration: {message}[/yellow]")
-
-                # Step 2: Configure Gemini MCP server
-                if configure_gemini_mcp_sqlcl():
-                    console.print("[green]✓ Configured SQLcl as Gemini MCP server[/green]")
-
+        print_antigravity_mcp_next_step()
         return
 
     # If force flag, show warning
@@ -264,32 +220,87 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     console.print()
     console.print("[dim]Note: Make sure ~/.local/bin is in your PATH[/dim]")
 
-    # Configure Gemini MCP integration if Gemini CLI is installed
-    gemini_path = shutil.which("gemini")
-    if gemini_path:
+    print_antigravity_mcp_next_step()
+
+
+@install_group.command(name="mcp-toolbox")
+@click.option("--dry-run", is_flag=True, help="Print MCP Toolbox and Oracle Skills guidance without writing config.")
+@click.option(
+    "--workspace", "workspace", is_flag=True, help="Write workspace Antigravity config to .agents/mcp_config.json."
+)
+@click.option(
+    "--ide", "ide", is_flag=True, help="Write explicit IDE Antigravity config to ~/.gemini/config/mcp_config.json."
+)
+@click.option(
+    "--cli-global",
+    "cli_global",
+    is_flag=True,
+    help="Write explicit Antigravity CLI global config to ~/.gemini/antigravity-cli/mcp_config.json.",
+)
+def install_mcp_toolbox_command(*, dry_run: bool, workspace: bool, ide: bool, cli_global: bool) -> None:
+    """Prepare Antigravity MCP config for MCP Toolbox Oracle.
+
+    This command prints install guidance by default. Use --workspace, --ide, or
+    --cli-global to write the selected Antigravity MCP config.
+    """
+    selected_count = int(workspace) + int(ide) + int(cli_global)
+    if selected_count > 1:
+        msg = "Choose only one of --workspace, --ide, or --cli-global."
+        raise click.UsageError(msg)
+
+    target: AntigravityMCPConfigTarget = "workspace"
+    if ide:
+        target = "ide"
+    elif cli_global:
+        target = "cli-global"
+    config_path = get_antigravity_mcp_config_path(target)
+    config = build_antigravity_mcp_config()
+
+    console.rule("[bold blue]Antigravity MCP Toolbox Configuration", style="blue")
+    console.print()
+
+    toolbox_path = shutil.which("toolbox")
+    if toolbox_path:
+        console.print(f"[green]✓ MCP Toolbox found:[/green] [dim]{toolbox_path}[/dim]")
+    else:
+        console.print("[yellow]⚠ MCP Toolbox command not found on PATH[/yellow]")
+        console.print("[dim]Install MCP Toolbox for Databases and ensure the 'toolbox' command is available.[/dim]")
+
+    console.print()
+    console.print("[bold]MCP Toolbox Oracle server command:[/bold]")
+    console.print("  [cyan]toolbox --prebuilt oracledb --stdio[/cyan]")
+    console.print()
+    console.print("[bold]Environment placeholders expected by the config:[/bold]")
+    console.print("  [cyan]ORACLE_CONNECTION_STRING[/cyan]")
+    console.print("  [cyan]ORACLE_USERNAME[/cyan]")
+    console.print("  [cyan]ORACLE_PASSWORD[/cyan]")
+    console.print("  [cyan]ORACLE_WALLET[/cyan]")
+    console.print("  [cyan]ORACLE_USE_OCI[/cyan]")
+    console.print()
+    console.print("[bold]Oracle Skills guidance:[/bold]")
+    console.print("  [cyan]npx skills add oracle/skills/apex[/cyan]")
+    console.print("  [cyan]npx skills add oracle/skills/db[/cyan]")
+    console.print()
+    console.print("[bold]Antigravity config target:[/bold]")
+    console.print(f"  [cyan]{config_path}[/cyan]")
+    console.print()
+    console.print("[bold]Config preview:[/bold]")
+    console.print_json(data=config)
+
+    if dry_run or selected_count == 0:
         console.print()
-        console.print("[yellow]🔐 Configuring SQLcl MCP integration...[/yellow]")
+        console.print("[yellow]Dry run only; no files were written.[/yellow]")
+        console.print("[dim]Use --workspace to write .agents/mcp_config.json for this checkout.[/dim]")
+        return
 
-        # Step 1: Configure saved connection with password
-        success, message = configure_sqlcl_connection_with_password(connection_name)
-        if success:
-            console.print(f"[green]✓ {message}[/green]")
-        else:
-            console.print(f"[yellow]⚠ Password configuration: {message}[/yellow]")
-            console.print(
-                "[dim]  Ensure .env has DATABASE_USER, DATABASE_PASSWORD, DATABASE_HOST, DATABASE_SERVICE_NAME[/dim]"
-            )
+    try:
+        written_path = write_antigravity_mcp_config(target)
+    except Exception as e:
+        msg = f"Failed to write Antigravity MCP config: {e}"
+        raise click.ClickException(msg) from e
 
-        # Step 2: Configure Gemini MCP server
-        if configure_gemini_mcp_sqlcl():
-            console.print("[green]✓ Configured SQLcl as Gemini MCP server[/green]")
-            if success:
-                console.print("[dim]  SQLcl is now fully configured for MCP access[/dim]")
-            else:
-                console.print("[dim]  Note: Password still needs to be configured[/dim]")
-        else:
-            console.print("[yellow]⚠ Could not auto-configure Gemini MCP[/yellow]")
-            console.print("[dim]  You can manually add SQLcl to ~/.gemini/settings.json[/dim]")
+    console.print()
+    console.print(f"[green]✓ Wrote Antigravity MCP config:[/green] [cyan]{written_path}[/cyan]")
 
 
 def install_sqlcl_with_config(config: SQLclConfig, installer_type: type[SQLclInstaller], *, force: bool) -> None:
@@ -302,3 +313,10 @@ def install_sqlcl_with_config(config: SQLclConfig, installer_type: type[SQLclIns
     console.print("\n[yellow]⚠ SQLcl is not in your PATH[/yellow]")
     for instruction in installer.get_path_instructions():
         console.print(f"  {instruction}")
+
+
+def print_antigravity_mcp_next_step() -> None:
+    """Print explicit Antigravity MCP config guidance without writing files."""
+    console.print()
+    console.print("[bold]Antigravity MCP config:[/bold]")
+    console.print("  [cyan]python manage.py install mcp-toolbox --workspace[/cyan]")

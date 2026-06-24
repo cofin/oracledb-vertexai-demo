@@ -34,7 +34,9 @@ def anyio_backend() -> str:
 
 
 @pytest.fixture
-def test_settings(monkeypatch: MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> Iterator[app_settings.Settings]:
+def test_settings(
+    monkeypatch: MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> Iterator[app_settings.Settings]:
     """Patch the settings with test configuration.
 
     Creates a temporary test .env file with safe test values.

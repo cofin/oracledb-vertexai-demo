@@ -9,12 +9,7 @@ _MAPS_HOST = "www.google.com"
 
 
 def build_store_search_url(
-    name: str,
-    address: str,
-    city: str,
-    state: str,
-    zip_code: str,
-    place_id: str | None = None,
+    name: str, address: str, city: str, state: str, zip_code: str, place_id: str | None = None
 ) -> str:
     """Build a no-key Google Maps search URL for a store."""
     params = {"query": _store_query(name, address, city, state, zip_code)}

@@ -3,6 +3,20 @@
 
 """Product domain schemas package."""
 
+from ._apex import (
+    ApexInventoryList,
+    ApexInventorySummaryList,
+    ApexInventorySummaryRow,
+    ApexOpenAPIStatus,
+    ApexProduct,
+    ApexProductList,
+    ApexRecommendation,
+    ApexRecommendationRequest,
+    ApexRecommendationResponse,
+    ApexStoreList,
+    ApexVectorReadiness,
+    ApexVectorStatus,
+)
 from ._products import (
     ExplainPlan,
     ExplainPlanRow,
@@ -19,6 +33,18 @@ from ._products import (
 )
 
 __all__ = (
+    "ApexInventoryList",
+    "ApexInventorySummaryList",
+    "ApexInventorySummaryRow",
+    "ApexOpenAPIStatus",
+    "ApexProduct",
+    "ApexProductList",
+    "ApexRecommendation",
+    "ApexRecommendationRequest",
+    "ApexRecommendationResponse",
+    "ApexStoreList",
+    "ApexVectorReadiness",
+    "ApexVectorStatus",
     "ExplainPlan",
     "ExplainPlanRow",
     "Product",

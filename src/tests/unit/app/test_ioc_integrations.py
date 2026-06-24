@@ -52,9 +52,7 @@ def test_integrations_provider_builds_runner_from_injected_dependencies(monkeypa
     captured: dict[str, object] = {}
 
     class FakeRunner:
-        def __init__(
-            self, session_service: object, classifier: object, persona_manager: object
-        ) -> None:
+        def __init__(self, session_service: object, classifier: object, persona_manager: object) -> None:
             captured["session_service"] = session_service
             captured["classifier"] = classifier
             captured["persona_manager"] = persona_manager
@@ -98,4 +96,4 @@ def test_integrations_provider_builds_intent_classifier_from_injected_client(mon
 
     assert isinstance(classifier, FakeClassifier)
     assert captured["client"] is sentinel_client
-    assert captured["model"] == "gemini-2.5-flash-lite"
+    assert captured["model"] == "gemini-3.1-flash-lite"

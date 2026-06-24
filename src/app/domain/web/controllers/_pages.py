@@ -15,6 +15,7 @@ from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app.domain.chat.services import ADKRunner
 from app.domain.chat.session import adk_session_identity
+from app.domain.products.services import StoreService
 from app.lib.di import Inject
 
 logger = structlog.get_logger()
@@ -30,5 +31,10 @@ class PageController(Controller):
         return HTMXTemplate(template_name="pages/chat.html.j2", context={"history_messages": history_messages})
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self, q: FromQuery[str | None] = None) -> HTMXTemplate:
-        return HTMXTemplate(template_name="pages/explore.html.j2", context={"query": q or ""})
+    async def explore_page(self, stores_service: Inject[StoreService], q: FromQuery[str | None] = None) -> HTMXTemplate:
+        try:
+            stores = await stores_service.get_all_stores()
+        except Exception as exc:  # noqa: BLE001
+            await logger.awarning("Store inventory selector unavailable", error_type=type(exc).__name__)
+            stores = []
+        return HTMXTemplate(template_name="pages/explore.html.j2", context={"query": q or "", "stores": stores})

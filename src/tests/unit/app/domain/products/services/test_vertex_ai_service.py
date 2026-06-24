@@ -18,8 +18,8 @@ async def test_gemini_embedding_2_uses_prompt_instruction_not_task_type() -> Non
     cache_service = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
     service = VertexAIService(
         client=SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content))),
-        model="gemini-2.5-flash-lite",
-        embedding_model="gemini-embedding-2-preview",
+        model="gemini-3.1-flash-lite",
+        embedding_model="gemini-embedding-2",
         embedding_dimensions=3072,
         cache_service=cache_service,
     )
@@ -28,7 +28,7 @@ async def test_gemini_embedding_2_uses_prompt_instruction_not_task_type() -> Non
 
     assert result == [0.1, 0.2]
     kwargs = embed_content.await_args.kwargs
-    assert kwargs["model"] == "gemini-embedding-2-preview"
+    assert kwargs["model"] == "gemini-embedding-2"
     assert kwargs["contents"].startswith("Task: Generate an embedding for a search query")
     assert kwargs["contents"].endswith("cold brew")
     assert kwargs["config"].output_dimensionality == 3072

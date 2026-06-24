@@ -46,7 +46,7 @@ async def test_get_embedding_maps_full_row_to_typed_struct(mock_driver) -> None:
         id=7,
         text_hash="abc",
         embedding=[0.1, 0.2, 0.3],
-        model="gemini-embedding-2-preview",
+        model="gemini-embedding-2",
         created_at=datetime.now(UTC),
         last_accessed=datetime.now(UTC),
         hit_count=2,
@@ -55,7 +55,7 @@ async def test_get_embedding_maps_full_row_to_typed_struct(mock_driver) -> None:
     mock_driver.execute = AsyncMock()
     mock_driver.commit = AsyncMock()
 
-    result = await CacheService(mock_driver).get_embedding("dark roast", "gemini-embedding-2-preview")
+    result = await CacheService(mock_driver).get_embedding("dark roast", "gemini-embedding-2")
 
     assert result == [0.1, 0.2, 0.3]
     _, kwargs = mock_driver.select_one_or_none.await_args
@@ -72,7 +72,7 @@ async def test_get_embedding_returns_none_on_miss(mock_driver) -> None:
     mock_driver.execute = AsyncMock()
     mock_driver.commit = AsyncMock()
 
-    result = await CacheService(mock_driver).get_embedding("dark roast", "gemini-embedding-2-preview")
+    result = await CacheService(mock_driver).get_embedding("dark roast", "gemini-embedding-2")
 
     assert result is None
     mock_driver.execute.assert_not_awaited()

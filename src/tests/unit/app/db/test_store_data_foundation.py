@@ -41,7 +41,7 @@ def test_baseline_migration_uses_inline_schema_annotations() -> None:
     assert ")\nANNOTATIONS (\n    Display 'Cymbal Coffee stores'" in migration
     assert "stock_status VARCHAR2(20) NOT NULL\n        ANNOTATIONS (" in migration
     assert "CREATE TABLE embedding_cache" in migration
-    assert "Embedding_Model 'gemini-embedding-2-preview'" in migration
+    assert "Embedding_Model 'gemini-embedding-2'" in migration
     assert "Embedding_Purpose 'document'" in migration
     assert "CREATE INDEX product_in_stock_idx ON product (in_stock)\nANNOTATIONS (" in migration
     assert "ALTER TABLE product ANNOTATIONS" not in migration

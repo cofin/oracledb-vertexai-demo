@@ -46,9 +46,7 @@ async def test_merge_renders_aliased_target() -> None:
     assert '"product" "t"' in rendered or "product t" in rendered, (
         f"Target table is missing the `t` alias used in ON clause: {rendered}"
     )
-    assert '"t"."id"' in rendered or "t.id" in rendered, (
-        f"ON clause does not reference `t.id`: {rendered}"
-    )
+    assert '"t"."id"' in rendered or "t.id" in rendered, f"ON clause does not reference `t.id`: {rendered}"
 
 
 def test_prepare_record_converts_boolean_for_oracle_json_table() -> None:

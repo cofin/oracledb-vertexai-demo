@@ -87,12 +87,7 @@ class HealthChecker:
         self.wallet_configurator = WalletConfigurator(console=self.console)
         self.sqlcl_installer = SQLclInstaller(console=self.console)
 
-    def check_all(
-        self,
-        *,
-        deployment_mode: DeploymentMode | None = None,
-        verbose: bool = False,
-    ) -> SystemHealth:
+    def check_all(self, *, deployment_mode: DeploymentMode | None = None, verbose: bool = False) -> SystemHealth:
         """Check health of all components.
 
         Args:
@@ -326,10 +321,7 @@ class HealthChecker:
             suggestions=["Validate wallet: python manage.py wallet validate"],
         )
 
-    def check_connectivity(
-        self,
-        mode: DeploymentMode | None = None,
-    ) -> ComponentHealth:
+    def check_connectivity(self, mode: DeploymentMode | None = None) -> ComponentHealth:
         """Check database connectivity.
 
         Args:
@@ -394,12 +386,7 @@ class HealthChecker:
 
         return detect_deployment_mode()
 
-    def display_health(
-        self,
-        health: SystemHealth,
-        *,
-        verbose: bool = False,
-    ) -> None:
+    def display_health(self, health: SystemHealth, *, verbose: bool = False) -> None:
         """Display health report with Rich formatting.
 
         Args:
@@ -420,8 +407,7 @@ class HealthChecker:
         self.console.print()
         self.console.print(
             Panel(
-                f"[{color}]{icon} System Status: {health.overall_status.value.upper()}{mode_str}[/{color}]",
-                style=color,
+                f"[{color}]{icon} System Status: {health.overall_status.value.upper()}{mode_str}[/{color}]", style=color
             )
         )
 
@@ -443,10 +429,7 @@ class HealthChecker:
 
         self.console.print()
 
-    def display_component_table(
-        self,
-        components: list[ComponentHealth],
-    ) -> Table:
+    def display_component_table(self, components: list[ComponentHealth]) -> Table:
         """Create Rich table of component health.
 
         Args:
@@ -473,10 +456,7 @@ class HealthChecker:
 
         return table
 
-    def display_suggestions(
-        self,
-        health: SystemHealth,
-    ) -> None:
+    def display_suggestions(self, health: SystemHealth) -> None:
         """Display troubleshooting suggestions.
 
         Args:

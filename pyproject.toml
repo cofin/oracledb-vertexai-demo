@@ -22,7 +22,7 @@ dependencies = [
     "sqlspec[adk,mypyc,oracledb,performance]==0.50.0",
 
     "python-dotenv",
-    "google-adk>=2.0.0b1",
+    "google-adk>=2.0.0",
     "numpy>=2.3.3",
     "dishka>=1.4.2",
     "litestar-vite>=0.23.4",
@@ -202,6 +202,12 @@ preview = true
 src = ["src", "tools"]
 target-version = "py311"
 
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 60
+preview = true
+skip-magic-trailing-comma = true
+
 [tool.ruff.lint]
 fixable = ["ALL"]
 ignore = [
@@ -270,6 +276,7 @@ classmethod-decorators = ["classmethod"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["tests", "app", "config"]
+split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
@@ -310,7 +317,11 @@ known-first-party = ["tests", "app", "config"]
 strict-imports = false
 
 [tool.codespell]
-ignore-words-list = "alog, uv.lock, package-lock.json"
+# `ans` is an intentional answer-variable name in tests. Directory exclusions
+# live in the pre-commit hook `exclude` regex (codespell skip globs don't match
+# the relative paths pre-commit passes); this `skip` only covers file types.
+ignore-words-list = "alog,ans"
+skip = "uv.lock,package-lock.json,*.gz,*.min.js,*.map"
 
 [tool.mypy]
 disallow_any_generics = false

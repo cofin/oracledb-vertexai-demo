@@ -3,9 +3,4 @@
 
 from .services import OracleVectorSearchService, ProductService, StoreService, VertexAIService
 
-__all__ = (
-    "OracleVectorSearchService",
-    "ProductService",
-    "StoreService",
-    "VertexAIService",
-)
+__all__ = ("OracleVectorSearchService", "ProductService", "StoreService", "VertexAIService")

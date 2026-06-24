@@ -16,11 +16,19 @@ cat <<EOF > uv.toml
 required-version = ">=0.8.6"
 exclude-newer = "3 days"
 exclude-newer-package = { sqlspec = false }
+# Current google-adk imports FastAPI models at module import time, and FastAPI
+# imports Starlette at package import time. Excluding either breaks ADK startup.
+exclude-dependencies = [
+    "alembic",
+    "sqlalchemy",
+    "uvicorn",
+]
 build-constraint-dependencies = [
     "hatchling==1.24.2",
     "nodeenv==1.9.1"
 ]
 EOF
+echo -e "${OK} uv.toml created."
 
 
 # 2. Configure npm (JavaScript)

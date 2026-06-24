@@ -1,0 +1,38 @@
+{
+  "research_id": "research_apex26_ords_apexlang_schema_bridge",
+  "topic": "Latest June 2026 APEX 26.1, ORDS 26.1, APEXlang, Oracle vector search with Gemini, and schema bridge ideas for an APEX coffee demo",
+  "type": "Research + Integration Planning",
+  "created_at": "2026-06-22T00:00:00Z",
+  "branch": "fix/product-improve",
+  "status": "complete",
+  "validated_against_live_repo": true,
+  "validated_against_external_docs": true,
+  "key_findings": {
+    "latest_apex_release": "APEX 26.1 public release re-issued 2026-05-25; 26.1.1 patch bundle updated 2026-06-15",
+    "latest_ords_release": "ORDS 26.1.2.140.1916 released 2026-05-27",
+    "apex_ords_requirement": "APEX 26.1 requires ORDS 26.1.1 or later",
+    "latest_sqlcl_release": "SQLcl 26.1.2 includes APEXlang lifecycle command support",
+    "apexlang_layout": "Official APEXlang source uses shared_components and supporting_objects directories",
+    "gemini_embedding_candidate": "Google docs list gemini-embedding-2 with 3072-dimensional output; repo still defaults to gemini-embedding-2-preview",
+    "repo_gap": "APEX/ORDS runtime and SQLcl APEXlang lifecycle are implemented; remaining roadmap gaps are the APEX-safe API, schema bridge, source-controlled APEX app, and live verification/docs"
+  },
+  "files_analyzed": [
+    "Makefile",
+    "tools/oracle/apex_media.py",
+    "tools/oracle/apex_install.py",
+    "tools/oracle/ords.py",
+    "tools/oracle/cli/database.py",
+    "tools/oracle/cli/apex.py",
+    "src/app/server/core.py",
+    "src/app/lib/settings.py",
+    "src/app/db/migrations/0001_cymball_coffee_products.sql",
+    "src/app/domain/products/controllers/_products.py",
+    "src/app/domain/products/controllers/_vector.py",
+    "src/app/domain/chat/controllers/_chat.py",
+    ".agents/specs/apex-gvenzl-install/prd.md",
+    ".agents/specs/apex-ops-console/prd.md",
+    ".agents/specs/apex-demo-verification-docs/spec.md"
+  ],
+  "linked_flow": null,
+  "linked_prd": null
+}

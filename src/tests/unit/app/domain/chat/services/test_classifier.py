@@ -9,11 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.domain.chat.services.classifier import (
-    INTENT_VALUES,
-    FlashLiteIntentClassifier,
-    IntentLabel,
-)
+from app.domain.chat.services.classifier import INTENT_VALUES, FlashLiteIntentClassifier, IntentLabel
 
 pytestmark = pytest.mark.anyio
 
@@ -51,7 +47,7 @@ async def test_classifier_maps_store_location_text_to_label() -> None:
     client.aio.models = MagicMock()
     client.aio.models.generate_content = AsyncMock(return_value=response)
 
-    classifier = FlashLiteIntentClassifier(client, model="gemini-2.5-flash-lite")
+    classifier = FlashLiteIntentClassifier(client, model="gemini-3.1-flash-lite")
 
     result = await classifier.classify("where is the nearest cafe")
 

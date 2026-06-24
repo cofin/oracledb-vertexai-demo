@@ -72,8 +72,8 @@ def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
 
     settings = AISettings()
 
-    assert settings.chat_model == "gemini-2.5-flash-lite"
-    assert settings.embedding_model == "gemini-embedding-2-preview"
+    assert settings.chat_model == "gemini-3.1-flash-lite"
+    assert settings.embedding_model == "gemini-embedding-2"
     assert settings.embedding_dimensions == 3072
     assert settings.intent_model_override is None
     assert settings.intent_model == settings.chat_model
@@ -96,11 +96,12 @@ def test_chat_settings_defaults(monkeypatch: MonkeyPatch) -> None:
     settings = ChatSettings()
 
     assert settings.session_app_name == "coffee_assistant"
-    assert settings.response_cache_version == "menu-grounded-v1"
+    assert settings.response_cache_version == "menu-grounded-v2"
     assert settings.response_cache_ttl_minutes == 60
     assert settings.product_search_limit == 5
     assert settings.product_search_threshold == 0.7
     assert settings.display_history_limit == 40
+    assert settings.grounded_answer_timeout_seconds == 2.5
 
 
 def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> None:

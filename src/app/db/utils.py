@@ -17,11 +17,7 @@ if TYPE_CHECKING:
 
 
 # Coffee shop table loading order (respects foreign key dependencies)
-COFFEE_SHOP_TABLES = [
-    "store",
-    "product",
-    "store_product_inventory",
-]
+COFFEE_SHOP_TABLES = ["store", "product", "store_product_inventory"]
 
 
 async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str]:
@@ -72,9 +68,7 @@ async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
 
 
 async def export_fixtures(
-    tables: list[str] | None = None,
-    output_dir: Path | None = None,
-    compress: bool = True,
+    tables: list[str] | None = None, output_dir: Path | None = None, compress: bool = True
 ) -> dict[str, str]:
     """Export database tables to fixture files.
 
@@ -95,14 +89,6 @@ async def export_fixtures(
         if output_dir is None:
             output_dir = fixtures_dir
 
-        exporter = FixtureExporter(
-            fixtures_dir=fixtures_dir,
-            driver=driver,
-            table_order=COFFEE_SHOP_TABLES,
-        )
+        exporter = FixtureExporter(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
 
-        return await exporter.export_all_fixtures(
-            tables=tables,
-            output_dir=output_dir,
-            compress=compress,
-        )
+        return await exporter.export_all_fixtures(tables=tables, output_dir=output_dir, compress=compress)

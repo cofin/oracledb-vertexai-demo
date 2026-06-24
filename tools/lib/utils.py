@@ -10,12 +10,16 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 console = Console()
+
+AntigravityMCPConfigTarget = Literal["workspace", "ide", "cli-global"]
+SQLCL_MCP_SERVER_NAME = "sqlcl"
+MCP_TOOLBOX_ORACLE_SERVER_NAME = "oracle-toolbox"
 
 
 def detect_deployment_mode() -> str:
@@ -184,12 +188,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
 def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
     """Run shell command and return exit code, stdout, stderr."""
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=check,
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, check=check)
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout, e.stderr
     except Exception as e:  # noqa: BLE001
@@ -221,27 +220,99 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
     return False, ""
 
 
-def is_mcp_server_configured(server_name: str) -> bool:
-    """Check if an MCP server is already configured in Gemini settings.
+def get_antigravity_mcp_config_path(
+    target: AntigravityMCPConfigTarget = "workspace", *, workspace_root: Path | None = None, home: Path | None = None
+) -> Path:
+    """Return the Antigravity MCP config path for the requested target."""
+    if target == "workspace":
+        return (workspace_root or Path.cwd()) / ".agents" / "mcp_config.json"
 
-    Args:
-        server_name: Name of the MCP server (e.g., 'sqlcl', 'sequential-thinking')
+    home_path = home or Path.home()
+    if target == "ide":
+        return home_path / ".gemini" / "config" / "mcp_config.json"
+    return home_path / ".gemini" / "antigravity-cli" / "mcp_config.json"
 
-    Returns:
-        bool: True if server is already configured
-    """
-    gemini_settings_path = Path.home() / ".gemini" / "settings.json"
-    if not gemini_settings_path.exists():
+
+def build_sqlcl_mcp_server_config() -> dict[str, Any]:
+    """Build SQLcl MCP server config without embedding local credentials."""
+    return {"command": "sql", "args": ["-mcp"]}
+
+
+def build_mcp_toolbox_oracle_server_config() -> dict[str, Any]:
+    """Build MCP Toolbox Oracle config with environment placeholders only."""
+    return {
+        "command": "toolbox",
+        "args": ["--prebuilt", "oracledb", "--stdio"],
+        "env": {
+            "ORACLE_CONNECTION_STRING": "${ORACLE_CONNECTION_STRING}",
+            "ORACLE_USERNAME": "${ORACLE_USERNAME}",
+            "ORACLE_PASSWORD": "${ORACLE_PASSWORD}",
+            "ORACLE_WALLET": "${ORACLE_WALLET}",
+            "ORACLE_USE_OCI": "${ORACLE_USE_OCI}",
+        },
+    }
+
+
+def build_antigravity_mcp_config(*, include_sqlcl: bool = True, include_mcp_toolbox: bool = True) -> dict[str, Any]:
+    """Build an Antigravity MCP config document for this demo."""
+    mcp_servers: dict[str, Any] = {}
+    if include_sqlcl:
+        mcp_servers[SQLCL_MCP_SERVER_NAME] = build_sqlcl_mcp_server_config()
+    if include_mcp_toolbox:
+        mcp_servers[MCP_TOOLBOX_ORACLE_SERVER_NAME] = build_mcp_toolbox_oracle_server_config()
+    return {"mcpServers": mcp_servers}
+
+
+def write_antigravity_mcp_config(
+    target: AntigravityMCPConfigTarget = "workspace",
+    *,
+    workspace_root: Path | None = None,
+    home: Path | None = None,
+    include_sqlcl: bool = True,
+    include_mcp_toolbox: bool = True,
+) -> Path:
+    """Merge this demo's MCP servers into an Antigravity MCP config file."""
+    config_path = get_antigravity_mcp_config_path(target, workspace_root=workspace_root, home=home)
+    generated = build_antigravity_mcp_config(include_sqlcl=include_sqlcl, include_mcp_toolbox=include_mcp_toolbox)
+
+    existing: dict[str, Any] = {}
+    if config_path.exists():
+        with config_path.open(encoding="utf-8") as f:
+            loaded = json.load(f)
+        if isinstance(loaded, dict):
+            existing = loaded
+
+    existing_mcp_servers = existing.setdefault("mcpServers", {})
+    if not isinstance(existing_mcp_servers, dict):
+        existing_mcp_servers = {}
+        existing["mcpServers"] = existing_mcp_servers
+    existing_mcp_servers.update(generated["mcpServers"])
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return config_path
+
+
+def is_antigravity_mcp_server_configured(
+    server_name: str,
+    target: AntigravityMCPConfigTarget = "workspace",
+    *,
+    workspace_root: Path | None = None,
+    home: Path | None = None,
+) -> bool:
+    """Check whether an Antigravity MCP config target includes a server."""
+    config_path = get_antigravity_mcp_config_path(target, workspace_root=workspace_root, home=home)
+    if not config_path.exists():
         return False
 
     try:
-        with gemini_settings_path.open() as f:
+        with config_path.open(encoding="utf-8") as f:
             settings = json.load(f)
-        mcp_servers = settings.get("mcpServers", {})
-        # Check if server exists and is not None/null
-        return server_name in mcp_servers and mcp_servers[server_name] is not None
     except Exception:  # noqa: BLE001
         return False
+
+    mcp_servers = settings.get("mcpServers", {})
+    return isinstance(mcp_servers, dict) and server_name in mcp_servers and mcp_servers[server_name] is not None
 
 
 def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
@@ -348,59 +419,3 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
         return False, f"Error running SQLcl: {e}"
     else:
         return False, f"Failed to save connection: {error_msg}"
-
-
-def configure_gemini_mcp_sqlcl() -> bool:
-    """Configure SQLcl as a Gemini MCP server.
-
-    Returns:
-        bool: True if configuration was successful or already exists, False otherwise
-
-    Adds or updates SQLcl MCP server configuration in ~/.gemini/settings.json.
-    Configuration format:
-    {
-        "mcpServers": {
-            "sqlcl": {
-                "command": "sql",
-                "args": ["-mcp"]
-            }
-        }
-    }
-    """
-    # Check if already configured
-    if is_mcp_server_configured("sqlcl"):
-        return True  # Already configured, no need to modify
-
-    gemini_settings_path = Path.home() / ".gemini" / "settings.json"
-
-    # Check if Gemini settings directory exists
-    if not gemini_settings_path.parent.exists():
-        try:
-            gemini_settings_path.parent.mkdir(parents=True, exist_ok=True)
-        except Exception:  # noqa: BLE001
-            return False
-
-    # Read existing settings or create new
-    settings: dict[str, Any] = {}
-    if gemini_settings_path.exists():
-        try:
-            with gemini_settings_path.open() as f:
-                settings = json.load(f)
-        except Exception:  # noqa: BLE001
-            return False
-
-    # Ensure mcpServers key exists
-    if "mcpServers" not in settings:
-        settings["mcpServers"] = {}
-
-    # Add or update SQLcl configuration
-    settings["mcpServers"]["sqlcl"] = {"command": "sql", "args": ["-mcp"]}
-
-    # Write back to file
-    try:
-        with gemini_settings_path.open("w") as f:
-            json.dump(settings, f, indent=2)
-    except Exception:  # noqa: BLE001
-        return False
-    else:
-        return True

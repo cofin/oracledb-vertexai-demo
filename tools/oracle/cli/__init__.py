@@ -13,6 +13,7 @@ __all__ = [
     "apex_group",
     "connect_group",
     "database_group",
+    "ords_group",
     "sqlcl_group",
     "status_command",
     "wallet_group",
@@ -22,5 +23,6 @@ from tools.oracle.cli.apex import apex_group
 from tools.oracle.cli.connection import connect_group
 from tools.oracle.cli.database import database_group
 from tools.oracle.cli.health import status_command
+from tools.oracle.cli.ords import ords_group
 from tools.oracle.cli.sqlcl import sqlcl_group
 from tools.oracle.cli.wallet import wallet_group

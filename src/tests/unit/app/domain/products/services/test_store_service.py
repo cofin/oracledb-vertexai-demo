@@ -50,7 +50,9 @@ async def test_find_stores_by_location_uses_named_sql_and_typed_store_results(mo
 
 
 async def test_get_store_hours_returns_schema_owned_contract(mock_driver) -> None:
-    mock_driver.select_one_or_none = AsyncMock(return_value=_store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994))
+    mock_driver.select_one_or_none = AsyncMock(
+        return_value=_store(16, "Cymbal Coffee Dallas Arts District", 32.7876, -96.7994)
+    )
     service = StoreService(mock_driver)
 
     result = await service.get_store_hours(16)
@@ -122,6 +124,19 @@ async def test_find_stores_with_product_returns_typed_rows_and_sorts_by_coordina
 
     assert [row.store_id for row in stores_with_product] == [16, 13]
     assert stores_with_product[0].distance_miles is not None
+    assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
+
+
+async def test_list_store_inventory_uses_named_query_and_typed_rows(mock_driver) -> None:
+    mock_driver.select = AsyncMock(return_value=[])
+    service = StoreService(mock_driver)
+
+    rows = await service.list_store_inventory(16)
+
+    assert rows == []
+    statement = mock_driver.select.await_args.args[0]
+    assert "WHERE spi.store_id = :store_id" in str(statement.sql)
+    assert mock_driver.select.await_args.kwargs["store_id"] == 16
     assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
 
 

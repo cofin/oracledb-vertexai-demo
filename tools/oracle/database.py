@@ -21,6 +21,7 @@ and the app settings — it does not use this container lifecycle.
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +33,7 @@ from tools.oracle.container import ContainerNotFoundError, ContainerRuntime
 
 DEFAULT_IMAGE = "gvenzl/oracle-free:latest"
 PDB_SERVICE_NAME = "freepdb1"
+ORACLE_IDENTIFIER_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_$#]*$")
 
 
 @dataclass
@@ -87,21 +89,13 @@ class OracleDatabase:
     """Manage the local Oracle Database Free container lifecycle."""
 
     def __init__(
-        self,
-        runtime: ContainerRuntime,
-        config: DatabaseConfig | None = None,
-        console: Console | None = None,
+        self, runtime: ContainerRuntime, config: DatabaseConfig | None = None, console: Console | None = None
     ) -> None:
         self.runtime = runtime
         self.config = config or DatabaseConfig.from_env()
         self.console = console or Console()
 
-    def start(
-        self,
-        *,
-        pull: bool = False,
-        recreate: bool = False,
-    ) -> None:
+    def start(self, *, pull: bool = False, recreate: bool = False) -> None:
         """Start the Oracle database container.
 
         Args:
@@ -117,6 +111,8 @@ class OracleDatabase:
         if self.runtime.container_running(self.config.container_name):
             if not recreate:
                 self.console.print("[green]✓[/green] Container already running — reusing it")
+                if self.is_healthy():
+                    self._align_app_user_credentials()
                 return
             self.console.print("[yellow]Removing existing container...[/yellow]")
             self.remove(force=True)
@@ -152,6 +148,7 @@ class OracleDatabase:
             logs_hint = f"{self.runtime.get_runtime_command()} logs {self.config.container_name}"
             raise ContainerStartError(f"Container started but health check timed out. Check logs with: {logs_hint}")
 
+        self._align_app_user_credentials()
         self.console.print("[green]✓[/green] Database is healthy and ready!")
         info = self.get_connection_info()
         self.console.print("\n[bold]Connection Info:[/bold]")
@@ -187,12 +184,7 @@ class OracleDatabase:
         self.runtime.run_command(["restart", "-t", str(timeout), self.config.container_name])
         self.console.print("[green]✓[/green] Container restarted")
 
-    def remove(
-        self,
-        *,
-        volumes: bool = False,
-        force: bool = False,
-    ) -> None:
+    def remove(self, *, volumes: bool = False, force: bool = False) -> None:
         """Remove the Oracle database container.
 
         Args:
@@ -219,13 +211,7 @@ class OracleDatabase:
             self.runtime.run_command(["volume", "rm", self.config.data_volume_name])
             self.console.print("[green]✓[/green] Volume removed")
 
-    def logs(
-        self,
-        *,
-        follow: bool = False,
-        tail: int | None = None,
-        since: str | None = None,
-    ) -> None:
+    def logs(self, *, follow: bool = False, tail: int | None = None, since: str | None = None) -> None:
         """Stream container logs.
 
         Raises:
@@ -288,19 +274,13 @@ class OracleDatabase:
 
         try:
             _, stdout, _ = self.runtime.run_command(
-                ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name],
-                check=False,
+                ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name], check=False
             )
             return stdout.strip() == "healthy"
         except Exception:  # noqa: BLE001
             return False
 
-    def wait_for_healthy(
-        self,
-        timeout: int = 300,
-        *,
-        show_progress: bool = True,
-    ) -> bool:
+    def wait_for_healthy(self, timeout: int = 300, *, show_progress: bool = True) -> bool:
         """Wait for the container to become healthy.
 
         Returns:
@@ -357,6 +337,59 @@ class OracleDatabase:
             sql,
         ])
         return stdout
+
+    def _align_app_user_credentials(self) -> None:
+        """Repair the local APP user password and grants on reused volumes."""
+        app_user = self._oracle_identifier(self.config.app_user)
+        password = self._oracle_quoted_password(self.config.app_user_password)
+        sql = (
+            f"ALTER SESSION SET CONTAINER={PDB_SERVICE_NAME.upper()};\n"  # noqa: S608 - local SYSDBA DDL; identifier is validated.
+            "DECLARE\n"
+            "  v_user_count NUMBER;\n"
+            "BEGIN\n"
+            f"  SELECT COUNT(*) INTO v_user_count FROM dba_users WHERE username = '{app_user}';\n"
+            "  IF v_user_count = 0 THEN\n"
+            f"    EXECUTE IMMEDIATE 'CREATE USER {app_user} IDENTIFIED BY {password}';\n"
+            "  END IF;\n"
+            "END;\n"
+            "/\n"
+            f"ALTER USER {app_user} IDENTIFIED BY {password} ACCOUNT UNLOCK;\n"
+            f"GRANT CONNECT, RESOURCE TO {app_user};\n"
+            f"GRANT SELECT ON v_$transaction TO {app_user};\n"
+            f"GRANT CREATE MINING MODEL TO {app_user};\n"
+            f"GRANT UNLIMITED TABLESPACE TO {app_user};\n"
+            f"GRANT CREATE SEQUENCE TO {app_user};\n"
+            f"GRANT CREATE TABLE TO {app_user};\n"
+            f"GRANT CREATE VIEW TO {app_user};\n"
+            f"GRANT CREATE PROCEDURE TO {app_user};\n"
+            f"GRANT DB_DEVELOPER_ROLE TO {app_user};\n"
+        )
+        command = f"sqlplus -S -L / as sysdba <<'SQL'\n{sql}\nexit\nSQL\n"
+        try:
+            _returncode, stdout, stderr = self.runtime.run_command([
+                "exec",
+                self.config.container_name,
+                "bash",
+                "-c",
+                command,
+            ])
+        except Exception as e:
+            raise ContainerStartError(f"Failed to align APP user credentials: {e}") from e
+        output = f"{stdout}\n{stderr}"
+        if "ORA-" in output or "PLS-" in output or "SP2-" in output:
+            raise ContainerStartError(f"Failed to align APP user credentials: {output.strip()}")
+
+    @staticmethod
+    def _oracle_identifier(value: str) -> str:
+        """Return an uppercase Oracle identifier for trusted local config values."""
+        if not ORACLE_IDENTIFIER_RE.fullmatch(value):
+            raise ContainerStartError(f"Invalid Oracle identifier: {value!r}")
+        return value.upper()
+
+    @staticmethod
+    def _oracle_quoted_password(value: str) -> str:
+        """Return a double-quoted Oracle password literal."""
+        return '"' + value.replace('"', '""') + '"'
 
     def _build_run_command(self) -> list[str]:
         """Build the container run command for gvenzl/oracle-free."""

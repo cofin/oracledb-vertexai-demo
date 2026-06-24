@@ -103,7 +103,9 @@ catalogs.
 ## Deterministic vs ADK latency
 
 Product, store, availability, and unsupported order turns are routed before the
-ADK workflow is built, so they avoid speculative LLM deltas entirely. The ADK
+ADK workflow is built, so they avoid speculative LLM deltas entirely. Product
+RAG can include one bounded Gemini structured-output call for candidate
+selection, but final product text is still rendered from Oracle rows. The ADK
 workflow still matters for `GENERAL_CONVERSATION`: inside that fallback path,
 the classifier and the LLM share `START` with `max_concurrency=2`. The timings
 below are illustrative; the important shape is overlap, not the exact numbers.
@@ -125,8 +127,9 @@ The "LLM + tool" bar dominates because it covers the fallback agent's reasoning,
 any closure-bound tool call, and final-event packaging. The classifier's
 latency overlaps with that fallback path instead of adding to it.
 
-The deterministic `PRODUCT_RAG` route is stricter: it classifies first, runs the
-vector search directly, and formats the final answer from product rows.
+The grounded `PRODUCT_RAG` route is stricter: it classifies first, runs the
+vector search directly, validates any structured selection against the returned
+product ids, and formats the final answer from product rows.
 
 ## What the live dashboard measures
 
@@ -141,6 +144,8 @@ across recent searches. The fields map back to specific call sites:
 | `results_count` | Rows returned by HNSW after threshold + `FETCH FIRST :limit`. | `products.sql` |
 | `from_cache` | Response cache hit (model + persona + normalized query). | `CacheService` |
 | `embedding_cache_hit` | Hit on the Oracle-backed `embedding_cache` table. | `VertexAIService` |
+| `grounded_answer_mode` | Product RAG answer path: structured selection, template fallback, timeout, rejected output, or model error. | `_adk_grounding.py` |
+| `grounded_answer_ms` | Time spent in the Product RAG structured-selection step or its fallback. | `_adk_grounding.py` |
 | `intent_detected` | Output of the Flash-Lite classifier, with product lookup fallback normalized to `PRODUCT_RAG`. | `FlashLiteIntentClassifier` / `_adk_telemetry.py` |
 | `sql_phases` | Per-phase timing collected during retrieval, used for the colored badges in the chat bubble. | `_adk_telemetry.py` |
 

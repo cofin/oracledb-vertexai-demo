@@ -162,7 +162,7 @@ class BeforeSendHandler:
         """Extract data from the response."""
         data: dict[str, Any] = {}
         extracted_data = self.response_extractor(
-            messages=(scope["state"][HTTP_RESPONSE_START], scope["state"][HTTP_RESPONSE_BODY]),
+            messages=(scope["state"][HTTP_RESPONSE_START], scope["state"][HTTP_RESPONSE_BODY])
         )
         missing = object()
         connection_state = ScopeState.from_scope(scope)

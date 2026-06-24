@@ -34,9 +34,9 @@ Default Credentials or set `GOOGLE_API_KEY` / `VERTEX_AI_API_KEY`.
 
 ## What's Inside
 
-- 130 Cymbal Coffee products, 17 stores, and committed `gemini-embedding-2-preview` fixtures.
+- 130 Cymbal Coffee products, 17 stores, and committed `gemini-embedding-2` fixtures.
 - Oracle `VECTOR(3072, FLOAT32)` storage with HNSW INMEMORY indexes.
-- Deterministic product, store, and availability chat routes with an ADK 2.0 general-chat fallback.
+- Grounded product, store, and availability chat routes with deterministic rendering and an ADK 2.0 general-chat fallback.
 - HTMX + Tailwind + vanilla JavaScript pages for chat and vector-plan exploration.
 - Oracle-backed response cache, embedding cache, metrics, Litestar sessions, and ADK sessions.
 

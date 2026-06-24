@@ -61,8 +61,7 @@ def stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
 
 async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
     response = await client.post(
-        "/api/chat/stream",
-        data={"message": "recommend an ethiopian", "persona": "enthusiast"},
+        "/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "enthusiast"}
     )
 
     assert response.status_code == 200, response.text[:500]
@@ -77,8 +76,7 @@ async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
 
 
 async def test_stream_handles_runner_exception_after_response_started(
-    client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
+    client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domain.chat.services import ADKRunner
 
@@ -90,8 +88,7 @@ async def test_stream_handles_runner_exception_after_response_started(
     monkeypatch.setattr(ADKRunner, "stream_request", _broken_stream_request)
 
     response = await client.post(
-        "/api/chat/stream",
-        data={"message": "recommend an ethiopian", "persona": "enthusiast"},
+        "/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "enthusiast"}
     )
 
     assert response.status_code == 200, response.text[:500]
@@ -102,8 +99,7 @@ async def test_stream_handles_runner_exception_after_response_started(
 
 
 async def test_clear_chat_session_deletes_adk_session_and_resets_bridge(
-    client: AsyncTestClient,
-    monkeypatch: pytest.MonkeyPatch,
+    client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from app.domain.chat.services import ADKRunner
 

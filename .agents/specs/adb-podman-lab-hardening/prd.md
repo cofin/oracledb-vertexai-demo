@@ -3,7 +3,7 @@
 *PRD ID: `adb-podman-lab-hardening`*
 *Beads Epic: `oracledb-vertexai-9p5`*
 *Created: 2026-06-14*
-*Status: Planning — Chapter 1 ready for `/flow:implement`*
+*Status: Needs revision after the gvenzl/oracle-free revert*
 *Research: `.agents/research/research_adb_hooks_ux_lab/research.md`*
 *Builds on: completed PRD `oracle-apex-integration` (gvenzl → adb-free migration)*
 
@@ -11,7 +11,10 @@
 
 ## North Star
 
-The Cymbal Coffee demo bootstraps reliably on **podman + Oracle Linux** with a correct, self-healing vector-memory startup path; the workshop lab is rewritten as a **single canonical Oracle Linux 9 + rootless podman track** with every accuracy defect fixed; and the chat/explore UI is accessible and correct.
+The Cymbal Coffee demo keeps its local Oracle instructions accurate after the
+gvenzl/oracle-free revert; any remaining workshop lab work must be revised
+against the current container path before implementation; and the chat/explore
+UI quality chapter is complete.
 
 ---
 
@@ -22,7 +25,12 @@ The `oracle-apex-integration` PRD migrated the local DB from `gvenzl/oracle-free
 - `gvenzl/oracle-free` natively runs mounted scripts from `/container-entrypoint-initdb.d` (once) and `/container-entrypoint-startdb.d` (every start) as SYSDBA. The old `tools/oracle/on_init/` + `on_startup/` directories depended on this.
 - The official `adb-free` image has **no such mechanism** (confirmed against the `oracle/adb-free` README and Oracle docs). Those mounts would be silently ignored, so the branch correctly deleted them and moved vector-memory configuration to a post-start `exec … sqlplus -S / as sysdba` call (`tools/oracle/database.py:454-476`).
 
-What remained imperfect:
+The ADB Free-specific runtime hardening chapter is no longer executable as
+written. Live source now manages local Oracle through `gvenzl/oracle-free` with
+`tools/oracle/on_init/` and `tools/oracle/on_startup/` hook mounts. Keep the
+historical findings for context, but do not implement Chapter 1 from this PRD.
+
+What remained imperfect in the superseded ADB Free plan:
 
 1. **The every-start safety net was lost.** The deleted `on_startup/00_verify_vector_memory.sql` re-verified the vector pool on every DB start. The new path only checks during the CLI `start()` — and `database.py:192-201` early-returns past `configure_vector_memory()` when restarting an existing stopped container (masked today only because `make start-infra` passes `--recreate`).
 2. **Silent-failure surface.** If `/ as sysdba` OS-auth or the bounce ever fails on `adb-free`, the pool stays 0 and the only symptom is a downstream `ORA-51962` during migration.
@@ -69,11 +77,12 @@ What remained imperfect:
 
 | # | Chapter | Beads | Depends on | Summary |
 |---|---------|-------|------------|---------|
-| 1 | ADB-Free vector-memory startup hardening + podman/OL runtime validation | `9p5.1` | — | Self-healing every-start vector-memory check, fail-loud, podman/OL validation, SYSDBA bounce smoke test, doc alignment. **Foundation the lab depends on.** |
-| 2 | Lab overhaul — Oracle Linux + podman + accuracy fixes | `9p5.2` | Ch1 | Rewrite `lab.md` for OL9 + rootless podman; fix Valkey/count/model/German/drop-in/BigQuery defects; fix README counts. |
-| 3 | UI UX/correctness fixes (High + Med + verified cleanup) | `9p5.3` | — | a11y popover, SQL CSS, mobile grid, aria-live streaming; remove verified dead code + duplicate presets. |
+| 1 | ADB-Free vector-memory startup hardening + podman/OL runtime validation | `9p5.1` | — | **Closed as superseded** by the gvenzl/oracle-free revert. Active vector-memory behavior lives in `tools/oracle/on_init/`, `tools/oracle/on_startup/`, and `.agents/knowledge/guides/oracle-vector-search.md`. |
+| 2 | Lab overhaul — Oracle Linux + podman + accuracy fixes | `9p5.2` | Revision of this PRD | Needs a revise pass before implementation because the old Ch1 dependency and ADB Free assumptions are stale. |
+| 3 | UI UX/correctness fixes (High + Med + verified cleanup) | `9p5.3` | — | **Closed and archived.** a11y popover, SQL CSS, mobile grid, aria-live streaming, duplicate preset cleanup, and related UI fixes are in source. |
 
-Sequencing: **Ch1 → Ch2 → Ch3.** Ch2 is Beads-blocked by Ch1 (the lab must document a runtime validated on podman/OL). Ch3 is independent and can proceed in parallel but is sequenced last per scope decision.
+Sequencing: do not implement this PRD as-is. Revise Ch2 against the current
+gvenzl/oracle-free local path before any lab work resumes.
 
 ---
 
@@ -97,4 +106,5 @@ Sequencing: **Ch1 → Ch2 → Ch3.** Ch2 is Beads-blocked by Ch1 (the lab must d
 
 ## Next Step
 
-Chapter 1 is planned and implementation-ready (`spec.md` at `.agents/specs/adb-vector-memory-hardening/spec.md`, tasks `9p5.1.1`–`9p5.1.5`). Run **`/flow:implement`** to begin.
+Run a Flow revise pass before implementing the remaining lab work. Chapter 1 is
+closed as superseded, and Chapter 3 is complete.

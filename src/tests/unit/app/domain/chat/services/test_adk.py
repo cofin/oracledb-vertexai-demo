@@ -44,7 +44,7 @@ async def test_search_products_closure_delegates_to_tools_service() -> None:
 
     result = await search("dark roast", limit=3, similarity_threshold=0.5)
 
-    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5)
+    tools_service.search_products_by_vector.assert_awaited_once_with("dark roast", 3, 0.5, store_id=None)
     assert result["products"] == [{"id": 1, "name": "Midnight Brew"}]
     assert metric_state["embedding_cache_hit"] is True
     assert metric_state["search_metrics"]["vector_query"] == "dark roast"
@@ -58,11 +58,7 @@ def test_effective_intent_promotes_actual_product_lookup() -> None:
     from app.domain.chat.services import adk as adk_module
 
     assert (
-        adk_module._effective_intent(
-            "GENERAL_CONVERSATION",
-            {"vector_query": "breakfast", "results_count": 1},
-            [],
-        )
+        adk_module._effective_intent("GENERAL_CONVERSATION", {"vector_query": "breakfast", "results_count": 1}, [])
         == "PRODUCT_RAG"
     )
 
@@ -70,20 +66,14 @@ def test_effective_intent_promotes_actual_product_lookup() -> None:
 def test_safe_location_context_never_exposes_raw_coordinates() -> None:
     from app.domain.chat.services import adk as adk_module
 
-    safe = adk_module._safe_location_context(
-        {
-            "city": "Dallas",
-            "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 40.0},
-        }
-    )
+    safe = adk_module._safe_location_context({
+        "city": "Dallas",
+        "coordinates": {"latitude": 32.7876, "longitude": -96.7994, "accuracy_meters": 40.0},
+    })
 
     assert safe == {"city": "Dallas", "has_browser_coordinates": True, "accuracy_meters": 40.0}
     assert (
-        adk_module._effective_intent(
-            "GENERAL_CONVERSATION",
-            {},
-            [{"sql_key": "vector-search-products"}],
-        )
+        adk_module._effective_intent("GENERAL_CONVERSATION", {}, [{"sql_key": "vector-search-products"}])
         == "PRODUCT_RAG"
     )
 
@@ -94,7 +84,7 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     product_service = MagicMock()
     product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew"}])
     vertex_ai_service = MagicMock()
-    vertex_ai_service.embedding_model = "gemini-embedding-2-preview"
+    vertex_ai_service.embedding_model = "gemini-embedding-2"
     vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], True))
     metrics_service = MagicMock()
     metrics_service.record_search = AsyncMock()
@@ -111,11 +101,9 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     result = await tools_service.search_products_by_vector("dark roast", limit=2, similarity_threshold=0.4)
 
     vertex_ai_service.get_text_embedding.assert_awaited_once_with(
-        "dark roast",
-        embedding_purpose="query",
-        return_cache_status=True,
+        "dark roast", embedding_purpose="query", return_cache_status=True
     )
-    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2)
+    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=None)
     metrics_service.record_search.assert_awaited_once()
     metrics = metrics_service.record_search.await_args.args[0]
     assert metrics.user_id == "chat"
@@ -134,6 +122,33 @@ async def test_agent_tools_vector_search_records_query_phase_metrics(mock_driver
     assert result["sql_phases"][1]["binds"]["query_vector"].startswith("<VECTOR[2 FLOAT32], sha256=")
     assert result["sql_phases"][1]["binds"]["query_vector"].endswith(">")
     assert result["sql_phases"][1]["binds"]["query_vector"] != str([0.1, 0.2])
+
+
+async def test_agent_tools_vector_search_passes_store_id_and_records_store_sql_key(mock_driver) -> None:
+    from app.domain.chat.services.adk import AgentToolsService
+
+    product_service = MagicMock()
+    product_service.search_by_vector = AsyncMock(return_value=[{"id": 1, "name": "Midnight Brew", "store_id": 16}])
+    vertex_ai_service = MagicMock()
+    vertex_ai_service.embedding_model = "gemini-embedding-2"
+    vertex_ai_service.get_text_embedding = AsyncMock(return_value=([0.1, 0.2], False))
+    metrics_service = MagicMock()
+    metrics_service.record_search = AsyncMock()
+
+    tools_service = AgentToolsService(
+        driver=mock_driver,
+        product_service=product_service,
+        metrics_service=metrics_service,
+        vertex_ai_service=vertex_ai_service,
+        store_service=MagicMock(),
+        cache_service=MagicMock(),
+    )
+
+    result = await tools_service.search_products_by_vector("dark roast", limit=2, similarity_threshold=0.4, store_id=16)
+
+    product_service.search_by_vector.assert_awaited_once_with([0.1, 0.2], 0.4, 2, store_id=16)
+    assert result["sql_phases"][1]["sql_key"] == "vector-search-products-by-store"
+    assert result["sql_phases"][1]["binds"]["store_id"] == 16
 
 
 async def test_get_product_details_closure_delegates_to_tools_service() -> None:
@@ -223,6 +238,35 @@ async def test_agent_tools_store_query_results_include_masked_sql_phases(mock_dr
     assert result["sql_phases"][0]["binds"] == {"origin": "<REQUEST_COORDINATES>", "limit": 5}
 
 
+async def test_stream_request_skips_response_cache_for_safe_location_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.domain.chat.services import adk as adk_module
+
+    allow_vertex_config(monkeypatch, adk_module)
+    session_service = make_session_service(session=make_session())
+    tools_service = make_tools_service()
+    tools_service.get_cached_chat_response = AsyncMock()
+    tools_service.make_response_cache_key = MagicMock(return_value="chat:key")
+    classifier = MagicMock()
+    classifier.classify.return_value = "ORDER_STATUS"
+    runner = make_runner(session_service=session_service, classifier=classifier)
+
+    events = [
+        event
+        async for event in runner.stream_request(
+            "where can I get an order in Dallas?",
+            user_id="u1",
+            session_id="s1",
+            persona="friendly",
+            tools_service=tools_service,
+            location_context={"city": "Dallas"},
+        )
+    ]
+
+    assert events[-1]["intent_detected"] == "ORDER_STATUS"
+    tools_service.make_response_cache_key.assert_not_called()
+    tools_service.get_cached_chat_response.assert_not_awaited()
+
+
 def test_build_workflow_wires_agent_instruction_temperature_and_credential_guard() -> None:
     from google.adk import Workflow
 
@@ -238,11 +282,7 @@ def test_build_workflow_wires_agent_instruction_temperature_and_credential_guard
     workflow = runner._build_workflow(instruction="be helpful", temperature=0.5, tools=[fake_tool])
 
     assert isinstance(workflow, Workflow)
-    agent = next(
-        edge[1]
-        for edge in workflow.edges
-        if getattr(edge[1], "instruction", None) == "be helpful"
-    )
+    agent = next(edge[1] for edge in workflow.edges if getattr(edge[1], "instruction", None) == "be helpful")
     assert agent.tools == [fake_tool]
     assert agent.generate_content_config.temperature == 0.5
     assert agent.before_agent_callback is adk_module.credential_guard_callback
@@ -259,7 +299,10 @@ def test_credential_guard_treats_demo_project_as_unconfigured(monkeypatch: Any) 
     content = adk_module.credential_guard_callback(MagicMock())
 
     assert content is not None
-    assert content.parts[0].text == "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+    assert (
+        content.parts[0].text
+        == "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
+    )
 
 
 async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypatch: Any) -> None:
@@ -269,39 +312,26 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
         raise AssertionError("Product RAG turns must not stream speculative model text before grounding")
 
     tools_service = make_tools_service(
-        products=[
-            {
-                "id": 10,
-                "name": "Wakey Wakey Waffles",
-                "description": "Fluffy, golden waffles.",
-                "price": 7.5,
-            }
-        ],
+        products=[{"id": 10, "name": "Wakey Wakey Waffles", "description": "Fluffy, golden waffles.", "price": 7.5}],
         vector_query="hey",
     )
 
     monkeypatch.setattr(adk_module, "Runner", fail_runner)
     allow_vertex_config(monkeypatch, adk_module)
 
-    runner = make_runner(
-        session_service=make_session_service(make_session("sess-direct-rag")),
-    )
+    runner = make_runner(session_service=make_session_service(make_session("sess-direct-rag")))
 
     events = [
         event
         async for event in runner.stream_request(
-            query="hey",
-            user_id="u1",
-            session_id="sess-direct-rag",
-            persona="enthusiast",
-            tools_service=tools_service,
+            query="hey", user_id="u1", session_id="sess-direct-rag", persona="enthusiast", tools_service=tools_service
         )
     ]
 
     assert [event["type"] for event in events] == ["final"]
     assert "Wakey Wakey Waffles" in events[0]["answer"]
     assert events[0]["intent_detected"] == "PRODUCT_RAG"
-    tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5)
+    tools_service.search_products_by_vector.assert_awaited_once_with("hey", 3, 0.5, store_id=None)
 
 
 async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(monkeypatch: Any) -> None:
@@ -312,14 +342,7 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
     classifier.classify = AsyncMock(return_value=IntentLabel.GENERAL_CONVERSATION)
 
     tools_service = make_tools_service(
-        products=[
-            {
-                "id": 11,
-                "name": "Caramel Cloud Latte",
-                "description": "Silky caramel latte.",
-                "price": 6.25,
-            }
-        ],
+        products=[{"id": 11, "name": "Caramel Cloud Latte", "description": "Silky caramel latte.", "price": 6.25}],
         vector_query="something sweet",
     )
 
@@ -334,18 +357,19 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
                 # The model calls the vector tool, populating metric_state via the closure.
                 search = next(fn for fn in captured_tools["tools"] if fn.__name__ == "search_products_by_vector")
                 await search("something sweet")
-                yield SimpleNamespace(output={"intent": "GENERAL_CONVERSATION", "answer": ""}, content=None, partial=False)
+                yield SimpleNamespace(
+                    output={"intent": "GENERAL_CONVERSATION", "answer": ""}, content=None, partial=False
+                )
 
             return _events()
 
-    runner = make_runner(
-        session_service=make_session_service(make_session("sess-relabel")),
-        classifier=classifier,
-    )
+    runner = make_runner(session_service=make_session_service(make_session("sess-relabel")), classifier=classifier)
     original_make_tool_factories = runner._make_tool_factories
 
-    def capture_tools(tools_service: Any, metric_state: dict[str, Any]) -> Any:
-        tools = original_make_tool_factories(tools_service, metric_state)
+    def capture_tools(
+        tools_service: Any, metric_state: dict[str, Any], location_context: dict[str, Any] | None = None
+    ) -> Any:
+        tools = original_make_tool_factories(tools_service, metric_state, location_context)
         captured_tools["tools"] = tools
         return tools
 
@@ -406,7 +430,7 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
 
     vertex_ai_service = MagicMock()
-    vertex_ai_service.model = "gemini-2.5-flash-lite"
+    vertex_ai_service.model = "gemini-3.1-flash-lite"
     tools_service = AgentToolsService(
         driver=mock_driver,
         product_service=MagicMock(),
@@ -418,7 +442,7 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
 
     from hashlib import sha256
 
-    expected_digest = sha256(b"custom-vN:gemini-2.5-flash-lite:enthusiast:latte").hexdigest()
+    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:enthusiast:latte").hexdigest()
     assert tools_service.make_response_cache_key("latte", "enthusiast") == f"chat:{expected_digest}"
 
 

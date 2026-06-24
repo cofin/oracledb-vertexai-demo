@@ -29,10 +29,11 @@ JoinNode -> classify_and_respond FunctionNode
 parallel inside the workflow path.
 
 For product/menu/RAG turns, the runner classifies first and bypasses speculative
-model streaming. It searches the menu through `AgentToolsService`, formats the
-answer from returned Cymbal Coffee rows, and yields a single final event. This
-prevents the browser from showing an ungrounded model delta and then replacing it
-with a grounded final answer.
+model streaming. It searches the menu through `AgentToolsService`, may ask
+Gemini for structured selection among returned product ids, validates that
+selection, renders the answer from Cymbal Coffee rows in Python, and yields a
+single final event. This prevents the browser from showing an ungrounded model
+delta and prevents model-authored product facts from reaching the user.
 
 ## Runner Boundary
 
@@ -146,7 +147,8 @@ request text
   -> FlashLiteIntentClassifier
   -> if PRODUCT_RAG:
        search_products_by_vector(query, 3, 0.5)
-       format final answer from returned products only
+       optionally select returned product ids with Gemini structured output
+       validate ids and render final answer from returned products only
        persist intent + display_history in ADK session state
        cache response
        yield final event only
@@ -166,7 +168,7 @@ Intent classification is a separate Gemini Flash-Lite call using
 
 ```python
 response = await client.aio.models.generate_content(
-    model="gemini-2.5-flash-lite",
+    model="gemini-3.1-flash-lite",
     contents=phrase,
     config=types.GenerateContentConfig(
         response_mime_type="text/x.enum",
@@ -216,8 +218,8 @@ When debugging slow chat, verify the browser is using `/api/chat/stream`, not
 `/api/chat`.
 
 Do not emit Product RAG deltas before grounding. For Product RAG, the only
-browser-visible response should be the final grounded payload. Non-RAG turns may
-stream partial model text.
+browser-visible response should be the final grounded payload rendered from
+validated product rows. Non-RAG turns may stream partial model text.
 
 ## Credential Guard
 
@@ -257,6 +259,8 @@ When product search runs, the tool records:
 - `results_count`
 - `products_found`
 - `embedding_cache_hit`
+- `grounded_answer_mode`
+- `grounded_answer_ms`
 
 The UI reads these fields for message-level telemetry badges and for "did RAG
 happen?" debugging. Preserve the vector query and phase timings when changing

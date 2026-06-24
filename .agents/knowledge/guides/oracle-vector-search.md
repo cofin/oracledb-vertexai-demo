@@ -6,7 +6,7 @@ Current guide for the Cymbal Coffee Oracle 26ai vector stack.
 
 The demo uses one embedding model and one vector shape everywhere:
 
-- Model: `gemini-embedding-2-preview`
+- Model: `gemini-embedding-2`
 - Dimensions: `3072`
 - Storage: `VECTOR(3072, FLOAT32)`
 - Query embedding input: query-purpose instruction plus user text
@@ -54,17 +54,17 @@ Oracle must have a non-zero `vector_memory_size` before `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH` indexes can be created. Without it, migrations fail with
 `ORA-51962`.
 
-Local managed ADB startup checks the pool with `sqlplus / as sysdba` after the
-container is healthy. If the pool is zero, it sets a Free-friendly value and
-restarts the database:
+Local managed Oracle startup uses the `gvenzl/oracle-free` hook directories
+mounted by `tools/oracle/database.py`. The first-init script sets a
+Free-friendly value before migrations run:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
-That value is intentionally small because Oracle Free Edition has a constrained
-SGA. The ADB container path does not mount legacy `on_init`/`on_startup`
-directories. For larger non-Free environments, use a 4G target:
+The startup verification script warns if the pool is still zero. That value is
+intentionally small because Oracle Free Edition has a constrained SGA. For
+larger non-Free environments, use a 4G target:
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 4G SCOPE = SPFILE;

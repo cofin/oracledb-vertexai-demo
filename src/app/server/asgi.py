@@ -32,11 +32,7 @@ def create_app() -> Litestar:
         finally:
             await container.close()
 
-    app = Litestar(
-        debug=settings.app.DEBUG,
-        plugins=[ApplicationCore()],
-        lifespan=[dishka_lifespan],
-    )
+    app = Litestar(debug=settings.app.DEBUG, plugins=[ApplicationCore()], lifespan=[dishka_lifespan])
     setup_dishka(container, app)
     return app
 

@@ -9,13 +9,7 @@ import re
 
 import pytest
 
-from app.lib.log import (
-    EventFilter,
-    SuppressADKWarningsFilter,
-    SuppressGranianExcInfoFilter,
-    is_cli_mode,
-    set_cli_mode,
-)
+from app.lib.log import EventFilter, SuppressADKWarningsFilter, SuppressGranianExcInfoFilter, is_cli_mode, set_cli_mode
 from app.lib.settings import LogSettings, Settings
 
 

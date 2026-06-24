@@ -26,9 +26,9 @@ vanilla JavaScript and ApexCharts, not React, TanStack Router, Bun, Biome, or a
 client-side SPA.
 
 The app also ships store-aware chat, store-level inventory, browser location
-opt-in, and Google Maps URL actions as first-class components. Optional Maps
-Embed and settings contract cleanup remain forward-looking. Keep all of these as
-first-class components in knowledge updates.
+opt-in, Google Maps URL actions, and the narrowed dataclass settings contract
+as first-class components. Optional Maps Embed remains forward-looking. Keep
+all shipped components current in knowledge updates.
 
 Domain behavior belongs under `src/app/domain/<domain>/controllers`,
 `schemas`, and `services`. Cross-domain use should go through public package
@@ -93,10 +93,12 @@ and bridge keys, not products, metrics, response cache, or embedding cache.
 
 `ADKRunner` is app-scoped and receives request-scoped `AgentToolsService`
 instances for database-backed work. Product RAG is classifier-first and emits a
-single grounded final event from returned Cymbal Coffee products. It also
-persists the names of recommended products in the ADK session state under
-`last_products` to support subsequent context-aware availability queries.
-Non-RAG turns may stream model deltas through ADK Workflow.
+single grounded final event. It may ask Gemini for structured selection among
+retrieved product ids, but Python validates that selection and renders the final
+answer from returned Cymbal Coffee rows. It also persists the names of
+recommended products in the ADK session state under `last_products` to support
+subsequent context-aware availability queries. Non-RAG turns may stream model
+deltas through ADK Workflow.
 
 Final chat responses must preserve intent, vector query, product/store result
 context, timing phases, response-cache state, and embedding-cache state through
@@ -104,7 +106,7 @@ service, controller, template, and frontend rendering.
 
 ## Oracle Vector And Embeddings
 
-The only supported embedding shape is `gemini-embedding-2-preview` at 3072 dimensions
+The only supported embedding shape is `gemini-embedding-2` at 3072 dimensions
 stored as `VECTOR(3072, FLOAT32)`. Prefix product fixture text with a
 document-purpose instruction and user search text with a query-purpose
 instruction before embedding. Pass Python
@@ -141,9 +143,9 @@ repo's canonical aggregate gates, normally `make lint` and `make test`.
 
 ## Operations And CLI
 
-Use `coffee` for app lifecycle commands: `run`, `load-fixtures`, `bulk-embed`,
-`export-fixtures`, `clear-cache`, and `model-info`. Use `python manage.py` for
-SQLSpec migrations, assets, infra helpers, and bootstrap.
+Use `coffee` for app lifecycle commands: `run`, `upgrade`, `load-fixtures`,
+`bulk-embed`, `export-fixtures`, `clear-cache`, and `model-info`. Use
+`python manage.py` for SQLSpec migrations, assets, infra helpers, and bootstrap.
 
 Public CLI modules should stay mostly declarative: define Click commands and
 delegate behavior to private helpers. Async Click commands should use
@@ -156,11 +158,11 @@ starts. Keep placeholder Vertex project checks on the typed
 
 ## Settings Component
 
-Settings should remain dataclass-based with a cached `Settings.from_env()`
-factory. The consolidation plan narrows that contract instead of adopting a new
+Settings are dataclass-based with a cached `Settings.from_env()` factory. Keep
+the contract narrow instead of adding placeholder settings or adopting another
 settings library.
 
-Target behavior:
+Current behavior:
 
 - settings construction is quiet and testable;
 - shell environment values win over `.env` values;

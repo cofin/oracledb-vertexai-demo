@@ -13,11 +13,7 @@ from google.adk import Workflow
 from google.adk.workflow._function_node import FunctionNode
 
 from app.domain.chat.services.classifier import IntentLabel
-from app.domain.chat.services.workflow import (
-    make_coffee_node,
-    make_intent_node,
-    make_workflow,
-)
+from app.domain.chat.services.workflow import make_coffee_node, make_intent_node, make_workflow
 
 pytestmark = pytest.mark.anyio
 
@@ -87,10 +83,7 @@ def test_workflow_merge_node_combines_intent_and_answer_into_state() -> None:
     ctx = MagicMock()
     ctx.state = {}
 
-    result = merge._func(
-        ctx=ctx,
-        node_input={"intent": "PRODUCT_RAG", "coffee_turn": "answer-for:latte"},
-    )
+    result = merge._func(ctx=ctx, node_input={"intent": "PRODUCT_RAG", "coffee_turn": "answer-for:latte"})
 
     assert result == {"intent": "PRODUCT_RAG", "answer": "answer-for:latte"}
     assert ctx.state["intent"] == "PRODUCT_RAG"

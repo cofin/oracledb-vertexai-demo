@@ -21,33 +21,16 @@ extensions = [
 
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 master_doc = "index"
-exclude_patterns = [
-    "_build",
-    "Thumbs.db",
-    ".DS_Store",
-    "screenshots/**",
-]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "screenshots/**"]
 nitpicky = False
 
-myst_enable_extensions = [
-    "attrs_block",
-    "colon_fence",
-    "deflist",
-    "fieldlist",
-    "linkify",
-    "substitution",
-    "tasklist",
-]
+myst_enable_extensions = ["attrs_block", "colon_fence", "deflist", "fieldlist", "linkify", "substitution", "tasklist"]
 myst_heading_anchors = 3
 
 autodoc_member_order = "bysource"
 autodoc_typehints = "description"
 autodoc_class_signature = "separated"
-autodoc_default_options = {
-    "members": True,
-    "show-inheritance": True,
-    "undoc-members": False,
-}
+autodoc_default_options = {"members": True, "show-inheritance": True, "undoc-members": False}
 napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 
@@ -63,29 +46,21 @@ html_theme_options = {
     "repo_name": "oracledb-vertexai-demo",
     "edit_uri": "edit/main/docs",
     "globaltoc_collapse": False,
-    "icon": {
-        "repo": "fontawesome/brands/github",
-    },
+    "icon": {"repo": "fontawesome/brands/github"},
     "palette": [
         {
             "media": "(prefers-color-scheme: light)",
             "scheme": "default",
             "primary": "green",
             "accent": "amber",
-            "toggle": {
-                "icon": "material/lightbulb",
-                "name": "Switch to dark mode",
-            },
+            "toggle": {"icon": "material/lightbulb", "name": "Switch to dark mode"},
         },
         {
             "media": "(prefers-color-scheme: dark)",
             "scheme": "slate",
             "primary": "green",
             "accent": "amber",
-            "toggle": {
-                "icon": "material/lightbulb-outline",
-                "name": "Switch to light mode",
-            },
+            "toggle": {"icon": "material/lightbulb-outline", "name": "Switch to light mode"},
         },
     ],
     "features": [
@@ -110,7 +85,7 @@ html_theme_options = {
             "icon": "fontawesome/brands/github",
             "link": "https://github.com/cofin/oracledb-vertexai-demo",
             "name": "Source on GitHub",
-        },
+        }
     ],
 }
 

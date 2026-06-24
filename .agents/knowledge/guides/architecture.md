@@ -11,11 +11,13 @@ Cymbal Coffee is a two-page Litestar application:
 - `/api/chat/stream` streams Server-Sent Events from the ADK workflow.
 - `/api/vector-demo` returns either HTMX partials or JSON vector-search results.
 - `/api/explain-plan` returns Oracle `DBMS_XPLAN.DISPLAY()` output for the vector query.
+- `/api/stores/{store_id}/inventory` returns the HTMX inventory partial for one
+  store.
 
 The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
 Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
-Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and a small
-`src/resources/main.js` streaming client.
+Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and small
+focused modules under `src/resources/`.
 
 ```text
 browser
@@ -143,7 +145,7 @@ POST /api/chat/stream
   -> SQLSpecSessionService get/create session
   -> response cache lookup
   -> FlashLiteIntentClassifier
-  -> PRODUCT_RAG direct vector search and grounded final event
+  -> PRODUCT_RAG direct vector search, structured selection, validation, and grounded final event
      OR ADK workflow stream for conversational turns:
         START -> intent FunctionNode -> JoinNode
         START -> LlmAgent coffee_turn -> JoinNode
@@ -157,9 +159,10 @@ cache, metrics, store, and Vertex services. This keeps database sessions aligned
 with Litestar request scope while ADK owns only orchestration.
 
 Product RAG turns do not stream speculative model deltas. They classify first,
-search the live menu, format a grounded answer only from returned products,
-persist display history into ADK session state, cache the final response, and
-emit a single final SSE event.
+search the live menu, optionally ask Vertex AI/Gemini for structured selection
+among returned product ids, validate that selection, render a grounded answer
+only from returned products, persist display history into ADK session state,
+cache the final response, and emit a single final SSE event.
 
 ## Store, Inventory, And Maps
 
@@ -170,12 +173,14 @@ separate store app. The shipped components are:
   timezone, optional Google place IDs, Dallas store data, explicit product stock
   booleans, and curated `store_product_inventory` rows;
 - store and inventory query services behind named SQL and typed schemas;
+- store-aware vector search that joins curated inventory rows for active store
+  context;
 - closure-bound ADK tools for store lookup, hours, nearest stores, and product
   availability;
 - deterministic `STORE_LOCATION` and `PRODUCT_AVAILABILITY` routes beside the
   deterministic `PRODUCT_RAG` path;
-- HTMX/Jinja chat rendering for store cards, inventory cards, and directions
-  links.
+- HTMX/Jinja chat rendering for store cards, inventory cards, directions links,
+  and the `/explore` live store-inventory panel.
 
 Maps URLs are the default integration and need no API key. Browser coordinates
 are request-scoped and require explicit consent. The optional one-at-a-time Maps
@@ -195,7 +200,7 @@ POST /api/vector-demo
 ```
 
 Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-2-preview`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
+by `gemini-embedding-2`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
 NEIGHBOR GRAPH`.
 
 ## Frontend
@@ -204,9 +209,12 @@ Templates live under `src/app/domain/web/templates`.
 
 - `pages/chat.html.j2` posts to `/api/chat/stream`.
 - `pages/explore.html.j2` posts vector search requests and fetches plans.
-- `partials/_chat_response.html.j2` and `partials/search_result_list.html.j2`
-  are the HTMX swap targets.
-- `src/resources/main.js` reads SSE manually with `fetch()` and a stream reader.
+- `partials/message.html.j2`, `partials/explore_search_response.html.j2`,
+  and `partials/search_result_list.html.j2` are the HTMX/Jinja render targets.
+- `src/resources/main.js` is a thin bootstrap. `chat-stream.js` reads SSE
+  manually with `fetch()` and a stream reader; `telemetry.js`, `charts.js`,
+  `geolocation.js`, `util.js`, and `vector-calculator.js` own their focused
+  browser behavior.
 
 Do not reintroduce a React SPA. The Vite build exists for static assets and the
 small browser helper, not for client-side routing.

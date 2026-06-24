@@ -20,21 +20,9 @@ console = Console()
     type=click.Choice(["managed", "external"], case_sensitive=False),
     help="Deployment mode (auto-detect if not specified)",
 )
-@click.option(
-    "--run-install",
-    is_flag=True,
-    help="Automatically run 'install all' after initialization",
-)
-@click.option(
-    "--run-doctor",
-    is_flag=True,
-    help="Automatically run 'doctor' after initialization",
-)
-@click.option(
-    "--non-interactive",
-    is_flag=True,
-    help="Skip interactive prompts (use defaults/env vars)",
-)
+@click.option("--run-install", is_flag=True, help="Automatically run 'install all' after initialization")
+@click.option("--run-doctor", is_flag=True, help="Automatically run 'doctor' after initialization")
+@click.option("--non-interactive", is_flag=True, help="Skip interactive prompts (use defaults/env vars)")
 def init_command(mode: str | None, run_install: bool, run_doctor: bool, non_interactive: bool) -> None:  # noqa: C901
     """Initialize project environment from scratch.
 
@@ -65,20 +53,12 @@ def init_command(mode: str | None, run_install: bool, run_doctor: bool, non_inte
                 mode = "managed"
                 console.print(f"[cyan]Using default mode: [bold]{mode}[/bold][/cyan]")
             else:
-                mode = Prompt.ask(
-                    "Select deployment mode",
-                    choices=["managed", "external"],
-                    default="managed",
-                )
+                mode = Prompt.ask("Select deployment mode", choices=["managed", "external"], default="managed")
 
         if not non_interactive and check_env_file():
             change = Confirm.ask("Change deployment mode?", default=False)
             if change:
-                mode = Prompt.ask(
-                    "Select mode",
-                    choices=["managed", "external"],
-                    default=mode,
-                )
+                mode = Prompt.ask("Select mode", choices=["managed", "external"], default=mode)
     else:
         console.print(f"[cyan]📌 Using specified mode: [bold]{mode}[/bold][/cyan]")
 

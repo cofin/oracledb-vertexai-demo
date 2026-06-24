@@ -22,7 +22,8 @@ The path of this message:
 2. Flash-Lite classifies it as `PRODUCT_RAG`.
 3. Vertex AI embeds the question (with an Oracle-backed cache in front).
 4. Oracle 26ai's HNSW index returns the closest products.
-5. The runner formats one grounded final SSE event.
+5. Gemini may select among candidate product ids, and the runner renders one
+   grounded final SSE event from the selected Oracle rows.
 
 ```{mermaid}
 flowchart LR
@@ -31,7 +32,8 @@ flowchart LR
     R --> I[Flash-Lite<br/>intent]
     I --> V[Vertex AI<br/>embedding]
     V --> O[(Oracle 26ai<br/>HNSW search)]
-    O --> F[Grounded formatter]
+    O --> S[Structured selector]
+    S --> F[Grounded renderer]
     F -->|SSE final| B
 ```
 
@@ -75,7 +77,7 @@ and the Dishka-injected `AgentToolsService`.
 ## 2. Vertex AI embeds the question
 
 When the runner classifies the turn as `PRODUCT_RAG`, the question is sent
-to Vertex AI's `gemini-embedding-2-preview` model with a query-purpose instruction
+to Vertex AI's `gemini-embedding-2` model with a query-purpose instruction
 prepended to the text. The general-conversation fallback can call the same
 vector-search tool, but this menu turn uses the deterministic route. Document
 embeddings (the products themselves) are produced separately with a
@@ -93,7 +95,7 @@ flowchart TD
 ```
 
 `VertexAIService.get_text_embedding` is the wrapper around the Vertex AI
-`gemini-embedding-2-preview` call, with the Oracle-backed embedding cache check
+`gemini-embedding-2` call, with the Oracle-backed embedding cache check
 in front of it. Gemini Embedding 2 does not use the old embedding `task_type`
 API parameter; this app encodes query-vs-document intent in the text sent to the
 embedding model.
@@ -154,10 +156,11 @@ index shape and the `vector_memory_size` knob.
 ## 4. The runner emits a grounded final event
 
 For `PRODUCT_RAG`, the runner does not stream speculative model deltas. It
-formats the returned product rows into one grounded `final` event. Store
-location and product availability turns follow the same deterministic shape:
-classify first, query named SQL through request-scoped services, then emit a
-single grounded event with optional map actions.
+may use Gemini structured output to select among returned product ids, validates
+that selection, then renders one grounded `final` event from Oracle product
+rows. Store location and product availability turns follow the same
+deterministic shape: classify first, query named SQL through request-scoped
+services, then emit a single grounded event with optional map actions.
 
 ```{mermaid}
 flowchart TD
