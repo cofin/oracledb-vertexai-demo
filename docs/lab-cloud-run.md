@@ -437,4 +437,3 @@ For a smaller footprint you can right-size the VM (e.g. a smaller machine type) 
    ```
 
    Empty output across the board means the stack is fully torn down and nothing is billing. You can now safely close the lab.
-

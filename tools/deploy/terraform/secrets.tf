@@ -26,4 +26,3 @@ resource "google_secret_manager_secret_version" "coffee_db_system_password" {
   secret      = google_secret_manager_secret.coffee_db_system_password.id
   secret_data = var.db_system_password
 }
-

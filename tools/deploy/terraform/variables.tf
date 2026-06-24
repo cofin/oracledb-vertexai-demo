@@ -56,4 +56,3 @@ variable "db_system_password" {
   description = "Oracle SYS/system password. Consumed ONLY by the Ch2 DB VM cloud-init at boot; never reaches Cloud Run or the build pool. LAB ONLY: set in gitignored terraform.tfvars."
   sensitive   = true
 }
-
