@@ -20,12 +20,10 @@ dependencies = [
     "litestar-granian[uvloop]",
     "litestar-mcp",
     "sqlspec[adk,mypyc,oracledb,performance]",
-
+    "numpy",
     "python-dotenv",
-    "google-adk>=2.0.0",
-    "numpy>=2.3.3",
-    "dishka>=1.4.2",
-    "litestar-vite>=0.23.4",
+    "dishka",
+    "litestar-vite",
 ]
 description = "Reference application for Oracle 26ai and Vertex AI integration."
 keywords = ["litestar", "vertexai", "oracledb", "google"]
@@ -33,7 +31,7 @@ license = { text = "MIT" }
 maintainers = [{ name = "Cody Fincher", email = "cody.fincher@gmail.com" }]
 name = "app"
 readme = "README.md"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.12,<3.15"
 version = "0.3.1"
 
 [project.scripts]
@@ -55,18 +53,15 @@ parse = """(?x)
 regex = false
 replace = "{new_version}"
 search = "{current_version}"
-serialize = [
-    "{major}.{minor}.{patch}",
-    "{major}.{minor}.{patch}-{pre}.{pre_n}",
-]
+serialize = ["{major}.{minor}.{patch}", "{major}.{minor}.{patch}-{pre}.{pre_n}"]
 sign_tags = false
 tag = false
 tag_message = "chore(release): v{new_version}"
 tag_name = "v{new_version}"
 
 [tool.bumpversion.parts.pre]
-optional_value = "stable"
 first_value = "stable"
+optional_value = "stable"
 values = ["alpha", "beta", "rc", "stable"]
 
 [tool.bumpversion.parts.pre_n]
@@ -359,6 +354,3 @@ exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 extraPaths = ["src"]
 include = ["src/app", "src/tests"]
 reportMissingImports = "information"
-
-[tool.uv.sources]
-sqlspec = { git = "https://github.com/litestar-org/sqlspec", branch = "main" }
