@@ -99,6 +99,7 @@
   `commands.py`. Do not add compatibility shim or facade modules.
 - `sanitize_for_json` camel-cases msgspec Struct keys for wire encoding. In the chat domain (like `ADKRunner` and grounding formatting helpers), check both snake_case and camelCase keys using `_get_field(row, snake_name)` to remain resilient to case conversion differences between unit test mocks and runtime database responses.
 - Product availability lookups (`PRODUCT_AVAILABILITY`) resolve product names via exact match first, falling back to pronoun resolution from `last_products` in session history, and finally using Vertex AI vector search to resolve partial/imprecise product names (e.g. 'Gemini' -> 'Gemini Rush') before checking store inventory.
+- Naming a query parameter argument `query` in a Litestar controller action (e.g., `def handler(query: FromQuery[str])`) causes Litestar to pass the entire query parameters `MultiDict` to it. Use a different Python argument name (e.g., `search_query`) and map it explicitly using `QueryParameter(name="query")` to avoid this. (derived from fix-explore-search-ux)
 
 
 ## Code Style
@@ -285,4 +286,6 @@
   sanitized SSE `error` event. Do not rely on Litestar exception middleware
   for failures that occur after SSE headers have been sent — it cannot
   intercept post-start stream errors.
+- If `make lint` fails with `frontend-typecheck` due to missing `tsc` (TypeScript compiler), ensure frontend assets are installed in `src/resources/` by running `uv run python manage.py assets install` first. (derived from fix-explore-search-ux)
+- When committing `uv.lock`, ensure it has been resolved using the public PyPI index (e.g., by running with `UV_CONFIG_FILE=/dev/null` and `--default-index https://pypi.org/simple` if your workstation configures a Google-internal repository like `us-python.pkg.dev`), otherwise public CI builds will fail with 401 Unauthorized errors. (derived from fix-explore-search-ux)
 <!-- truth: end -->
