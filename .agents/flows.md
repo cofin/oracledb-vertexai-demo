@@ -97,19 +97,6 @@ branch while it is unmerged, and update the default chat/classifier model to
 
 ---
 
-## [ ] PRD: fix-explore-search-ux
-*Link: [./specs/fix-explore-search-ux/](./specs/fix-explore-search-ux/)*
-*Beads: oracledb-vertexai-demo-oql (master epic)*
-
-Fix the explore page search UX. Align query parameters to 'query' and handle form submission in HTMX to support Enter key.
-
-### Chapters
-- [ ] **Chapter 1: Align Web Route Parameter (`explore-route-param`)** — planned
-  *Link: [./specs/explore-route-param/](./specs/explore-route-param/)* · *Beads: oracledb-vertexai-demo-oql.1*
-- [ ] **Chapter 2: Update Vector Controller Pushed URL (`vector-push-url`)** — planned
-  *Link: [./specs/vector-push-url/](./specs/vector-push-url/)* · *Beads: oracledb-vertexai-demo-oql.2*
-- [ ] **Chapter 3: Enhance Frontend Search Form (`explore-frontend-submit`)** — planned
-  *Link: [./specs/explore-frontend-submit/](./specs/explore-frontend-submit/)* · *Beads: oracledb-vertexai-demo-oql.3*
 
 
 ## Archived
@@ -118,6 +105,7 @@ Archived specs are disposable local history and may be ignored or removed from
 the repository. Durable learnings belong in `.agents/knowledge/` and
 `.agents/patterns.md`; do not point active Flow guidance at archive paths.
 
+- `fix-explore-search-ux` (`oracledb-vertexai-demo-oql`) completed and archived locally on 2026-06-26. It resolved the explore page search usability issues by aligning query parameters to `query` and handling form submission in HTMX. Chapters: `explore-route-param`, `vector-push-url`, `explore-frontend-submit`.
 - `demo-source-organization_20260501` (`oracledb-vertexai-8jt`) completed and
   archived locally on 2026-05-02.
 - `ruff-copyright-modernization` (`oracledb-vertexai-a0l`) completed and
