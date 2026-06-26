@@ -287,4 +287,5 @@
   for failures that occur after SSE headers have been sent — it cannot
   intercept post-start stream errors.
 - If `make lint` fails with `frontend-typecheck` due to missing `tsc` (TypeScript compiler), ensure frontend assets are installed in `src/resources/` by running `uv run python manage.py assets install` first. (derived from fix-explore-search-ux)
+- When committing `uv.lock`, ensure it has been resolved using the public PyPI index (e.g., by running with `UV_CONFIG_FILE=/dev/null` and `--default-index https://pypi.org/simple` if your workstation configures a Google-internal repository like `us-python.pkg.dev`), otherwise public CI builds will fail with 401 Unauthorized errors. (derived from fix-explore-search-ux)
 <!-- truth: end -->
