@@ -1,0 +1,10 @@
+{
+  "flow_id": "vector-push-url",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "fix-explore-search-ux",
+  "beads_epic_id": "oracledb-vertexai-demo-oql.2",
+  "created_at": "2026-06-26T00:37:00Z",
+  "updated_at": "2026-06-26T00:37:00Z",
+  "description": "Update Vector Controller Pushed URL: Update VectorController.vector_search_demo and tests to push /explore?query=... instead of /explore?q=..."
+}

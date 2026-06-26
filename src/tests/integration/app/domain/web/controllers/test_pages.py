@@ -120,7 +120,8 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
 
 
 async def test_explore_page_prefills_shared_query(client: AsyncTestClient) -> None:
-    response = await client.get("/explore?q=dark%20roast")
+    response = await client.get("/explore?query=dark%20roast")
+
     assert response.status_code == 200, response.text[:500]
     body = response.text
     assert 'value="dark roast"' in body

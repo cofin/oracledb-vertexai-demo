@@ -1,0 +1,10 @@
+{
+  "flow_id": "explore-frontend-submit",
+  "type": "feature",
+  "status": "planned",
+  "parent_prd": "fix-explore-search-ux",
+  "beads_epic_id": "oracledb-vertexai-demo-oql.3",
+  "created_at": "2026-06-26T00:38:00Z",
+  "updated_at": "2026-06-26T00:38:00Z",
+  "description": "Enhance Frontend Search Form: Update explore.html.j2 to use submit in hx-trigger for the search form. Verify Enter key behavior."
+}

@@ -95,6 +95,23 @@ branch while it is unmerged, and update the default chat/classifier model to
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
 
+---
+
+## [ ] PRD: fix-explore-search-ux
+*Link: [./specs/fix-explore-search-ux/](./specs/fix-explore-search-ux/)*
+*Beads: oracledb-vertexai-demo-oql (master epic)*
+
+Fix the explore page search UX. Align query parameters to 'query' and handle form submission in HTMX to support Enter key.
+
+### Chapters
+- [ ] **Chapter 1: Align Web Route Parameter (`explore-route-param`)** — planned
+  *Link: [./specs/explore-route-param/](./specs/explore-route-param/)* · *Beads: oracledb-vertexai-demo-oql.1*
+- [ ] **Chapter 2: Update Vector Controller Pushed URL (`vector-push-url`)** — planned
+  *Link: [./specs/vector-push-url/](./specs/vector-push-url/)* · *Beads: oracledb-vertexai-demo-oql.2*
+- [ ] **Chapter 3: Enhance Frontend Search Form (`explore-frontend-submit`)** — planned
+  *Link: [./specs/explore-frontend-submit/](./specs/explore-frontend-submit/)* · *Beads: oracledb-vertexai-demo-oql.3*
+
+
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from
