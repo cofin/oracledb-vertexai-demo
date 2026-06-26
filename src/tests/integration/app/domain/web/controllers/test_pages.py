@@ -120,14 +120,15 @@ async def test_explore_page_renders(client: AsyncTestClient) -> None:
 
 
 async def test_explore_page_prefills_shared_query(client: AsyncTestClient) -> None:
-    response = await client.get("/explore?q=dark%20roast")
+    response = await client.get("/explore?query=dark%20roast")
+
     assert response.status_code == 200, response.text[:500]
     body = response.text
     assert 'value="dark roast"' in body
     assert body.count('name="query"') == 1
     assert 'placeholder="Search for a drink, roast, flavor, or breakfast item"' in body
     assert 'id="panel-vector-search" data-ui-panel="vector-search" hx-ext="ignore:litestar"' in body
-    assert 'hx-post="/api/vector-demo" hx-trigger="load, keyup changed delay:300ms"' in body
+    assert 'hx-post="/api/vector-demo" hx-trigger="submit, load, keyup changed delay:300ms"' in body
     assert 'hx-swap="outerHTML"' in body
     assert "Search results and SQL plan update from the same query." in body
     assert 'hx-get="/api/explain-plan"' not in body
@@ -142,4 +143,4 @@ async def test_explore_page_does_not_autoload_empty_query(client: AsyncTestClien
     assert response.status_code == 200, response.text[:500]
     body = response.text
     assert 'hx-post="/api/vector-demo" hx-trigger="load,' not in body
-    assert 'hx-trigger="keyup changed delay:300ms"' in body
+    assert 'hx-trigger="submit, keyup changed delay:300ms"' in body

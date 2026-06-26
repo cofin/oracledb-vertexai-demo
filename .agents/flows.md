@@ -75,12 +75,17 @@ CLI config writes with clean Antigravity config paths.
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
 
+---
+
+
+
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from
 the repository. Durable learnings belong in `.agents/knowledge/` and
 `.agents/patterns.md`; do not point active Flow guidance at archive paths.
 
+- `fix-explore-search-ux` (`oracledb-vertexai-demo-oql`) completed and archived locally on 2026-06-26. It resolved the explore page search usability issues by aligning query parameters to `query` and handling form submission in HTMX. Chapters: `explore-route-param`, `vector-push-url`, `explore-frontend-submit`.
 - `demo-source-organization_20260501` (`oracledb-vertexai-8jt`) completed and
   archived locally on 2026-05-02.
 - `ruff-copyright-modernization` (`oracledb-vertexai-a0l`) completed and
