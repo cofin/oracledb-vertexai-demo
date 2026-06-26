@@ -134,7 +134,7 @@ class VectorController(Controller):
             return HTMXTemplate(
                 template_name="partials/explore_search_response.html.j2",
                 context={"matches": matches, "query": query, "plan": plan, "plan_oob": True},
-                push_url=f"/explore?q={quote(query)}",
+                push_url=f"/explore?query={quote(query)}",
             )
 
         return Response(
