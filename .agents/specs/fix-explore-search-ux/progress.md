@@ -4,4 +4,5 @@
 
 - [x] Chapter 2: Update Vector Controller Pushed URL (`vector-push-url`)
 
-- [ ] Chapter 3: Enhance Frontend Search Form (`explore-frontend-submit`)
+- [x] Chapter 3: Enhance Frontend Search Form (`explore-frontend-submit`)
+
