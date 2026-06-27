@@ -5,7 +5,6 @@
 # dependencies = [
 #   "rich-click",
 #   "rich",
-#   "tomli; python_version < '3.11'",
 # ]
 # ///
 """Bundle Python dependencies into a standalone distribution for PyApp."""
@@ -20,6 +19,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 import urllib.error
 import urllib.request
 import zipfile
@@ -30,12 +30,6 @@ from typing import Any
 import rich_click as click
 from rich.console import Console
 from rich.rule import Rule
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.12+ ships tomllib
-    import tomli as tomllib  # type: ignore[no-redef,import-not-found,unused-ignore]
-
 
 DEFAULT_PYTHON_VERSION = "3.13"
 DEFAULT_INSTALL_ROOT = "~/.local"

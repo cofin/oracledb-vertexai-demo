@@ -1,24 +1,18 @@
 # Cymbal Coffee Architecture
 
-Current as of the ADK 2.0 reset branch.
+This guide provides a high-level map of the Cymbal Coffee system architecture, package boundaries, and dependency injection patterns.
 
 ## System Shape
 
-Cymbal Coffee is a two-page Litestar application:
+Cymbal Coffee is a two-page Litestar web application served by the Granian ASGI server.
+- `/` is the primary chat route.
+- `/explore` is the vector search and database query explain plan viewer.
+- `/api/chat/stream` is the Server-Sent Event stream from the ADK workflow.
+- `/api/vector-demo` returns HTMX partials or JSON search results.
+- `/api/explain-plan` returns execution plans for the vector query.
+- `/api/stores/{store_id}/inventory` returns HTML partials for store inventory.
 
-- `/` is the streamed coffee chat.
-- `/explore` is the vector search and EXPLAIN PLAN explorer.
-- `/api/chat/stream` streams Server-Sent Events from the ADK workflow.
-- `/api/vector-demo` returns either HTMX partials or JSON vector-search results.
-- `/api/explain-plan` returns Oracle `DBMS_XPLAN.DISPLAY()` output for the vector query.
-- `/api/stores/{store_id}/inventory` returns the HTMX inventory partial for one
-  store.
-
-The backend stack is Litestar, Granian, Dishka, SQLSpec, Oracle Database 26ai,
-Google GenAI/Vertex AI, and Google ADK 2.0. The frontend is server-rendered
-Jinja/HTMX with Vite, Tailwind v4, vanilla JavaScript, ApexCharts, and small
-focused modules under `src/resources/`.
-
+The application follows a clean request flow:
 ```text
 browser
   -> Litestar controllers
@@ -28,248 +22,84 @@ browser
   -> Oracle 26ai, Vertex AI, ADK session store
 ```
 
-## Source Layout
+## Package & Source Layout
 
 ```text
 src/app/
-  cli/                  # coffee CLI and manage.py command modules
+  cli/                  # Click commands and manage.py command modules
   db/
-    migrations/         # SQLSpec migrations
-    sql/                # named SQL files loaded by db_manager
-    fixtures/           # committed gzipped demo data
+    migrations/         # SQLSpec database schema migrations
+    sql/                # Named SQL queries loaded by db_manager
+    fixtures/           # Committed compressed fixtures data
   domain/
-    chat/
-      controllers/      # chat JSON, HTMX, and SSE endpoints
-      schemas/          # msgspec API schemas
-      services/         # ADK runner, Workflow factory, intent classifier
-    products/
-      controllers/      # product, store, vector/explain endpoints
+    chat/               # Chat intent, ADK flow, and streaming session modules
+      controllers/
       schemas/
-      services/         # ProductService, StoreService, VertexAIService
-    system/
-      controllers/      # health, metrics
+      services/
+    products/           # Product search, store inventory, and Vertex AI services
+      controllers/
       schemas/
-      services/         # cache, metrics, persona manager
-    web/
-      controllers/      # page routes
-      templates/        # Jinja pages and partials
-  ioc.py                # Dishka providers
-  config.py             # lazy Litestar, SQLSpec, session, log config
-  server/               # app factory and plugins
+      services/
+    system/             # Health check, metrics, and response cache
+      controllers/
+      schemas/
+      services/
+    web/                # Web UI templates and controllers
+      controllers/
+      templates/
+  ioc.py                # Dishka container configuration
+  config.py             # App instantiation, session settings, and logging configuration
+  server/               # Litestar application factory and plugin registry
 ```
 
-## Dependency Injection
+### Domain Boundaries
+Behavior belongs within domain packages under `domain/<domain_name>/`.
+- Cross-domain integration should happen via public package exports or by injecting request-scoped services.
+- **Do not** write deep relative imports into other domains' private subpackages.
 
-`src/app/ioc.py` uses three application providers plus `LitestarProvider`:
+## Dependency Injection (Dishka)
 
-- `LitestarPersistenceProvider`
-  - APP: `OracleAsyncConfig`
-  - REQUEST: `OracleAsyncDriver` from `db_manager.provide_session(db)`
-- `IntegrationsProvider`
-  - APP: Google GenAI `Client`
-  - APP: `OracleAsyncADKStore`
-  - APP: `SQLSpecSessionService`
-  - APP: `FlashLiteIntentClassifier`, `PersonaManager`, `ADKRunner`
-- `DomainServiceProvider`
-  - REQUEST: product, store, cache, metrics, ADK tool services
-  - REQUEST: `VertexAIService` and `OracleVectorSearchService`
+We use Dishka for dependency injection. Containers are configured in `src/app/ioc.py`.
 
-Keep `from __future__ import annotations` out of provider modules where Dishka
-needs runtime annotations. Normal consumer modules can use postponed annotations.
+### Providers
+We register three user providers at application boot:
+1. **`LitestarPersistenceProvider`**:
+   - Scope: APP -> `OracleAsyncConfig`
+   - Scope: REQUEST -> `OracleAsyncDriver`
+2. **`IntegrationsProvider`**:
+   - Scope: APP -> Google GenAI `Client`
+   - Scope: APP -> `OracleAsyncADKStore`
+   - Scope: APP -> `SQLSpecSessionService`
+   - Scope: APP -> `FlashLiteIntentClassifier`, `PersonaManager`, `ADKRunner`
+3. **`DomainServiceProvider`**:
+   - Scope: REQUEST -> `ProductService`, `StoreService`, `CacheService`, `MetricsService`, `AgentToolsService`
+   - Scope: REQUEST -> `VertexAIService`, `OracleVectorSearchService`
 
-Handlers request dependencies with `Inject[T]` from `app.lib.di`:
+### DI Annotations Rule
+Do not use `from __future__ import annotations` in `src/app/ioc.py` or any provider files. Dishka parses type annotations at runtime to resolve dependencies; postponed annotations prevent container construction.
 
+### Dependency Injection Usage
+Controllers and services inject their dependencies using the `Inject` type hint:
 ```python
-async def vector_search_demo(
-    vector_search_service: Inject[OracleVectorSearchService],
-) -> Response:
+from app.lib.di import Inject
+from app.domain.products.services import ProductService
+
+async def list_products(product_service: Inject[ProductService]) -> Response:
     ...
 ```
 
-## SQLSpec And Oracle
+## CLI & Entrypoint Boundaries
 
-`app.config` creates one `SQLSpec` manager, adds the Oracle config, and loads
-named SQL from `src/app/db/sql`. Domain services call `db_manager.get_sql(...)`
-instead of embedding long static SQL strings in Python.
+We maintain a strict boundary between end-user operations and developer utilities:
+- **`coffee`:** The production CLI tool. Exposes application operations: `run`, `upgrade` (applies migrations and loads fixtures), `load-fixtures`, `clear-cache`, `model-info`, `bulk-embed`, and `export-fixtures`.
+- **`manage.py`:** Developer utility. Exposes framework/infra commands: database migrations (`database upgrade/downgrade`), frontend assets (`assets install`), and other helper groups.
 
-Important patterns:
-
-- Use `schema_type=` for typed results.
-- Use `db_manager.get_sql("name")` for static queries.
-- Use SQLSpec's builder only for small dynamic additions.
-- Pass Python `list[float]` vectors directly; do not wrap them in `array.array`.
-- Keep Oracle binds named with `:name`.
-
-Example:
-
-```python
-return await self.driver.select(
-    db_manager.get_sql("vector-search-products"),
-    query_vector=query_embedding,
-    threshold=similarity_threshold,
-    limit=limit,
-    schema_type=ProductMatch,
-)
-```
-
-The SQLSpec Oracle config also owns extension migrations and storage tables:
-
-```python
-extension_config={
-    "adk": {
-        "enable_memory": settings.db.ADK_ENABLE_MEMORY,
-        "include_memory_migration": settings.db.ADK_ENABLE_MEMORY,
-        "in_memory": settings.db.ADK_IN_MEMORY,
-    },
-    "litestar": {
-        "session_table": "app_session",
-        "in_memory": settings.db.LITESTAR_SESSION_IN_MEMORY,
-    },
-}
-```
-
-The ADK session backend and the Litestar server-side session backend are related
-but separate. The chat controller stores `adk_session_id` and `adk_user_id` in
-the Litestar session, then passes those identifiers to ADK's SQLSpec session
-service.
-
-## Chat Flow
-
-```text
-POST /api/chat/stream
-  -> app.domain.chat.session.adk_session_identity()
-  -> ADKRunner.stream_request()
-  -> SQLSpecSessionService get/create session
-  -> response cache lookup
-  -> FlashLiteIntentClassifier
-  -> PRODUCT_RAG direct vector search, structured selection, validation, and grounded final event
-     OR ADK workflow stream for conversational turns:
-        START -> intent FunctionNode -> JoinNode
-        START -> LlmAgent coffee_turn -> JoinNode
-        JoinNode -> classify_and_respond FunctionNode
-  -> final event with answer, intent, SQL/query metadata, cache, timing, and session id
-```
-
-The LLM tools are closure-bound per request. The closures call
-`AgentToolsService`, which holds the request-scoped SQLSpec driver plus product,
-cache, metrics, store, and Vertex services. This keeps database sessions aligned
-with Litestar request scope while ADK owns only orchestration.
-
-Product RAG turns do not stream speculative model deltas. They classify first,
-search the live menu, optionally ask Vertex AI/Gemini for structured selection
-among returned product ids, validate that selection, render a grounded answer
-only from returned products, persist display history into ADK session state,
-cache the final response, and emit a single final SSE event.
-
-## Store, Inventory, And Maps
-
-Store-aware chat extends the existing product domain rather than adding a
-separate store app. The shipped components are:
-
-- store data foundation in the baseline migration and fixtures: coordinates,
-  timezone, optional Google place IDs, Dallas store data, explicit product stock
-  booleans, and curated `store_product_inventory` rows;
-- store and inventory query services behind named SQL and typed schemas;
-- store-aware vector search that joins curated inventory rows for active store
-  context;
-- closure-bound ADK tools for store lookup, hours, nearest stores, and product
-  availability;
-- deterministic `STORE_LOCATION` and `PRODUCT_AVAILABILITY` routes beside the
-  deterministic `PRODUCT_RAG` path;
-- HTMX/Jinja chat rendering for store cards, inventory cards, directions links,
-  and the `/explore` live store-inventory panel.
-
-Maps URLs are the default integration and need no API key. Browser coordinates
-are request-scoped and require explicit consent. The optional one-at-a-time Maps
-Embed output stays forward-looking: it requires separate settings and a
-restricted Maps Embed key, and must not reuse Gemini or Vertex keys.
-
-## Vector Search Flow
-
-```text
-POST /api/vector-demo
-  -> VectorController.validate_message()
-  -> OracleVectorSearchService.similarity_search()
-  -> VertexAIService.get_text_embedding(embedding_purpose="query")
-  -> ProductService.search_by_vector()
-  -> src/app/db/sql/products.sql:vector-search-products
-  -> HTMX partial or JSON response
-```
-
-Product and embedding-cache rows store `VECTOR(3072, FLOAT32)` values generated
-by `gemini-embedding-2`. HNSW indexes use Oracle 26ai `ORGANIZATION INMEMORY
-NEIGHBOR GRAPH`.
-
-## Frontend
-
-Templates live under `src/app/domain/web/templates`.
-
-- `pages/chat.html.j2` posts to `/api/chat/stream`.
-- `pages/explore.html.j2` posts vector search requests and fetches plans.
-- `partials/message.html.j2`, `partials/explore_search_response.html.j2`,
-  and `partials/search_result_list.html.j2` are the HTMX/Jinja render targets.
-- `src/resources/main.js` is a thin bootstrap. `chat-stream.js` reads SSE
-  manually with `fetch()` and a stream reader; `telemetry.js`, `charts.js`,
-  `geolocation.js`, `util.js`, and `vector-calculator.js` own their focused
-  browser behavior.
-
-Do not reintroduce a React SPA. The Vite build exists for static assets and the
-small browser helper, not for client-side routing.
-
-## CLI Boundary
-
-Use `coffee` for demo operations:
-
-- `coffee run`
-- `coffee upgrade`
-- `coffee load-fixtures`
-- `coffee bulk-embed`
-- `coffee export-fixtures`
-- `coffee clear-cache`
-- `coffee model-info`
-
-Use `coffee upgrade` as the packaged/end-user install path. It applies SQLSpec
-migrations and loads committed fixtures. Use `python manage.py database ...` for
-developer SQLSpec commands such as downgrade/current, and `python manage.py init
---run-install` for bootstrap. The Litestar SQLSpec plugin intentionally does not
-auto-mount a `db` group onto `coffee`.
-
-## Test Database Lifecycle
-
-Oracle lifecycle belongs to the repo management commands:
-
-```bash
-make start-infra
-uv run python manage.py database upgrade --no-prompt
-uv run coffee load-fixtures
-```
-
-The pytest fixtures connect to that configured Oracle database. Integration
-setup then makes the test data deterministic:
-
-1. `src/tests/conftest.py` patches app settings for the test DSN.
-2. `src/tests/integration/conftest.py` closes any stale SQLSpec pool.
-3. The integration `driver` fixture bootstraps required tables idempotently.
-4. Fixture-owned tables are truncated.
-5. Checked-in fixture data is loaded through the app fixture loader.
-6. A deterministic marker product is upserted for older integration assertions.
-7. The SQLSpec pool is closed after each test to avoid event-loop reuse issues.
-
-If an integration test cannot connect, start the managed Oracle container and
-run the migration command above. Keep lifecycle ownership in `manage.py` and
-`make`; pytest should only prepare deterministic schema/data inside the already
-configured database.
-
-## Operational Notes
-
-- Local Oracle startup configures `vector_memory_size` before HNSW INMEMORY
-  indexes are created.
-- `ORACLE_ADK_IN_MEMORY` and `ORACLE_LITESTAR_SESSION_IN_MEMORY` default to true
-  and control Oracle INMEMORY storage for SQLSpec extension tables.
-- Placeholder Vertex project IDs are rejected before ADK starts so expected
-  local misconfiguration returns a clean 503.
-- `app.config` builds `StructlogConfig` from
-  `app.lib.log.structlog_processors()` and `stdlib_logger_processors()`.
-  Settings set Litestar / Granian logging env defaults. Static assets are
-  excluded from request logs, and `app.config.setup_logging()` filters only
-  known ADK/Authlib warning noise so real runtime exceptions stay visible.
+## Detailed Guides Index
+For component-specific details, refer to:
+- [Oracle Database & SQLSpec](oracle-database.md)
+- [ADK Chat Agent Patterns](adk-agent-patterns.md)
+- [Store, Inventory & Maps](store-inventory-maps.md)
+- [Frontend & UI Development](frontend-ui.md)
+- [Testing & Verification](testing-verification.md)
+- [Operations & Packaging](operations-packaging.md)
+- [Application Settings](settings.md)

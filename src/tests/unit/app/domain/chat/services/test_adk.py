@@ -326,7 +326,7 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
     events = [
         event
         async for event in runner.stream_request(
-            query="hey", user_id="u1", session_id="sess-direct-rag", persona="enthusiast", tools_service=tools_service
+            query="hey", user_id="u1", session_id="sess-direct-rag", persona="barista", tools_service=tools_service
         )
     ]
 
@@ -385,7 +385,7 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
             query="something sweet",
             user_id="u1",
             session_id="sess-relabel",
-            persona="enthusiast",
+            persona="barista",
             tools_service=tools_service,
         )
     ]
@@ -444,8 +444,8 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
 
     from hashlib import sha256
 
-    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:enthusiast:latte").hexdigest()
-    assert tools_service.make_response_cache_key("latte", "enthusiast") == f"chat:{expected_digest}"
+    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:barista:latte").hexdigest()
+    assert tools_service.make_response_cache_key("latte", "barista") == f"chat:{expected_digest}"
 
 
 async def test_append_display_history_truncates_to_chat_settings_limit(monkeypatch: Any) -> None:

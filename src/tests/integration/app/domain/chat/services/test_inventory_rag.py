@@ -193,7 +193,7 @@ async def test_inventory_aware_rag_recommends_and_annotates(
         query="Give me something bold",
         user_id="integration-user",
         session_id=session_id,
-        persona="enthusiast",
+        persona="barista",
         tools_service=tools_service,
         location_context={"store_name": dallas_store_name},
     ):

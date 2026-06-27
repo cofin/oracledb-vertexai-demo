@@ -164,11 +164,7 @@ async def test_chat_workflow_populates_result_shape_with_oracle_backed_rag(
 
     result: dict[str, Any] | None = None
     async for event in runner.stream_request(
-        query=query,
-        user_id="integration-user",
-        session_id=session_id,
-        persona="enthusiast",
-        tools_service=tools_service,
+        query=query, user_id="integration-user", session_id=session_id, persona="barista", tools_service=tools_service
     ):
         if event.get("type") == "final":
             result = event

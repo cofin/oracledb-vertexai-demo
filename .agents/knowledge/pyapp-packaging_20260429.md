@@ -42,7 +42,7 @@ resolve at `manylinux_2_28` even though the launcher binary targets 2.17.
 - `.github/workflows/ci.yml` — PR checks on both x86_64 and arm64 runners across Python 3.12 / 3.13 / 3.14.
 - `tools/deploy/docker/Dockerfile` — single distroless container Dockerfile wrapping the prepared onefile.
 - `.dockerignore` — `dist/*` ignored with `dist/coffee-amd64-linux-gnu` and `dist/coffee-arm64-linux-gnu` whitelisted.
-- `pyproject.toml` — `requires-python = ">=3.11,<3.15"`; `[dependency-groups.build]`.
+- `pyproject.toml` — `requires-python = ">=3.12,<3.15"`; `[dependency-groups.build]`.
 
 ## Verification Checklist
 

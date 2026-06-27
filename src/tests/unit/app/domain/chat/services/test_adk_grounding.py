@@ -388,3 +388,26 @@ async def test_compose_grounded_answer_timeout_falls_back(monkeypatch: pytest.Mo
 
     assert "House Blend" in answer
     assert "Moon Roast" not in answer
+
+
+@pytest.mark.anyio
+async def test_compose_grounded_answer_respects_persona(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_settings(monkeypatch)
+    payload = {
+        "answer": "Picky customer recommendation.",
+        "mode": "recommend",
+        "off_menu_term": "",
+        "explanation": "Since you have terrible taste and want sweet things, here.",
+        "selected_product_ids": ["1"],
+    }
+    tools_service = _make_tools_service(json.dumps(payload))
+
+    answer = await _compose_grounded_answer("something sweet", [_HOUSE_BLEND], tools_service, persona="snob")
+
+    assert "Since you have terrible taste" in answer
+    assert "House Blend" in answer
+
+    # Verify that the system instruction was formatted with the snob's guidelines
+    call_args = tools_service.vertex_ai_service.generate_structured_content.call_args[1]
+    config = call_args["config"]
+    assert "You are a pretentious coffee snob" in config.system_instruction

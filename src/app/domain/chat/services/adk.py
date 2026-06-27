@@ -660,13 +660,14 @@ class ADKRunner:
         response_cache_phase: dict[str, Any] | None,
         tools_service: AgentToolsService,
         location_context: dict[str, Any] | None,
+        persona: str = "barista",
     ) -> dict[str, Any]:
         metric_state: dict[str, Any] = {"search_metrics": {}, "embedding_cache_hit": False, "sql_phases": []}
         target_store = await self._resolve_rag_store(
             tools_service=tools_service, query=query, location_context=location_context
         )
         answer = await _ground_product_rag_turn(
-            query, metric_state, tools_service, store_id=target_store.id if target_store else None
+            query, metric_state, tools_service, store_id=target_store.id if target_store else None, persona=persona
         )
         elapsed_ms = (time.time() - start) * 1000
         search_metrics = dict(metric_state.get("search_metrics", {}))
@@ -836,6 +837,7 @@ class ADKRunner:
         location_context: dict[str, Any] | None,
         cache_key: str | None,
         response_cache_phase: dict[str, Any] | None,
+        persona: str = "barista",
     ) -> dict[str, Any] | None:
         if intent_detected == _PRODUCT_RAG_INTENT:
             return await self._product_rag_event(
@@ -847,6 +849,7 @@ class ADKRunner:
                 response_cache_phase=response_cache_phase,
                 tools_service=tools_service,
                 location_context=location_context,
+                persona=persona,
             )
         if intent_detected == _STORE_LOCATION_INTENT:
             return await self._store_location_event(
@@ -972,6 +975,7 @@ class ADKRunner:
             location_context=location_context,
             cache_key=cache_key,
             response_cache_phase=response_cache_phase,
+            persona=persona,
         )
         if route_event:
             yield route_event
@@ -1066,7 +1070,7 @@ class ADKRunner:
                 tools_service=tools_service, query=query, location_context=location_context
             )
             answer = await _ground_product_rag_turn(
-                query, metric_state, tools_service, store_id=target_store.id if target_store else None
+                query, metric_state, tools_service, store_id=target_store.id if target_store else None, persona=persona
             )
             elapsed_ms = (time.time() - start) * 1000
             search_metrics = dict(metric_state.get("search_metrics", {}))
