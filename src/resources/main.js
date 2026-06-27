@@ -40,11 +40,11 @@ const initPersonaPicker = () => {
   picker.addEventListener("click", (event) => {
     const button = event.target instanceof Element ? event.target.closest("[data-persona-option]") : null
     if (button instanceof HTMLButtonElement) {
-      setPersona(button.dataset.personaOption ?? "enthusiast")
+      setPersona(button.dataset.personaOption ?? "barista")
     }
   })
   const selected = picker.querySelector('[data-persona-option][aria-pressed="true"]')
-  setPersona(selected instanceof HTMLElement ? (selected.dataset.personaOption ?? "enthusiast") : "enthusiast")
+  setPersona(selected instanceof HTMLElement ? (selected.dataset.personaOption ?? "barista") : "barista")
 }
 
 document.body.addEventListener("submit", async (event) => {

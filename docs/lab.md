@@ -367,7 +367,7 @@ class CoffeeChatController(Controller):
             import time
             from datetime import datetime, timezone
 
-            from google.cloud import bigquery
+            from sqlspec.adapters.bigquery import BigQueryConfig
             from sqlspec.utils.sync_tools import async_
 
             start_time = time.time()
@@ -398,12 +398,12 @@ class CoffeeChatController(Controller):
                     }
 
                     def log_to_bigquery():
-                        return bigquery.Client().insert_rows_json("coffee_analytics.chat_logs", [row])
+                        config = BigQueryConfig()
+                        with config.provide_session() as driver:
+                            driver.load_from_records("coffee_analytics.chat_logs", [row])
 
                     try:
-                        errors = await async_(log_to_bigquery)()
-                        if errors:
-                            await logger.awarning("BigQuery streaming insert returned errors", errors=errors)
+                        await async_(log_to_bigquery)()
                     except Exception as exc:  # noqa: BLE001
                         await logger.awarning("BigQuery logging failed", error=str(exc))
 
@@ -427,7 +427,7 @@ class CoffeeChatController(Controller):
         return Response(content={"status": "cleared"})
 ```
 
-> **Note:** `insert_rows_json` is BigQuery's low-latency streaming-insert API. The call is synchronous, so we wrap it with SQLSpec's `async_` (`sqlspec.utils.sync_tools`) to run it off the event loop — the chat stream is never blocked by logging, and any insert errors are surfaced through the app logger instead of being silently dropped.
+> **Note:** We use SQLSpec's `BigQueryConfig` and `load_from_records` to write logs. The call is synchronous, so we wrap it with SQLSpec's `async_` (`sqlspec.utils.sync_tools`) to run it off the event loop — the chat stream is never blocked by logging, and any errors are surfaced through the app logger instead of being silently dropped.
 
 Once you've completed your changes, start the app up and test it out.
 

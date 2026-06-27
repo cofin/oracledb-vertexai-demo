@@ -23,7 +23,7 @@ Before claiming a task, phase, or flow is complete:
 4. If the user had to repeat a correction or showed frustration that something was forgotten, flag that as a workflow gap and capture it explicitly.
 5. Elevate durable patterns to `.agents/patterns.md`.
 6. Update `.agents/knowledge/` chapters when the current-state knowledge base changed.
-7. If the flow is complete, archive only after durable knowledge is synthesized into tracked active docs and the active spec area is uncluttered.
+7. If the flow is complete, archive only after durable knowledge is synthesized into tracked active docs, corresponding research is moved to the archive folder, and the active spec area is uncluttered.
 8. Capture validated repo-native commands and verification workflows in `.agents/workflow.md` when they were discovered or corrected during the work.
 
 ## Completion Protocol
@@ -64,7 +64,7 @@ When a flow is finished:
 2. Ensure `learnings.md` is not missing critical discoveries.
 3. Elevate the stable patterns and current-state knowledge before archiving.
 4. Remove active links into `.agents/archive/`; readers must be able to recover durable guidance from `.agents/knowledge/`, `.agents/patterns.md`, and `.agents/workflow.md`.
-5. Move or remove the flow folder according to the Flow archive workflow, treating `.agents/archive/` as ignored disposable history.
+5. Move or remove the flow folder (along with any associated `.agents/research/research_<flow_id>` folder, which should be placed inside the archived flow folder as `research/`) according to the Flow archive workflow, treating `.agents/archive/` as ignored disposable history.
 6. Remove or avoid leaving stale scratch files in the active specs area.
 
 </workflow>
@@ -104,7 +104,7 @@ Before claiming a task, phase, or flow is complete, verify:
 - [ ] `.agents/knowledge/` reflects current-state knowledge when it changed
 - [ ] repeated user corrections or frustration were promoted into an explicit rule when applicable
 - [ ] canonical repo commands and verification flows were captured when they were learned or corrected
-- [ ] completed flows are archived or removed without leaving stale active-spec clutter
+- [ ] completed flows are archived or removed (with their research folders moved into the archive) without leaving stale active-spec or research clutter
 - [ ] no active guide, index, or workflow instruction requires a link into `.agents/archive/`
 
 </validation>

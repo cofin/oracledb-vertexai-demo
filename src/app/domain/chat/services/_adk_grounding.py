@@ -17,6 +17,7 @@ from google.genai import types
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services._adk_support import _coerce_sql_phases
 from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+from app.domain.system.services import PersonaManager
 from app.lib.settings import get_settings
 
 logger = structlog.get_logger()
@@ -149,7 +150,11 @@ def _format_product_match_stock_sentence(product: dict[str, Any]) -> str:
 
 _GROUNDED_ANSWER_TEMPERATURE = 0
 _GROUNDED_SELECTION_MODES = frozenset({"recommend", "off_menu_alternative"})
-_GROUNDED_ANSWER_INSTRUCTION = """You are a Cymbal Coffee product selector. Choose from ONLY the candidate products provided.
+_GROUNDED_ANSWER_INSTRUCTION_TEMPLATE = """You are a Cymbal Coffee product selector acting under a specific Barista Persona.
+Choose from ONLY the candidate products provided.
+
+Persona Guidelines:
+{persona_guidelines}
 
 Rules:
 - Do NOT write the final customer response.
@@ -157,16 +162,19 @@ Rules:
 - Use mode "off_menu_alternative" only when the customer names a specific brand or product Cymbal Coffee does not carry, such as Folgers or Starbucks.
 - Use mode "recommend" for preferences such as "something bold", "for breakfast", or "what should I get".
 - Never invent products, ids, prices, descriptions, or availability.
+- Provide a short 1-sentence "explanation" explaining why this selection fits the customer request from your persona's perspective. Keep it in character and match your persona's tone.
 
-Respond as JSON: mode, selected_product_ids, off_menu_term."""
+Respond as JSON: mode, selected_product_ids, off_menu_term, explanation."""
+
 _GROUNDED_ANSWER_SCHEMA: dict[str, Any] = {
     "type": "OBJECT",
     "properties": {
         "mode": {"type": "STRING", "enum": sorted(_GROUNDED_SELECTION_MODES)},
         "selected_product_ids": {"type": "ARRAY", "items": {"type": "STRING"}},
         "off_menu_term": {"type": "STRING"},
+        "explanation": {"type": "STRING"},
     },
-    "required": ["mode", "selected_product_ids", "off_menu_term"],
+    "required": ["mode", "selected_product_ids", "off_menu_term", "explanation"],
 }
 
 
@@ -244,8 +252,13 @@ def _render_grounded_selection(query: str, payload: dict[str, Any], selected: li
         Customer-facing answer text when the structured selection is valid.
     """
     mode = str(payload.get("mode") or "").strip()
+    explanation = str(payload.get("explanation") or "").strip()
+
     if mode == "recommend":
-        return _grounded_product_answer(query, selected)
+        base_answer = _grounded_product_answer(query, selected)
+        if explanation:
+            return f"{explanation} {base_answer}"
+        return base_answer
 
     if mode == "off_menu_alternative":
         first = selected[0]
@@ -256,7 +269,10 @@ def _render_grounded_selection(query: str, payload: dict[str, Any], selected: li
         description = str(first.get("description") or "").strip()
         if description:
             answer += f": {description}"
-        return answer + "."
+        answer += "."
+        if explanation:
+            return f"{explanation} {answer}"
+        return answer
     return None
 
 
@@ -273,7 +289,11 @@ def _record_grounded_answer_metric(
 
 
 async def _compose_grounded_answer(
-    query: str, products: list[dict[str, Any]], tools_service: Any, metric_state: dict[str, Any] | None = None
+    query: str,
+    products: list[dict[str, Any]],
+    tools_service: Any,
+    metric_state: dict[str, Any] | None = None,
+    persona: str = "barista",
 ) -> str:
     """Select with the LLM, then render the customer reply from trusted rows.
 
@@ -296,6 +316,8 @@ async def _compose_grounded_answer(
     contents = (
         f"Customer request: {query}\n\nCandidate products (select only these ids):\n{_candidate_block(menu_products)}"
     )
+    persona_config = PersonaManager.PERSONAS.get(persona, PersonaManager.PERSONAS["barista"])
+    instruction = _GROUNDED_ANSWER_INSTRUCTION_TEMPLATE.format(persona_guidelines=persona_config.system_prompt_addon)
     try:
         async with asyncio.timeout(get_settings().chat.grounded_answer_timeout_seconds):
             response = await tools_service.vertex_ai_service.generate_structured_content(
@@ -303,7 +325,7 @@ async def _compose_grounded_answer(
                 contents=contents,
                 config=types.GenerateContentConfig(
                     temperature=_GROUNDED_ANSWER_TEMPERATURE,
-                    system_instruction=_GROUNDED_ANSWER_INSTRUCTION,
+                    system_instruction=instruction,
                     response_mime_type="application/json",
                     response_schema=_GROUNDED_ANSWER_SCHEMA,
                 ),
@@ -590,7 +612,12 @@ def _record_product_search_result(metric_state: dict[str, Any], result: dict[str
 
 
 async def _ground_product_rag_turn(
-    query: str, metric_state: dict[str, Any], tools_service: Any, *, store_id: int | None = None
+    query: str,
+    metric_state: dict[str, Any],
+    tools_service: Any,
+    *,
+    store_id: int | None = None,
+    persona: str = "barista",
 ) -> str:
     products = _coerce_products(metric_state.get("rag_products"))
     if store_id is not None and not any(_get_field(product, "store_id") == store_id for product in products):
@@ -599,4 +626,4 @@ async def _ground_product_rag_turn(
         fallback_result = await tools_service.search_products_by_vector(query, 3, 0.5, store_id=store_id)
         _record_product_search_result(metric_state, fallback_result, query)
         products = _coerce_products(metric_state.get("rag_products"))
-    return await _compose_grounded_answer(query, products, tools_service, metric_state)
+    return await _compose_grounded_answer(query, products, tools_service, metric_state, persona=persona)

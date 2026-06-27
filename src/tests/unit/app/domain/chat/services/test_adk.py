@@ -23,6 +23,8 @@ from tests.unit.app.domain.chat.services.conftest import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from google.adk.events import Event
+
 pytestmark = pytest.mark.anyio
 
 
@@ -324,7 +326,7 @@ async def test_product_rag_stream_does_not_emit_speculative_model_delta(monkeypa
     events = [
         event
         async for event in runner.stream_request(
-            query="hey", user_id="u1", session_id="sess-direct-rag", persona="enthusiast", tools_service=tools_service
+            query="hey", user_id="u1", session_id="sess-direct-rag", persona="barista", tools_service=tools_service
         )
     ]
 
@@ -383,7 +385,7 @@ async def test_general_conversation_relabels_to_product_rag_after_tool_lookup(mo
             query="something sweet",
             user_id="u1",
             session_id="sess-relabel",
-            persona="enthusiast",
+            persona="barista",
             tools_service=tools_service,
         )
     ]
@@ -442,8 +444,8 @@ async def test_make_response_cache_key_uses_chat_settings_version(mock_driver, m
 
     from hashlib import sha256
 
-    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:enthusiast:latte").hexdigest()
-    assert tools_service.make_response_cache_key("latte", "enthusiast") == f"chat:{expected_digest}"
+    expected_digest = sha256(b"custom-vN:gemini-3.1-flash-lite:barista:latte").hexdigest()
+    assert tools_service.make_response_cache_key("latte", "barista") == f"chat:{expected_digest}"
 
 
 async def test_append_display_history_truncates_to_chat_settings_limit(monkeypatch: Any) -> None:
@@ -454,14 +456,15 @@ async def test_append_display_history_truncates_to_chat_settings_limit(monkeypat
     monkeypatch.setattr(adk_module, "get_settings", lambda: settings)
 
     prior = [{"source": "human" if i % 2 == 0 else "ai", "message": f"m{i}"} for i in range(10)]
-    captured: dict[str, Any] = {}
+    captured_event: Event | None = None
 
-    def update_session_state(session_id: str, state: dict[str, Any]) -> None:
-        captured["state"] = state
+    async def append_event(session: Any, event: Event) -> None:
+        nonlocal captured_event
+        captured_event = event
 
     session_service = SimpleNamespace(
         get_session=AsyncMock(return_value=make_session("sess-trunc", {"display_history": prior})),
-        store=SimpleNamespace(update_session_state=update_session_state),
+        append_event=append_event,
     )
     runner = make_runner(session_service=session_service, persona_manager=make_persona_manager())
 
@@ -473,7 +476,9 @@ async def test_append_display_history_truncates_to_chat_settings_limit(monkeypat
         intent_detected="PRODUCT_RAG",
     )
 
-    history = captured["state"]["display_history"]
+    assert captured_event is not None
+    history = captured_event.actions.state_delta["display_history"]
     assert len(history) == 3
     assert history[-1] == {"source": "ai", "message": "latest answer"}
     assert history[-2] == {"source": "human", "message": "latest question"}
+    assert captured_event.actions.state_delta["intent"] == "PRODUCT_RAG"
