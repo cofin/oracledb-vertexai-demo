@@ -1295,16 +1295,16 @@ wheels = [
 
 [[package]]
 name = "litestar-mcp"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "litestar", extra = ["jwt"] },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/31/289f259947562dd0428487d966d98dee4158ffc3d295c1a4edac1cf8e0cc/litestar_mcp-0.8.0.tar.gz", hash = "sha256:926615e892e95467afcc7e5fc0e3cf1e9e17b604737da2aa2697ab04a44ec7e3", size = 549654, upload-time = "2026-06-24T18:03:11.381Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5d/8c/129ac07d09f6cb8c2f076a4e2411e7c3f43a271b17a89a3d42f1f3daf28d/litestar_mcp-0.9.0.tar.gz", hash = "sha256:8a3afd47ca955cc90f81b9b8c12624174d50c2dbd24302738e764527d0888243", size = 561229, upload-time = "2026-06-29T00:53:31.793Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/c6/4c07e276f64c637b86574a88df66ffb902dac3071f9e0acba2f24504292a/litestar_mcp-0.8.0-py3-none-any.whl", hash = "sha256:caeb3a5c0c98a3d7050d05addb665a259d7c5f2185bfcc3e4d35ae030b25f114", size = 86286, upload-time = "2026-06-24T18:03:10.101Z" },
+    { url = "https://files.pythonhosted.org/packages/34/b2/6944ac862a1294c733c045f1eb2fe90606882dc12e5e120cbfb7d8cf4d57/litestar_mcp-0.9.0-py3-none-any.whl", hash = "sha256:22958d7e4af9ba7c9816693c49d1bc85e76c6d0275a36588459fe194c4500907", size = 91289, upload-time = "2026-06-29T00:53:30.27Z" },
 ]
 
 [[package]]
