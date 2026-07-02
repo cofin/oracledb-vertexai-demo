@@ -1,37 +1,29 @@
 # Project Context Index
 
-Flat index of active project context. Durable knowledge must live in this tree,
-not behind archive links.
+Flat index of active project context. Durable knowledge must live in this tree, not behind archive links.
 
 | Area | Path | Purpose |
 | --- | --- | --- |
-| Product | [product.md](./product.md) | Product definition and demo goals |
-| Product | [product-guidelines.md](./product-guidelines.md) | UX and product guidance |
-| Stack | [tech-stack.md](./tech-stack.md) | Current framework and dependency stack |
-| Workflow | [workflow.md](./workflow.md) | Repo workflow and verification commands |
+| Workflow | [workflow.md](./workflow.md) | Repo workflow, TDD protocol, and verification commands |
 | Flow | [flows.md](./flows.md) | Active Flow registry |
 | Patterns | [patterns.md](./patterns.md) | Living architecture, code, test, and operations patterns |
-| Knowledge | [knowledge/index.md](./knowledge/index.md) | Knowledge-base registry |
-| Knowledge | [knowledge/project-guide.md](./knowledge/project-guide.md) | Cohesive current-state guide synthesized from completed work |
-| Guide | [knowledge/guides/architecture.md](./knowledge/guides/architecture.md) | App architecture and service boundaries |
-| Guide | [knowledge/guides/oracle-vector-search.md](./knowledge/guides/oracle-vector-search.md) | Oracle vector search and HNSW operations |
-| Guide | [knowledge/guides/adk-agent-patterns.md](./knowledge/guides/adk-agent-patterns.md) | ADK Workflow, tools, sessions, and streaming |
+| Knowledge Index | [knowledge/index.md](./knowledge/index.md) | Component guides index |
+| Architecture Guide | [knowledge/guides/architecture.md](./knowledge/guides/architecture.md) | App architecture, source directories, and DI boundaries |
+| Database Guide | [knowledge/guides/oracle-database.md](./knowledge/guides/oracle-database.md) | Oracle 26ai, SQLSpec queries, HNSW, vector memory, and container lifecycle |
+| Agent Guide | [knowledge/guides/adk-agent-patterns.md](./knowledge/guides/adk-agent-patterns.md) | ADK Workflow, tools, session bridge, RAG grounding, and streaming |
+| Store & Maps Guide | [knowledge/guides/store-inventory-maps.md](./knowledge/guides/store-inventory-maps.md) | Nearest-store (Haversine), stock queries, coordinate privacy, and Google Maps |
+| UI & Frontend Guide | [knowledge/guides/frontend-ui.md](./knowledge/guides/frontend-ui.md) | Jinja/HTMX templates, Vite static resources, and client JS widgets |
+| Testing Guide | [knowledge/guides/testing-verification.md](./knowledge/guides/testing-verification.md) | pytest AnyIO conftest, mock boundaries, parallel worker safety, and manual checks |
+| Ops & Packaging Guide | [knowledge/guides/operations-packaging.md](./knowledge/guides/operations-packaging.md) | PyApp onefile, distroless Docker builds, Release CI, and Sphinx docs settings |
+| Settings Guide | [knowledge/guides/settings.md](./knowledge/guides/settings.md) | Dataclass settings structure, environment parsing, and clean settings rule |
 | Code Style | [code-styleguides/general.md](./code-styleguides/general.md) | General style guide |
 | Code Style | [code-styleguides/python.md](./code-styleguides/python.md) | Python style guide |
 | Code Style | [code-styleguides/bash.md](./code-styleguides/bash.md) | Shell style guide |
 | Code Style | [code-styleguides/html-css.md](./code-styleguides/html-css.md) | HTML/CSS style guide |
 | Code Style | [code-styleguides/typescript.md](./code-styleguides/typescript.md) | TypeScript style guide |
 | Skill | [skills/flow-memory-keeper/SKILL.md](./skills/flow-memory-keeper/SKILL.md) | Project-local Flow memory keeper |
-| Setup | [setup-state.json](./setup-state.json) | Flow setup state |
 | Beads | [beads.json](./beads.json) | Beads task database |
+| Active Spec | [specs/apex-ops-console/prd.md](./specs/apex-ops-console/prd.md) | Active APEX operations console plan |
+| Active Spec | [specs/apex-ops-app/spec.md](./specs/apex-ops-app/spec.md) | Active APEX console app implementation plan (Active) |
+| Active Spec | [specs/apex-demo-verification-docs/spec.md](./specs/apex-demo-verification-docs/spec.md) | Active APEX verification and docs plan |
 | Active Spec | [specs/vhs-demo-recordings_20260429/prd.md](./specs/vhs-demo-recordings_20260429/prd.md) | VHS demo recording plan |
-| Active Spec | [specs/settings-config-consolidation_20260501/prd.md](./specs/settings-config-consolidation_20260501/prd.md) | Settings and configuration consolidation plan |
-| Active Spec | [specs/inventory-data/spec.md](./specs/inventory-data/spec.md) | Inventory data foundation |
-| Active Spec | [specs/inventory-grounding/spec.md](./specs/inventory-grounding/spec.md) | Deterministic availability routing (Active) |
-| Active Spec | [specs/inventory-rag/spec.md](./specs/inventory-rag/spec.md) | Inventory-aware RAG |
-| Active Spec | [specs/inventory-ui/spec.md](./specs/inventory-ui/spec.md) | Live inventory dashboard |
-| Active Spec | [specs/oracle-apex-integration/spec.md](./specs/oracle-apex-integration/spec.md) | Oracle APEX and Autonomous container migration |
-
-| Plan | [plans/beautify-ui.md](./plans/beautify-ui.md) | UI cleanup plan |
-| Plan | [plans/camelized.md](./plans/camelized.md) | Naming/camelization notes |
-| Plan | [plans/installation-simplification.md](./plans/installation-simplification.md) | Installation simplification notes |

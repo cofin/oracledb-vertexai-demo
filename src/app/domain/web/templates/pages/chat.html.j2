@@ -36,8 +36,8 @@ SPDX-License-Identifier: Apache-2.0
     <div class="mt-6 space-y-3">
       <p class="text-sm font-medium text-muted">Persona</p>
       <div role="radiogroup" data-persona-picker class="grid grid-cols-2 gap-2 text-sm">
-        {% for value in ["novice", "enthusiast", "expert", "barista"] %}
-          {% set selected = value == "enthusiast" %}
+        {% for value in ["barista", "snob", "scientist", "wellness"] %}
+          {% set selected = value == "barista" %}
           <button type="button" data-persona-option="{{ value }}" aria-pressed="{{ 'true' if selected else 'false' }}"
             class="rounded-lg border px-3 py-2 text-left capitalize transition-colors {% if selected %}border-accent bg-accent-soft text-accent-strong{% else %}border-border bg-surface text-muted hover:text-strong{% endif %}">
             {{ value }}
@@ -93,7 +93,7 @@ SPDX-License-Identifier: Apache-2.0
           class="min-w-0 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-strong placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent-strong">
       </div>
       <div class="flex items-stretch gap-2 rounded-lg border border-border bg-surface p-2">
-        <input type="hidden" name="persona" value="enthusiast" data-persona-input>
+        <input type="hidden" name="persona" value="barista" data-persona-input>
         <input type="hidden" name="location_consent" value="false" data-location-consent>
         <input type="hidden" name="latitude" value="" data-location-latitude>
         <input type="hidden" name="longitude" value="" data-location-longitude>

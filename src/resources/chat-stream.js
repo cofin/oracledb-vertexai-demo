@@ -3,6 +3,7 @@
 
 import { escapeHtml, scrollMessages } from "./util.js"
 import { hideTelemetryPopover, renderMessageTelemetry, renderMetrics } from "./telemetry.js"
+import { triggerBlackBeltRain } from "./easter-egg.js"
 
 const removePendingReply = () => {
   document.getElementById("pending-reply")?.remove()
@@ -287,6 +288,10 @@ const handleChatStreamEvent = ({ eventName, data }) => {
   const payload = JSON.parse(data)
   if (eventName === "delta") {
     appendPendingText(payload.text ?? "")
+    const target = document.getElementById("pending-reply-text")
+    if (target && target.textContent.includes("BLACK_BELT_MODE_ENGAGED")) {
+      triggerBlackBeltRain()
+    }
     return
   }
   if (eventName === "final") {
@@ -354,6 +359,10 @@ export const handleChatSubmit = async (form) => {
   clearChatError()
   appendUserAndPendingMessages(message)
   setFormBusy(form, true)
+
+  if (/make\s*it\s*rain|cyber\s*barista|matrix/i.test(message)) {
+    triggerBlackBeltRain()
+  }
 
   try {
     const response = await fetch(form.action, {

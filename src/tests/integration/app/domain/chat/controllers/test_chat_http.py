@@ -60,9 +60,7 @@ def stub_adk_runner(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def test_stream_returns_sse_events(client: AsyncTestClient) -> None:
-    response = await client.post(
-        "/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "enthusiast"}
-    )
+    response = await client.post("/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "barista"})
 
     assert response.status_code == 200, response.text[:500]
     assert response.headers["content-type"].startswith("text/event-stream")
@@ -87,9 +85,7 @@ async def test_stream_handles_runner_exception_after_response_started(
 
     monkeypatch.setattr(ADKRunner, "stream_request", _broken_stream_request)
 
-    response = await client.post(
-        "/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "enthusiast"}
-    )
+    response = await client.post("/api/chat/stream", data={"message": "recommend an ethiopian", "persona": "barista"})
 
     assert response.status_code == 200, response.text[:500]
     assert "event: delta" in response.text

@@ -34,7 +34,7 @@
   separate `ALTER ... ANNOTATIONS(...)` statements just because local SQL
   parsers lag Oracle syntax.
 - ADK conversation state uses SQLSpec's Oracle ADK extension tables
-  (`adk_sessions`, `adk_events`, optional memory). Litestar browser sessions use
+  (`adk_session`, `adk_event`, optional memory). Litestar browser sessions use
   the separate SQLSpec Litestar session table (`app_session`).
 - Chat uses classifier-first ADK 2 orchestration. `ADKRunner` checks response
   cache, classifies intent, sends `PRODUCT_RAG` turns through direct menu

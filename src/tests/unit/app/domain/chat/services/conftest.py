@@ -28,7 +28,7 @@ def make_session_service(session: MagicMock | None = None) -> MagicMock:
     service = MagicMock()
     service.get_session = AsyncMock(return_value=session)
     service.create_session = AsyncMock(return_value=session)
-    service.store.update_session_state = MagicMock()
+    service.append_event = AsyncMock()
     return service
 
 

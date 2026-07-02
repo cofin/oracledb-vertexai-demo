@@ -11,6 +11,6 @@
 
 ## UI/UX Principles
 - **Responsive Design:** The chat application must function seamlessly across desktop and mobile devices.
-- **Interactive Feedback:** Use React, Vite, and TanStack Router for fluid client-side rendering, providing smooth, fast, and responsive interactions.
+- **Interactive Feedback:** Use HTMX, Vite, and Jinja templates for fluid server-driven interactions, with vanilla JS for client-only widgets.
 - **Clear Actions:** Make it easy for users to start a new chat, view products, or find locations.
 <!-- truth: end -->
