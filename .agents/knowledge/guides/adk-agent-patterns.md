@@ -102,6 +102,8 @@ The Oracle-specific table names and INMEMORY flags live in `DatabaseSettings`:
 }
 ```
 
+Starting with `sqlspec >= 0.52.0`, the Oracle ADK store also supports advanced table options such as `partitioning` (e.g. hash or range strategies) and `compression` (enabled/algorithm options) to optimize storage for high-volume session and event data. These are defined under the same `"adk"` configuration mapping.
+
 Use SQLSpec's ADK store for session persistence instead of an in-memory ADK
 session service in application code.
 
