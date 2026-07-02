@@ -2,8 +2,7 @@
 
 This is the **all-in-one** path: the Oracle 26ai database and the Litestar app
 run together on a single Compute Engine VM — the fastest way to see the demo
-end to end. Want a production-shaped split (Cloud Run + a private GCE Oracle DB
-+ Cloud Build)? Follow the [Cloud Run lab](lab-cloud-run.md) instead.
+end to end. Want a production-shaped split (Cloud Run + a private GCE Oracle DB + Cloud Build)? Follow the [Cloud Run lab](lab-cloud-run.md) instead.
 
 Welcome to the **Cymbal Coffee Hands-on Lab**. In this workshop, you will step-by-step setup, configure, ingest data into, and run a premium next-generation AI-powered coffee recommendation application. For complete background concepts and documentation material, please visit the official [Cymbal Coffee Documentation Site](https://cofin.github.io/oracledb-vertexai-demo/index.html).
 
@@ -13,8 +12,8 @@ The application uses **Oracle Database 26ai** for semantic vector search (`VECTO
 
 ## Prerequisites & Audience Expectations
 
-- **GCP Knowledge**: None\! This lab is designed to be fully beginner-friendly for Google Cloud Platform.
-- **Tools Required**: A web browser and access to a Google Cloud Console account with billing or credits enabled.
++ **GCP Knowledge**: None\! This lab is designed to be fully beginner-friendly for Google Cloud Platform.
++ **Tools Required**: A web browser and access to a Google Cloud Console account with billing or credits enabled.
 
 ---
 
@@ -262,10 +261,10 @@ uv run coffee run
 
 1. In the upper right area of your Google Cloud Shell browser screen, click the **Web Preview** button and select **Preview on port 8080**. A new tab will open displaying the beautiful chat recommendation layout\!
 2. Visit **`http://localhost:8080/explore`** (via the same tunnel web preview) to access the interactive **Oracle Vector Explorer**. This dedicated diagnostic tool allows you to look directly under the hood of Oracle 26ai vector search operations:
-   - **Simulate Raw Vector Queries:** Input any product description or user phrase to test vector matching without running the full LLM multi-agent conversation flow.
-   - **Inspect Exact Query Latencies:** Review exact execution times in milliseconds to observe the high performance of modern enterprise databases processing multi-dimensional vector queries.
-   - **Distance Comparison Strategies:** Visualize calculated vector distance scores (e.g., Cosine or Euclidean distances) between query embeddings and product row metadata.
-   - **Analyze Oracle EXPLAIN PLANS:** Click on query lines to open the raw database `DBMS_XPLAN.DISPLAY` outputs, revealing exact vector search access paths, filter operations, row count evaluations, and HNSW INMEMORY index usage hits.
+   + **Simulate Raw Vector Queries:** Input any product description or user phrase to test vector matching without running the full LLM multi-agent conversation flow.
+   + **Inspect Exact Query Latencies:** Review exact execution times in milliseconds to observe the high performance of modern enterprise databases processing multi-dimensional vector queries.
+   + **Distance Comparison Strategies:** Visualize calculated vector distance scores (e.g., Cosine or Euclidean distances) between query embeddings and product row metadata.
+   + **Analyze Oracle EXPLAIN PLANS:** Click on query lines to open the raw database `DBMS_XPLAN.DISPLAY` outputs, revealing exact vector search access paths, filter operations, row count evaluations, and HNSW INMEMORY index usage hits.
 
 ---
 
@@ -277,21 +276,21 @@ Once the core application is up and running, challenge yourself or your particip
 
 **Objective:** Stream chat logs, user questions, and vector response latencies into a centralized serverless analytics layer for business intelligence and quality monitoring.
 
-- **Step A: Enable the Service & Prepare Dataset** Run these commands in your **Google Cloud Shell** (not inside the VM):
++ **Step A: Enable the Service & Prepare Dataset** Run these commands in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 gcloud services enable bigquery.googleapis.com
 bq mk --dataset --location=us-central1 coffee_analytics
 ```
 
-- **Step B: Create the Target Schema** Run this in your **Google Cloud Shell** (not inside the VM):
++ **Step B: Create the Target Schema** Run this in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 bq mk --table coffee_analytics.chat_logs \
   session_id:STRING,timestamp:TIMESTAMP,user_query:STRING,response_text:STRING,latency_ms:INTEGER
 ```
 
-- **Step C: Grant BigQuery IAM Permissions to the VM** Run this in your **Google Cloud Shell** (not inside the VM):
++ **Step C: Grant BigQuery IAM Permissions to the VM** Run this in your **Google Cloud Shell** (not inside the VM):
 
 ```shell
 PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
@@ -300,14 +299,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
   --role="roles/bigquery.dataEditor"
 ```
 
-- **Step D: Dependency Management** Now, switch to the terminal where you are connected to the **VM** (or reconnect via SSH). Move to the application directory and add the official Google Cloud BigQuery client library into the application runtime:
++ **Step D: Dependency Management** Now, switch to the terminal where you are connected to the **VM** (or reconnect via SSH). Move to the application directory and add the official Google Cloud BigQuery client library into the application runtime:
 
 ```shell
 cd oracledb-vertexai-demo/
 uv add google-cloud-bigquery
 ```
 
-- **Step E: Extend the Chat Controller Layer (Full File Drop-in Replacement)** Open the streaming endpoint controller file located at `src/app/domain/chat/controllers/_chat.py`. To eliminate any risk of alignment or Python indentation hierarchy errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
++ **Step E: Extend the Chat Controller Layer (Full File Drop-in Replacement)** Open the streaming endpoint controller file located at `src/app/domain/chat/controllers/_chat.py`. To eliminate any risk of alignment or Python indentation hierarchy errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
 
 ```py
 # SPDX-FileCopyrightText: 2026 Google LLC
@@ -446,21 +445,21 @@ uv run coffee run
 
 **Objective:** Enrich the frontend UI by embedding a dynamic visual map whenever a customer asks for location details or nearby physical stores.
 
-- **Step A: Provision a Restricted Maps API Key** Since this is the first time Google Maps is used in this Cloud project, Google requires a one-time interactive initialization of the Maps workspace in the browser — to finish linking it to your billing account — before a key can be created:
++ **Step A: Provision a Restricted Maps API Key** Since this is the first time Google Maps is used in this Cloud project, Google requires a one-time interactive initialization of the Maps workspace in the browser — to finish linking it to your billing account — before a key can be created:
 
   1. On the **Google Maps Platform / Overview** welcome page that appears, click the large blue **"Enable APIs"** button. This completes the onboarding setup and unlocks the full left-hand menu.
   2. Then, in the left sidebar (or under **APIs & Services**), navigate to **Keys & Credentials** (or **Credentials**).
   3. At the top, click **Create Credentials** -> **API Key**.
   4. *Best Practice:* In the pop-up, click **Restrict Key** and, under *API Restrictions*, select exactly the **Maps Embed API** from the dropdown to lock the key down securely.
 
-- **Step B: Configuration Setup** Open your `.env` file inside the VM and wire up the specialized configuration keys to let the backend framework detect the key:
++ **Step B: Configuration Setup** Open your `.env` file inside the VM and wire up the specialized configuration keys to let the backend framework detect the key:
 
 ```ini
 MAPS_ENABLE_EMBED=true
 GOOGLE_MAPS_EMBED_API_KEY=your_newly_created_restricted_key_here
 ```
 
-- **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller routes. Both the chat and explore pages extend the same `base.html.j2`, so both routes must provide `settings`.
++ **Step C: Expose Settings to the Template Context & Frontend DOM (Full File Drop-in Replacement)** By default, the application template renderer doesn't inject backend config settings globally. You must pass them into the context via the page controller routes. Both the chat and explore pages extend the same `base.html.j2`, so both routes must provide `settings`.
 
   1. Open `src/app/domain/web/controllers/_pages.py`. To eliminate any risk of Python alignment or indentation errors, select all text inside the file and replace its entire contents with this complete updated drop-in file code:
 
@@ -516,7 +515,7 @@ class PageController(Controller):
       class="app-shell font-sans text-strong antialiased">
 ```
 
-- **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/chat-stream.js`** (the chat UI is split into ES modules, so `renderStoreCard` lives here — not in `main.js`). Locate the `renderStoreCard(row, mapActions)` function (around line 118).
++ **Step D: Inject the Google Maps Iframe in the JavaScript Card Template** Open the frontend source file located at **`src/resources/chat-stream.js`** (the chat UI is split into ES modules, so `renderStoreCard` lives here — not in `main.js`). Locate the `renderStoreCard(row, mapActions)` function (around line 118).
 
   Replace the function with this version, which reads the Maps datasets from the `<body>` element and inserts the Google Maps Embed iframe into the existing store card (the "Open in Google Maps" and "Get directions" links are preserved):
 
@@ -598,7 +597,7 @@ const renderStoreCard = (row, mapActions) => {
 }
 ```
 
-- **Step E: Rebuild Assets and Refresh App Server** Since you modified a frontend source asset file (`chat-stream.js`), you **must** compile it so that Vite builds the final production script bundle:
++ **Step E: Rebuild Assets and Refresh App Server** Since you modified a frontend source asset file (`chat-stream.js`), you **must** compile it so that Vite builds the final production script bundle:
 
 ```shell
 uv run python manage.py assets build
