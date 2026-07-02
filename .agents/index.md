@@ -27,4 +27,3 @@ Flat index of active project context. Durable knowledge must live in this tree, 
 | Active Spec | [specs/apex-ops-app/spec.md](./specs/apex-ops-app/spec.md) | Active APEX console app implementation plan (Active) |
 | Active Spec | [specs/apex-demo-verification-docs/spec.md](./specs/apex-demo-verification-docs/spec.md) | Active APEX verification and docs plan |
 | Active Spec | [specs/vhs-demo-recordings_20260429/prd.md](./specs/vhs-demo-recordings_20260429/prd.md) | VHS demo recording plan |
-

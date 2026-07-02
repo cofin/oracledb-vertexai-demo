@@ -38,7 +38,7 @@ repos:
           - tomli
         exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/)
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.22.1
+    rev: v0.23.0
     hooks:
       - id: markdownlint-cli2
         exclude: ^(\.agents/|docs/_build/|node_modules/|tools/oracle/downloads/)
