@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+#
+# LAB ONLY deploy pipeline for the Cloud Run + private-VPC lab.
+# Trigger:
+#   gcloud builds submit \
+#     --config tools/deploy/gcp/cloudbuild.yaml \
+#     --region=us-central1 \
+#     --substitutions=_PROJECT=$PROJECT_ID,_REGION=us-central1
+# The private pool is pinned via options.pool below; this SUPERSEDES the
+# PRD's `--worker-pool=coffee-build-pool` CLI form (prd.md:130) — do not pass
+# both. `--region` is required so the build runs in the pool's region.
+
+substitutions:
+  _PROJECT: ""            # learner project id (required via --substitutions)
+  _REGION: "us-central1"
+  _SERVICE: "coffee-app"
+  _AR: "coffee-artifacts"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  pool:
+    name: "projects/${_PROJECT}/locations/${_REGION}/workerPools/coffee-build-pool"
+
+# Map the application DB password and system DB password secrets to environment variables.
+availableSecrets:
+  secretManager:
+    - versionName: "projects/${_PROJECT}/secrets/coffee-db-password/versions/latest"
+      env: "DATABASE_PASSWORD"
+    - versionName: "projects/${_PROJECT}/secrets/coffee-db-system-password/versions/latest"
+      env: "DATABASE_SYSTEM_PASSWORD"
+
+images:
+  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:latest"
+
+steps:
+  - id: "build"
+    name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:latest"
+      - "--file"
+      - "tools/deploy/docker/Dockerfile"
+      - "."
+
+  - id: "push-sha"
+    name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+
+  - id: "push-latest"
+    name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:latest"
+
+  # Migrate the PRIVATE DB through the peered pool. The built image has
+  # ENTRYPOINT ["/usr/local/bin/tini", "--", "coffee"] (tools/deploy/docker/Dockerfile:85), so
+  # args:["upgrade"] runs `coffee upgrade` = migrate + load committed-embedding
+  # fixtures. NO Vertex is needed here. DB password comes from secretEnv.
+  - id: "migrate"
+    name: "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+    entrypoint: ""        # use the image ENTRYPOINT (coffee)
+    args: ["upgrade"]
+    env:
+      - "DATABASE_HOST=10.10.0.10"
+      - "DATABASE_PORT=1521"
+      - "DATABASE_SERVICE_NAME=freepdb1"
+      - "DATABASE_USER=app"
+    secretEnv:
+      - "DATABASE_PASSWORD"
+
+  # Configure APEX CDN in the DB using the SYSDBA CLI command.
+  - id: "configure-apex"
+    name: "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+    entrypoint: ""        # use the image ENTRYPOINT (coffee)
+    args: ["configure-apex-cdn"]
+    env:
+      - "DATABASE_HOST=10.10.0.10"
+      - "DATABASE_PORT=1521"
+      - "DATABASE_SERVICE_NAME=freepdb1"
+    secretEnv:
+      - "DATABASE_SYSTEM_PASSWORD"
+
+  # Deploy ORDS Cloud Run service peered to VPC.
+  - id: "deploy-ords"
+    name: "gcr.io/cloud-builders/gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "coffee-ords"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/ords:26.1.2"
+      - "--project"
+      - "${_PROJECT}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--port"
+      - "8080"
+      - "--execution-environment"
+      - "gen2"
+      - "--service-account"
+      - "coffee-ords-sa@${_PROJECT}.iam.gserviceaccount.com"
+      - "--network"
+      - "coffee-vpc"
+      - "--subnet"
+      - "coffee-run-subnet"
+      - "--vpc-egress"
+      - "private-ranges-only"
+      - "--allow-unauthenticated"
+      - "--set-env-vars"
+      - "DBHOST=10.10.0.10,DBPORT=1521,DBSERVICENAME=freepdb1"
+      - "--set-secrets"
+      - "ORACLE_PWD=coffee-db-system-password:latest"
+
+  - id: "deploy"
+    name: "gcr.io/cloud-builders/gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
+      - "--project"
+      - "${_PROJECT}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--port"
+      - "8080"
+      - "--execution-environment"
+      - "gen2"
+      - "--service-account"
+      - "coffee-run-sa@${_PROJECT}.iam.gserviceaccount.com"
+      - "--network"
+      - "coffee-vpc"
+      - "--subnet"
+      - "coffee-run-subnet"
+      - "--vpc-egress"
+      - "private-ranges-only"
+      - "--allow-unauthenticated"

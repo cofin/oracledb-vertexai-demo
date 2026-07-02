@@ -10,6 +10,7 @@ small command-local helpers live here with their commands.
 
 from __future__ import annotations
 
+import os
 from typing import Any, cast
 
 import rich_click as click
@@ -20,6 +21,7 @@ from rich.prompt import Prompt
 from sqlspec.migrations.commands import create_migration_commands
 
 import app.config as app_config
+from app.cli._helpers import configure_apex_cdn_helper
 from app.cli._helpers.embeddings import generate_product_embeddings
 from app.cli._helpers.fixtures import (
     display_available_tables,
@@ -65,7 +67,11 @@ async def _clear_application_cache(force: bool, cache_service: CacheService) -> 
 
 
 def _create_run_command() -> click.Command:
-    """Build the ``run`` command by copying granian's params and wrapping its callback."""
+    """Build the ``run`` command by copying granian's params and wrapping its callback.
+
+    Mutates the copied '--port' option default to look up the Cloud Run PORT
+    environment variable before falling back to the standard default.
+    """
     original_command = litestar_run_command
 
     @click.pass_context  # type: ignore[arg-type]
@@ -80,7 +86,18 @@ def _create_run_command() -> click.Command:
             original_command.callback(app=env.app, ctx=ctx, **kwargs)
 
     new_command = click.command(name="run", help=original_command.help)(wrapped_run)
-    new_command.params = original_command.params.copy()
+    import copy
+
+    new_params: list[click.Parameter] = []
+    for param in original_command.params:
+        if isinstance(param, click.Option) and "--port" in param.opts:
+            param_copy = copy.copy(param)
+            granian_default = param_copy.default
+            param_copy.default = lambda _d=granian_default: int(os.getenv("PORT") or _d)
+            new_params.append(param_copy)
+        else:
+            new_params.append(param)
+    new_command.params = new_params
     return new_command
 
 
@@ -189,6 +206,17 @@ async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_com
         return
 
     await export_fixture_data(tables, output_dir, no_compress)
+
+
+@cli.command(name="configure-apex-cdn", help="Run APEX CDN configuration against the database as SYSDBA.")
+def configure_apex_cmd() -> None:
+    """Run APEX CDN configuration against the database as SYSDBA."""
+    system_password = os.getenv("DATABASE_SYSTEM_PASSWORD")
+    if not system_password:
+        msg = "DATABASE_SYSTEM_PASSWORD environment variable is not set"
+        raise click.ClickException(msg)
+
+    configure_apex_cdn_helper(system_password)
 
 
 cli.add_command(_create_run_command())

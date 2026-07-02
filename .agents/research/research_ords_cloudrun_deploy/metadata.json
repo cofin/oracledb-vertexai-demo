@@ -1,0 +1,10 @@
+{
+  "research_id": "research_ords_cloudrun_deploy",
+  "topic": "Deploying ORDS on Cloud Run, scalability, connection pooling, and APEX static asset serving.",
+  "type": "Integration/New Feature",
+  "status": "complete",
+  "created_at": "2026-06-24T20:02:30Z",
+  "libraries_researched": ["ORDS 26.1"],
+  "files_analyzed": ["tools/oracle/ords.py", "tools/oracle/apex_install.py"],
+  "linked_prd": null
+}
