@@ -1,6 +1,6 @@
 # Initial Concept
 
-An intelligent coffee recommendation system showcasing Oracle 23ai vector search with Google Vertex AI integration.
+An intelligent coffee recommendation system showcasing Oracle 26ai vector search with Google Vertex AI integration.
 
 <!-- truth: start -->
 ## Core Product Definition

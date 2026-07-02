@@ -187,9 +187,10 @@ All tasks follow a strict lifecycle:
 
 1. **Capture** - After each task, append learnings to flow's `learnings.md`
 2. **Elevate** - At phase/flow completion, move reusable patterns to `.agents/patterns.md`
-3. **Synthesize** - During sync and archive, integrate learnings directly into cohesive, logically organized knowledge base chapters in `.agents/knowledge/` (for example, `project-guide.md`, `guides/architecture.md`, or `guides/oracle-vector-search.md`). Update the current state, do NOT outline history.
-4. **Unlink archive** - Treat `.agents/archive/` as ignored, disposable local history. Do not leave active docs, guides, indexes, specs, or workflow instructions that require readers to follow links into archive content. If archive content still matters, fold it into `.agents/knowledge/` or `.agents/patterns.md` first.
-5. **Inherit** - New flows read `patterns.md` + scan `.agents/knowledge/` chapters.
+3. **Synthesize** - During sync and archive, integrate learnings directly into cohesive, logically organized component chapters in `.agents/knowledge/guides/` (e.g., `architecture.md`, `oracle-database.md`, `adk-agent-patterns.md`, `store-inventory-maps.md`, `frontend-ui.md`, `testing-verification.md`, `operations-packaging.md`, `settings.md`). Update the current state, do NOT outline history.
+4. **Archive Research** - If a completed flow has a corresponding research directory under `.agents/research/`, it must be archived *with* the spec. Move the research directory into the archived flow directory (e.g., `.agents/archive/{flow_id}/research/`) before closing the epic.
+5. **Unlink archive** - Treat `.agents/archive/` as ignored, disposable local history. Do not leave active docs, guides, indexes, specs, or workflow instructions that require readers to follow links into archive content. If archive content still matters, fold it into `.agents/knowledge/` or `.agents/patterns.md` first.
+6. **Inherit** - New flows read `patterns.md` + scan `.agents/knowledge/` chapters.
 
 Repeated user corrections or frustration are high-signal learning triggers. Do not leave them buried in chat history; turn them into explicit patterns or knowledge updates.
 Validated repo-native commands are also high-signal learnings. If the project already has a canonical `make lint`, `make test`, `make check`, `just check`, `task test`, or equivalent wrapper, preserve it in this workflow and elevate it when needed.

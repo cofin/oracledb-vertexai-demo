@@ -49,10 +49,10 @@ class CoffeeChatController(Controller):
         """Validate persona input.
 
         Returns:
-            The requested persona or the default enthusiast persona.
+            The requested persona or the default barista persona.
         """
-        if persona not in {"novice", "enthusiast", "expert", "barista"}:
-            return "enthusiast"
+        if persona not in {"barista", "snob", "scientist", "wellness"}:
+            return "barista"
         return persona
 
     # docs:start-stream-handler

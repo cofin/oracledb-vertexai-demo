@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast, get_type_hints
+from typing import TYPE_CHECKING, Any, cast, get_type_hints
 
 import rich_click as click
 from dishka import Scope
@@ -17,11 +17,8 @@ if TYPE_CHECKING:
 
     from dishka import AsyncContainer
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
-
-def async_inject(func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
+def async_inject[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
     """Wrap an async click command so its annotated dependencies are injected.
 
     Resolves the container factory from ``ctx.obj["container_factory"]`` when

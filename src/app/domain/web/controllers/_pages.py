@@ -8,9 +8,11 @@ their data (e.g. ``app.domain.chat.controllers``,
 ``app.domain.products.controllers``).
 """
 
+from typing import Annotated
+
 import structlog
 from litestar import Controller, get
-from litestar.params import FromQuery
+from litestar.params import QueryParameter
 from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
 
 from app.domain.chat.services import ADKRunner
@@ -31,10 +33,17 @@ class PageController(Controller):
         return HTMXTemplate(template_name="pages/chat.html.j2", context={"history_messages": history_messages})
 
     @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self, stores_service: Inject[StoreService], q: FromQuery[str | None] = None) -> HTMXTemplate:
+    async def explore_page(
+        self,
+        stores_service: Inject[StoreService],
+        search_query: Annotated[str | None, QueryParameter(name="query")] = None,
+    ) -> HTMXTemplate:
+
         try:
             stores = await stores_service.get_all_stores()
         except Exception as exc:  # noqa: BLE001
             await logger.awarning("Store inventory selector unavailable", error_type=type(exc).__name__)
             stores = []
-        return HTMXTemplate(template_name="pages/explore.html.j2", context={"query": q or "", "stores": stores})
+        return HTMXTemplate(
+            template_name="pages/explore.html.j2", context={"query": search_query or "", "stores": stores}
+        )

@@ -62,8 +62,8 @@ async def test_htmx_returns_partial_and_pushes_url() -> None:
     assert isinstance(response, HTMXTemplate)
     assert response.template_name == "partials/explore_search_response.html.j2"
     # HTMXTemplate(push_url=...) writes HX-Push-Url at construction time —
-    # the browser uses that header to capture /explore?q=... in history.
-    assert response.headers["HX-Push-Url"] == "/explore?q=dark%20roast"
+    # the browser uses that header to capture /explore?query=... in history.
+    assert response.headers["HX-Push-Url"] == "/explore?query=dark%20roast"
     mock_vector_search.explain_search_plan.assert_awaited_once_with("dark roast")
 
 
@@ -118,7 +118,7 @@ async def test_htmx_vector_search_route_through_test_client(
     response = await htmx_client.post("/api/vector-demo", data={"query": "dark roast"})
 
     assert response.status_code == 200, response.text[:500]
-    assert response.headers["HX-Push-Url"] == "/explore?q=dark%20roast"
+    assert response.headers["HX-Push-Url"] == "/explore?query=dark%20roast"
     assert "Cold Brew" in response.text
     assert 'id="plan" hx-swap-oob="outerHTML"' in response.text
     assert "TABLE ACCESS BY VECTOR" in response.text

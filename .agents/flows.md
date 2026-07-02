@@ -70,37 +70,22 @@ CLI config writes with clean Antigravity config paths.
 
 ---
 
-## [ ] PRD: adk2-sqlspec-migration
-*Link: [./specs/adk2-sqlspec-migration/](./specs/adk2-sqlspec-migration/)*
-*Beads: oracledb-vertexai-6uc (master epic)*
-*Upstream: [litestar-org/sqlspec#525](https://github.com/litestar-org/sqlspec/pull/525)*
-
-Migrate Cymbal Coffee to SQLSpec's ADK 2 store contract using the open SQLSpec
-branch while it is unmerged, and update the default chat/classifier model to
-`gemini-3.1-flash-lite`.
-
-### Chapters
-- [ ] **Chapter 1: Dependency source (`adk2-dependency-source`)** — draft
-  *Beads: oracledb-vertexai-6uc.1*
-- [ ] **Chapter 2: Store contract (`adk2-store-contract`)** — draft
-  *Beads: oracledb-vertexai-6uc.3*
-- [ ] **Chapter 3: Gemini 3.1 Flash-Lite default (`gemini31-flash-lite-default`)** — draft
-  *Beads: oracledb-vertexai-6uc.4*
-- [ ] **Chapter 4: Oracle verification + release cleanup (`adk2-oracle-verification-release-cleanup`)** — draft
-  *Beads: oracledb-vertexai-6uc.2*
-
----
 
 
 ## [ ] PRD: vhs-demo-recordings_20260429
 *Link: [./specs/vhs-demo-recordings_20260429/](./specs/vhs-demo-recordings_20260429/)*
 *Beads: not created - review gate before implementation*
 
+---
+
+
+
 ## Archived
 
 Archived specs are disposable local history and may be ignored or removed from
 the repository. Durable learnings belong in `.agents/knowledge/` and
 `.agents/patterns.md`; do not point active Flow guidance at archive paths.
+- `fix-explore-search-ux` (`oracledb-vertexai-demo-oql`) completed and archived locally on 2026-06-26. It resolved the explore page search usability issues by aligning query parameters to `query` and handling form submission in HTMX. Chapters: `explore-route-param`, `vector-push-url`, `explore-frontend-submit`.
 - `cloudrun-ords-deploy` (`oracledb-vertexai-ords`) completed and archived locally on 2026-06-24. All four chapters are closed in Beads: `ords-image-prep` (`oracledb-vertexai-ords.2`), `ords-terraform` (`oracledb-vertexai-ords.3`), `ords-pipeline` (`oracledb-vertexai-ords.4`), and `ords-lab-walkthrough` (`oracledb-vertexai-ords.5`). Deploying ORDS to Cloud Run enables REST APIs against the private GCE database VM. Documentation walkthrough is updated.
 - `demo-source-organization_20260501` (`oracledb-vertexai-8jt`) completed and
   archived locally on 2026-05-02.
@@ -195,3 +180,7 @@ the repository. Durable learnings belong in `.agents/knowledge/` and
   and its remaining smoke/docs/final verification deferred to
   `apex-demo-verification-docs` (`oracledb-vertexai-apxo.6`). Durable
   APEX/ORDS/APEXlang guidance lives in `.agents/patterns.md`.
+- `adk2-sqlspec-migration` (`oracledb-vertexai-6uc`) completed and archived
+  locally on 2026-06-24. Shipped SQLSpec ADK 2.0 store contract integration
+  (singular table names, append_event history) and bumped default model to
+  `gemini-3.1-flash-lite`. Link: [./archive/adk2-sqlspec-migration/](./archive/adk2-sqlspec-migration/)

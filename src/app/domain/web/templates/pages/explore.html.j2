@@ -11,8 +11,9 @@ SPDX-License-Identifier: Apache-2.0
 {% block page_subheading %}Vector search, SQL plans, and telemetry{% endblock %}
 
 {% block content %}
-{% set search_trigger = "load, keyup changed delay:300ms" if query else "keyup changed delay:300ms" %}
+{% set search_trigger = "submit, load, keyup changed delay:300ms" if query else "submit, keyup changed delay:300ms" %}
 <section class="space-y-6">
+
   <header class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
     <h1 class="text-xl font-semibold text-strong">Vector explore</h1>
     <p class="max-w-full text-xs text-muted sm:text-right">Live Oracle 26ai + Vertex AI instrumentation</p>

@@ -34,7 +34,7 @@
   separate `ALTER ... ANNOTATIONS(...)` statements just because local SQL
   parsers lag Oracle syntax.
 - ADK conversation state uses SQLSpec's Oracle ADK extension tables
-  (`adk_sessions`, `adk_events`, optional memory). Litestar browser sessions use
+  (`adk_session`, `adk_event`, optional memory). Litestar browser sessions use
   the separate SQLSpec Litestar session table (`app_session`).
 - Chat uses classifier-first ADK 2 orchestration. `ADKRunner` checks response
   cache, classifies intent, sends `PRODUCT_RAG` turns through direct menu
@@ -103,6 +103,7 @@
 - Oracle CDN for APEX Assets: Set `IMAGE_PREFIX` to Oracle's public APEX CDN (`https://apex.oracle.com/i/` or version-specific URL) via database script. This keeps the ORDS container stateless and avoids the need for mounting static asset directories or using Cloud Storage FUSE. (derived from cloudrun-ords-deploy)
 - Image Re-hosting for Private Deployments: When deploying to Cloud Run in restricted environments where external registry authentication is unavailable or unreliable at deployment time, re-host official images (like `container-registry.oracle.com/database/ords:<version>`) in GCP Artifact Registry. (derived from cloudrun-ords-deploy)
 - AutoREST Table Enablement: Utilize Oracle ORDS `AutoREST` capability to expose database tables (e.g., `PRODUCTS`) as REST endpoints directly via SQLSpec migrations or startup scripts using simple PL/SQL calls (`ORDS.enable_object`), providing a zero-code private data access path. (derived from cloudrun-ords-deploy)
+- Naming a query parameter argument `query` in a Litestar controller action (e.g., `def handler(query: FromQuery[str])`) causes Litestar to pass the entire query parameters `MultiDict` to it. Use a different Python argument name (e.g., `search_query`) and map it explicitly using `QueryParameter(name="query")` to avoid this. (derived from fix-explore-search-ux)
 
 
 ## Code Style
@@ -289,4 +290,6 @@
   sanitized SSE `error` event. Do not rely on Litestar exception middleware
   for failures that occur after SSE headers have been sent — it cannot
   intercept post-start stream errors.
+- If `make lint` fails with `frontend-typecheck` due to missing `tsc` (TypeScript compiler), ensure frontend assets are installed in `src/resources/` by running `uv run python manage.py assets install` first. (derived from fix-explore-search-ux)
+- When committing `uv.lock`, ensure it has been resolved using the public PyPI index (e.g., by running with `UV_CONFIG_FILE=/dev/null` and `--default-index https://pypi.org/simple` if your workstation configures a Google-internal repository like `us-python.pkg.dev`), otherwise public CI builds will fail with 401 Unauthorized errors. (derived from fix-explore-search-ux)
 <!-- truth: end -->

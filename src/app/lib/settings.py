@@ -206,9 +206,6 @@ class DatabaseSettings:
             },
             extension_config={
                 "adk": {
-                    "session_table": "adk_sessions",
-                    "events_table": "adk_events",
-                    "memory_table": "adk_memory_entries",
                     "enable_memory": self.ADK_ENABLE_MEMORY,
                     "include_memory_migration": self.ADK_ENABLE_MEMORY,
                     "in_memory": self.ADK_IN_MEMORY,
