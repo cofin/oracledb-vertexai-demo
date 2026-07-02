@@ -60,7 +60,7 @@ export function triggerBlackBeltRain() {
   const fontSize = 16;
   const columns = Math.floor(canvas.width / fontSize) + 1;
   const drops = Array(columns).fill(1);
-  
+
   // Track active words falling in columns to draw cohesive vertical names
   const activeColumns = Array(columns).fill(null).map(() => {
     if (Math.random() > 0.85) {
