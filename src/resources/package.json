@@ -13,7 +13,7 @@
     "htmx.org": "2.0.10"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.2",
+    "@tailwindcss/vite": "4.3.3",
     "litestar-vite-plugin": "0.25.0",
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3",
