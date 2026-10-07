@@ -207,7 +207,6 @@ class DatabaseSettings:
             extension_config={
                 "adk": {
                     "enable_memory": self.ADK_ENABLE_MEMORY,
-                    "include_memory_migration": self.ADK_ENABLE_MEMORY,
                     "in_memory": self.ADK_IN_MEMORY,
                 },
                 "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},

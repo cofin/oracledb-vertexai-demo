@@ -32,7 +32,6 @@ def test_oracle_adk_and_litestar_session_in_memory_wire_to_sqlspec_config(
     config = DatabaseSettings().create_config()
 
     assert config.extension_config["adk"]["in_memory"] is True
-    assert config.extension_config["adk"]["include_memory_migration"] is False
     assert "memory_table" not in config.extension_config["adk"]
     assert "session_table" not in config.extension_config["adk"]
     assert "events_table" not in config.extension_config["adk"]

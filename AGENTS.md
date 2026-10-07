@@ -25,19 +25,17 @@ store-aware chat planning for locations, inventory, and maps.
 
 ## Project Context
 
-The active agent context lives under `.agents/`:
+The active agent context lives under `.agents/bundles/`:
 
-- [Project context index](.agents/index.md)
-- [Workflow](.agents/workflow.md)
-- [Patterns](.agents/patterns.md)
-- [Project knowledge guide](.agents/knowledge/project-guide.md)
-- [Architecture guide](.agents/knowledge/guides/architecture.md)
-- [Oracle vector search guide](.agents/knowledge/guides/oracle-vector-search.md)
-- [ADK agent guide](.agents/knowledge/guides/adk-agent-patterns.md)
+- [Bundle index](.agents/bundles/index.md)
+- [Workflow](.agents/bundles/knowledge/workflow.md)
+- [Patterns index](.agents/bundles/knowledge/patterns/index.md)
+- [Architecture guide](.agents/bundles/knowledge/guides/architecture.md)
+- [Oracle database guide](.agents/bundles/knowledge/guides/oracle-database.md)
+- [ADK agent guide](.agents/bundles/knowledge/guides/adk-agent-patterns.md)
+- [Store, inventory & maps guide](.agents/bundles/knowledge/guides/store-inventory-maps.md)
 
-Durable lessons must live in `.agents/knowledge/`, `.agents/patterns.md`, or
-`.agents/workflow.md`. `.agents/archive/` is ignored disposable history; do not
-link readers there as required context.
+Durable lessons must live in `.agents/bundles/knowledge/` or `.agents/bundles/knowledge/patterns/`.
 
 ## Development Commands
 
@@ -235,7 +233,7 @@ before database work but Litestar still resolves DI parameters.
 
 ## Workflow
 
-Use Beads/Flow state as the task source of truth. Read the relevant
-`.agents/specs/<flow>/spec.md`, update `learnings.md` when a durable lesson is
-found, and keep `.agents/patterns.md` current when the convention should survive
+Use Flow OKF bundle state under `.agents/bundles/` as the task source of truth. Read the relevant
+`.agents/bundles/specs/<flow>/spec.md` and authoritative worksheets under `tasks/`, update `learnings.md` when a durable lesson is
+found, and keep `.agents/bundles/knowledge/patterns/` current when the convention should survive
 the task.

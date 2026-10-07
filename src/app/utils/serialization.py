@@ -10,10 +10,10 @@ from sqlspec.utils.serializers import (
     from_json,
     numpy_array_dec_hook,
     numpy_array_enc_hook,
-    numpy_array_predicate,
     schema_dump,
     to_json,
 )
+from sqlspec.utils.serializers._numpy import numpy_array_predicate
 
 __all__ = (
     "from_json",
