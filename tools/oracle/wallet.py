@@ -470,7 +470,7 @@ class WalletConfigurator:
         try:
             self._test_wallet_query(service_name=service_name, username=username, password=password)
             return True
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             self.console.print(f"[red]✗ Connection test failed: {e}[/red]")
             return False
         finally:

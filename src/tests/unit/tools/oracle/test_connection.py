@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     import pytest
 
-DEMO_PASSWORD = "SuperSecret1"  # noqa: S105
+DEMO_PASSWORD = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 
 _CONNECTION_ENV_KEYS = (
     "DATABASE_URL",

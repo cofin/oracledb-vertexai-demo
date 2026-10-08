@@ -39,16 +39,23 @@ class ApplicationCore(InitPluginProtocol):
         app_config.middleware.append(config.session_config.middleware)
         app_config.template_config = config.template
 
-        app_config.plugins.extend([
+        app_plugins = [
             plugins.granian,
             plugins.db,
             plugins.structlog,
             plugins.problem_details,
+            plugins.security,
             plugins.vite,
             plugins.htmx,
             plugins.flash,
-            plugins.domain,
-        ])
+            plugins.autowire,
+            plugins.mcp,
+            plugins.a2a,
+        ]
+
+        if settings.otel.ENABLED:
+            app_plugins.append(plugins.opentelemetry)
+        app_config.plugins.extend(app_plugins)
 
         app_config.openapi_config = OpenAPIConfig(
             title=settings.app.NAME,
@@ -59,7 +66,7 @@ class ApplicationCore(InitPluginProtocol):
 
         from sqlspec.adapters.oracledb import OracleAsyncDriver
 
-        from app.domain.chat.services import ADKRunner
+        from app.domain.ai.services import AgentOrchestrationService
         from app.domain.products.services import OracleVectorSearchService, ProductService
         from app.domain.system.services import CacheService, MetricsService
 
@@ -69,7 +76,7 @@ class ApplicationCore(InitPluginProtocol):
             "CacheService": CacheService,
             "MetricsService": MetricsService,
             "OracleVectorSearchService": OracleVectorSearchService,
-            "ADKRunner": ADKRunner,
+            "AgentOrchestrationService": AgentOrchestrationService,
         })
 
         return app_config

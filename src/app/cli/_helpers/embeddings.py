@@ -91,7 +91,7 @@ async def process_product_batch(
                     success_count=success_count,
                     error_count=error_count,
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 error_count += 1
                 logger.warning("Failed to process product", product_id=product_id, error=str(e))
 

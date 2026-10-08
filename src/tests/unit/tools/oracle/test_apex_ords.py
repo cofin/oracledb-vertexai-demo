@@ -80,7 +80,7 @@ def test_from_env_uses_oracle_password_for_install(monkeypatch: pytest.MonkeyPat
 
     config = OrdsConfig.from_env()
 
-    assert config.oracle_pwd == "sys-secret"  # noqa: S105
+    assert config.oracle_pwd == "sys-secret"  # ruff: ignore[hardcoded-password-string]
     joined = " ".join(OrdsSidecar(MagicMock(spec=ContainerRuntime), config)._build_run_command())
     assert "ORACLE_PWD=sys-secret" in joined
     assert "app-secret" not in joined

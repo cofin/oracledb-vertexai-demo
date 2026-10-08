@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from litestar import Litestar
 
@@ -26,7 +26,7 @@ def create_app() -> Litestar:
     container = make_container(LitestarProvider())
 
     @asynccontextmanager
-    async def dishka_lifespan(app: Litestar) -> AsyncIterator[None]:
+    async def dishka_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
         try:
             yield
         finally:

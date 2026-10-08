@@ -63,6 +63,6 @@ async def _resolve_dependencies(
             continue
         try:
             injected[name] = await container.get(type_hint)
-        except Exception:  # noqa: BLE001, S112
+        except Exception:  # ruff: ignore[try-except-continue]
             continue
     return injected

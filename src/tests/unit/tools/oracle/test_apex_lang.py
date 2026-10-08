@@ -16,7 +16,7 @@ from tools.oracle.sqlcl_installer import SQLclCapabilityStatus
 if TYPE_CHECKING:
     from pathlib import Path
 
-TEST_PASSWORD = "SuperSecret1"  # noqa: S105
+TEST_PASSWORD = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 
 
 def _capable_status() -> SQLclCapabilityStatus:

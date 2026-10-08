@@ -36,10 +36,12 @@ REQUEST_BODY_FIELD: Literal["body"] = "body"
 settings = get_settings()
 
 
-# This is so that it shows up properly in the Litestar UI. Instead of reading
-# `middleware_factory`, we use a name that makes sense.
-def StructlogMiddleware(app: ASGIApp) -> ASGIApp:  # noqa: N802
-    """Middleware to ensure that every request has a clean structlog context."""
+def StructlogMiddleware(app: ASGIApp) -> ASGIApp:
+    """Middleware to ensure that every request has a clean structlog context.
+
+    Named in PascalCase so that it renders descriptively in the Litestar UI
+    rather than displaying as middleware_factory.
+    """
 
     async def middleware(scope: Scope, receive: Receive, send: Send) -> None:
         """Clean up structlog contextvars."""
@@ -125,7 +127,7 @@ class BeforeSendHandler:
                     scope["state"]["log_level"],
                     f"{scope['method'] if scope['type'] == ScopeType.HTTP else scope['type']} {scope['path']}",
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 structlog.contextvars.clear_contextvars()
                 await LOGGER.aerror("Error in logging before-send handler!", reason=f"{type(e).__name__}{e.args}")
 

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from litestar.plugins.htmx import HTMXTemplate
+from litestar_htmx import HTMXTemplate
 
 from app.domain.products.controllers import VectorController
 from app.domain.products.schemas import ProductMatch

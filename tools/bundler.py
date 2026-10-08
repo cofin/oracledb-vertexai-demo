@@ -80,7 +80,7 @@ class BuildConfig:
 
 
 def configure_rich_click() -> None:
-    """Configure rich-click styles to match DMA CLI conventions."""
+    """Configure rich-click styles to match CLI brand conventions."""
 
     click.rich_click.USE_RICH_MARKUP = True
     click.rich_click.USE_MARKDOWN = True
@@ -268,7 +268,7 @@ def download_with_retry(url: str, dest: Path, max_retries: int = 3) -> None:
 def download_once(url: str, dest: Path) -> bool:
     """Download a file once and return whether it produced non-empty output."""
     console.print(f"[blue]Downloading[/] {url}...")
-    urllib.request.urlretrieve(url, dest)  # noqa: S310
+    urllib.request.urlretrieve(url, dest)  # ruff: ignore[suspicious-url-open-usage]
     if dest.exists() and dest.stat().st_size > 0:
         size_mb = dest.stat().st_size / (1024 * 1024)
         console.print(f"[green]OK[/] Downloaded {size_mb:.1f} MB")
@@ -401,7 +401,7 @@ def extract_archive(archive_path: Path, extract_dir: Path) -> None:
         return
     if name.endswith(".zip"):
         with zipfile.ZipFile(archive_path, "r") as zip_ref:
-            zip_ref.extractall(extract_dir)  # noqa: S202
+            zip_ref.extractall(extract_dir)  # ruff: ignore[tarfile-unsafe-members]
         return
     msg = f"Unknown archive format: {name}"
     raise click.ClickException(msg)
@@ -704,7 +704,7 @@ def resolve_python_archive(config: BuildConfig, python_archive: Path | None, ref
     if python_archive:
         return python_archive.expanduser().resolve()
 
-    assert config.python_url is not None  # noqa: S101 - Validated before archive resolution
+    assert config.python_url is not None  # ruff: ignore[assert] - Validated before archive resolution
     cache_root = config.cache_dir / "python-build-standalone" / config.target
     ensure_directory(cache_root)
     archive_path = cache_root / Path(config.python_url).name

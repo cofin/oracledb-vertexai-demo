@@ -51,7 +51,7 @@ class FixtureLoader:
             prepared = [_prepare_record(record) for record in records]
             try:
                 upserted = await self._merge_records(table_name, prepared)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[table_name] = f"Error: {exc!s}"
                 continue
             results[table_name] = {"upserted": upserted, "failed": 0, "total": len(prepared)}
@@ -108,7 +108,7 @@ class FixtureExporter:
         for table_name in tables or self.table_order:
             try:
                 results[table_name] = await self._export_table(table_name, target_dir, compress=compress)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[table_name] = f"Error: {exc!s}"
         return results
 

@@ -247,7 +247,7 @@ def test_provision_workspace_interpolates_config() -> None:
         workspace="CYMBAL",
         primary_schema="cymbal",
         admin_user="DEVLEAD",
-        admin_password="Pa55w0rd!",  # noqa: S106
+        admin_password="Pa55w0rd!",  # ruff: ignore[hardcoded-password-func-arg]
     )
     installer = ApexInstaller(runtime, db, MagicMock(), config)
 

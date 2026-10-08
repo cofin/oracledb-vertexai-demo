@@ -122,6 +122,20 @@ class DatabaseSettings:
     """Database migration path."""
     FIXTURE_PATH: str = f"{BASE_DIR}/db/fixtures"
     """The path to JSON fixture files to load into tables."""
+    EVENTS_BACKEND: str = field(default_factory=lambda: os.getenv("ORACLE_EVENTS_BACKEND", "txeventq"))
+    """Oracle event queue backend (e.g. 'txeventq' or 'aq')."""
+    EVENTS_QUEUE: str = field(default_factory=lambda: os.getenv("ORACLE_EVENTS_QUEUE", "COFFEE_EVENTS_QUEUE"))
+    """Oracle Transactional Event Queue name."""
+    ECHO: bool = field(
+        default_factory=lambda: _env_bool(
+            "DATABASE_ECHO", _env_bool("DATABASE_ECHO_SQL", _env_bool("SQLSPEC_ECHO", False))
+        )
+    )
+    """Echo executed SQL statements to stdout and logger."""
+    ENABLE_TELEMETRY: bool = field(
+        default_factory=lambda: _env_bool("DATABASE_ENABLE_TELEMETRY", _env_bool("SQLSPEC_ENABLE_TELEMETRY", True))
+    )
+    """Enable SQLSpec OpenTelemetry spans and trace context propagation."""
 
     @property
     def is_autonomous(self) -> bool:
@@ -196,20 +210,26 @@ class DatabaseSettings:
                 "max": self.POOL_MAX_SIZE,
             }
 
+        from sqlspec.observability import LoggingConfig, ObservabilityConfig, TelemetryConfig
+
+        observability_config = ObservabilityConfig(
+            print_sql=self.ECHO,
+            telemetry=TelemetryConfig(enable_spans=self.ENABLE_TELEMETRY),
+            logging=LoggingConfig(include_trace_context=True, include_sql_hash=True),
+        )
+
         return OracleAsyncConfig(
             connection_config=pool_config,
+            observability_config=observability_config,
             migration_config={
                 "version_table_name": "migrations",
                 "script_location": self.MIGRATION_PATH,
                 "project_root": BASE_DIR,
-                "include_extensions": ["adk", "litestar"],
+                "include_extensions": ["litestar"],
             },
             extension_config={
-                "adk": {
-                    "enable_memory": self.ADK_ENABLE_MEMORY,
-                    "in_memory": self.ADK_IN_MEMORY,
-                },
                 "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
+                "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
             },
         )
 
@@ -277,6 +297,18 @@ class AppSettings:
 
 
 @dataclass(frozen=True)
+class OpenTelemetrySettings:
+    """OpenTelemetry configuration settings."""
+
+    ENABLED: bool = field(default_factory=lambda: _env_bool("OTEL_ENABLED", True))
+    """Enable OpenTelemetry instrumentation middleware by default."""
+    SERVICE_NAME: str = field(default_factory=lambda: os.getenv("OTEL_SERVICE_NAME", "cymbal-coffee"))
+    """OpenTelemetry service name attribute."""
+    EXCLUDE_PATHS: list[str] = field(default_factory=lambda: [r"^/static", r"^/favicon\.ico", r"^/health"])
+    """Path regex patterns to exclude from tracing."""
+
+
+@dataclass(frozen=True)
 class MapsSettings:
     """Google Maps integration settings."""
 
@@ -310,7 +342,7 @@ class AISettings:
     """Vertex AI location/region."""
     api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
-    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3.1-flash-lite"))
+    chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3.8-flash"))
     """Vertex AI chat model."""
     intent_model_override: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_INTENT_MODEL"))
     """Optional override for the single-call intent-classification model."""
@@ -399,6 +431,7 @@ class Settings:
     chat: ChatSettings = field(default_factory=ChatSettings)
     vite: ViteSettings = field(default_factory=ViteSettings)
     maps: MapsSettings = field(default_factory=MapsSettings)
+    otel: OpenTelemetrySettings = field(default_factory=OpenTelemetrySettings)
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""
@@ -408,6 +441,7 @@ class Settings:
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
         os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
         os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
+        os.environ.setdefault("OTEL_SERVICE_NAME", self.otel.SERVICE_NAME)
 
     def configure_genai_env(self) -> None:
         """Synchronize Google client env vars when project-based Vertex AI is configured.

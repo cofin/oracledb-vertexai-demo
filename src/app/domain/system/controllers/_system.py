@@ -1,16 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from litestar import Controller, get
+"""System controller for root-level and un-grouped system routes."""
+
+from litestar import get
 from litestar.response import File
+from litestar_security import PublicController
 
 from app.lib.settings import BASE_DIR
 
 
-class SystemController(Controller):
+class SystemController(PublicController):
     """System controller for root-level and un-grouped system routes."""
 
-    @get(path="/favicon.ico", name="favicon", exclude_from_auth=True, include_in_schema=False)
+    @get(path="/favicon.ico", name="favicon", include_in_schema=False)
     async def favicon(self) -> File:
         """Serve favicon with security headers."""
         return File(

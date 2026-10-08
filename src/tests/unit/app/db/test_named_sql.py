@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 SQL_DIR = APP_ROOT / "db" / "sql"
 DOMAIN_DIR = APP_ROOT / "domain"
 
-EXPECTED_FILES = ("inventory.sql", "products.sql", "stores.sql", "system.sql")
+EXPECTED_FILES = ("ai-runtime.sql", "inventory.sql", "products.sql", "stores.sql", "system.sql")
 
 _NAME_DIRECTIVE = re.compile(r"^--\s*name:\s*([a-zA-Z0-9_-]+)", flags=re.MULTILINE)
 
@@ -30,20 +30,16 @@ def _discover_named_keys() -> tuple[str, ...]:
 
 def _discover_service_files() -> tuple[Path, ...]:
     files = sorted(DOMAIN_DIR.glob("*/services/services.py"))
-    files.append(DOMAIN_DIR / "chat" / "services" / "adk.py")
+    ai_store = DOMAIN_DIR / "ai" / "runtime" / "_store.py"
+    if ai_store.exists():
+        files.append(ai_store)
     return tuple(files)
 
 
-# Every `-- name: <key>` directive declared across db/sql/*.sql.
 EXPECTED_KEYS = _discover_named_keys()
 
-# Match a SQL keyword inside a Python string literal *only* when followed by whitespace
-# (real SQL: `SELECT id`, `UPDATE foo`). Excludes false positives like the named-query
-# key string `"update-product-embedding"` (hyphen after the keyword) and method calls
-# like `sql.update("table")` (keyword not inside the string).
 INLINE_SQL_PATTERN = re.compile(r'(?:"|\')\s*(SELECT|INSERT|UPDATE|DELETE|MERGE)(?=[ \t\n])')
 
-# Domain services that must source SQL from db_manager, never inline strings.
 SERVICE_FILES = _discover_service_files()
 
 

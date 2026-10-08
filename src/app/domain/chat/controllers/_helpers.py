@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from litestar.exceptions import ValidationException
 
 if TYPE_CHECKING:
-    from litestar.plugins.htmx import HTMXRequest
+    from litestar_htmx import HTMXRequest
 
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0

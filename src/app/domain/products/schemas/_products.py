@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 — used in handler-visible schema; Litestar OpenAPI needs runtime ref
+from datetime import datetime
 from typing import Any, Literal
 
 from msgspec import field

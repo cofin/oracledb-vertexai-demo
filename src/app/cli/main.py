@@ -74,7 +74,7 @@ def main() -> None:
     _setup_environment()
 
     # Side-effect: importing app.cli.commands registers every command on `cli`.
-    from app.cli import commands as _commands  # noqa: F401
+    from app.cli import commands as _commands  # ruff: ignore[unused-import]
 
     try:
         cli()

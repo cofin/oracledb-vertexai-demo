@@ -32,7 +32,7 @@ def add_logger_name_safe(logger: WrappedLogger, _: str, event_dict: EventDict) -
     elif hasattr(logger, "name"):
         event_dict["logger"] = logger.name
     elif hasattr(logger, "_name"):
-        event_dict["logger"] = logger._name  # noqa: SLF001
+        event_dict["logger"] = logger._name
     return event_dict
 
 

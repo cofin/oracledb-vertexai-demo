@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 from google.genai.types import EmbedContentConfig, GenerateContentConfig
@@ -50,7 +50,10 @@ class ProductService(OracleAsyncService):
     """Handles database operations for products using SQLSpec patterns."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
-        return await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product)
+        return cast(
+            "OffsetPagination[Product]",
+            await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product),
+        )
 
     async def list_apex_products(
         self, *, q: str | None = None, category: str | None = None, limit: int = 50, offset: int = 0
@@ -95,7 +98,6 @@ class ProductService(OracleAsyncService):
         await self.driver.commit()
         return result.rows_affected > 0
 
-    # docs:start-search-by-vector
     async def search_by_vector(
         self,
         query_embedding: list[float],
@@ -110,17 +112,15 @@ class ProductService(OracleAsyncService):
             binds["store_id"] = store_id
         return await self.driver.select(db_manager.get_sql(sql_key), **binds, schema_type=ProductMatch)
 
-    # docs:end-search-by-vector
-
-
-# --- Store Service ---
-
 
 class StoreService(OracleAsyncService):
     """Service for managing store locations."""
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Store]:
-        return await self.paginate(db_manager.get_sql("list-stores"), *filters, schema_type=Store)
+        return cast(
+            "OffsetPagination[Store]",
+            await self.paginate(db_manager.get_sql("list-stores"), *filters, schema_type=Store),
+        )
 
     async def get_all_stores(self) -> list[Store]:
         return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
@@ -239,7 +239,6 @@ class VertexAIService:
         self.embedding_dimensions = embedding_dimensions
         self.cache_service = cache_service
 
-    # docs:start-vertex-embedding
     async def get_text_embedding(
         self, text: str, *, embedding_purpose: str = "document", return_cache_status: bool = False
     ) -> Any:
@@ -259,8 +258,6 @@ class VertexAIService:
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
-
-    # docs:end-vertex-embedding
 
     async def generate_structured_content(self, *, model: str, contents: str, config: GenerateContentConfig) -> Any:
         """Generate structured content through the shared Vertex AI client."""

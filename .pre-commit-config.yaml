@@ -36,7 +36,7 @@ repos:
       - id: codespell
         additional_dependencies:
           - tomli
-        exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/)
+        exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/|src/resources/package-lock\.json)
   - repo: https://github.com/DavidAnson/markdownlint-cli2
     rev: v0.23.3
     hooks:

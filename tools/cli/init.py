@@ -23,7 +23,7 @@ console = Console()
 @click.option("--run-install", is_flag=True, help="Automatically run 'install all' after initialization")
 @click.option("--run-doctor", is_flag=True, help="Automatically run 'doctor' after initialization")
 @click.option("--non-interactive", is_flag=True, help="Skip interactive prompts (use defaults/env vars)")
-def init_command(mode: str | None, run_install: bool, run_doctor: bool, non_interactive: bool) -> None:  # noqa: C901
+def init_command(mode: str | None, run_install: bool, run_doctor: bool, non_interactive: bool) -> None:  # ruff: ignore[complex-structure]
     """Initialize project environment from scratch.
 
     This command:

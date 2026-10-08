@@ -6,13 +6,7 @@ from typing import Any
 
 import msgspec
 from sqlspec.typing import NUMPY_INSTALLED
-from sqlspec.utils.serializers import (
-    from_json,
-    numpy_array_dec_hook,
-    numpy_array_enc_hook,
-    schema_dump,
-    to_json,
-)
+from sqlspec.utils.serializers import from_json, numpy_array_dec_hook, numpy_array_enc_hook, schema_dump, to_json
 from sqlspec.utils.serializers._numpy import numpy_array_predicate
 
 __all__ = (

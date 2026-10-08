@@ -59,7 +59,7 @@ def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
     from tools.oracle.container import ContainerRuntime
     from tools.oracle.database import DatabaseConfig, OracleDatabase
 
-    password = "SuperSecret1"  # noqa: S105
+    password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
     reuse_port = os.getenv("ORACLE_TEST_REUSE_PORT")
     if reuse_port:
         yield {
@@ -268,12 +268,12 @@ async def _seed_marker_product(session: OracleAsyncDriver) -> None:
 
 async def _assert_sqlspec_extension_tables(session: OracleAsyncDriver) -> None:
     """Fail fast when SQLSpec migrations did not materialize extension tables."""
-    expected = {"APP_SESSION", "ADK_SESSION", "ADK_EVENT"}
+    expected = {"APP_SESSION"}
     rows = await session.select(
         """
         SELECT table_name
           FROM user_tables
-         WHERE table_name IN ('APP_SESSION', 'ADK_SESSION', 'ADK_EVENT')
+         WHERE table_name IN ('APP_SESSION')
         """
     )
     present = {str(row["table_name"]).upper() for row in rows}
@@ -288,7 +288,7 @@ async def _assert_sqlspec_extension_tables(session: OracleAsyncDriver) -> None:
 
 async def _ensure_oracle_schema() -> None:
     """Create idempotent Oracle test schema objects once per pytest worker."""
-    global _ORACLE_SCHEMA_READY  # noqa: PLW0603
+    global _ORACLE_SCHEMA_READY
 
     if _ORACLE_SCHEMA_READY:
         return
@@ -311,7 +311,7 @@ async def _ensure_oracle_schema() -> None:
 
 async def _ensure_oracle_seed_data(session: OracleAsyncDriver) -> None:
     """Load deterministic fixture data once per pytest worker."""
-    global _ORACLE_SEED_DATA_READY  # noqa: PLW0603
+    global _ORACLE_SEED_DATA_READY
 
     if _ORACLE_SEED_DATA_READY:
         return

@@ -7,10 +7,12 @@ import uuid
 from urllib.parse import quote
 
 import structlog
-from litestar import Controller, Response, get, post
+from litestar import Response, get, post
 from litestar.exceptions import ValidationException
-from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
+from litestar.params import FromQuery
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
+from litestar_htmx import HTMXRequest, HTMXTemplate
+from litestar_security import PublicController
 
 from app.domain.products.controllers._vector_helpers import (
     SERVICE_UNAVAILABLE_MESSAGE,
@@ -26,10 +28,12 @@ from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
 logger = structlog.get_logger()
+_PERF_EXCELLENT_MS: float = 100.0
+_PERF_GOOD_MS: float = 500.0
 
 
-class VectorController(Controller):
-    """Vector search controller with HTMX-aware partial / JSON responses."""
+class VectorController(PublicController):
+    """Vector search controller with HTMX-aware partial / JSON responses and MCP tools."""
 
     @staticmethod
     def validate_message(message: str) -> str:
@@ -117,9 +121,9 @@ class VectorController(Controller):
 
         performance_level = (
             "excellent"
-            if total_ms < 100  # noqa: PLR2004
+            if total_ms < _PERF_EXCELLENT_MS
             else "good"
-            if total_ms < 500  # noqa: PLR2004
+            if total_ms < _PERF_GOOD_MS
             else "needs-optimization"
         )
 
@@ -162,3 +166,31 @@ class VectorController(Controller):
                 raise
             await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
             return unavailable_plan()
+
+    @get(
+        path="/api/vector-search", name="vector.search", summary="Search Products by Vector", mcp_tool="search_products"
+    )
+    async def vector_search(
+        self, query: FromQuery[str], vector_search_service: Inject[OracleVectorSearchService], limit: FromQuery[int] = 5
+    ) -> list[VectorDemoMatch]:
+        """Perform semantic vector search for coffee products.
+
+        Args:
+            query: Natural language query string.
+            vector_search_service: OracleVectorSearchService instance.
+            limit: Maximum number of matching items to return.
+
+        Returns:
+            List of matching products with calculated similarity percentages.
+        """
+        clean_query = self.validate_message(query)
+        results, _, _ = await vector_search_service.similarity_search(clean_query, k=limit)
+        return [
+            VectorDemoMatch(
+                name=row.name,
+                description=row.description,
+                price=row.price,
+                similarity=round(row.similarity_score * 100, 1),
+            )
+            for row in results
+        ]

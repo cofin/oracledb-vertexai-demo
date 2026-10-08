@@ -1,18 +1,21 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Coffee chat controller for streaming agent conversations and session resets."""
+
 import re
 from collections.abc import AsyncIterator
 
 import structlog
-from litestar import Controller, Response, post
+from litestar import post
 from litestar.exceptions import ValidationException
-from litestar.plugins.htmx import HTMXRequest
 from litestar.response import ServerSentEvent
+from litestar_htmx import HTMXRequest
+from litestar_security import PublicController
 
+from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.controllers._helpers import chat_form_from_request, location_context_from_form
-from app.domain.chat.services import ADKRunner, AgentToolsService
-from app.domain.chat.session import adk_session_identity, clear_adk_session_identity
+from app.domain.chat.session import chat_session_identity, clear_chat_session_identity
 from app.lib.di import Inject
 from app.utils.serialization import to_json
 
@@ -20,18 +23,21 @@ logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 
 
-class CoffeeChatController(Controller):
+class CoffeeChatController(PublicController):
     """Coffee chat API controller — JSON for SPA clients, HTML partials for HTMX."""
 
     @staticmethod
     def validate_message(message: str) -> str:
         """Validate and sanitize user message input.
 
+        Args:
+            message: Raw user input text.
+
         Returns:
-            The cleaned message text.
+            The cleaned and bounded message string.
 
         Raises:
-            ValidationException: If the message is empty after cleaning.
+            ValidationException: If the sanitized message is empty.
         """
         message = re.sub(r"<[^>]+>", "", message)
         max_length = 500
@@ -48,47 +54,53 @@ class CoffeeChatController(Controller):
     def validate_persona(persona: str) -> str:
         """Validate persona input.
 
+        Args:
+            persona: Requested barista persona identifier.
+
         Returns:
-            The requested persona or the default barista persona.
+            The validated persona or the default barista persona.
         """
         if persona not in {"barista", "snob", "scientist", "wellness"}:
             return "barista"
         return persona
 
-    # docs:start-stream-handler
     @post(path="/api/chat/stream", name="chat.api.stream")
     async def stream_chat_message(
-        self, adk_runner: Inject[ADKRunner], tools_service: Inject[AgentToolsService], request: HTMXRequest
+        self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
     ) -> ServerSentEvent:
         """Stream chat response events for the browser chat UI.
 
-        Returns:
-            Server-sent event stream with delta, final, or error events.
+        Args:
+            orchestrator: Injected agent orchestration service.
+            request: Active HTMX request with form data and session context.
 
-        Raises:
-            ValidationException: If the user message fails validation (HTTP 400).
-            AIServiceUnconfigured: If Vertex AI credentials are missing (HTTP 503).
+        Returns:
+            ServerSentEvent instance streaming JSON event frames.
         """
         data = await chat_form_from_request(request)
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
         location_context = location_context_from_form(data)
-        user_id, session_id = adk_session_identity(request)
-        adk_runner.ensure_configured()
+        user_id, session_id = chat_session_identity(request)
+
+        dynamic_context = (
+            f"Persona: {validated_persona}\nLocation Context: {location_context}"
+            if location_context
+            else f"Persona: {validated_persona}"
+        )
 
         async def stream_events() -> AsyncIterator[dict[str, str]]:
             try:
-                async for event in adk_runner.stream_request(
-                    query=clean_message,
-                    user_id=user_id,
+                async for frame in orchestrator.stream_conversation_turn(
                     session_id=session_id,
-                    persona=validated_persona,
-                    tools_service=tools_service,
-                    location_context=location_context,
+                    user_id=user_id,
+                    message=clean_message,
+                    services=request,
+                    dynamic_context=dynamic_context,
                 ):
-                    event_type = str(event.get("type", "message"))
-                    yield {"event": event_type, "data": to_json(event, as_bytes=False)}
-            except Exception as exc:  # noqa: BLE001
+                    frame_type = str(frame.get("type", "message"))
+                    yield {"event": frame_type, "data": to_json(frame, as_bytes=False)}
+            except Exception as exc:
                 await logger.aexception(
                     "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
                 )
@@ -99,16 +111,20 @@ class CoffeeChatController(Controller):
 
         return ServerSentEvent(stream_events(), status_code=200)
 
-    # docs:end-stream-handler
-
     @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)
-    async def clear_chat_session(self, adk_runner: Inject[ADKRunner], request: HTMXRequest) -> Response:
-        """Clear the anonymous browser's ADK chat session.
+    async def clear_chat_session(
+        self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
+    ) -> dict[str, str]:
+        """Clear the anonymous browser's agent chat session.
+
+        Args:
+            orchestrator: Injected agent orchestration service.
+            request: Active HTMX request.
 
         Returns:
-            JSON confirmation for the frontend reset button.
+            JSON confirmation response.
         """
-        user_id, session_id = adk_session_identity(request)
-        await adk_runner.clear_session(user_id=user_id, session_id=session_id)
-        clear_adk_session_identity(request)
-        return Response(content={"status": "cleared"})
+        user_id, session_id = chat_session_identity(request)
+        await orchestrator.clear_session(session_id=session_id, user_id=user_id)
+        clear_chat_session_identity(request)
+        return {"status": "cleared"}

@@ -79,7 +79,7 @@ def test_configure_apex_cdn_command_success(monkeypatch):
     assert "✓ APEX CDN configuration completed successfully!" in result.output
     mock_connect.assert_called_once()
     assert mock_connect.call_args[1]["user"] == "SYS"
-    assert mock_connect.call_args[1]["password"] == "test-password"  # noqa: S105
+    assert mock_connect.call_args[1]["password"] == "test-password"  # ruff: ignore[hardcoded-password-string]
     assert mock_connect.call_args[1]["mode"] == oracledb.AUTH_MODE_SYSDBA
 
 

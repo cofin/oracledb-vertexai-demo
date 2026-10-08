@@ -52,7 +52,7 @@ def generate_secret_key() -> str:
     return secrets.token_hex(32)
 
 
-def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # noqa: C901, PLR0914
+def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # ruff: ignore[complex-structure, too-many-locals]
     """Create .env file interactively based on deployment mode.
 
     Args:
@@ -97,7 +97,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
     if mode == "managed":
         if non_interactive:
             db_user = "app"
-            db_password = "SuperSecret1"  # noqa: S105
+            db_password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
             db_host = "localhost"
             db_port = "1521"
             db_service = "freepdb1"
@@ -119,7 +119,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
     elif non_interactive:
         use_wallet = False
         db_user = "app"
-        db_password = "your-password"  # noqa: S105
+        db_password = "your-password"  # ruff: ignore[hardcoded-password-string]
         db_host = "your-oracle-host"
         db_port = "1521"
         db_service = "your-service-name"
@@ -178,7 +178,7 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
     try:
         env_path.write_text(env_content, encoding="utf-8")
         console.print("[green]✓ Created .env file[/green]")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         console.print(f"[red]✗ Failed to create .env: {e}[/red]")
         return False
     else:
@@ -191,7 +191,7 @@ def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
         result = subprocess.run(cmd, capture_output=True, text=True, check=check)
     except subprocess.CalledProcessError as e:
         return e.returncode, e.stdout, e.stderr
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return 1, "", str(e)
     else:
         return result.returncode, result.stdout, result.stderr
@@ -214,7 +214,7 @@ def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[
         returncode, stdout, _ = run_command([tool_name, version_flag], check=False)
         if returncode == 0:
             return True, stdout.strip()
-    except Exception:  # noqa: BLE001, S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     return False, ""
@@ -308,7 +308,7 @@ def is_antigravity_mcp_server_configured(
     try:
         with config_path.open(encoding="utf-8") as f:
             settings = json.load(f)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
     mcp_servers = settings.get("mcpServers", {})
@@ -330,20 +330,20 @@ def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
     try:
         # Use sql -L to list saved connections
         result = subprocess.run(
-            ["sql", "-L"],  # noqa: S607
+            ["sql", "-L"],  # ruff: ignore[start-process-with-partial-path]
             capture_output=True,
             text=True,
             timeout=5,
             check=False,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
     else:
         # Check if connection_name appears in the output
         return connection_name in result.stdout
 
 
-def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # noqa: PLR0911
+def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # ruff: ignore[too-many-return-statements]
     """Configure SQLcl saved connection with password from .env.
 
     Args:
@@ -400,7 +400,7 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
 
     try:
         result = subprocess.run(
-            ["sql", "/nolog"],  # noqa: S607
+            ["sql", "/nolog"],  # ruff: ignore[start-process-with-partial-path]
             check=False,
             input=conn_cmd,
             capture_output=True,
@@ -415,7 +415,7 @@ def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coff
 
     except subprocess.TimeoutExpired:
         return False, "SQLcl command timed out"
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return False, f"Error running SQLcl: {e}"
     else:
         return False, f"Failed to save connection: {error_msg}"

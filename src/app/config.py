@@ -104,7 +104,7 @@ def setup_logging() -> None:
 
 def _initialize() -> None:
     """Materialize every public attribute from the current environment."""
-    global _initialized  # noqa: PLW0603
+    global _initialized
 
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
@@ -126,7 +126,7 @@ def _initialize() -> None:
     settings = get_settings()
     log_as_json = not log_conf.is_tty()
     db_cfg = settings.db.create_config()
-    db_mgr = _SQLSpec()
+    db_mgr = _SQLSpec(observability_config=db_cfg.observability_config)
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
 
@@ -231,7 +231,7 @@ def _initialize() -> None:
 
 def _reset() -> None:
     """Discard cached configuration so the next access re-initializes from env."""
-    global _initialized  # noqa: PLW0603
+    global _initialized
 
     from app.lib.settings import Settings
 
@@ -257,7 +257,7 @@ def _reset() -> None:
 
     from app.server import plugins
 
-    plugins._reset()  # noqa: SLF001
+    plugins._reset()
 
 
 def _install_warning_filters() -> None:

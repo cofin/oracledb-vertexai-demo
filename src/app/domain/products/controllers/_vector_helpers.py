@@ -12,7 +12,7 @@ from google.genai import errors as genai_errors
 from app.domain.products.schemas import ExplainPlan, VectorQuery
 
 if TYPE_CHECKING:
-    from litestar.plugins.htmx import HTMXRequest
+    from litestar_htmx import HTMXRequest
 
 SERVICE_UNAVAILABLE_MESSAGE = "Vector search is unavailable. Check Vertex AI and Oracle configuration, then retry."
 

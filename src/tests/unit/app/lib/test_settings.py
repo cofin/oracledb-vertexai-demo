@@ -16,26 +16,18 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize("explicit", [True, False], ids=["explicit-true", "default-true"])
-def test_oracle_adk_and_litestar_session_in_memory_wire_to_sqlspec_config(
-    monkeypatch: MonkeyPatch, explicit: bool
-) -> None:
+def test_litestar_session_in_memory_wires_to_sqlspec_config(monkeypatch: MonkeyPatch, explicit: bool) -> None:
     from app.lib.settings import DatabaseSettings
 
     if explicit:
-        monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", "true")
         monkeypatch.setenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", "true")
     else:
-        monkeypatch.delenv("ORACLE_ADK_IN_MEMORY", raising=False)
         monkeypatch.delenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raising=False)
-    monkeypatch.setenv("ADK_ENABLE_MEMORY", "false")
 
     config = DatabaseSettings().create_config()
 
-    assert config.extension_config["adk"]["in_memory"] is True
-    assert "memory_table" not in config.extension_config["adk"]
-    assert "session_table" not in config.extension_config["adk"]
-    assert "events_table" not in config.extension_config["adk"]
     assert config.extension_config["litestar"]["in_memory"] is True
+    assert config.extension_config["litestar"]["session_table"] == "app_session"
 
 
 def test_litestar_env_defaults_app_url_from_litestar_port(monkeypatch: MonkeyPatch) -> None:
@@ -73,7 +65,7 @@ def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
 
     settings = AISettings()
 
-    assert settings.chat_model == "gemini-3.1-flash-lite"
+    assert settings.chat_model == "gemini-3.8-flash"
     assert settings.embedding_model == "gemini-embedding-2"
     assert settings.embedding_dimensions == 3072
     assert settings.intent_model_override is None
@@ -154,7 +146,7 @@ def test_database_settings_local_contract(monkeypatch: MonkeyPatch) -> None:
     settings = DatabaseSettings()
 
     assert settings.USER == "app"
-    assert settings.PASSWORD == "SuperSecret1"  # noqa: S105
+    assert settings.PASSWORD == "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
     assert settings.HOST == "localhost"
     assert settings.PORT == "1521"
     assert settings.SERVICE_NAME == "freepdb1"
@@ -179,7 +171,7 @@ def test_wallet_mode_contract(monkeypatch: MonkeyPatch) -> None:
 
     assert conn["user"] == "app"
     assert conn["dsn"] == "myatp_low"
-    assert conn["wallet_password"] == "SuperSecret1"  # noqa: S105
+    assert conn["wallet_password"] == "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
     assert conn["wallet_location"] == str(Path("./.envs/tns").resolve())
     assert conn["config_dir"] == str(Path("./.envs/tns").resolve())
 
@@ -204,16 +196,16 @@ def test_shell_env_wins_over_dotenv(tmp_path: Path, monkeypatch: MonkeyPatch) ->
 def test_env_bool_parsing_truthy(monkeypatch: MonkeyPatch, raw: str) -> None:
     from app.lib.settings import DatabaseSettings
 
-    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", raw)
-    assert DatabaseSettings().ADK_IN_MEMORY is True
+    monkeypatch.setenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raw)
+    assert DatabaseSettings().LITESTAR_SESSION_IN_MEMORY is True
 
 
 @pytest.mark.parametrize("raw", ["False", "false", "0", "no", "n", ""])
 def test_env_bool_parsing_falsy(monkeypatch: MonkeyPatch, raw: str) -> None:
     from app.lib.settings import DatabaseSettings
 
-    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", raw)
-    assert DatabaseSettings().ADK_IN_MEMORY is False
+    monkeypatch.setenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raw)
+    assert DatabaseSettings().LITESTAR_SESSION_IN_MEMORY is False
 
 
 def test_allowed_cors_origins_json_list(monkeypatch: MonkeyPatch) -> None:
@@ -234,7 +226,7 @@ def test_secret_key_honors_env(monkeypatch: MonkeyPatch) -> None:
     from app.lib.settings import AppSettings
 
     monkeypatch.setenv("SECRET_KEY", "fixed-secret-value")
-    assert AppSettings().SECRET_KEY == "fixed-secret-value"  # noqa: S105
+    assert AppSettings().SECRET_KEY == "fixed-secret-value"  # ruff: ignore[hardcoded-password-string]
 
 
 def test_secret_key_generated_when_absent(monkeypatch: MonkeyPatch) -> None:
@@ -307,3 +299,74 @@ def test_cloud_run_env_uses_standard_dsn(monkeypatch: MonkeyPatch, unset: str) -
     assert params["dsn"] == "10.10.0.10:1521/freepdb1"
     assert params["user"] == "app"
     assert "wallet_password" not in params
+
+
+def test_opentelemetry_settings_defaults(monkeypatch: MonkeyPatch) -> None:
+    """Verify OpenTelemetrySettings default values and env override."""
+    from app.lib.settings import OpenTelemetrySettings
+
+    monkeypatch.delenv("OTEL_ENABLED", raising=False)
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+
+    otel = OpenTelemetrySettings()
+    assert otel.ENABLED is True
+    assert otel.SERVICE_NAME == "cymbal-coffee"
+    assert "^/static" in otel.EXCLUDE_PATHS
+
+    monkeypatch.setenv("OTEL_ENABLED", "false")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "custom-coffee")
+
+    custom_otel = OpenTelemetrySettings()
+    assert custom_otel.ENABLED is False
+    assert custom_otel.SERVICE_NAME == "custom-coffee"
+
+
+def test_litestar_env_sets_otel_service_name(monkeypatch: MonkeyPatch) -> None:
+    """Verify setup_litestar_env exports OTEL_SERVICE_NAME."""
+    from app.lib.settings import Settings
+
+    monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+    Settings().setup_litestar_env()
+
+    assert os.environ["OTEL_SERVICE_NAME"] == "cymbal-coffee"
+
+
+def test_database_observability_defaults(monkeypatch: MonkeyPatch) -> None:
+    """Verify DatabaseSettings default observability configuration."""
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.delenv("DATABASE_ECHO", raising=False)
+    monkeypatch.delenv("DATABASE_ECHO_SQL", raising=False)
+    monkeypatch.delenv("SQLSPEC_ECHO", raising=False)
+    monkeypatch.delenv("DATABASE_ENABLE_TELEMETRY", raising=False)
+    monkeypatch.delenv("SQLSPEC_ENABLE_TELEMETRY", raising=False)
+
+    db_settings = DatabaseSettings()
+    assert db_settings.ECHO is False
+    assert db_settings.ENABLE_TELEMETRY is True
+
+    config = db_settings.create_config()
+    assert config.observability_config is not None
+    assert config.observability_config.print_sql is False
+    assert config.observability_config.telemetry is not None
+    assert config.observability_config.telemetry.enable_spans is True
+    assert config.observability_config.logging is not None
+    assert config.observability_config.logging.include_trace_context is True
+
+
+def test_database_observability_echo_and_telemetry_toggles(monkeypatch: MonkeyPatch) -> None:
+    """Verify DatabaseSettings environment variable toggles for echo and telemetry."""
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.setenv("DATABASE_ECHO", "true")
+    monkeypatch.setenv("DATABASE_ENABLE_TELEMETRY", "false")
+
+    db_settings = DatabaseSettings()
+    assert db_settings.ECHO is True
+    assert db_settings.ENABLE_TELEMETRY is False
+
+    config = db_settings.create_config()
+    assert config.observability_config is not None
+    assert config.observability_config.print_sql is True
+    assert config.observability_config.telemetry is not None
+    assert config.observability_config.telemetry.enable_spans is False

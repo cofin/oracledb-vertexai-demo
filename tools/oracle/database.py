@@ -50,10 +50,10 @@ class DatabaseConfig:
     container_port: int = 1521
 
     # Environment variables (gvenzl/oracle-free)
-    oracle_system_password: str = "super-secret"  # noqa: S105
-    oracle_password: str = "super-secret"  # noqa: S105
+    oracle_system_password: str = "super-secret"  # ruff: ignore[hardcoded-password-string]
+    oracle_password: str = "super-secret"  # ruff: ignore[hardcoded-password-string]
     app_user: str = "app"
-    app_user_password: str = "SuperSecret1"  # noqa: S105
+    app_user_password: str = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 
     # Volumes
     data_volume_name: str = "oracle-db-data"
@@ -277,7 +277,7 @@ class OracleDatabase:
                 ["inspect", "--format", "{{.State.Health.Status}}", self.config.container_name], check=False
             )
             return stdout.strip() == "healthy"
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     def wait_for_healthy(self, timeout: int = 300, *, show_progress: bool = True) -> bool:
@@ -343,7 +343,7 @@ class OracleDatabase:
         app_user = self._oracle_identifier(self.config.app_user)
         password = self._oracle_quoted_password(self.config.app_user_password)
         sql = (
-            f"ALTER SESSION SET CONTAINER={PDB_SERVICE_NAME.upper()};\n"  # noqa: S608 - local SYSDBA DDL; identifier is validated.
+            f"ALTER SESSION SET CONTAINER={PDB_SERVICE_NAME.upper()};\n"  # ruff: ignore[hardcoded-sql-expression] - local SYSDBA DDL; identifier is validated.
             "DECLARE\n"
             "  v_user_count NUMBER;\n"
             "BEGIN\n"

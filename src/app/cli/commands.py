@@ -36,8 +36,8 @@ from app.db.utils import load_fixtures
 
 # Service imports must be runtime (not TYPE_CHECKING) because async_inject calls
 # get_type_hints() to resolve dependencies against this module's globals.
-from app.domain.products.services import ProductService, VertexAIService  # noqa: TC001
-from app.domain.system.services import CacheService  # noqa: TC001
+from app.domain.products.services import ProductService, VertexAIService
+from app.domain.system.services import CacheService
 from app.lib.settings import get_settings
 
 
@@ -165,7 +165,7 @@ async def clear_cache_cmd(force: bool, cache_service: CacheService) -> None:
 
 @cli.command(name="model-info", help="Show information about currently configured AI models.")
 @async_inject
-async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # noqa: RUF029
+async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # ruff: ignore[unused-async]
     """Show information about currently configured AI models."""
     _show_model_info(vertex_ai_service)
 

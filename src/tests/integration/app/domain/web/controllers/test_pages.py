@@ -39,18 +39,14 @@ async def test_chat_page_renders(client: AsyncTestClient) -> None:
 async def test_chat_page_renders_persisted_session_history(
     client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from app.domain.ai.services import AgentOrchestrationService
     from app.domain.chat.schemas import ChatMessage
-    from app.domain.chat.services import ADKRunner
-
-    def _noop_init(self: object, *args: object, **kwargs: object) -> None:
-        del self, args, kwargs
 
     async def _history(self: object, *args: object, **kwargs: object) -> list[ChatMessage]:
         del self, args, kwargs
         return [ChatMessage(source="human", message="old question"), ChatMessage(source="ai", message="old answer")]
 
-    monkeypatch.setattr(ADKRunner, "__init__", _noop_init)
-    monkeypatch.setattr(ADKRunner, "get_history", _history, raising=False)
+    monkeypatch.setattr(AgentOrchestrationService, "get_display_history", _history)
 
     response = await client.get("/")
 
@@ -62,17 +58,13 @@ async def test_chat_page_renders_persisted_session_history(
 
 
 async def test_chat_page_renders_fallback_history(client: AsyncTestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.domain.chat.services import ADKRunner
-
-    def _noop_init(self: object, *args: object, **kwargs: object) -> None:
-        del self, args, kwargs
+    from app.domain.ai.services import AgentOrchestrationService
 
     async def _history_fail(self: object, *args: object, **kwargs: object) -> list:
         del self, args, kwargs
         raise Exception("History failure simulated")
 
-    monkeypatch.setattr(ADKRunner, "__init__", _noop_init)
-    monkeypatch.setattr(ADKRunner, "get_history", _history_fail, raising=False)
+    monkeypatch.setattr(AgentOrchestrationService, "get_display_history", _history_fail)
 
     response = await client.get("/")
 

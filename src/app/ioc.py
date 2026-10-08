@@ -3,9 +3,9 @@
 
 """Dishka container configuration for Litestar.
 
-Three providers, accelerator-style:
+Three providers:
 - LitestarPersistenceProvider: APP-scoped Oracle config + REQUEST-scoped driver.
-- IntegrationsProvider: APP-scoped external integrations (genai client, ADK store/session/runner).
+- IntegrationsProvider: APP-scoped external integrations (genai client, AI runtime, stores).
 - DomainServiceProvider: REQUEST-scoped domain services that depend on the per-request driver.
 
 NOTE: Dishka introspects @provide method annotations at runtime; this module must NOT use
@@ -18,10 +18,16 @@ from collections.abc import AsyncIterator
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide
 from google.genai import Client
 from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
-from sqlspec.adapters.oracledb.adk.store import OracleAsyncADKStore
-from sqlspec.extensions.adk import SQLSpecSessionService
 
-from app.domain.chat.services.adk import ADKRunner, AgentToolsService
+from app.domain.ai.runtime import (
+    AgentRuntime,
+    AgentStreamService,
+    GeminiModelClient,
+    OracleEventStore,
+    OracleSessionStore,
+    SpecTree,
+)
+from app.domain.ai.services import AgentOrchestrationService, get_coffee_spec_tree
 from app.domain.chat.services.classifier import FlashLiteIntentClassifier
 from app.domain.products.services.services import (
     OracleVectorSearchService,
@@ -30,7 +36,6 @@ from app.domain.products.services.services import (
     VertexAIService,
 )
 from app.domain.system.services.services import CacheService, MetricsService, PersonaManager
-from app.lib.di import QueryContext, query_id_var
 from app.lib.settings import get_settings
 
 
@@ -45,13 +50,11 @@ class LitestarPersistenceProvider(Provider):
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:
+        """Provide per-request OracleAsyncDriver."""
         from app import config
 
         session_context = config.db_manager.provide_session(config.db)
-        # Dishka owns async-generator provider cleanup; SQLSpec exposes only an
-        # async context manager, so entering it manually avoids yielding inside
-        # an async-with block while preserving exception-aware cleanup.
-        driver = await session_context.__aenter__()  # noqa: PLC2801
+        driver = await session_context.__aenter__()
         try:
             yield driver
         except BaseException:
@@ -72,12 +75,17 @@ class IntegrationsProvider(Provider):
         return Client(api_key=settings.ai.api_key)
 
     @provide(scope=Scope.APP)
-    def provide_adk_store(self, config: OracleAsyncConfig) -> OracleAsyncADKStore:
-        return OracleAsyncADKStore(config=config)
+    def provide_model_client(self, client: Client) -> GeminiModelClient:
+        settings = get_settings()
+        return GeminiModelClient(client=client, default_model=settings.ai.chat_model)
 
     @provide(scope=Scope.APP)
-    def provide_session_service(self, store: OracleAsyncADKStore) -> SQLSpecSessionService:
-        return SQLSpecSessionService(store)
+    def provide_agent_runtime(self, model_client: GeminiModelClient) -> AgentRuntime:
+        return AgentRuntime(model_client=model_client)
+
+    @provide(scope=Scope.APP)
+    def provide_spec_tree(self) -> SpecTree:
+        return get_coffee_spec_tree()
 
     @provide(scope=Scope.APP)
     def provide_intent_classifier(self, client: Client) -> FlashLiteIntentClassifier:
@@ -86,15 +94,6 @@ class IntegrationsProvider(Provider):
     @provide(scope=Scope.APP)
     def provide_persona_manager(self) -> PersonaManager:
         return PersonaManager()
-
-    @provide(scope=Scope.APP)
-    def provide_adk_runner(
-        self,
-        session_service: SQLSpecSessionService,
-        classifier: FlashLiteIntentClassifier,
-        persona_manager: PersonaManager,
-    ) -> ADKRunner:
-        return ADKRunner(session_service=session_service, classifier=classifier, persona_manager=persona_manager)
 
 
 class DomainServiceProvider(Provider):
@@ -107,7 +106,14 @@ class DomainServiceProvider(Provider):
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
 
-    agent_tools_service = provide(AgentToolsService)
+    session_store = provide(OracleSessionStore)
+    event_store = provide(OracleEventStore)
+
+    @provide
+    def provide_agent_stream_service(self) -> AgentStreamService:
+        return AgentStreamService()
+
+    agent_orchestration_service = provide(AgentOrchestrationService)
 
     @provide
     def provide_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
@@ -126,23 +132,12 @@ class DomainServiceProvider(Provider):
     ) -> OracleVectorSearchService:
         return OracleVectorSearchService(vertex_ai_service=vertex_ai_service, product_service=product_service)
 
-    @provide
-    def provide_query_context(self) -> "QueryContext | None":
-        qid = query_id_var.get()
-        if not qid:
-            return None
-        return QueryContext(query_id=qid)
-
 
 PROVIDERS: tuple[type[Provider], ...] = (LitestarPersistenceProvider, IntegrationsProvider, DomainServiceProvider)
 
 
 def make_container(*extra_providers: Provider) -> AsyncContainer:
-    """Build the Dishka container with the three user providers plus any extras.
-
-    Pass ``LitestarProvider()`` to wire the request scope to Litestar; pass
-    nothing for the ``coffee`` CLI.
-    """
+    """Build the Dishka container with the three user providers plus any extras."""
     return make_async_container(*extra_providers, *(P() for P in PROVIDERS))
 
 

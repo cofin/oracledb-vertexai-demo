@@ -23,7 +23,7 @@ from tools.oracle.database import (
 if TYPE_CHECKING:
     from pathlib import Path
 
-DEMO_PASSWORD = "SuperSecret1"  # noqa: S105
+DEMO_PASSWORD = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 CONTAINER_NAME = "oracle-free-db"
 
 
@@ -54,7 +54,7 @@ def test_database_config_from_env_overrides(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert config.image == "container-registry.oracle.com/database/adb-free:latest-26ai"
     assert config.app_user == "barista"
-    assert config.app_user_password == "Roast1234"  # noqa: S105
+    assert config.app_user_password == "Roast1234"  # ruff: ignore[hardcoded-password-string]
     assert config.host_port == 1599
 
 
@@ -225,5 +225,5 @@ def test_database_start_loads_env_file(monkeypatch: pytest.MonkeyPatch, tmp_path
     result = CliRunner().invoke(database_start, ["--env-file", str(env_file), "--skip-apex", "--skip-ords"])
 
     assert result.exit_code == 0
-    assert captured["database_password"] == "env-secret"  # noqa: S105
+    assert captured["database_password"] == "env-secret"  # ruff: ignore[hardcoded-password-string]
     db.start.assert_called_once_with(pull=False, recreate=False)
