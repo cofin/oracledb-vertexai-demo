@@ -6,17 +6,21 @@ Keep it short, code-grounded, and aligned with `.agents/index.md`.
 ## Project Overview
 
 **Purpose**: Coffee recommendation demo using Oracle 26ai vector search,
-Google Vertex AI embeddings, Google ADK conversation orchestration, and
-store-aware chat planning for locations, inventory, and maps.
+Google Vertex AI embeddings, native dynamic agent orchestration (Gemini 3.8 Flash),
+LitestarMCP, LitestarA2A agent protocol, and store-aware planning for locations,
+inventory, and maps.
 
 **Current stack**:
 
 - **Framework**: Litestar 2 with HTMX, Jinja templates, and litestar-vite template mode.
 - **Server**: Granian via `uv run coffee run`.
 - **Database**: Oracle 26ai with SQLSpec, named SQL files, JSON, BOOLEAN, and `VECTOR(3072, FLOAT32)`.
-- **AI**: Vertex AI `gemini-embedding-2` embeddings and Gemini Flash-Lite chat/intent calls.
-- **Agent runtime**: Google ADK 2 Workflow/BaseNode runner with Oracle-backed ADK sessions.
+- **AI**: Vertex AI `gemini-embedding-2` embeddings, Gemini 3.8 Flash chat/intent calls.
+- **Agent runtime**: Native `domain/ai` runtime with re-entrant `AgentRuntime`, `GeminiModelClient`,
+  and Oracle-backed session/event stores (`AGENT_SESSION`, `AGENT_EVENT`).
+- **Protocols**: LitestarMCP (`POST /mcp`) and LitestarA2A (`POST /a2a`, `GET /.well-known/agent-card.json`).
 - **DI**: Dishka with three app providers in `src/app/ioc.py`.
+- **Security & Tracing**: `litestar-security` with `PublicController` and OpenTelemetry enabled by default.
 - **Shipped components**: store coordinates/inventory, deterministic store and
   product-availability chat routes, browser location opt-in, and no-key Maps
   URLs.
@@ -32,7 +36,7 @@ The active agent context lives under `.agents/bundles/`:
 - [Patterns index](.agents/bundles/knowledge/patterns/index.md)
 - [Architecture guide](.agents/bundles/knowledge/guides/architecture.md)
 - [Oracle database guide](.agents/bundles/knowledge/guides/oracle-database.md)
-- [ADK agent guide](.agents/bundles/knowledge/guides/adk-agent-patterns.md)
+- [Native AI runtime guide](.agents/bundles/knowledge/guides/agentic-ai-runtime.md)
 - [Store, inventory & maps guide](.agents/bundles/knowledge/guides/store-inventory-maps.md)
 
 Durable lessons must live in `.agents/bundles/knowledge/` or `.agents/bundles/knowledge/patterns/`.
@@ -164,20 +168,20 @@ selects a text instruction prefix from `EMBEDDING_PURPOSE_INSTRUCTIONS` that is
 prepended to the content; no `task_type` parameter is sent. Runtime settings use
 `gemini-embedding-2` with `EMBEDDING_DIMENSIONS = 3072`.
 
-### ADK Chat
+### Native AI Runtime & Chat
 
-ADK conversation state is stored through `OracleAsyncADKStore` and
-`SQLSpecSessionService`. Litestar browser sessions are separate and are bridged
-only at the chat controller boundary when deriving ADK `user_id` and `session_id`.
+AI conversation state is stored through `OracleSessionStore` (`AGENT_SESSION`)
+and `OracleEventStore` (`AGENT_EVENT`). Litestar browser sessions are separate
+and bridged only at the chat controller boundary when deriving `session_id`.
 
-Tools are closure-bound inside `ADKRunner` for each request so they use the
-active Dishka request services. Streaming responses use `/api/chat/stream` with
-`ServerSentEvent` and ADK `StreamingMode.SSE`.
+Tools are closure-bound per turn with `CallContext`, accessing the active Dishka
+request services. Streaming responses use `/api/chat/stream` adapted by
+`AgentStreamService`, emitting structured event frames (`session`, `tool_call`,
+`tool_end`, `delta`, `ping`, `final`) with 5s keep-alive pings.
 
-Product RAG may use Gemini structured output to select among retrieved
-candidate product ids, but final product names, prices, and descriptions must be
-rendered from Oracle rows in Python. Invalid selection output, timeouts, or
-non-credential model errors fall back to the deterministic grounded template.
+Multi-protocol machine interfaces are exposed simultaneously:
+- **MCP (`LitestarMCP`)**: `POST /mcp` with route tools (`mcp_tool="search_coffee_products"`).
+- **A2A (`LitestarA2A`)**: `POST /a2a` with JSON-RPC agent execution and `GET /.well-known/agent-card.json`.
 
 ### Store, Inventory, And Maps
 

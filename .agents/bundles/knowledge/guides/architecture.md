@@ -15,22 +15,24 @@ This guide provides a high-level map of the Cymbal Coffee system architecture, p
 
 ## System Shape
 
-Cymbal Coffee is a two-page Litestar web application served by the Granian ASGI server.
-- `/` is the primary chat route.
+Cymbal Coffee is a multi-protocol Litestar application served by the Granian ASGI server.
+- `/` is the primary chat route (HTML/HTMX).
 - `/explore` is the vector search and database query explain plan viewer.
-- `/api/chat/stream` is the Server-Sent Event stream from the ADK workflow.
+- `/api/chat/stream` is the Server-Sent Event stream from `AgentOrchestrationService`.
 - `/api/vector-demo` returns HTMX partials or JSON search results.
 - `/api/explain-plan` returns execution plans for the vector query.
 - `/api/stores/{store_id}/inventory` returns HTML partials for store inventory.
+- `POST /mcp` exposes application tools and resources via LitestarMCP.
+- `POST /a2a` and `GET /.well-known/agent-card.json` expose A2A 1.0 agent protocol via LitestarA2A.
 
 The application follows a clean request flow:
 ```text
-browser
-  -> Litestar controllers
+browser / client
+  -> Litestar controllers (PublicController / SecureController)
   -> Dishka request scope
-  -> domain services
-  -> SQLSpec Oracle driver and Google GenAI client
-  -> Oracle 26ai, Vertex AI, ADK session store
+  -> domain services (AgentOrchestrationService, ProductService, StoreService)
+  -> AgentRuntime / GeminiModelClient & SQLSpec Oracle driver
+  -> Oracle 26ai (Vector search, sessions, events) & Vertex AI
 ```
 
 ## Package & Source Layout
@@ -40,13 +42,18 @@ src/app/
   cli/                  # Click commands and manage.py command modules
   db/
     migrations/         # SQLSpec database schema migrations
-    sql/                # Named SQL queries loaded by db_manager
+    sql/                # Named SQL queries loaded by db_manager (including ai-runtime.sql)
     fixtures/           # Committed compressed fixtures data
   domain/
-    chat/               # Chat intent, ADK flow, and streaming session modules
+    ai/                 # Generic native agentic AI runtime, MCP, and A2A
+      a2a/              # Agent Card and CoffeeAgentExecutor
+      mcp/              # MCP plugin configuration and route tools
+      runtime/          # Msgspec wire types, schema, tools, Gemini client, loop, and stores
+      services/         # AgentOrchestrationService and SpecTree definition
+    chat/               # Chat controller, schemas, and session identity
       controllers/
       schemas/
-      services/
+      services/         # FlashLiteIntentClassifier
     products/           # Product search, store inventory, and Vertex AI services
       controllers/
       schemas/

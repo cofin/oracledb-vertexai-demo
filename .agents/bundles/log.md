@@ -2,6 +2,15 @@
 
 Historical change log and completed milestone record for Cymbal Coffee.
 
+## 2026-10-08: Native Agentic Runtime (Gemini 3.8 Flash, A2A & MCP)
+- `native-agentic-runtime`: Decommissioned Google ADK and migrated conversational workflows to native dynamic agentic intelligence platform in `src/app/domain/ai/`.
+- Runtime Primitives: High-performance `msgspec.Struct` contracts (`Content`, `Part`, `FunctionCall`, `FunctionResponse`, `AgentEvent`, `Usage`), Gemini schema converter, and type-safe `declare()` tool wrapper with `execute_parallel()`.
+- Model Acceleration: `GeminiModelClient` targeting `gemini-3.8-flash` with native thought suppression, exponential backoff retries, and token accounting.
+- Persistence: `OracleSessionStore` and `OracleEventStore` utilizing named SQL in `src/app/db/sql/ai-runtime.sql` (`AGENT_SESSION`, `AGENT_EVENT`) with ACID transaction guarantees.
+- Streaming: Re-entrant `AgentRuntime.execute_turn()` with turn/step limits and `AgentStreamService` SSE adapter emitting keep-alive pings (`type: ping`), tool lifecycle events, text deltas, and usage summaries.
+- Multi-Protocol: Stateless `LitestarMCP` (`POST /mcp`) with route-annotated tools (`mcp_tool="search_coffee_products"`) and `LitestarA2A` (`POST /a2a`, `GET /.well-known/agent-card.json`) with `CoffeeAgentExecutor`.
+- Hardened Security & Telemetry: `litestar-security` integration with `SecurityHeadersConfig.hardened()` and `PublicController` subclassing; `OpenTelemetryPlugin` enabled by default with SQLSpec database spans.
+
 ## 2026-10-07: Flow Setup & OKF v0.2 Migration
 - Transitioned framework from legacy Beads tracker to beadless OKF v0.2 knowledge bundles under `.agents/bundles/`.
 - Scaffolding: `product/`, `knowledge/`, `specs/`, `research/`, `log.md`, `index.md`.

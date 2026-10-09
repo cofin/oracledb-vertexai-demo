@@ -14,7 +14,7 @@ This index lists the active, component-based guides, patterns, and styleguides f
 ## Component Guides
 - [System Architecture](guides/architecture.md) - High-level system architecture, package boundaries, and dependency injection boundaries
 - [Oracle Database & SQLSpec](guides/oracle-database.md) - SQLSpec configurations, named SQL query patterns, vector storage, and HNSW indexing
-- [ADK Chat Agent Patterns](guides/adk-agent-patterns.md) - ADK 2.0 workflow structures, intent routing, structured RAG grounding, and streaming
+- [Native Agentic AI Runtime](guides/agentic-ai-runtime.md) - Architecture, execution loop, streaming SSE adapter, Oracle 26ai persistence, MCP, and A2A protocol integration
 - [Store, Inventory & Maps](guides/store-inventory-maps.md) - Store hours, nearest-store location (Haversine), stock availability, and Google Maps
 - [Frontend & UI Development](guides/frontend-ui.md) - Jinja templating, HTMX events, Tailwind CSS, and client-only Vite widgets
 - [Testing & Verification](guides/testing-verification.md) - pytest AnyIO async tests, mock boundaries, and parallel worker safety
