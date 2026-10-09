@@ -73,7 +73,7 @@ from app.domain.ai.runtime import CallContext, declare
 
 async def find_nearby_stores(ctx: CallContext, query: str, limit: int = 3) -> dict[str, Any]:
     """Find nearby coffee shops matching query.
-    
+
     Args:
         ctx: Active turn invocation context.
         query: Search location or query string.

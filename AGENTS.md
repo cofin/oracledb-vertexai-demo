@@ -180,6 +180,7 @@ request services. Streaming responses use `/api/chat/stream` adapted by
 `tool_end`, `delta`, `ping`, `final`) with 5s keep-alive pings.
 
 Multi-protocol machine interfaces are exposed simultaneously:
+
 - **MCP (`LitestarMCP`)**: `POST /mcp` with route tools (`mcp_tool="search_coffee_products"`).
 - **A2A (`LitestarA2A`)**: `POST /a2a` with JSON-RPC agent execution and `GET /.well-known/agent-card.json`.
 
