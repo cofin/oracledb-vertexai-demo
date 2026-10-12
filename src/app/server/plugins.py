@@ -108,9 +108,7 @@ def _initialize() -> None:
     g["htmx"] = _HTMXPlugin()
     g["flash"] = _FlashPlugin(config=_FlashConfig(template_config=config.template))
     g["queue"] = _QueuePlugin(config=config.queue)
-    g["autowire"] = _AutowirePlugin(
-        _AutowireConfig(domain_packages=["app.domain"], integrations=["dishka", "queues"])
-    )
+    g["autowire"] = _AutowirePlugin(_AutowireConfig(domain_packages=["app.domain"], integrations=["dishka", "queues"]))
     g["security"] = _SecurityPlugin(config=build_security_config(settings))
     g["mcp"] = _LitestarMCP(build_mcp_config(settings))
     g["a2a"] = _LitestarA2A(

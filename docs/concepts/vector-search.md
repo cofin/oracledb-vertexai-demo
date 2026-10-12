@@ -97,11 +97,10 @@ enough; `:limit` caps the top-k.
 runs the query above and maps each row to a typed `ProductMatch` — Python
 hands Oracle a plain `list[float]`, no manual packing required.
 
-```{literalinclude} ../../src/app/domain/products/services/services.py
+```{literalinclude} ../../src/app/domain/products/services/_products.py
 :language: python
-:start-after: docs:start-search-by-vector
-:end-before: docs:end-search-by-vector
-:caption: src/app/domain/products/services/services.py
+:pyobject: ProductService.search_by_vector
+:caption: src/app/domain/products/services/_products.py
 ```
 
 SQLSpec and the Oracle adapter handle the vector binding. Don't reach for

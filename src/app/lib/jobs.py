@@ -16,12 +16,7 @@ from app.lib.di import request_container_var, worker_container_var
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-__all__ = (
-    "get_task_container",
-    "request_container_var",
-    "task_container_scope",
-    "worker_container_var",
-)
+__all__ = ("get_task_container", "request_container_var", "task_container_scope", "worker_container_var")
 
 
 def get_task_container() -> AsyncContainer:

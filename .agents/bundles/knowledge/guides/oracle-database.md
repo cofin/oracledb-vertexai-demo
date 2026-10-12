@@ -111,11 +111,12 @@ SELECT plan_table_output FROM TABLE(DBMS_XPLAN.DISPLAY());
 ```
 Look for `VECTOR` in the output to confirm that the HNSW index is being hit. If it falls back to full table scan, verify index creation, `vector_memory_size`, and stats updates.
 
-## Extension Migrations (Sessions)
+## Extension & Queue Migrations (Sessions & Background Jobs)
 
-SQLSpec configuration wires extension tables for ADK and Litestar:
-- `ORACLE_ADK_IN_MEMORY` (default true): enables INMEMORY for `adk_session`, `adk_event`, and optional memory tables.
+SQLSpec configuration wires tables for the native AI runtime, Litestar sessions, and `litestar-queues`:
+- `ORACLE_AGENT_IN_MEMORY` (default true): enables INMEMORY for `agent_session` and `agent_event`.
 - `ORACLE_LITESTAR_SESSION_IN_MEMORY` (default true): enables INMEMORY for `app_session`.
+- **LOB-Isolated Queue Pool (`DatabaseSettings.get_queue_config()`)**: `OracledbAsyncQueueStore` sets `driver_features["fetch_lobs"] = False` on the `OracleAsyncConfig` passed to `SQLSpecBackendConfig`. Always pass a dedicated `OracleAsyncConfig` (`session_key="queue_db_session"`) from `DatabaseSettings.get_queue_config()` so `config.db` retains `enable_AutoLob=True` for application CLOB JSON columns.
 
 ## Local Database Lifecycle
 

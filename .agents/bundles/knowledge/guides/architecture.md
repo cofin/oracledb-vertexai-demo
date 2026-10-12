@@ -53,20 +53,23 @@ src/app/
     chat/               # Chat controller, schemas, and session identity
       controllers/
       schemas/
-      services/         # FlashLiteIntentClassifier
-    products/           # Product search, store inventory, and Vertex AI services
+      services/         # HybridRouteResolver
+    products/           # Product search, store inventory, background jobs, and Vertex AI services
       controllers/
+      jobs.py           # @task("products.embed_missing")
       schemas/
       services/
-    system/             # Health check, metrics, and response cache
+    system/             # Health check, metrics, response cache, and background cleanup jobs
       controllers/
+      jobs.py           # @task("system.cache_cleanup")
       schemas/
       services/
     web/                # Web UI templates and controllers
       controllers/
       templates/
-  ioc.py                # Dishka container configuration
-  config.py             # App instantiation, session settings, and logging configuration
+  ioc/                  # Modular Dishka providers (_database.py, _integrations.py, _services.py)
+  lib/                  # Infrastructure helpers, modular settings/ package, jobs.py, and DI utilities
+  config.py             # App instantiation, session settings, queue config, and logging configuration
   server/               # Litestar application factory and plugin registry
 ```
 
@@ -77,24 +80,24 @@ Behavior belongs within domain packages under `domain/<domain_name>/`.
 
 ## Dependency Injection (Dishka)
 
-We use Dishka for dependency injection. Containers are configured in `src/app/ioc.py`.
+We use Dishka for dependency injection. Containers are configured in `src/app/ioc/`.
 
 ### Providers
 We register three user providers at application boot:
-1. **`LitestarPersistenceProvider`**:
-   - Scope: APP -> `OracleAsyncConfig`
+1. **`LitestarPersistenceProvider`** (`src/app/ioc/_database.py`):
+   - Scope: APP -> `OracleAsyncConfig`, `QueueService`
    - Scope: REQUEST -> `OracleAsyncDriver`
-2. **`IntegrationsProvider`**:
-   - Scope: APP -> Google GenAI `Client`
-   - Scope: APP -> `OracleAsyncADKStore`
-   - Scope: APP -> `SQLSpecSessionService`
-   - Scope: APP -> `FlashLiteIntentClassifier`, `PersonaManager`, `ADKRunner`
-3. **`DomainServiceProvider`**:
-   - Scope: REQUEST -> `ProductService`, `StoreService`, `CacheService`, `MetricsService`, `AgentToolsService`
-   - Scope: REQUEST -> `VertexAIService`, `OracleVectorSearchService`
+2. **`IntegrationsProvider`** (`src/app/ioc/_integrations.py`):
+   - Scope: APP -> Google GenAI `Client`, `GeminiModelClient`
+   - Scope: APP -> `OracleSessionStore`, `OracleEventStore`
+   - Scope: APP -> `AgentRuntime`, `CoffeeAgentExecutor`
+3. **`DomainServiceProvider`** (`src/app/ioc/_services.py`):
+   - Scope: REQUEST -> `ProductService`, `StoreService`, `CacheService`, `MetricsService`
+   - Scope: REQUEST -> `VertexAIService`, `OracleVectorSearchService`, `HybridRouteResolver`
+   - Scope: REQUEST -> `AgentOrchestrationService`, `AgentStreamService`
 
 ### DI Annotations Rule
-Do not use `from __future__ import annotations` in `src/app/ioc.py` or any provider files. Dishka parses type annotations at runtime to resolve dependencies; postponed annotations prevent container construction.
+Do not use `from __future__ import annotations` in `src/app/ioc/` provider modules. Dishka parses type annotations at runtime to resolve dependencies; postponed annotations prevent container construction.
 
 ### Dependency Injection Usage
 Controllers and services inject their dependencies using the `Inject` type hint:
@@ -115,7 +118,8 @@ We maintain a strict boundary between end-user operations and developer utilitie
 ## Detailed Guides Index
 For component-specific details, refer to:
 - [Oracle Database & SQLSpec](oracle-database.md)
-- [ADK Chat Agent Patterns](adk-agent-patterns.md)
+- [Hybrid Search & RRF Routing](hybrid-search.md)
+- [Native Agentic AI Runtime](agentic-ai-runtime.md)
 - [Store, Inventory & Maps](store-inventory-maps.md)
 - [Frontend & UI Development](frontend-ui.md)
 - [Testing & Verification](testing-verification.md)

@@ -19,16 +19,16 @@ menu rows.
 **Oracle 26ai** HNSW index over `VECTOR`.
 :::
 
-:::{grid-item-card} {octicon}`workflow;1.2em` Chat routing
+:::{grid-item-card} {octicon}`workflow;1.2em` Hybrid RRF routing
 :class-card: hero-pill
 
-**Flash-Lite** routes grounded product, store, and availability turns.
+**Oracle 26ai Hybrid RRF** routes grounded product, store, and availability turns in one SQL query.
 :::
 
 :::{grid-item-card} {octicon}`zap;1.2em` Vertex AI
 :class-card: hero-pill
 
-`gemini-embedding-2` for retrieval; **Gemini** can assist selection.
+`gemini-embedding-2` for retrieval; **Gemini 3.8 Flash** powers the native `AgentRuntime`.
 :::
 
 ::::
@@ -36,12 +36,12 @@ menu rows.
 ```{mermaid}
 flowchart TD
     U([User question]) --> C[Litestar chat controller]
-    C --> I{Flash-Lite intent}
-    I -->|PRODUCT_RAG| P[Product RAG selector]
+    C --> I{Hybrid RRF<br/>hybrid-search-turn}
+    I -->|PRODUCT_RAG| P[Grounded product composer]
     I -->|STORE_LOCATION| S[Store lookup]
     I -->|PRODUCT_AVAILABILITY| V[Inventory lookup]
-    I -->|GENERAL_CONVERSATION| A[ADK 2.0 workflow]
-    P --> O[(Oracle 26ai<br/>HNSW search)]
+    I -->|GENERAL_CONVERSATION| A[Native AgentRuntime]
+    P --> O[(Oracle 26ai<br/>HNSW + Oracle Text)]
     S --> O
     V --> O
     A -. optional tool .-> O
@@ -50,10 +50,10 @@ flowchart TD
     R --> U
 ```
 
-*Product, store, and availability turns are grounded in deterministic service
-facts. Product RAG may use structured selection, but final product copy is
-rendered from Oracle rows. General conversation falls through to the ADK
-workflow, where the model can still use the same closure-bound tools.*
+*Product, store, and availability turns are routed and grounded in a single
+Oracle 26ai Hybrid RRF round trip (`hybrid-search-turn` + `hybrid-term-hits`).
+General conversation enters the native `AgentRuntime` (`google-genai`), where
+the model can invoke the same closure-bound tools.*
 
 ## Where to go next
 

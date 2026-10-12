@@ -1,36 +1,37 @@
 # API reference
 
-Generated docstrings for the small set of classes that carry the demo's
-behavior. The rest of the codebase — CLI commands, settings dataclasses,
-plugin wiring, IoC providers — is intentionally out of scope; their
-shapes are stable and reading the source is faster than reading
-generated docs.
+Generated docstrings for the core orchestration, hybrid routing, and database
+services that power the demo.
 
-## ADK runner
+## Agent orchestration & hybrid router
 
-The per-request chat runner that ties the Litestar chat controller to
-Flash-Lite intent routing, grounded row-rendered routes, Google ADK 2.0
-fallbacks, and closure-bound tools.
+The native `google-genai` turn orchestrator and single-query Oracle 26ai
+Hybrid RRF router that tie the Litestar chat controller to grounded
+row-rendered routes, closure-bound tools, and multi-step `AgentRuntime`
+conversations.
 
 ```{eval-rst}
-.. autoclass:: app.domain.chat.services.adk.ADKRunner
+.. autoclass:: app.domain.ai.services.AgentOrchestrationService
+   :members:
+
+.. autoclass:: app.domain.chat.services.HybridRouteResolver
    :members:
 ```
 
 ## Services
 
 `OracleAsyncService` subclasses that own the named-SQL queries and result
-mapping for products, the embedding/response caches, structured Vertex AI
-selection calls, and the per-message metrics surfaced on `/explore`.
+mapping for products, hybrid search, the embedding/response caches, and the
+per-message metrics surfaced on `/explore`.
 
 ```{eval-rst}
-.. autoclass:: app.domain.products.services.services.ProductService
+.. autoclass:: app.domain.products.services.ProductService
    :members:
 
-.. autoclass:: app.domain.system.services.services.CacheService
+.. autoclass:: app.domain.system.services.CacheService
    :members:
 
-.. autoclass:: app.domain.system.services.services.MetricsService
+.. autoclass:: app.domain.system.services.MetricsService
    :members:
 ```
 

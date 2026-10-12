@@ -238,8 +238,11 @@ class AgentOrchestrationService:
             )
         history = await self._event_store.list_events(session_id=session_id)
         turn_num = len(history) // 2 + 1
-        get_next_seq = getattr(self._event_store, "get_next_seq", None)
-        next_seq = await get_next_seq(session_id) if callable(get_next_seq) else len(history) + 1
+        next_seq = (
+            await self._event_store.get_next_seq(session_id)
+            if hasattr(self._event_store, "get_next_seq")
+            else len(history) + 1
+        )
         user_event = AgentEvent(
             session_id=session_id,
             invocation_id=invocation_id,

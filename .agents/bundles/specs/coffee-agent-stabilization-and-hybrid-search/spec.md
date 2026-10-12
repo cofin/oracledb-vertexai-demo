@@ -2,17 +2,17 @@
 type: Spec
 flow_id: coffee-agent-stabilization-and-hybrid-search
 title: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment
-state: active
+state: completed
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 4
-current_task: "oracle-queues"
-last_operation: 20261012T200820Z-flow-executor-complete-chapter-3-00
+state_revision: 6
+current_task: null
+last_operation: complete_prd
 operation_targets:
-  - "platform-alignment"
-last_verified_checkpoint: 0041a07
+  - "slides-and-docs-refresh"
+last_verified_checkpoint: 2026-10-12T20:48:00Z
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T20:08:20Z
+updated_at: 2026-10-12T20:48:00Z
 description: Master PRD roadmap stabilizing the native Gemini agent runtime, replacing LLM intent classification with a single-query Oracle 26ai Hybrid RRF search, aligning settings/DI/security/MCP with reference platform conventions, adding Oracle background queues, and refreshing slides and documentation.
 tags:
   - spec
@@ -102,9 +102,9 @@ Transform the Cymbal Coffee Oracle 26ai + Vertex AI demo on `feat/gemini-embeddi
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `coffee-agent-stabilization-and-hybrid-search` (`planned`)
+- **Active Flow / Lifecycle**: `coffee-agent-stabilization-and-hybrid-search` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `2026-10-12T20:48:00Z`
 - **Key Decisions**:
   - Pure-SQL Hybrid RRF (`hybrid-search-turn` + `hybrid-term-hits`) with `CTX_DDL` `MULTI_COLUMN_DATASTORE` preferences replaces `FlashLiteIntentClassifier`.
   - `OracleSessionStore` and `OracleEventStore` run at `Scope.APP` over `db_manager.provide_session()` with explicit `await driver.commit()`.

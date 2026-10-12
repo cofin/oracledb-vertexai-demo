@@ -32,7 +32,7 @@ class CoffeeSkillController(SkillController):
 
     name = "cymbal-coffee-barista"
     description = "Cymbal Coffee barista skill providing grounded menu, recipe, and store availability guidance."
-    tags: Sequence[str] = ("coffee", "barista", "inventory", "oracle-26ai")
+    tags: Sequence[str] | None = ("coffee", "barista", "inventory", "oracle-26ai")
     examples = ("What dark roasts do you recommend?", "Which Dallas stores have Espresso Blend in stock?")
     instructions = BASE_SYSTEM_INSTRUCTION
     opt = {"auth": public()}

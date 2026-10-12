@@ -133,9 +133,7 @@ class QueueSettings:
             placement = "asgi"
 
         worker_config = WorkerConfig(
-            placement=placement,
-            max_concurrency=self.concurrency,
-            poll_interval=self.poll_interval,
+            placement=placement, max_concurrency=self.concurrency, poll_interval=self.poll_interval
         )
 
         if effective_backend == "memory":

@@ -43,7 +43,4 @@ async def cleanup_expired_cache_and_sessions(retention_days: int = 7) -> dict[st
         stale_sessions_deleted=stale_sessions,
         retention_days=retention_days,
     )
-    return {
-        "expired_responses_deleted": expired_responses,
-        "stale_sessions_deleted": stale_sessions,
-    }
+    return {"expired_responses_deleted": expired_responses, "stale_sessions_deleted": stale_sessions}

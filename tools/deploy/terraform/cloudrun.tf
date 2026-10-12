@@ -62,7 +62,15 @@ resource "google_cloud_run_v2_service" "coffee_app" {
         value = "true"
       }
       env {
-        name  = "ORACLE_ADK_IN_MEMORY"
+        name  = "GEMINI_MODEL"
+        value = "gemini-3.8-flash"
+      }
+      env {
+        name  = "EMBEDDING_MODEL"
+        value = "gemini-embedding-2"
+      }
+      env {
+        name  = "ORACLE_AGENT_IN_MEMORY"
         value = "true"
       }
       env {

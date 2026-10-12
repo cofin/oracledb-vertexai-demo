@@ -162,11 +162,7 @@ async def test_bulk_embed_enqueue_dispatches_to_queue_service() -> None:
         queue_service=mock_queue_service,
     )
 
-    mock_queue_service.enqueue.assert_awaited_once_with(
-        embed_missing_records,
-        batch_size=25,
-        force=True,
-    )
+    mock_queue_service.enqueue.assert_awaited_once_with(embed_missing_records, batch_size=25, force=True)
 
 
 def test_cli_exposes_worker_and_queues_commands() -> None:

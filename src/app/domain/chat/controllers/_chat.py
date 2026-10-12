@@ -68,7 +68,6 @@ class CoffeeChatController(PublicController):
             return "barista"
         return persona
 
-    # docs:start-stream-handler
     @post(path="/api/chat/stream", name="chat.api.stream", opt={"exclude_from_csrf": False})
     async def stream_chat_message(
         self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
@@ -118,8 +117,6 @@ class CoffeeChatController(PublicController):
                 }
 
         return ServerSentEvent(stream_events(), status_code=200)
-
-    # docs:end-stream-handler
 
     @post(
         path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200, opt={"exclude_from_csrf": False}

@@ -2,17 +2,17 @@
 type: Spec
 flow_id: slides-and-docs-refresh
 title: Slides, Sphinx Documentation, and Knowledge Bundle Refresh
-state: in_progress
+state: completed
 plan_revision: 1
 plan_commit: null
-state_revision: 1
-current_task: "5.1"
-last_operation: claim_task
+state_revision: 3
+current_task: null
+last_operation: complete_flow
 operation_targets:
-  - slides-and-docs-refresh:5.1
-last_verified_checkpoint: null
+  - slides-and-docs-refresh:5.2
+last_verified_checkpoint: 2026-10-12T20:48:00Z
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T20:33:50Z
+updated_at: 2026-10-12T20:48:00Z
 description: Rewrite SLIDES.md to showcase single-query Oracle 26ai Hybrid RRF search (BM25-style lexical ranking + HNSW vector similarity) and off-menu term_hits detection, and update AGENTS.md, README.md, Sphinx docs, Terraform config, and OKF knowledge bundles.
 tags:
   - docs
@@ -65,15 +65,15 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 ### Phase 1: Presentation Narrative & Documentation Synchronization
 
 - [x] 5.1 Rewrite `SLIDES.md` for single-query Oracle 26ai Hybrid RRF routing, BM25-style lexical ranking, and `term_hits` off-menu detection
-- [ ] 5.2 Synchronize `AGENTS.md`, `README.md`, Sphinx `docs/**`, `cloudrun.tf`, and `.agents/bundles/{product,knowledge}/**`
+- [x] 5.2 Synchronize `AGENTS.md`, `README.md`, Sphinx `docs/**`, `cloudrun.tf`, and `.agents/bundles/{product,knowledge}/**`
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `slides-and-docs-refresh` (`planned`)
+- **Active Flow / Lifecycle**: `slides-and-docs-refresh` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `2026-10-12T20:48:00Z`
 - **Key Decisions**:
   - `SLIDES.md` describes the lexical leg accurately as **"BM25-style lexical ranking (Oracle Text `CONTAINS`/`SCORE`)"** and notes Oracle 26ai `VECTOR(..., SPARSE)` for external BM25/SPLADE sparse encoders.
 - **Newest Discoveries**:

@@ -14,6 +14,7 @@ This index lists the active, component-based guides, patterns, and styleguides f
 ## Component Guides
 - [System Architecture](guides/architecture.md) - High-level system architecture, package boundaries, and dependency injection boundaries
 - [Oracle Database & SQLSpec](guides/oracle-database.md) - SQLSpec configurations, named SQL query patterns, vector storage, and HNSW indexing
+- [Hybrid Search & RRF Routing](guides/hybrid-search.md) - Single-query Oracle 26ai Hybrid RRF (`CONTAINS`/`SCORE` + HNSW `FETCH APPROX`) and `hybrid-term-hits` off-menu detection
 - [Native Agentic AI Runtime](guides/agentic-ai-runtime.md) - Architecture, execution loop, streaming SSE adapter, Oracle 26ai persistence, MCP, and A2A protocol integration
 - [Store, Inventory & Maps](guides/store-inventory-maps.md) - Store hours, nearest-store location (Haversine), stock availability, and Google Maps
 - [Frontend & UI Development](guides/frontend-ui.md) - Jinja templating, HTMX events, Tailwind CSS, and client-only Vite widgets

@@ -48,8 +48,7 @@ class CacheService(OracleAsyncService):
             Number of ``agent_session`` rows deleted.
         """
         res = await self.driver.execute(
-            db_manager.get_sql("delete-stale-agent-sessions"),
-            retention_days=max(1, retention_days),
+            db_manager.get_sql("delete-stale-agent-sessions"), retention_days=max(1, retention_days)
         )
         await self.driver.commit()
         return res.rows_affected

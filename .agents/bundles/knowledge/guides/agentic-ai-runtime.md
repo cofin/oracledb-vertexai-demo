@@ -28,19 +28,20 @@ CoffeeChatController (PublicController)
          ▼
 AgentOrchestrationService (REQUEST scope)
          │
-         ├─► Intent Classification (FlashLiteIntentClassifier)
+         ├─► Hybrid RRF Turn Routing (HybridRouteResolver -> hybrid-search-turn + hybrid-term-hits)
+         ├─► Grounded Route Composers (PRODUCT_RAG, STORE_LOCATION, PRODUCT_AVAILABILITY, ORDER_STATUS)
          ├─► Session / Context (CallContext, OracleSessionStore, OracleEventStore)
          ▼
-AgentRuntime.execute_turn() (APP scope)
+AgentRuntime.run_stream() (APP scope, GENERAL_CONVERSATION fallback)
          │
          ├─► Prompt Fencing & Specialist Delegation (SpecTree, AgentSpec)
          ├─► Model Interaction (GeminiModelClient -> google-genai -> gemini-3.8-flash)
          ├─► Dynamic Tool Dispatch (Tool, declare(), execute_parallel())
          ▼
-AgentStreamService.adapt()
+AgentStreamService.stream()
          │
          ▼
-SSE Frames: session -> tool_call -> tool_end -> delta -> ping -> final
+SSE Frames: session -> tool_call -> tool_end -> delta -> ping -> final (full ChatResponse payload)
 ```
 
 Simultaneously, the same domain services and tools are exposed machine-to-machine via:

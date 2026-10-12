@@ -186,11 +186,7 @@ async def _enqueue_or_run_bulk_embed(
     """Enqueue ``products.embed_missing`` when ``enqueue=True`` or run inline."""
     if enqueue:
         console = get_console()
-        result = await queue_service.enqueue(
-            embed_missing_records,
-            batch_size=batch_size,
-            force=force,
-        )
+        result = await queue_service.enqueue(embed_missing_records, batch_size=batch_size, force=force)
         console.print(
             f"[bold green]✓ Enqueued products.embed_missing task[/bold green] "
             f"(id={result.id}, status={result.status or 'pending'})"
@@ -303,6 +299,7 @@ def worker_group(ctx: click.RichContext, /) -> None:
 
 def _register_queue_cli_commands() -> None:
     """Mount ``queues`` and ``worker`` subcommands onto the ``coffee`` CLI group."""
+
     @click.pass_context
     def _queues_group_callback(ctx: click.RichContext, /) -> None:
         _bind_litestar_env(ctx)

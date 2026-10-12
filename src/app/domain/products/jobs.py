@@ -89,8 +89,4 @@ async def embed_missing_records(batch_size: int = 50, force: bool = False) -> di
         errors=total_errors,
         force=force,
     )
-    return {
-        "products_embedded": products_embedded,
-        "routes_embedded": routes_embedded,
-        "errors": total_errors,
-    }
+    return {"products_embedded": products_embedded, "routes_embedded": routes_embedded, "errors": total_errors}

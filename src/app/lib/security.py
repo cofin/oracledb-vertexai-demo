@@ -88,7 +88,8 @@ class _ApiKeyResolver:
 
     async def resolve(self, claims: str) -> IdentityResolution[dict[str, object]]:
         """Resolve verified API key claims into a Principal."""
-        return Principal(id=claims, user={"id": claims, "is_authenticated": True})
+        user_payload: dict[str, object] = {"id": claims, "is_authenticated": True}
+        return Principal(id=claims, user=user_payload)
 
 
 def build_security_config(settings: Settings) -> SecurityConfig[Any]:
