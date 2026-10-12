@@ -11,10 +11,10 @@ from hashlib import sha256
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
-from app.domain.ai.runtime._context import CallContext
+from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._spec import AgentSpec, GenerationConfig, SpecTree
 from app.domain.ai.runtime._types import AgentEvent, Content, Part
-from app.domain.ai.services._tools import CoffeeToolServices, build_coffee_tools
+from app.domain.ai.services._tools import build_coffee_tools
 from app.domain.chat.schemas import ChatMessage
 from app.domain.chat.services._telemetry import (
     SQLPhase,
@@ -23,6 +23,7 @@ from app.domain.chat.services._telemetry import (
     build_search_metrics,
     safe_location_context,
 )
+from app.domain.products.services import InventoryService, MapsService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, PersonaManager
 from app.lib.settings import get_settings
@@ -446,7 +447,7 @@ class AgentOrchestrationService:
         cache_key: str | None,
         cache_phase: SQLPhase | None,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        tool_services = self._build_tool_services(services)
+        tool_services = self._build_tool_services(services, turn_context=turn_context)
         safe_loc = safe_location_context(location_context)
         ctx = CallContext(
             session_id=session_id,
@@ -594,15 +595,22 @@ class AgentOrchestrationService:
             "location_context": safe_loc,
         }
 
-    def _build_tool_services(self, fallback_services: Any) -> Any:
-        if isinstance(fallback_services, CoffeeToolServices):
+    def _build_tool_services(self, fallback_services: Any, *, turn_context: HybridTurnContext | None = None) -> Any:
+        if isinstance(fallback_services, CoffeeToolContext):
+            if turn_context is not None and fallback_services.turn_context is None:
+                fallback_services.turn_context = turn_context
             return fallback_services
         if any((self._product_service, self._store_service, self._vertex_ai_service, self._metrics_service)):
-            return CoffeeToolServices(
+            inv_svc = self._store_service if isinstance(self._store_service, InventoryService) else None
+            return CoffeeToolContext(
                 product_service=self._product_service,
                 store_service=self._store_service,
+                inventory_service=inv_svc,
+                maps_service=MapsService(),
+                embedding_service=self._vertex_ai_service,
                 vertex_ai_service=self._vertex_ai_service,
                 metrics_service=self._metrics_service,
+                turn_context=turn_context,
             )
         return fallback_services
 

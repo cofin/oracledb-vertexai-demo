@@ -1,22 +1,45 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Terminal-aware Server-Sent Events (SSE) adapter with keep-alive pings."""
+"""Terminal-aware Server-Sent Events (SSE) adapter with keep-alive pings and AgentStreamFrame projection."""
+
+from __future__ import annotations
 
 import asyncio
 import contextlib
 import time
-from collections.abc import AsyncGenerator, AsyncIterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import msgspec
+from litestar_mcp.agent import AgentStreamFrame
 
-from app.domain.ai.runtime._types import AgentEvent
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, AsyncIterator
 
-__all__ = ("DEFAULT_PING_INTERVAL", "RESULT_PREVIEW_CHARS", "AgentStreamService", "build_tool_preview")
+    from litestar_mcp.agent.streaming import StreamEventType
+
+    from app.domain.ai.runtime._types import AgentEvent
+
+__all__ = (
+    "DEFAULT_PING_INTERVAL",
+    "RESULT_PREVIEW_CHARS",
+    "AgentStreamFrame",
+    "AgentStreamService",
+    "build_tool_preview",
+    "to_agent_stream_frame",
+)
 
 DEFAULT_PING_INTERVAL = 5.0
 RESULT_PREVIEW_CHARS = 240
+_EVENT_TYPE_MAP: dict[str, StreamEventType] = {
+    "session": "session",
+    "delta": "delta",
+    "tool_call": "tool_call",
+    "tool_end": "tool_result",
+    "ping": "ping",
+    "final": "complete",
+    "error": "error",
+}
 
 
 def build_tool_preview(response: dict[str, Any], max_chars: int = RESULT_PREVIEW_CHARS) -> tuple[str, str]:
@@ -34,6 +57,22 @@ def build_tool_preview(response: dict[str, Any], max_chars: int = RESULT_PREVIEW
     if len(encoded) <= max_chars:
         return status, encoded
     return status, f"{encoded[: max_chars - 1]}…"
+
+
+def to_agent_stream_frame(frame: dict[str, Any], *, turn_id: str, seq: int = 0) -> AgentStreamFrame:
+    """Convert an application SSE dictionary frame into a litestar-mcp AgentStreamFrame."""
+    raw_type = str(frame.get("type") or "delta")
+    event_type: StreamEventType = _EVENT_TYPE_MAP.get(raw_type, "delta")
+    return AgentStreamFrame(
+        event_type=event_type,
+        turn_id=turn_id,
+        seq=seq,
+        agent_name=str(frame["author"]) if frame.get("author") else None,
+        text=str(frame["text"]) if frame.get("text") is not None else (str(frame["answer"]) if frame.get("answer") else None),
+        tool_name=str(frame["name"]) if frame.get("name") else None,
+        call_id=str(frame["id"]) if frame.get("id") else None,
+        payload=frame,
+    )
 
 
 class AgentStreamService:
@@ -90,17 +129,7 @@ class AgentStreamService:
         *,
         final_metadata: dict[str, Any] | None = None,
     ) -> AsyncGenerator[dict[str, Any], None]:
-        """Drain events from queue and yield formatted SSE frames.
-
-        Args:
-            queue: Internal event queue.
-            fetch_next: Event notifying producer to fetch next event.
-            session_id: Conversation session identifier.
-            final_metadata: Optional extra telemetry fields to merge into the final frame.
-
-        Yields:
-            SSE formatted frame dictionaries.
-        """
+        """Drain events from queue and yield formatted SSE frames."""
         start_time = time.perf_counter()
         yield {"type": "session", "session_id": session_id}
 
@@ -155,13 +184,7 @@ class AgentStreamService:
         queue: asyncio.Queue[AgentEvent | Exception | None],
         fetch_next: asyncio.Event,
     ) -> None:
-        """Asynchronously pull events from source and feed into queue when requested.
-
-        Args:
-            source: Source event iterator.
-            queue: Internal communication queue.
-            fetch_next: Synchronization event signaling next item readiness.
-        """
+        """Asynchronously pull events from source and feed into queue when requested."""
         try:
             await self._pump(source, queue, fetch_next)
         except asyncio.CancelledError:
@@ -190,16 +213,7 @@ class AgentStreamService:
 def _extract_frames_from_event(
     item: AgentEvent, seen_calls: set[str], usage_total: dict[str, int]
 ) -> list[dict[str, Any]]:
-    """Extract tool and text delta frames from an incoming AgentEvent.
-
-    Args:
-        item: Ingested AgentEvent.
-        seen_calls: Set of already emitted tool call IDs.
-        usage_total: Running token count accumulator.
-
-    Returns:
-        List of generated SSE frame dictionaries.
-    """
+    """Extract tool and text delta frames from an incoming AgentEvent."""
     frames: list[dict[str, Any]] = []
 
     if item.usage:
@@ -247,18 +261,7 @@ def _build_final_frame(
     usage_total: dict[str, int],
     final_metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Build the terminal final SSE frame matching the frontend stream contract.
-
-    Args:
-        session_id: Active conversation session identifier.
-        answer_parts: Accumulated text delta chunks.
-        start_time: Turn start timestamp from time.perf_counter().
-        usage_total: Accumulated token usage metrics.
-        final_metadata: Optional extra telemetry fields to merge into the payload.
-
-    Returns:
-        Dictionary representing the final SSE frame payload.
-    """
+    """Build the terminal final SSE frame matching the frontend stream contract."""
     search_metrics: dict[str, Any] = {
         **usage_total,
         "similarity_scores": [],

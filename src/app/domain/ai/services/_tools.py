@@ -1,15 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Grounded agent tools bound to request-scoped services via CallContext."""
+"""Grounded agent tools bound to request-scoped services via CallContext and CoffeeToolContext."""
 
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from app.domain.ai.runtime._context import CallContext
+from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._tools import Tool, declare
 from app.domain.chat.services._router import build_oracle_text_query
 from app.domain.chat.services._telemetry import (
@@ -22,9 +21,9 @@ from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
     from app.domain.products.services import ProductService, StoreService, VertexAIService
-    from app.domain.system.services import MetricsService
 
 __all__ = (
+    "CoffeeToolContext",
     "CoffeeToolServices",
     "build_coffee_tools",
     "check_order_status",
@@ -39,15 +38,7 @@ _ORDER_UNSUPPORTED_MESSAGE = (
     "store locations, and product availability."
 )
 
-
-@dataclass(slots=True)
-class CoffeeToolServices:
-    """Request-scoped domain services made available to agent tools via CallContext.services."""
-
-    product_service: ProductService | None = None
-    store_service: StoreService | None = None
-    vertex_ai_service: VertexAIService | None = None
-    metrics_service: MetricsService | None = None
+CoffeeToolServices = CoffeeToolContext
 
 
 async def search_products(ctx: CallContext, query: str, limit: int = 5) -> dict[str, Any]:
@@ -62,12 +53,13 @@ async def search_products(ctx: CallContext, query: str, limit: int = 5) -> dict[
         Dictionary containing matched products and result count.
     """
     bundle = _resolve_bundle(ctx)
-    if bundle.product_service is None or bundle.vertex_ai_service is None:
+    embed_svc = bundle.embedding_service or bundle.vertex_ai_service
+    if bundle.product_service is None or embed_svc is None:
         return {"products": [], "results_count": 0}
 
     bounded_limit = max(1, min(limit, 10))
     embed_started = time.perf_counter()
-    embedding, cache_hit = await bundle.vertex_ai_service.get_text_embedding(
+    embedding, cache_hit = await embed_svc.get_text_embedding(
         query,
         embedding_purpose="query",
         return_cache_status=True,
@@ -216,13 +208,14 @@ async def check_product_availability(
         Dictionary containing store availability rows and Google Maps action URLs.
     """
     bundle = _resolve_bundle(ctx)
-    if bundle.store_service is None:
+    store_svc = bundle.inventory_service or bundle.store_service
+    if store_svc is None:
         return {"availability": [], "map_actions": [], "results_count": 0}
 
     location_context = ctx.state.get("location_context")
     coordinates = request_coordinates(location_context if isinstance(location_context, dict) else None)
     started = time.perf_counter()
-    raw_availability = await bundle.store_service.find_product_availability(
+    raw_availability = await store_svc.find_product_availability(
         product_query.strip(),
         location_hint=location_hint.strip() or None,
         coordinates=coordinates,
@@ -277,10 +270,19 @@ def build_coffee_tools() -> tuple[Tool, ...]:
     )
 
 
-def _resolve_bundle(ctx: CallContext) -> CoffeeToolServices:
-    if isinstance(ctx.services, CoffeeToolServices):
+def _resolve_bundle(ctx: CallContext) -> CoffeeToolContext:
+    if isinstance(ctx.services, CoffeeToolContext):
         return ctx.services
-    return CoffeeToolServices()
+    product_svc: ProductService | None = getattr(ctx.services, "product_service", None)
+    store_svc: StoreService | None = getattr(ctx.services, "store_service", None)
+    vertex_svc: VertexAIService | None = getattr(ctx.services, "vertex_ai_service", None)
+    if any((product_svc, store_svc, vertex_svc)):
+        return CoffeeToolContext(
+            product_service=product_svc,
+            store_service=store_svc,
+            vertex_ai_service=vertex_svc,
+        )
+    return CoffeeToolContext()
 
 
 def _coerce_list(value: Any) -> list[dict[str, Any]]:

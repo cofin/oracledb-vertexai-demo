@@ -1,6 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""MCP tools, resources, and prompt registrations for Cymbal Coffee."""
+"""MCP skill and prompt controllers for Cymbal Coffee."""
 
-__all__ = ()
+from __future__ import annotations
+
+from app.domain.ai.mcp._prompts import CoffeePromptController
+from app.domain.ai.mcp._skills import CoffeeSkillController
+
+__all__ = (
+    "CoffeePromptController",
+    "CoffeeSkillController",
+)
