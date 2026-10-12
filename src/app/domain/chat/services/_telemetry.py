@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import msgspec
 
 from app.config import db_manager
-from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+from app.domain.products.services import build_store_directions_url, build_store_search_url
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:

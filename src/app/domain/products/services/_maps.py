@@ -1,9 +1,17 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Google Maps URL builders and MapsService facade."""
+
 from __future__ import annotations
 
 from urllib.parse import urlencode, urlunsplit
+
+__all__ = (
+    "MapsService",
+    "build_store_directions_url",
+    "build_store_search_url",
+)
 
 _MAPS_HOST = "www.google.com"
 
@@ -36,6 +44,50 @@ def build_store_directions_url(
     elif origin:
         params["origin"] = origin
     return _maps_url("/maps/dir/", params)
+
+
+class MapsService:
+    """Service wrapper for constructing Google Maps search and directions URLs."""
+
+    @staticmethod
+    def search_url(
+        name: str,
+        address: str,
+        city: str,
+        state: str,
+        zip_code: str,
+        place_id: str | None = None,
+    ) -> str:
+        """Build a no-key Google Maps search URL for a store."""
+        return build_store_search_url(
+            name=name,
+            address=address,
+            city=city,
+            state=state,
+            zip_code=zip_code,
+            place_id=place_id,
+        )
+
+    @staticmethod
+    def directions_url(
+        name: str,
+        address: str,
+        city: str,
+        state: str,
+        zip_code: str,
+        place_id: str | None = None,
+        origin: tuple[float, float] | str | None = None,
+    ) -> str:
+        """Build a no-key Google Maps directions URL for a store."""
+        return build_store_directions_url(
+            name=name,
+            address=address,
+            city=city,
+            state=state,
+            zip_code=zip_code,
+            place_id=place_id,
+            origin=origin,
+        )
 
 
 def _store_query(name: str, address: str, city: str, state: str, zip_code: str) -> str:

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from app.domain.products.services.maps import build_store_directions_url, build_store_search_url
+from app.domain.products.services import build_store_directions_url, build_store_search_url
 
 _STORE_FIELDS = {
     "name": "Cymbal Coffee Dallas Arts District",
