@@ -38,6 +38,22 @@ class CacheService(OracleAsyncService):
         await self.driver.commit()
         return res.rows_affected
 
+    async def delete_stale_agent_sessions(self, retention_days: int = 7) -> int:
+        """Delete stale ``agent_session`` rows older than ``retention_days``.
+
+        Args:
+            retention_days: Retention window in days before an idle session is pruned.
+
+        Returns:
+            Number of ``agent_session`` rows deleted.
+        """
+        res = await self.driver.execute(
+            db_manager.get_sql("delete-stale-agent-sessions"),
+            retention_days=max(1, retention_days),
+        )
+        await self.driver.commit()
+        return res.rows_affected
+
     async def set_cached_response(
         self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60
     ) -> ResponseCache | None:

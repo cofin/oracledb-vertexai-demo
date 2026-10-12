@@ -5,17 +5,27 @@
 
 Importing this module mounts all production-app commands on
 ``app.cli.main:cli``. Substantial workflows stay in ``app.cli._helpers``;
-small command-local helpers live here with their commands.
+small command-local helpers live here with their commands. Service imports are
+kept at runtime because ``async_inject`` calls ``get_type_hints()`` against
+this module's globals.
 """
 
 from __future__ import annotations
 
+import asyncio
+import copy
 import os
 from typing import Any, cast
 
 import rich_click as click
 from litestar.cli._utils import LitestarEnv
 from litestar_granian.cli import run_command as litestar_run_command
+from litestar_queues import QueueService
+from litestar_queues._cli import queues_group
+from litestar_queues._cli import run_command as queues_run_command
+from litestar_queues._cli import run_maintenance_command as queues_maintenance_command
+from litestar_queues._cli import run_task_command as queues_run_task_command
+from litestar_queues._cli import status_command as queues_status_command
 from rich import get_console
 from rich.prompt import Prompt
 from sqlspec.migrations.commands import create_migration_commands
@@ -33,12 +43,22 @@ from app.cli._helpers.fixtures import (
 from app.cli.main import cli
 from app.cli.utils import async_inject
 from app.db.utils import load_fixtures
-
-# Service imports must be runtime (not TYPE_CHECKING) because async_inject calls
-# get_type_hints() to resolve dependencies against this module's globals.
+from app.domain.products.jobs import embed_missing_records
 from app.domain.products.services import ProductService, VertexAIService
+from app.domain.system.jobs import cleanup_expired_cache_and_sessions
 from app.domain.system.services import CacheService
-from app.lib.settings import get_settings
+from app.lib.settings import Settings, get_settings
+from app.server.asgi import create_app
+
+_REGISTERED_JOBS = (embed_missing_records, cleanup_expired_cache_and_sessions)
+
+
+def _bind_litestar_env(ctx: click.Context) -> LitestarEnv:
+    """Populate ``ctx.obj`` with a loaded ``LitestarEnv`` for queue/server commands."""
+    env = LitestarEnv.from_env("app.server.asgi:create_app")
+    env.app = create_app()
+    ctx.obj = env
+    return env
 
 
 async def _clear_application_cache(force: bool, cache_service: CacheService) -> None:
@@ -69,24 +89,26 @@ async def _clear_application_cache(force: bool, cache_service: CacheService) -> 
 def _create_run_command() -> click.Command:
     """Build the ``run`` command by copying granian's params and wrapping its callback.
 
-    Mutates the copied '--port' option default to look up the Cloud Run PORT
-    environment variable before falling back to the standard default.
+    Mutates the copied ``--port`` option default to look up the Cloud Run
+    ``PORT`` environment variable before falling back to the standard default,
+    and adds ``--no-worker`` to disable the embedded ASGI queue worker when
+    running web-only replicas.
     """
     original_command = litestar_run_command
 
-    @click.pass_context  # type: ignore[arg-type]
-    def wrapped_run(ctx: click.Context, **kwargs: Any) -> None:
-        from app.server.asgi import create_app
+    @click.pass_context
+    def wrapped_run(ctx: click.RichContext, /, **kwargs: Any) -> None:
+        no_worker = bool(kwargs.pop("no_worker", False))
+        if no_worker:
+            os.environ["QUEUE_EXECUTION_BACKEND"] = "none"
+            Settings.from_env.cache_clear()
+            app_config._reset()
 
-        env = LitestarEnv.from_env("app.server.asgi:create_app")
-        env.app = create_app()
-        ctx.obj = env
-
+        env = _bind_litestar_env(ctx)
         if original_command.callback is not None:
             original_command.callback(app=env.app, ctx=ctx, **kwargs)
 
     new_command = click.command(name="run", help=original_command.help)(wrapped_run)
-    import copy
 
     new_params: list[click.Parameter] = []
     for param in original_command.params:
@@ -97,6 +119,14 @@ def _create_run_command() -> click.Command:
             new_params.append(param_copy)
         else:
             new_params.append(param)
+    new_params.append(
+        click.Option(
+            ["--no-worker"],
+            is_flag=True,
+            default=False,
+            help="Disable the embedded queue worker for this web server invocation.",
+        )
+    )
     new_command.params = new_params
     return new_command
 
@@ -144,15 +174,59 @@ def _show_model_info(vertex_ai_service: VertexAIService) -> None:
     console.print()
 
 
+async def _enqueue_or_run_bulk_embed(
+    *,
+    batch_size: int,
+    force: bool,
+    enqueue: bool,
+    product_service: ProductService,
+    vertex_ai_service: VertexAIService,
+    queue_service: QueueService,
+) -> None:
+    """Enqueue ``products.embed_missing`` when ``enqueue=True`` or run inline."""
+    if enqueue:
+        console = get_console()
+        result = await queue_service.enqueue(
+            embed_missing_records,
+            batch_size=batch_size,
+            force=force,
+        )
+        console.print(
+            f"[bold green]✓ Enqueued products.embed_missing task[/bold green] "
+            f"(id={result.id}, status={result.status or 'pending'})"
+        )
+        return
+
+    await generate_product_embeddings(batch_size, force, product_service, vertex_ai_service)
+
+
 @cli.command(name="bulk-embed", help="Generate or refresh product embeddings with Vertex AI.")
 @click.option("--batch-size", default=50, show_default=True, help="Number of products to process per batch.")
 @click.option("--force", "-f", is_flag=True, help="Re-embed all products, even when embeddings already exist.")
+@click.option(
+    "--enqueue/--no-enqueue",
+    default=False,
+    show_default=True,
+    help="Enqueue products.embed_missing onto litestar-queues instead of running inline.",
+)
 @async_inject
 async def bulk_embed_cmd(
-    batch_size: int, force: bool, product_service: ProductService, vertex_ai_service: VertexAIService
+    batch_size: int,
+    force: bool,
+    enqueue: bool,
+    product_service: ProductService,
+    vertex_ai_service: VertexAIService,
+    queue_service: QueueService,
 ) -> None:
-    """Generate document-purpose embeddings for product rows."""
-    await generate_product_embeddings(batch_size, force, product_service, vertex_ai_service)
+    """Generate document-purpose embeddings inline or enqueue a background job."""
+    await _enqueue_or_run_bulk_embed(
+        batch_size=batch_size,
+        force=force,
+        enqueue=enqueue,
+        product_service=product_service,
+        vertex_ai_service=vertex_ai_service,
+        queue_service=queue_service,
+    )
 
 
 @cli.command(name="clear-cache", help="Clear response and embedding cache tables.")
@@ -165,8 +239,9 @@ async def clear_cache_cmd(force: bool, cache_service: CacheService) -> None:
 
 @cli.command(name="model-info", help="Show information about currently configured AI models.")
 @async_inject
-async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:  # ruff: ignore[unused-async]
+async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
     """Show information about currently configured AI models."""
+    await asyncio.sleep(0)
     _show_model_info(vertex_ai_service)
 
 
@@ -219,4 +294,27 @@ def configure_apex_cmd() -> None:
     configure_apex_cdn_helper(system_password)
 
 
+@cli.group(name="worker", help="Run and inspect Oracle 26ai background queue workers.")
+@click.pass_context
+def worker_group(ctx: click.RichContext, /) -> None:
+    """Bind Litestar application environment for background worker commands."""
+    _bind_litestar_env(ctx)
+
+
+def _register_queue_cli_commands() -> None:
+    """Mount ``queues`` and ``worker`` subcommands onto the ``coffee`` CLI group."""
+    @click.pass_context
+    def _queues_group_callback(ctx: click.RichContext, /) -> None:
+        _bind_litestar_env(ctx)
+
+    queues_group.callback = _queues_group_callback
+    if queues_group.name not in cli.commands:
+        cli.add_command(queues_group)
+
+    for cmd in (queues_run_command, queues_status_command, queues_run_task_command, queues_maintenance_command):
+        if cmd.name is not None and cmd.name not in worker_group.commands:
+            worker_group.add_command(cmd)
+
+
+_register_queue_cli_commands()
 cli.add_command(_create_run_command())
