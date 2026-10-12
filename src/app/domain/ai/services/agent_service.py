@@ -92,6 +92,8 @@ class AgentOrchestrationService:
 
         history = await self._event_store.list_events(session_id=session_id)
         turn_num = len(history) // 2 + 1
+        get_next_seq = getattr(self._event_store, "get_next_seq", None)
+        next_seq = await get_next_seq(session_id) if callable(get_next_seq) else len(history) + 1
 
         ctx = CallContext(
             session_id=session_id, invocation_id=invocation_id, turn=turn_num, state={}, services=services
@@ -101,9 +103,11 @@ class AgentOrchestrationService:
             session_id=session_id,
             invocation_id=invocation_id,
             agent="user",
+            seq=next_seq,
             turn=turn_num,
             content=Content(role="user", parts=[Part(text=message)]),
         )
+        next_seq += 1
         await self._event_store.append_event(user_event)
 
         raw_stream = self._runtime.execute_turn(
@@ -117,8 +121,11 @@ class AgentOrchestrationService:
         )
 
         async def _persisting_stream() -> AsyncIterator[AgentEvent]:
+            nonlocal next_seq
             async for event in raw_stream:
                 if not event.partial and event.content:
+                    event.seq = next_seq
+                    next_seq += 1
                     await self._event_store.append_event(event)
                 yield event
 

@@ -72,6 +72,8 @@ class AgentRuntime:
             tool_decls: list[ToolDeclaration] = [t.declaration() for t in current_spec.tools]
 
             pending_calls: list[FunctionCall] = []
+            accumulated_parts: list[Part] = []
+            saw_non_partial = False
 
             async for event in self._model_client.generate_stream(
                 contents, tools=tool_decls, system_instruction=current_spec.static_instruction, model=current_spec.model
@@ -80,10 +82,23 @@ class AgentRuntime:
                 event.invocation_id = invocation_id
                 event.turn = ctx.turn
                 event.agent = current_spec.name
+                if not event.partial:
+                    saw_non_partial = True
+                if event.content and event.content.parts:
+                    accumulated_parts.extend(event.content.parts)
+                    pending_calls.extend(p.function_call for p in event.content.parts if p.function_call)
                 yield event
 
-                if event.content and event.content.parts:
-                    pending_calls.extend(p.function_call for p in event.content.parts if p.function_call)
+            if not saw_non_partial and accumulated_parts:
+                yield AgentEvent(
+                    session_id=session_id,
+                    invocation_id=invocation_id,
+                    turn=ctx.turn,
+                    agent=current_spec.name,
+                    content=Content(role="model", parts=accumulated_parts),
+                    partial=False,
+                    actions={"aggregated": True},
+                )
 
             if not pending_calls:
                 break
@@ -93,6 +108,7 @@ class AgentRuntime:
                 yield AgentEvent(
                     session_id=session_id,
                     invocation_id=invocation_id,
+                    turn=ctx.turn,
                     agent=current_spec.name,
                     finish_reason="TOOL_LIMIT_EXCEEDED",
                     content=Content(role="model", parts=[Part(text="Tool execution limit reached for this turn.")]),
@@ -101,6 +117,7 @@ class AgentRuntime:
 
             current_spec, response_parts = await self._dispatch_tools(
                 pending_calls=pending_calls,
+                model_parts=accumulated_parts,
                 current_spec=current_spec,
                 spec_tree=spec_tree,
                 tools_map=tools_map,
@@ -111,6 +128,7 @@ class AgentRuntime:
             yield AgentEvent(
                 session_id=session_id,
                 invocation_id=invocation_id,
+                turn=ctx.turn,
                 agent=current_spec.name,
                 content=Content(role="user", parts=response_parts),
             )
@@ -119,6 +137,7 @@ class AgentRuntime:
         self,
         *,
         pending_calls: list[FunctionCall],
+        model_parts: list[Part],
         current_spec: AgentSpec,
         spec_tree: SpecTree,
         tools_map: dict[str, Tool],
@@ -136,8 +155,9 @@ class AgentRuntime:
                     next_spec = spec_tree.resolve(target_name)
 
         response_parts = [Part(function_response=r) for r in responses]
+        preserved_model_parts = model_parts or [Part(function_call=c) for c in pending_calls]
         contents.extend([
-            Content(role="model", parts=[Part(function_call=c) for c in pending_calls]),
+            Content(role="model", parts=preserved_model_parts),
             Content(role="user", parts=response_parts),
         ])
         return next_spec, response_parts

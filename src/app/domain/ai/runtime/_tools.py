@@ -107,7 +107,7 @@ def declare(handler: Callable[..., Any], *, name: str | None = None, description
         if param.default is inspect.Parameter.empty:
             required.append(param.name)
 
-    schema: dict[str, Any] = {"type": "OBJECT", "properties": properties}
+    schema: dict[str, Any] = {"type": "object", "properties": properties}
     if required:
         schema["required"] = required
 

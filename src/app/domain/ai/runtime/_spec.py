@@ -98,10 +98,10 @@ class SpecTree:
             return
         all_names = [self.root.name, *sorted(self.specialists.keys())]
         transfer_schema: dict[str, Any] = {
-            "type": "OBJECT",
+            "type": "object",
             "properties": {
                 "agent_name": {
-                    "type": "STRING",
+                    "type": "string",
                     "enum": all_names,
                     "description": "Target specialist or coordinator agent name.",
                 }

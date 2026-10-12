@@ -2,16 +2,18 @@
 type: Spec
 flow_id: runtime-stabilization
 title: Native AI Runtime, Persistence, Streaming & Endpoint Stabilization
-state: planned
+state: active
 plan_revision: 1
-plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+plan_commit: feecf59
+state_revision: 6
+current_task: "1.3"
+last_operation: 20261012T180630Z-flow-executor-claim-1-3-00
+operation_targets:
+  - "1.2"
+  - "1.3"
+last_verified_checkpoint: 3a69613
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T17:35:00Z
+updated_at: 2026-10-12T18:06:30Z
 description: Fix all 11 runtime blockers across Oracle session/event persistence, streaming event aggregation, Gemini thought_signature and tool call IDs, frontend final SSE contract, A2A task ownership, /api/vector-search parameter binding, HNSW FETCH APPROX SQL, and typed 503 AI configuration handling.
 tags:
   - bugfix
@@ -63,8 +65,8 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 | Requirement | Task | Verification Strategy | Primary Files | Primary Tests |
 | --- | --- | --- | --- | --- |
 | `REQ-01` | `1.1` | `regression_tdd` | `src/app/db/migrations/0002_agent_runtime_and_hybrid_search.sql`, `src/app/db/sql/ai-runtime.sql`, `src/app/domain/ai/runtime/_store.py`, `src/app/ioc.py` | `src/tests/unit/app/domain/ai/test_store.py` |
-| `REQ-02` | `1.2` | `regression_tdd` | `src/app/domain/ai/runtime/_types.py`, `src/app/domain/ai/runtime/_schema.py`, `src/app/domain/ai/runtime/_model.py`, `src/app/domain/ai/runtime/_loop.py`, `src/app/domain/ai/runtime/_stream.py`, `src/app/domain/ai/services/agent_service.py`, `src/app/domain/chat/controllers/_chat.py` | `src/tests/unit/app/domain/ai/test_runtime.py`, `src/tests/unit/app/domain/ai/test_stream.py`, `src/tests/unit/app/domain/chat/controllers/test_chat_controller.py` |
-| `REQ-03` | `1.3` | `regression_tdd` | `src/app/domain/ai/a2a/__init__.py`, `src/app/domain/ai/a2a/card.py`, `src/app/domain/ai/a2a/executor.py`, `src/app/server/plugins.py` | `src/tests/unit/app/domain/ai/test_a2a.py` |
+| `REQ-02` | `1.2` | `regression_tdd` | `src/app/domain/ai/runtime/_types.py`, `src/app/domain/ai/runtime/_schema.py`, `src/app/domain/ai/runtime/_model.py`, `src/app/domain/ai/runtime/_loop.py`, `src/app/domain/ai/runtime/_stream.py`, `src/app/domain/ai/services/agent_service.py`, `src/app/domain/chat/controllers/_chat.py` | `src/tests/unit/app/domain/ai/runtime/test_loop_stream.py`, `src/tests/unit/app/domain/ai/runtime/test_tools.py` |
+| `REQ-03` | `1.3` | `regression_tdd` | `src/app/domain/ai/a2a/__init__.py`, `src/app/domain/ai/a2a/card.py`, `src/app/domain/ai/a2a/executor.py`, `src/app/server/plugins.py` | `src/tests/unit/app/domain/ai/a2a/test_a2a.py` |
 | `REQ-04` | `1.4` | `regression_tdd` | `src/app/domain/products/controllers/_vector.py`, `src/app/db/sql/products.sql`, `src/app/domain/chat/exceptions.py`, `docs/reference/api.md` | `src/tests/unit/app/domain/products/test_vector_controller.py`, `src/tests/unit/app/domain/chat/test_exceptions.py` |
 
 ---
@@ -73,12 +75,12 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 
 ### Phase 1: Persistence & Runtime Loop Stabilization
 
-- [ ] 1.1 Add `0002` `agent_session`/`agent_event` migration, update `ai-runtime.sql`, and make `OracleSessionStore`/`OracleEventStore` commit at `Scope.APP`
-- [ ] 1.2 Fix `AgentRuntime.run_stream` non-partial aggregation, `thought_signature`/call ID round-tripping, lowercase JSON Schema, and `final` SSE payload contract
+- [x] 1.1 Add `0002` `agent_session`/`agent_event` migration, update `ai-runtime.sql`, and make `OracleSessionStore`/`OracleEventStore` commit at `Scope.APP` (`3a69613`)
+- [x] 1.2 Fix `AgentRuntime.run_stream` non-partial aggregation, `thought_signature`/call ID round-tripping, lowercase JSON Schema, and `final` SSE payload contract
 
 ### Phase 2: Protocol & Endpoint Bug Fixes
 
-- [ ] 1.3 Fix A2A owner task scoping (`build_a2a_call_context`), container lifecycle, and dynamic `build_agent_card` URL
+- [~] 1.3 Fix A2A owner task scoping (`build_a2a_call_context`), container lifecycle, and dynamic `build_agent_card` URL
 - [ ] 1.4 Fix `GET /api/vector-search` reserved `query` parameter, HNSW `FETCH APPROX` SQL in `products.sql`, and typed 503 `AIServiceUnconfigured` handling
 
 ---

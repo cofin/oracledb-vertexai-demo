@@ -118,7 +118,7 @@ async def test_agent_runtime_tool_dispatch_and_recursion() -> None:
     tool = Tool(
         name="lookup_menu",
         description="Lookup coffees by category",
-        parameters_schema={"type": "OBJECT", "properties": {"category": {"type": "STRING"}}},
+        parameters_schema={"type": "object", "properties": {"category": {"type": "string"}}},
         param_types={"category": str},
         fn=lookup_menu,
     )
@@ -172,7 +172,7 @@ async def test_agent_runtime_tool_budget_exceeded() -> None:
     tool = Tool(
         name="noop",
         description="No-op tool",
-        parameters_schema={"type": "OBJECT", "properties": {}},
+        parameters_schema={"type": "object", "properties": {}},
         param_types={},
         fn=noop,
     )
@@ -266,6 +266,7 @@ async def test_agent_orchestration_service_flow() -> None:
 
     mock_event_store = MagicMock()
     mock_event_store.list_events = AsyncMock(return_value=[])
+    mock_event_store.get_next_seq = AsyncMock(return_value=1)
     mock_event_store.append_event = AsyncMock(return_value=None)
 
     async def mock_execute_turn(*args: Any, **kwargs: Any) -> Any:
@@ -305,3 +306,89 @@ async def test_agent_orchestration_service_flow() -> None:
 
     await service.clear_session("sess-orch", "user-1")
     assert mock_session_store.clear_session.await_count == 1
+
+
+async def test_partial_only_model_stream_aggregates_and_emits_frontend_final_contract() -> None:
+    """Verify partial-only model chunks are aggregated into a non-partial event and emit full frontend final SSE payload."""
+    mock_model_client = MagicMock()
+
+    async def mock_generate_stream(*args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        yield AgentEvent(
+            session_id="s-live",
+            invocation_id="inv-live",
+            content=Content(role="model", parts=[Part(text="Try our ", thought_signature=b"sig-123")]),
+            partial=True,
+        )
+        yield AgentEvent(
+            session_id="s-live",
+            invocation_id="inv-live",
+            content=Content(role="model", parts=[Part(text="Ethiopian Yirgacheffe!")]),
+            partial=True,
+            usage=Usage(prompt_tokens=10, output_tokens=8, total_tokens=18),
+        )
+
+    mock_model_client.generate_stream = mock_generate_stream
+    runtime = AgentRuntime(model_client=mock_model_client)
+    stream_service = AgentStreamService(ping_interval=10.0)
+
+    mock_session_store = MagicMock()
+    mock_session_store.get_session = AsyncMock(return_value={"id": "s-live"})
+    mock_session_store.save_session = AsyncMock(return_value=None)
+
+    mock_event_store = MagicMock()
+    mock_event_store.list_events = AsyncMock(return_value=[])
+    mock_event_store.get_next_seq = AsyncMock(return_value=1)
+    persisted_events: list[AgentEvent] = []
+
+    async def record_append(ev: AgentEvent) -> None:
+        persisted_events.append(ev)
+
+    mock_event_store.append_event = AsyncMock(side_effect=record_append)
+
+    spec_tree = SpecTree(
+        root=AgentSpec(
+            name="coffee_barista",
+            description="Barista",
+            model="gemini-3.8-flash",
+            static_instruction="Recommend coffee.",
+        )
+    )
+    orchestrator = AgentOrchestrationService(
+        runtime=runtime,
+        stream_service=stream_service,
+        spec_tree=spec_tree,
+        session_store=mock_session_store,
+        event_store=mock_event_store,
+    )
+
+    frames = [
+        f
+        async for f in orchestrator.stream_conversation_turn(
+            session_id="s-live", user_id="u-live", message="Recommend a fruity roast"
+        )
+    ]
+
+    deltas = [f["text"] for f in frames if f["type"] == "delta"]
+    assert deltas == ["Try our ", "Ethiopian Yirgacheffe!"]
+
+    final_frame = frames[-1]
+    assert final_frame["type"] == "final"
+    assert final_frame["answer"] == "Try our Ethiopian Yirgacheffe!"
+    assert final_frame["session_id"] == "s-live"
+    assert "response_time_ms" in final_frame
+    assert final_frame["intent_detected"] == "GENERAL_CONVERSATION"
+    assert final_frame["from_cache"] is False
+    assert final_frame["embedding_cache_hit"] is False
+    assert isinstance(final_frame["sql_phases"], list)
+    assert isinstance(final_frame["store_results"], list)
+    assert isinstance(final_frame["inventory_results"], list)
+    assert isinstance(final_frame["map_actions"], list)
+    assert "location_context" in final_frame
+
+    assert len(persisted_events) == 2
+    assert persisted_events[0].seq == 1
+    assert persisted_events[1].seq == 2
+    assert persisted_events[1].text() == "Try our Ethiopian Yirgacheffe!"
+    assert persisted_events[1].content is not None
+    assert persisted_events[1].content.parts[0].thought_signature == b"sig-123"

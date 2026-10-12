@@ -15,6 +15,8 @@ from app.domain.ai.runtime import (
     AgentEvent,
     AgentSpec,
     Content,
+    FunctionCall,
+    FunctionResponse,
     GeminiModelClient,
     OracleEventStore,
     OracleSessionStore,
@@ -166,7 +168,7 @@ async def test_gemini_model_client_streaming_extraction() -> None:
         ToolDeclaration(
             name="find_coffee",
             description="Find coffee by flavor",
-            parameters_json_schema={"type": "OBJECT", "properties": {"flavor": {"type": "STRING"}}},
+            parameters_json_schema={"type": "object", "properties": {"flavor": {"type": "string"}}},
         )
     ]
 
@@ -188,6 +190,43 @@ async def test_gemini_model_client_streaming_extraction() -> None:
     assert fc_part.args == {"flavor": "fruity"}
     assert second_event.usage is not None
     assert second_event.usage.total_tokens == 36
+
+
+def test_gemini_model_client_convert_contents_preserves_ids_and_thought_signature() -> None:
+    """Verify _convert_contents preserves function call/response IDs and thought_signature bytes."""
+    client = GeminiModelClient(client=MagicMock(), default_model="gemini-3.8-flash")
+    contents = [
+        Content(
+            role="model",
+            parts=[
+                Part(
+                    function_call=FunctionCall(id="call-42", name="search", args={"q": "latte"}),
+                    thought_signature=b"sig-abc",
+                )
+            ],
+        ),
+        Content(
+            role="user",
+            parts=[
+                Part(
+                    function_response=FunctionResponse(
+                        id="call-42", name="search", response={"items": ["latte"]}
+                    )
+                )
+            ],
+        ),
+    ]
+    converted = client._convert_contents(contents)
+    assert len(converted) == 2
+    assert converted[0].parts is not None
+    model_part = converted[0].parts[0]
+    assert model_part.function_call is not None
+    assert model_part.function_call.id == "call-42"
+    assert model_part.thought_signature == b"sig-abc"
+    assert converted[1].parts is not None
+    user_part = converted[1].parts[0]
+    assert user_part.function_response is not None
+    assert user_part.function_response.id == "call-42"
 
 
 async def test_gemini_model_client_retry_on_rate_limit() -> None:

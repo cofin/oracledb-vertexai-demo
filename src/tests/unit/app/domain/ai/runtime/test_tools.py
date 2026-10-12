@@ -86,26 +86,26 @@ async def failing_tool(ctx: CallContext) -> dict[str, Any]:
 
 
 def test_translate_to_gemini_schema_primitives() -> None:
-    """Verify conversion of primitive types to Gemini upper-case types."""
+    """Verify conversion of primitive types to Gemini lowercase JSON Schema types."""
     raw = msgspec.json.schema(int)
     gemini = translate_to_gemini_schema(raw)
-    assert gemini["type"] == "INTEGER"
+    assert gemini["type"] == "integer"
 
     raw_str = msgspec.json.schema(str)
-    assert translate_to_gemini_schema(raw_str)["type"] == "STRING"
+    assert translate_to_gemini_schema(raw_str)["type"] == "string"
 
     raw_bool = msgspec.json.schema(bool)
-    assert translate_to_gemini_schema(raw_bool)["type"] == "BOOLEAN"
+    assert translate_to_gemini_schema(raw_bool)["type"] == "boolean"
 
     raw_float = msgspec.json.schema(float)
-    assert translate_to_gemini_schema(raw_float)["type"] == "NUMBER"
+    assert translate_to_gemini_schema(raw_float)["type"] == "number"
 
 
 def test_translate_to_gemini_schema_optional_and_enum() -> None:
     """Verify handling of optional types and enum definitions."""
     raw_opt = msgspec.json.schema(str | None)
     gemini_opt = translate_to_gemini_schema(raw_opt)
-    assert gemini_opt["type"] == "STRING"
+    assert gemini_opt["type"] == "string"
     assert gemini_opt.get("nullable") is True
 
     raw_enum = msgspec.json.schema(Literal["light", "medium", "dark"])
@@ -117,10 +117,10 @@ def test_translate_to_gemini_schema_nested_struct() -> None:
     """Verify nested Struct resolution without $ref keys in final output."""
     raw_struct = msgspec.json.schema(SearchFilter)
     gemini_struct = translate_to_gemini_schema(raw_struct)
-    assert gemini_struct["type"] == "OBJECT"
+    assert gemini_struct["type"] == "object"
     assert "properties" in gemini_struct
-    assert gemini_struct["properties"]["category"]["type"] == "STRING"
-    assert gemini_struct["properties"]["limit"]["type"] == "INTEGER"
+    assert gemini_struct["properties"]["category"]["type"] == "string"
+    assert gemini_struct["properties"]["limit"]["type"] == "integer"
     assert "$ref" not in gemini_struct
 
 
@@ -146,12 +146,12 @@ def test_tool_declaration_generation() -> None:
     decl = tool.declaration()
     assert decl.name == "sample_search_tool"
     assert "Search catalog products" in decl.description
-    assert decl.parameters_json_schema["type"] == "OBJECT"
+    assert decl.parameters_json_schema["type"] == "object"
     props = decl.parameters_json_schema["properties"]
     assert "query" in props
-    assert props["query"]["type"] == "STRING"
+    assert props["query"]["type"] == "string"
     assert "limit" in props
-    assert props["limit"]["type"] == "INTEGER"
+    assert props["limit"]["type"] == "integer"
     assert decl.parameters_json_schema["required"] == ["query"]
 
 
@@ -252,6 +252,7 @@ def test_agent_event_helpers() -> None:
     assert event.text() == "Here is your espresso recommendation."
     assert event.function_calls() == [call]
     assert event.function_responses() == [resp]
+    assert event.usage is not None
     assert event.usage.total_tokens == 30
 
 

@@ -91,14 +91,40 @@ class GeminiModelClient:
         for c in contents:
             parts: list[types.Part] = []
             for p in c.parts:
-                if p.text:
-                    parts.append(types.Part.from_text(text=p.text))
-                elif p.function_call:
-                    parts.append(types.Part.from_function_call(name=p.function_call.name, args=p.function_call.args))
+                if p.function_call:
+                    parts.append(
+                        types.Part(
+                            function_call=types.FunctionCall(
+                                id=p.function_call.id or None,
+                                name=p.function_call.name,
+                                args=p.function_call.args,
+                            ),
+                            thought_signature=p.thought_signature,
+                        )
+                    )
                 elif p.function_response:
                     parts.append(
-                        types.Part.from_function_response(
-                            name=p.function_response.name, response=p.function_response.response
+                        types.Part(
+                            function_response=types.FunctionResponse(
+                                id=p.function_response.id or None,
+                                name=p.function_response.name,
+                                response=p.function_response.response,
+                            )
+                        )
+                    )
+                elif p.text is not None:
+                    parts.append(
+                        types.Part(
+                            text=p.text,
+                            thought=p.thought or None,
+                            thought_signature=p.thought_signature,
+                        )
+                    )
+                elif p.thought_signature is not None:
+                    parts.append(
+                        types.Part(
+                            thought=p.thought or None,
+                            thought_signature=p.thought_signature,
                         )
                     )
             genai_contents.append(types.Content(role=c.role, parts=parts))
@@ -116,7 +142,7 @@ class GeminiModelClient:
         )
 
     def _extract_chunk_parts(self, chunk: Any) -> list[Part]:
-        """Extract valid text or function call parts from chunk candidate."""
+        """Extract valid text, thought signature, or function call parts from chunk candidate."""
         if not chunk.candidates:
             return []
         candidate = chunk.candidates[0]
@@ -124,7 +150,11 @@ class GeminiModelClient:
             return []
         extracted: list[Part] = []
         for part in candidate.content.parts:
+            raw_sig = getattr(part, "thought_signature", None)
+            sig_bytes = bytes(raw_sig) if isinstance(raw_sig, (bytes, bytearray)) else None
             if getattr(part, "thought", False):
+                if sig_bytes is not None:
+                    extracted.append(Part(thought=True, thought_signature=sig_bytes))
                 continue
             if part.function_call:
                 call = FunctionCall(
@@ -132,9 +162,11 @@ class GeminiModelClient:
                     name=part.function_call.name or "",
                     args=part.function_call.args or {},
                 )
-                extracted.append(Part(function_call=call))
+                extracted.append(Part(function_call=call, thought_signature=sig_bytes))
             elif part.text:
-                extracted.append(Part(text=part.text))
+                extracted.append(Part(text=part.text, thought_signature=sig_bytes))
+            elif sig_bytes is not None:
+                extracted.append(Part(thought_signature=sig_bytes))
         return extracted
 
     def _convert_tool_declarations(self, tools: list[ToolDeclaration]) -> list[Any]:
