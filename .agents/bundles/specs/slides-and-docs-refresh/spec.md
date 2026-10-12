@@ -2,16 +2,17 @@
 type: Spec
 flow_id: slides-and-docs-refresh
 title: Slides, Sphinx Documentation, and Knowledge Bundle Refresh
-state: planned
+state: in_progress
 plan_revision: 1
 plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
+state_revision: 1
+current_task: "5.1"
+last_operation: claim_task
+operation_targets:
+  - slides-and-docs-refresh:5.1
 last_verified_checkpoint: null
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T17:35:00Z
+updated_at: 2026-10-12T20:33:50Z
 description: Rewrite SLIDES.md to showcase single-query Oracle 26ai Hybrid RRF search (BM25-style lexical ranking + HNSW vector similarity) and off-menu term_hits detection, and update AGENTS.md, README.md, Sphinx docs, Terraform config, and OKF knowledge bundles.
 tags:
   - docs
@@ -63,7 +64,7 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 
 ### Phase 1: Presentation Narrative & Documentation Synchronization
 
-- [ ] 5.1 Rewrite `SLIDES.md` for single-query Oracle 26ai Hybrid RRF routing, BM25-style lexical ranking, and `term_hits` off-menu detection
+- [x] 5.1 Rewrite `SLIDES.md` for single-query Oracle 26ai Hybrid RRF routing, BM25-style lexical ranking, and `term_hits` off-menu detection
 - [ ] 5.2 Synchronize `AGENTS.md`, `README.md`, Sphinx `docs/**`, `cloudrun.tf`, and `.agents/bundles/{product,knowledge}/**`
 
 ---
