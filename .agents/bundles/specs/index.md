@@ -15,6 +15,13 @@ description: Active and planned Flow specifications for Cymbal Coffee
   - [oracle-queues](oracle-queues/spec.md) - Chapter 4: Oracle 26ai Background Task Queues (`litestar-queues`) (planned)
   - [slides-and-docs-refresh](slides-and-docs-refresh/spec.md) - Chapter 5: Slides, Sphinx Documentation, and Knowledge Bundle Refresh (planned)
 
+## Active Roadmap: Google Cloud Knowledge Catalog + Oracle 26ai `ANNOTATIONS` Grounding & Demo
+
+- [knowledge-catalog-grounding-demo](knowledge-catalog-grounding-demo/spec.md) - Master PRD: Google Cloud Knowledge Catalog + Oracle 26ai `ANNOTATIONS` Grounding & Demo (planned)
+  - [knowledge-catalog-foundation](knowledge-catalog-foundation/spec.md) - Chapter 1: Oracle 26ai `USER_ANNOTATIONS_USAGE` Harvester, OKF v0.2 Bundle & `coffee sync-catalog` CLI (planned)
+  - [knowledge-catalog-runtime-and-mcp](knowledge-catalog-runtime-and-mcp/spec.md) - Chapter 2: Runtime `KnowledgeCatalogService`, `lookupContext` Agent Grounding & MCP Integration (planned)
+  - [knowledge-catalog-demo-ux-and-docs](knowledge-catalog-demo-ux-and-docs/spec.md) - Chapter 3: Interactive "Context Ceiling" Demo UI, `K` Telemetry Drawer Badge & Slides/Docs (planned)
+
 ## Other Roadmaps & Specs
 
 - [apex-ops-console](apex-ops-console/spec.md) - APEX Operations Console Roadmap (in_progress)
