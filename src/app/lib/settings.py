@@ -286,6 +286,8 @@ class AppSettings:
     """Application secret key."""
     NAME: str = field(default_factory=lambda: "app")
     """Application name."""
+    URL: str = field(default_factory=lambda: os.getenv("APP_URL", "http://localhost:8000"))
+    """Public base URL of the application."""
     ALLOWED_CORS_ORIGINS: list[str] = field(default_factory=lambda: _env_cors("ALLOWED_CORS_ORIGINS", '["*"]'))
     """Allowed CORS Origins"""
     CSRF_COOKIE_NAME: str = field(default_factory=lambda: "XSRF-TOKEN")

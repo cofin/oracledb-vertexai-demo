@@ -88,8 +88,8 @@ def _initialize() -> None:
     from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecPluginBase
 
     from app import config
-    from app.domain.ai.a2a.card import COFFEE_AGENT_CARD
-    from app.domain.ai.a2a.executor import CoffeeAgentExecutor
+    from app.domain.ai.a2a.card import build_agent_card
+    from app.domain.ai.a2a.executor import CoffeeAgentExecutor, build_a2a_call_context
     from app.lib.settings import get_settings
 
     class SQLSpecPlugin(_SQLSpecPluginBase):
@@ -99,6 +99,7 @@ def _initialize() -> None:
             return None
 
     settings = get_settings()
+    agent_card = build_agent_card(settings.app.URL)
 
     skill_paths = [p for p in (Path(".agents/skills"), Path("skills")) if p.is_dir()]
     skills_config = _MCPSkillsConfig(paths=skill_paths, directory_read=True) if skill_paths else None
@@ -124,11 +125,16 @@ def _initialize() -> None:
         )
     )
     g["a2a"] = _LitestarA2A(
-        agent_card=COFFEE_AGENT_CARD,
+        agent_card=agent_card,
         request_handler=_DefaultRequestHandler(
-            agent_executor=CoffeeAgentExecutor(), task_store=_InMemoryTaskStore(), agent_card=COFFEE_AGENT_CARD
+            agent_executor=CoffeeAgentExecutor(), task_store=_InMemoryTaskStore(), agent_card=agent_card
         ),
-        config=_A2AConfig(path="/a2a", agent_card_path="/.well-known/agent-card.json", route_opt={"auth": _public()}),
+        config=_A2AConfig(
+            path="/a2a",
+            agent_card_path="/.well-known/agent-card.json",
+            context_builder=build_a2a_call_context,
+            route_opt={"auth": _public()},
+        ),
     )
     if settings.otel.ENABLED:
         g["opentelemetry"] = _OpenTelemetryPlugin(config=_OpenTelemetryConfig(exclude=settings.otel.EXCLUDE_PATHS))

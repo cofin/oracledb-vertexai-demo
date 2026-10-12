@@ -5,15 +5,15 @@ title: Native AI Runtime, Persistence, Streaming & Endpoint Stabilization
 state: active
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 6
-current_task: "1.3"
-last_operation: 20261012T180630Z-flow-executor-claim-1-3-00
+state_revision: 8
+current_task: "1.4"
+last_operation: 20261012T181600Z-flow-executor-claim-1-4-00
 operation_targets:
-  - "1.2"
   - "1.3"
-last_verified_checkpoint: 3a69613
+  - "1.4"
+last_verified_checkpoint: f039487
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T18:06:30Z
+updated_at: 2026-10-12T18:16:00Z
 description: Fix all 11 runtime blockers across Oracle session/event persistence, streaming event aggregation, Gemini thought_signature and tool call IDs, frontend final SSE contract, A2A task ownership, /api/vector-search parameter binding, HNSW FETCH APPROX SQL, and typed 503 AI configuration handling.
 tags:
   - bugfix
@@ -76,12 +76,12 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 ### Phase 1: Persistence & Runtime Loop Stabilization
 
 - [x] 1.1 Add `0002` `agent_session`/`agent_event` migration, update `ai-runtime.sql`, and make `OracleSessionStore`/`OracleEventStore` commit at `Scope.APP` (`3a69613`)
-- [x] 1.2 Fix `AgentRuntime.run_stream` non-partial aggregation, `thought_signature`/call ID round-tripping, lowercase JSON Schema, and `final` SSE payload contract
+- [x] 1.2 Fix `AgentRuntime.run_stream` non-partial aggregation, `thought_signature`/call ID round-tripping, lowercase JSON Schema, and `final` SSE payload contract (`f039487`)
 
 ### Phase 2: Protocol & Endpoint Bug Fixes
 
-- [~] 1.3 Fix A2A owner task scoping (`build_a2a_call_context`), container lifecycle, and dynamic `build_agent_card` URL
-- [ ] 1.4 Fix `GET /api/vector-search` reserved `query` parameter, HNSW `FETCH APPROX` SQL in `products.sql`, and typed 503 `AIServiceUnconfigured` handling
+- [x] 1.3 Fix A2A owner task scoping (`build_a2a_call_context`), container lifecycle, and dynamic `build_agent_card` URL
+- [~] 1.4 Fix `GET /api/vector-search` reserved `query` parameter, HNSW `FETCH APPROX` SQL in `products.sql`, and typed 503 `AIServiceUnconfigured` handling
 
 ---
 
