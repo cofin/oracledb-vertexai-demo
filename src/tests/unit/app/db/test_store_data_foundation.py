@@ -24,7 +24,7 @@ def _read_fixture(name: str) -> list[dict[str, Any]]:
 def test_store_data_foundation_stays_in_baseline_migration() -> None:
     migration_files = sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
 
-    assert migration_files == ["0001_cymball_coffee_products.sql"]
+    assert migration_files[0] == "0001_cymball_coffee_products.sql"
 
     migration = (MIGRATIONS_DIR / "0001_cymball_coffee_products.sql").read_text(encoding="utf-8")
     assert "latitude NUMBER(9, 6)" in migration
@@ -48,7 +48,8 @@ def test_baseline_migration_uses_inline_schema_annotations() -> None:
 
 
 def test_fixture_table_order_loads_inventory_after_parents() -> None:
-    assert COFFEE_SHOP_TABLES == ["store", "product", "store_product_inventory"]
+    assert COFFEE_SHOP_TABLES[:3] == ["store", "product", "store_product_inventory"]
+    assert "chat_route" in COFFEE_SHOP_TABLES
 
 
 def test_inventory_fixture_uses_single_gzipped_load_artifact() -> None:

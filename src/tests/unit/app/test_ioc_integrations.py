@@ -1,19 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for ``IntegrationsProvider`` runtime wiring."""
+"""Unit tests for ``IntegrationsProvider`` and ``DomainServiceProvider`` runtime wiring."""
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import MagicMock
 
 import app.ioc as ioc_module
 from app.domain.ai.runtime import AgentRuntime, GeminiModelClient, SpecTree
+from app.domain.chat.services import GroundedRouteService
 from app.domain.system.services import PersonaManager
 
 
-def test_integrations_provider_builds_model_client_from_injected_client(monkeypatch: Any) -> None:
+def test_integrations_provider_builds_model_client_from_injected_client() -> None:
     """Verify IntegrationsProvider constructs a GeminiModelClient from Client."""
     provider = ioc_module.IntegrationsProvider()
     sentinel_client = MagicMock()
@@ -35,13 +35,14 @@ def test_integrations_provider_builds_agent_runtime_from_model_client() -> None:
     assert runtime._model_client is sentinel_model_client
 
 
-def test_integrations_provider_builds_spec_tree() -> None:
-    """Verify IntegrationsProvider provides a valid SpecTree."""
+def test_integrations_provider_builds_spec_tree_with_grounded_tools() -> None:
+    """Verify IntegrationsProvider provides a SpecTree with 5 grounded coffee tools."""
     provider = ioc_module.IntegrationsProvider()
     spec_tree = provider.provide_spec_tree()
 
     assert isinstance(spec_tree, SpecTree)
     assert spec_tree.root.name == "coffee_barista"
+    assert len(spec_tree.root.tools) == 5
 
 
 def test_integrations_provider_builds_persona_manager() -> None:
@@ -52,21 +53,20 @@ def test_integrations_provider_builds_persona_manager() -> None:
     assert isinstance(persona_manager, PersonaManager)
 
 
-def test_integrations_provider_builds_intent_classifier_from_injected_client(monkeypatch: Any) -> None:
-    """Verify IntegrationsProvider constructs FlashLiteIntentClassifier."""
-    provider = ioc_module.IntegrationsProvider()
-    sentinel_client = object()
-    captured: dict[str, object] = {}
+def test_domain_service_provider_builds_grounded_route_service() -> None:
+    """Verify DomainServiceProvider constructs GroundedRouteService from request services."""
+    provider = ioc_module.DomainServiceProvider()
+    product_service = MagicMock()
+    store_service = MagicMock()
+    vertex_ai_service = MagicMock()
 
-    class FakeClassifier:
-        def __init__(self, client: object, model: str) -> None:
-            captured["client"] = client
-            captured["model"] = model
+    grounded = provider.provide_grounded_route_service(
+        product_service=product_service,
+        store_service=store_service,
+        vertex_ai_service=vertex_ai_service,
+    )
 
-    monkeypatch.setattr(ioc_module, "FlashLiteIntentClassifier", FakeClassifier)
-
-    classifier = provider.provide_intent_classifier(sentinel_client)  # type: ignore[arg-type]
-
-    assert isinstance(classifier, FakeClassifier)
-    assert captured["client"] is sentinel_client
-    assert captured["model"] == "gemini-3.8-flash"
+    assert isinstance(grounded, GroundedRouteService)
+    assert grounded.product_service is product_service
+    assert grounded.store_service is store_service
+    assert grounded.vertex_ai_service is vertex_ai_service

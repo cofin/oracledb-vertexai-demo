@@ -2,18 +2,17 @@
 type: Spec
 flow_id: hybrid-rrf-retrieval
 title: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing
-state: active
+state: completed
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 5
-current_task: "2.4"
-last_operation: 20261012T185100Z-flow-executor-claim-2-4-00
+state_revision: 6
+current_task: null
+last_operation: 20261012T190200Z-flow-executor-complete-2-4-00
 operation_targets:
-  - "2.3"
   - "2.4"
-last_verified_checkpoint: 16785f8
+last_verified_checkpoint: 1736e70
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T18:51:00Z
+updated_at: 2026-10-12T19:02:00Z
 description: Replace FlashLiteIntentClassifier and separate vector searches with a single Oracle 26ai Hybrid RRF SQL query (CONTAINS/SCORE + VECTOR_DISTANCE), restore deterministic grounded routes and Folgers off-menu term_hits detection, and bind 5 grounded tools into AgentRuntime.
 tags:
   - feature
@@ -77,8 +76,8 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`) and compared against `ma
 
 ### Phase 2: Grounded Composers, Agent Tools & Classifier Removal
 
-- [x] 2.3 Implement grounded route composers (`_grounded.py`) with `term_hits` off-menu guard and telemetry builders (`_telemetry.py`)
-- [~] 2.4 Register 5 grounded agent tools (`_tools.py`), wire single-query hybrid routing + cache/metrics into `agent_service.py`, and delete `classifier.py`
+- [x] 2.3 Implement grounded route composers (`_grounded.py`) with `term_hits` off-menu guard and telemetry builders (`_telemetry.py`) (`1736e70`)
+- [x] 2.4 Register 5 grounded agent tools (`_tools.py`), wire single-query hybrid routing + cache/metrics into `agent_service.py`, and delete `classifier.py`
 
 ---
 

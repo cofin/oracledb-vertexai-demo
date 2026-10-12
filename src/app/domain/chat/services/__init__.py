@@ -19,15 +19,11 @@ from ._telemetry import (
     safe_location_context,
     summarize_vector,
 )
-from .classifier import INTENT_VALUES, FlashLiteIntentClassifier, IntentLabel
 
 __all__ = (
-    "INTENT_VALUES",
-    "FlashLiteIntentClassifier",
     "GroundedRouteService",
     "GroundedTurnResult",
     "HybridRouteResolver",
-    "IntentLabel",
     "SQLPhase",
     "SearchMetrics",
     "build_hybrid_sql_phases",

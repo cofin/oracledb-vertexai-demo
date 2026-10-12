@@ -29,7 +29,7 @@ from app.domain.ai.runtime import (
 )
 from app.domain.ai.services import AgentOrchestrationService, get_coffee_spec_tree
 from app.domain.chat.exceptions import AIServiceUnconfigured
-from app.domain.chat.services.classifier import FlashLiteIntentClassifier
+from app.domain.chat.services import GroundedRouteService, HybridRouteResolver
 from app.domain.products.services.services import (
     OracleVectorSearchService,
     ProductService,
@@ -97,10 +97,6 @@ class IntegrationsProvider(Provider):
         return get_coffee_spec_tree()
 
     @provide(scope=Scope.APP)
-    def provide_intent_classifier(self, client: Client) -> FlashLiteIntentClassifier:
-        return FlashLiteIntentClassifier(client, model=get_settings().ai.intent_model)
-
-    @provide(scope=Scope.APP)
     def provide_persona_manager(self) -> PersonaManager:
         return PersonaManager()
 
@@ -122,12 +118,11 @@ class DomainServiceProvider(Provider):
     store_service = provide(StoreService)
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
+    route_resolver = provide(HybridRouteResolver)
 
     @provide
     def provide_agent_stream_service(self) -> AgentStreamService:
         return AgentStreamService()
-
-    agent_orchestration_service = provide(AgentOrchestrationService)
 
     @provide
     def provide_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
@@ -138,6 +133,52 @@ class DomainServiceProvider(Provider):
             embedding_model=settings.ai.embedding_model,
             embedding_dimensions=settings.ai.embedding_dimensions,
             cache_service=cache_service,
+        )
+
+    @provide
+    def provide_grounded_route_service(
+        self,
+        product_service: ProductService,
+        store_service: StoreService,
+        vertex_ai_service: VertexAIService,
+    ) -> GroundedRouteService:
+        return GroundedRouteService(
+            product_service=product_service,
+            store_service=store_service,
+            vertex_ai_service=vertex_ai_service,
+        )
+
+    @provide
+    def provide_agent_orchestration_service(
+        self,
+        runtime: AgentRuntime,
+        stream_service: AgentStreamService,
+        spec_tree: SpecTree,
+        session_store: OracleSessionStore,
+        event_store: OracleEventStore,
+        route_resolver: HybridRouteResolver,
+        grounded_service: GroundedRouteService,
+        product_service: ProductService,
+        store_service: StoreService,
+        vertex_ai_service: VertexAIService,
+        cache_service: CacheService,
+        metrics_service: MetricsService,
+        persona_manager: PersonaManager,
+    ) -> AgentOrchestrationService:
+        return AgentOrchestrationService(
+            runtime=runtime,
+            stream_service=stream_service,
+            spec_tree=spec_tree,
+            session_store=session_store,
+            event_store=event_store,
+            route_resolver=route_resolver,
+            grounded_service=grounded_service,
+            product_service=product_service,
+            store_service=store_service,
+            vertex_ai_service=vertex_ai_service,
+            cache_service=cache_service,
+            metrics_service=metrics_service,
+            persona_manager=persona_manager,
         )
 
     @provide
