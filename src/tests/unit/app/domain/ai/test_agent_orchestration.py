@@ -65,11 +65,7 @@ async def test_grounded_tools_execute_against_services_without_leaking_coordinat
     vertex_ai_service.get_text_embedding.return_value = ([0.1] * 3072, True)
     product_service.search_hybrid.return_value = []
     product_service.get_by_id.return_value = Product(
-        id=1,
-        name="Velvet Espresso",
-        price=16.50,
-        description="Bold dark roast.",
-        category="Whole Bean",
+        id=1, name="Velvet Espresso", price=16.50, description="Bold dark roast.", category="Whole Bean"
     )
     store_service.find_nearest_stores.return_value = []
     store_service.find_product_availability.return_value = []
@@ -79,12 +75,7 @@ async def test_grounded_tools_execute_against_services_without_leaking_coordinat
         session_id="s1",
         invocation_id="inv1",
         turn=1,
-        state={
-            "location_context": {
-                "city": "Dallas",
-                "coordinates": {"latitude": 32.75, "longitude": -96.83},
-            }
-        },
+        state={"location_context": {"city": "Dallas", "coordinates": {"latitude": 32.75, "longitude": -96.83}}},
         services=CoffeeToolServices(
             product_service=product_service,
             store_service=store_service,
@@ -155,9 +146,7 @@ async def test_orchestrator_deterministic_hybrid_route_short_circuits_agent_loop
     metrics_service = AsyncMock()
 
     grounded_service = GroundedRouteService(
-        product_service=product_service,
-        store_service=store_service,
-        vertex_ai_service=vertex_ai_service,
+        product_service=product_service, store_service=store_service, vertex_ai_service=vertex_ai_service
     )
 
     orchestrator = AgentOrchestrationService(
@@ -176,10 +165,7 @@ async def test_orchestrator_deterministic_hybrid_route_short_circuits_agent_loop
     )
 
     final_frame = await orchestrator.run_conversation_turn(
-        session_id="sess-1",
-        user_id="user-1",
-        message="Do you have Folgers?",
-        persona="barista",
+        session_id="sess-1", user_id="user-1", message="Do you have Folgers?", persona="barista"
     )
 
     assert final_frame["type"] == "final"
@@ -230,15 +216,9 @@ async def test_orchestrator_skips_response_cache_when_location_present_and_never
         metrics_service=metrics_service,
     )
 
-    raw_loc = {
-        "city": "Dallas",
-        "coordinates": {"latitude": 32.7767, "longitude": -96.7970, "accuracy_meters": 12.0},
-    }
+    raw_loc = {"city": "Dallas", "coordinates": {"latitude": 32.7767, "longitude": -96.7970, "accuracy_meters": 12.0}}
     final_frame = await orchestrator.run_conversation_turn(
-        session_id="sess-loc",
-        user_id="user-1",
-        message="Tell me a coffee joke",
-        location_context=raw_loc,
+        session_id="sess-loc", user_id="user-1", message="Tell me a coffee joke", location_context=raw_loc
     )
 
     assert final_frame["type"] == "final"

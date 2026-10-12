@@ -66,9 +66,7 @@ async def test_build_a2a_call_context_deterministic_anonymous_owner_and_session_
 
     store = InMemoryTaskStore()
     sample_task = Task(
-        id="task-owner-test",
-        context_id="custom-sess-99",
-        status=TaskStatus(state=TaskState.TASK_STATE_WORKING),
+        id="task-owner-test", context_id="custom-sess-99", status=TaskStatus(state=TaskState.TASK_STATE_WORKING)
     )
     await store.save(sample_task, ctx_one)
     loaded = await store.get("task-owner-test", ctx_two)

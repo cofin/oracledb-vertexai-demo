@@ -12,10 +12,7 @@ from app.domain.ai.services import get_coffee_spec_tree
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.system.services import PersonaManager
 
-__all__ = (
-    "AIProvider",
-    "IntegrationsProvider",
-)
+__all__ = ("AIProvider", "IntegrationsProvider")
 
 _PLACEHOLDER_VALUES = frozenset({"", "demo-project", "your-project-id", "placeholder", "your-api-key"})
 

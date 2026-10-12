@@ -1,33 +1,54 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-# pylint: disable=[invalid-name,import-outside-toplevel]
+"""Litestar ApplicationCore plugin wiring middleware, plugins, and signature namespace."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from litestar.middleware import ASGIMiddleware
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.plugins import InitPluginProtocol
 
 from app import config
 from app.__metadata__ import __version__
-from app.lib.settings import get_settings
+from app.lib.di import request_container_var
 from app.server import plugins
 
 if TYPE_CHECKING:
     from litestar.config.app import AppConfig
+    from litestar.types import ASGIApp, Receive, Scope, Send
+
+
+class _RequestContainerMiddleware(ASGIMiddleware):
+    """Bind the active Dishka request container to request_container_var."""
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
+        """Set request_container_var from the active request scope state."""
+        state = scope.get("state")
+        container = state.get("dishka_container") if isinstance(state, dict) else None
+        token = request_container_var.set(container) if container is not None else None
+        try:
+            await next_app(scope, receive, send)
+        finally:
+            if token is not None:
+                request_container_var.reset(token)
 
 
 class ApplicationCore(InitPluginProtocol):
     """Wires routes, middleware, and plugins onto the Litestar app."""
 
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
+        """Initialize application middleware, plugins, and OpenAPI config."""
         from app.lib import log
+        from app.lib.settings import get_settings
 
         settings = get_settings()
 
         app_config.middleware.insert(0, log.StructlogMiddleware)
+        app_config.middleware.insert(1, _RequestContainerMiddleware())
         app_config.after_exception.append(log.after_exception_hook_handler)
         app_config.before_send.append(log.BeforeSendHandler())
 

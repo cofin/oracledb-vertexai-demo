@@ -21,11 +21,7 @@ if TYPE_CHECKING:
     )
     from app.domain.system.services import MetricsService
 
-__all__ = (
-    "CallContext",
-    "CoffeeToolContext",
-    "RunContextRegistry",
-)
+__all__ = ("CallContext", "CoffeeToolContext", "RunContextRegistry")
 
 
 @dataclass(slots=True)

@@ -68,7 +68,9 @@ def to_agent_stream_frame(frame: dict[str, Any], *, turn_id: str, seq: int = 0) 
         turn_id=turn_id,
         seq=seq,
         agent_name=str(frame["author"]) if frame.get("author") else None,
-        text=str(frame["text"]) if frame.get("text") is not None else (str(frame["answer"]) if frame.get("answer") else None),
+        text=str(frame["text"])
+        if frame.get("text") is not None
+        else (str(frame["answer"]) if frame.get("answer") else None),
         tool_name=str(frame["name"]) if frame.get("name") else None,
         call_id=str(frame["id"]) if frame.get("id") else None,
         payload=frame,
@@ -87,11 +89,7 @@ class AgentStreamService:
         self._ping_interval = ping_interval
 
     async def adapt(
-        self,
-        event_stream: AsyncIterator[AgentEvent],
-        session_id: str,
-        *,
-        final_metadata: dict[str, Any] | None = None,
+        self, event_stream: AsyncIterator[AgentEvent], session_id: str, *, final_metadata: dict[str, Any] | None = None
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Yield structured SSE event frames with keep-alive pings and guaranteed cleanup.
 

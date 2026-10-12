@@ -283,6 +283,11 @@ classmethod-decorators = ["classmethod"]
 known-first-party = ["tests", "app", "config"]
 split-on-trailing-comma = false
 
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"google.adk".msg = "Use the native app.domain.ai runtime and litestar-mcp agent primitives instead of google.adk."
+"litestar.plugins.htmx".msg = "Import HTMX primitives from litestar_htmx instead of litestar.plugins.htmx."
+"orjson".msg = "Use msgspec via app.utils.serialization instead of orjson."
+
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401", "D104"]
 "src/tests/*.py" = [

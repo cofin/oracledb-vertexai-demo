@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""ASGI application factory."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -10,9 +12,13 @@ if TYPE_CHECKING:
 
     from litestar import Litestar
 
+__all__ = ("app", "create_app")
+
+app: Litestar
+
 
 def create_app() -> Litestar:
-    """Create ASGI application."""
+    """Create and configure the Litestar ASGI application."""
     from contextlib import asynccontextmanager
 
     from litestar import Litestar
@@ -26,15 +32,23 @@ def create_app() -> Litestar:
     container = make_container(LitestarProvider())
 
     @asynccontextmanager
-    async def dishka_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
+    async def dishka_lifespan(litestar_app: Litestar) -> AsyncGenerator[None, None]:
+        del litestar_app
         try:
             yield
         finally:
             await container.close()
 
-    app = Litestar(debug=settings.app.DEBUG, plugins=[ApplicationCore()], lifespan=[dishka_lifespan])
-    setup_dishka(container, app)
-    return app
+    litestar_app = Litestar(debug=settings.app.DEBUG, plugins=[ApplicationCore()], lifespan=[dishka_lifespan])
+    setup_dishka(container, litestar_app)
+    return litestar_app
 
 
-app = create_app()
+def __getattr__(name: str) -> object:
+    """Lazily instantiate the module-level app attribute on first access."""
+    if name == "app":
+        instance = create_app()
+        globals()["app"] = instance
+        return instance
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)

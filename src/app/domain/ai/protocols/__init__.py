@@ -12,9 +12,4 @@ from app.domain.ai.protocols._runtime import (
     SessionStoreProtocol,
 )
 
-__all__ = (
-    "CoffeeToolContext",
-    "EventStoreProtocol",
-    "ModelClientProtocol",
-    "SessionStoreProtocol",
-)
+__all__ = ("CoffeeToolContext", "EventStoreProtocol", "ModelClientProtocol", "SessionStoreProtocol")

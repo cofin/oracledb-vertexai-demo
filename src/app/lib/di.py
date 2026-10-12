@@ -24,11 +24,5 @@ __all__ = (
     "worker_container_var",
 )
 
-request_container_var: ContextVar[AsyncContainer | None] = ContextVar(
-    "request_container",
-    default=None,
-)
-worker_container_var: ContextVar[AsyncContainer | None] = ContextVar(
-    "worker_container",
-    default=None,
-)
+request_container_var: ContextVar[AsyncContainer | None] = ContextVar("request_container", default=None)
+worker_container_var: ContextVar[AsyncContainer | None] = ContextVar("worker_container", default=None)

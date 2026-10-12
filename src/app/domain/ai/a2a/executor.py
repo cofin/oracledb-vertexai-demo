@@ -42,9 +42,7 @@ def resolve_a2a_user_id(user_obj: Any) -> str:
         return resolve_a2a_user_id(wrapped) if wrapped is not None and wrapped is not user_obj else ANONYMOUS_A2A_USER
 
     is_auth = (
-        user_obj.get("is_authenticated")
-        if isinstance(user_obj, dict)
-        else getattr(user_obj, "is_authenticated", None)
+        user_obj.get("is_authenticated") if isinstance(user_obj, dict) else getattr(user_obj, "is_authenticated", None)
     )
     if is_auth is False:
         return ANONYMOUS_A2A_USER
@@ -83,7 +81,9 @@ def build_a2a_call_context(request: Any, context: ServerCallContext | None = Non
     user_id = resolve_a2a_user_id(scope.get("user") if isinstance(scope, dict) else None)
     session_id = headers.get("x-session-id")
 
-    merged_state: dict[str, Any] = dict(context.state) if context is not None and isinstance(context.state, dict) else {}
+    merged_state: dict[str, Any] = (
+        dict(context.state) if context is not None and isinstance(context.state, dict) else {}
+    )
     merged_state.update({
         "auth": scope.get("auth") if isinstance(scope, dict) else None,
         "headers": headers,
@@ -128,16 +128,10 @@ class CoffeeAgentExecutor(AgentExecutor):
         await updater.start_work()
         try:
             await self._run_turn_and_publish(
-                container=container,
-                session_id=session_id,
-                user_id=user_id,
-                user_text=user_text,
-                updater=updater,
+                container=container, session_id=session_id, user_id=user_id, user_text=user_text, updater=updater
             )
         except Exception as exc:
-            err_msg = updater.new_agent_message(
-                parts=[Part(text=f"Agent execution failed ({type(exc).__name__}).")]
-            )
+            err_msg = updater.new_agent_message(parts=[Part(text=f"Agent execution failed ({type(exc).__name__}).")])
             await updater.failed(message=err_msg)
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
@@ -153,13 +147,7 @@ class CoffeeAgentExecutor(AgentExecutor):
         await updater.cancel()
 
     async def _run_turn_and_publish(
-        self,
-        *,
-        container: AsyncContainer,
-        session_id: str,
-        user_id: str,
-        user_text: str,
-        updater: TaskUpdater,
+        self, *, container: AsyncContainer, session_id: str, user_id: str, user_text: str, updater: TaskUpdater
     ) -> None:
         """Run one orchestrated turn inside a REQUEST scope and publish artifacts to TaskUpdater."""
         async with container(scope=Scope.REQUEST) as req_container:

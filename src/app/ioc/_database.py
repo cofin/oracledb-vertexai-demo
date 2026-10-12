@@ -11,10 +11,7 @@ from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
 
 from app import config
 
-__all__ = (
-    "DBProvider",
-    "LitestarPersistenceProvider",
-)
+__all__ = ("DBProvider", "LitestarPersistenceProvider")
 
 
 class DBProvider(Provider):

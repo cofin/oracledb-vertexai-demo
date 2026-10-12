@@ -24,13 +24,7 @@ class OracleAsyncService(SQLSpecAsyncService[OracleAsyncDriver]):
     def __init__(self, driver: OracleAsyncDriver) -> None:
         super().__init__(driver)
 
-    async def execute_many(
-        self,
-        statement: Any,
-        parameters: Sequence[Any],
-        *,
-        auto_commit: bool = False,
-    ) -> Any:
+    async def execute_many(self, statement: Any, parameters: Sequence[Any], *, auto_commit: bool = False) -> Any:
         """Execute a statement across a sequence of parameter sets.
 
         Args:

@@ -141,17 +141,12 @@ class AgentOrchestrationService:
         turn_started = time.perf_counter()
         invocation_id = uuid4().hex
         history, turn_num, next_seq = await self._prepare_session_and_user_event(
-            session_id=session_id,
-            user_id=user_id,
-            invocation_id=invocation_id,
-            message=message,
+            session_id=session_id, user_id=user_id, invocation_id=invocation_id, message=message
         )
 
         safe_loc = safe_location_context(location_context)
         cache_key, cached_payload, cache_phase = await self._lookup_response_cache(
-            message=message,
-            persona=persona,
-            safe_loc=safe_loc,
+            message=message, persona=persona, safe_loc=safe_loc
         )
         if cached_payload is not None and cache_phase is not None:
             async for frame in self._emit_cached_turn(
@@ -234,20 +229,12 @@ class AgentOrchestrationService:
         await self._session_store.clear_session(session_id=session_id, user_id=user_id)
 
     async def _prepare_session_and_user_event(
-        self,
-        *,
-        session_id: str,
-        user_id: str,
-        invocation_id: str,
-        message: str,
+        self, *, session_id: str, user_id: str, invocation_id: str, message: str
     ) -> tuple[list[AgentEvent], int, int]:
         existing = await self._session_store.get_session(session_id=session_id, user_id=user_id)
         if existing is None:
             await self._session_store.save_session(
-                session_id=session_id,
-                user_id=user_id,
-                app_name="cymbal_coffee",
-                state={},
+                session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state={}
             )
         history = await self._event_store.list_events(session_id=session_id)
         turn_num = len(history) // 2 + 1
@@ -265,11 +252,7 @@ class AgentOrchestrationService:
         return history, turn_num, next_seq + 1
 
     async def _lookup_response_cache(
-        self,
-        *,
-        message: str,
-        persona: str,
-        safe_loc: dict[str, Any],
+        self, *, message: str, persona: str, safe_loc: dict[str, Any]
     ) -> tuple[str | None, dict[str, Any] | None, SQLPhase | None]:
         if self._cache_service is None or safe_loc:
             return None, None, None
@@ -282,16 +265,13 @@ class AgentOrchestrationService:
         return cache_key, payload, phase
 
     async def _resolve_hybrid_context(
-        self,
-        message: str,
+        self, message: str
     ) -> tuple[HybridTurnContext | None, list[float] | None, bool, float, float]:
         if self._route_resolver is None or self._vertex_ai_service is None:
             return None, None, False, 0.0, 0.0
         embed_started = time.perf_counter()
         embedding_res = await self._vertex_ai_service.get_text_embedding(
-            message,
-            embedding_purpose="query",
-            return_cache_status=True,
+            message, embedding_purpose="query", return_cache_status=True
         )
         embed_ms = (time.perf_counter() - embed_started) * 1000
         if isinstance(embedding_res, tuple):
@@ -301,10 +281,7 @@ class AgentOrchestrationService:
         if not query_embedding:
             return None, None, False, embed_ms, 0.0
 
-        turn_context = await self._route_resolver.resolve_turn(
-            user_message=message,
-            query_embedding=query_embedding,
-        )
+        turn_context = await self._route_resolver.resolve_turn(user_message=message, query_embedding=query_embedding)
         oracle_ms = turn_context.oracle_time_ms
         if self._metrics_service is not None:
             top_sim = turn_context.products[0].vector_similarity if turn_context.products else None
@@ -335,11 +312,7 @@ class AgentOrchestrationService:
     ) -> AsyncGenerator[dict[str, Any], None]:
         answer = str(cached_payload.get("answer") or "")
         await self._append_assistant_event(
-            session_id=session_id,
-            invocation_id=invocation_id,
-            turn_num=turn_num,
-            seq=next_seq,
-            answer=answer,
+            session_id=session_id, invocation_id=invocation_id, turn_num=turn_num, seq=next_seq, answer=answer
         )
         elapsed_ms = round((time.perf_counter() - turn_started) * 1000, 2)
         metrics = dict(cached_payload.get("search_metrics") or {})
@@ -377,11 +350,7 @@ class AgentOrchestrationService:
         cache_phase: SQLPhase | None,
     ) -> AsyncGenerator[dict[str, Any], None]:
         await self._append_assistant_event(
-            session_id=session_id,
-            invocation_id=invocation_id,
-            turn_num=turn_num,
-            seq=next_seq,
-            answer=grounded.answer,
+            session_id=session_id, invocation_id=invocation_id, turn_num=turn_num, seq=next_seq, answer=grounded.answer
         )
         elapsed_ms = round((time.perf_counter() - turn_started) * 1000, 2)
         metrics_dict = grounded.search_metrics.to_dict()
@@ -465,10 +434,7 @@ class AgentOrchestrationService:
             services=tool_services,
         )
         effective_dynamic = self._build_dynamic_context(
-            dynamic_context=dynamic_context,
-            persona=persona,
-            safe_loc=safe_loc,
-            turn_context=turn_context,
+            dynamic_context=dynamic_context, persona=persona, safe_loc=safe_loc, turn_context=turn_context
         )
         raw_stream = self._runtime.execute_turn(
             spec_tree=self._spec_tree,
@@ -636,13 +602,7 @@ class AgentOrchestrationService:
         return "\n\n".join(parts)
 
     async def _append_assistant_event(
-        self,
-        *,
-        session_id: str,
-        invocation_id: str,
-        turn_num: int,
-        seq: int,
-        answer: str,
+        self, *, session_id: str, invocation_id: str, turn_num: int, seq: int, answer: str
     ) -> None:
         if not answer:
             return

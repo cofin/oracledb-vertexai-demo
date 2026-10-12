@@ -14,15 +14,7 @@ from litestar.utils.module_loader import module_to_os_path
 if TYPE_CHECKING:
     from pathlib import Path
 
-__all__ = (
-    "BASE_DIR",
-    "DEFAULT_MODULE_NAME",
-    "_env_bool",
-    "_env_cors",
-    "_env_float",
-    "_env_int",
-    "_env_str",
-)
+__all__ = ("BASE_DIR", "DEFAULT_MODULE_NAME", "_env_bool", "_env_cors", "_env_float", "_env_int", "_env_str")
 
 DEFAULT_MODULE_NAME = "app"
 BASE_DIR: Final[Path] = module_to_os_path(DEFAULT_MODULE_NAME)

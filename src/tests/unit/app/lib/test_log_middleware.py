@@ -25,12 +25,7 @@ async def test_before_send_handler_handles_response_start_without_headers() -> N
     """Verify BeforeSendHandler safely mutates http.response.start messages omitting headers."""
     handler = BeforeSendHandler()
     message: dict[str, Any] = {"type": "http.response.start", "status": 204}
-    scope: dict[str, Any] = {
-        "type": ScopeType.HTTP,
-        "path": "/api/chat/",
-        "method": "POST",
-        "state": {},
-    }
+    scope: dict[str, Any] = {"type": ScopeType.HTTP, "path": "/api/chat/", "method": "POST", "state": {}}
 
     await handler(message, scope)  # type: ignore[arg-type]
 

@@ -212,10 +212,7 @@ class GroundedRouteService:
             )
 
         answer, mode, grounded_ms = await _compose_grounded_answer(
-            query=query,
-            products=products,
-            vertex_ai_service=self.vertex_ai_service,
-            persona=persona,
+            query=query, products=products, vertex_ai_service=self.vertex_ai_service, persona=persona
         )
         total_ms = embedding_ms + oracle_ms + grounded_ms
         metrics = build_search_metrics(
@@ -277,9 +274,7 @@ class GroundedRouteService:
             filters = extract_location_filters(query, location_context)
             lookup_started = time.perf_counter()
             matched_stores = await self.store_service.find_stores_by_location(
-                city=filters["city"],
-                state=filters["state"],
-                zip_code=filters["zip_code"],
+                city=filters["city"], state=filters["state"], zip_code=filters["zip_code"]
             )
             lookup_ms = (time.perf_counter() - lookup_started) * 1000
             stores = _coerce_dict_rows(sanitize_for_json(matched_stores))
@@ -350,19 +345,15 @@ class GroundedRouteService:
         coordinates = request_coordinates(location_context)
         product_query = _resolve_product_query(query, turn_context, last_products)
         target_store = await self.store_service.resolve_store(
-            location_hint=_resolve_location_hint(query, location_context),
-            coordinates=coordinates,
+            location_hint=_resolve_location_hint(query, location_context), coordinates=coordinates
         )
         inventory, availability_phase = await self._fetch_availability_inventory(
-            product_query=product_query,
-            turn_context=turn_context,
-            coordinates=coordinates,
+            product_query=product_query, turn_context=turn_context, coordinates=coordinates
         )
         sql_phases.append(availability_phase)
 
         target_row, alternatives = _partition_availability_rows(
-            inventory,
-            target_store.id if target_store is not None else None,
+            inventory, target_store.id if target_store is not None else None
         )
         answer = _format_availability_answer(
             target=target_row,
@@ -429,27 +420,20 @@ class GroundedRouteService:
         )
 
     async def _fetch_availability_inventory(
-        self,
-        *,
-        product_query: str,
-        turn_context: HybridTurnContext,
-        coordinates: tuple[float, float] | None,
+        self, *, product_query: str, turn_context: HybridTurnContext, coordinates: tuple[float, float] | None
     ) -> tuple[list[dict[str, Any]], SQLPhase]:
         lookup_started = time.perf_counter()
         lat, lon = coordinates if coordinates is not None else (None, None)
         if turn_context.products:
             top_product = turn_context.products[0]
             availability_rows = await self.store_service.find_stores_with_product(
-                top_product.id,
-                latitude=lat,
-                longitude=lon,
+                top_product.id, latitude=lat, longitude=lon
             )
             sql_key = "find-stores-with-product-inventory"
             binds: dict[str, Any] = {"product_id": top_product.id}
         else:
             availability_rows = await self.store_service.find_product_availability(
-                product_query,
-                coordinates=coordinates,
+                product_query, coordinates=coordinates
             )
             sql_key = "find-product-availability-by-query"
             binds = {"product_query": product_query}
@@ -468,11 +452,7 @@ class GroundedRouteService:
         return inventory, phase
 
 
-def _resolve_product_query(
-    query: str,
-    turn_context: HybridTurnContext,
-    last_products: list[str] | None,
-) -> str:
+def _resolve_product_query(query: str, turn_context: HybridTurnContext, last_products: list[str] | None) -> str:
     extracted = extract_product_query(query)
     if extracted:
         return extracted
@@ -492,8 +472,7 @@ def _resolve_location_hint(query: str, location_context: dict[str, Any] | None) 
 
 
 def _partition_availability_rows(
-    inventory: list[dict[str, Any]],
-    target_store_id: int | None,
+    inventory: list[dict[str, Any]], target_store_id: int | None
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     if target_store_id is None:
         return None, inventory
@@ -509,7 +488,9 @@ def _partition_availability_rows(
     return target_row, alternatives
 
 
-def _candidates_to_dicts(candidates: list[HybridProductCandidate] | tuple[HybridProductCandidate, ...]) -> list[dict[str, Any]]:
+def _candidates_to_dicts(
+    candidates: list[HybridProductCandidate] | tuple[HybridProductCandidate, ...],
+) -> list[dict[str, Any]]:
     return [
         {
             "id": candidate.id,
@@ -558,8 +539,7 @@ def _render_off_menu_alternative(off_menu_term: str, products: list[dict[str, An
         )
     first = products[0]
     answer = (
-        f"Cymbal Coffee does not carry {cleaned_term}, "
-        f"but {_render_selected_product(first)} is the closest menu option"
+        f"Cymbal Coffee does not carry {cleaned_term}, but {_render_selected_product(first)} is the closest menu option"
     )
     description = str(first.get("description") or "").strip()
     if description:
@@ -679,11 +659,7 @@ def _is_credential_error(exc: BaseException) -> bool:
 
 
 async def _compose_grounded_answer(
-    *,
-    query: str,
-    products: list[dict[str, Any]],
-    vertex_ai_service: VertexAIService | None,
-    persona: str = "barista",
+    *, query: str, products: list[dict[str, Any]], vertex_ai_service: VertexAIService | None, persona: str = "barista"
 ) -> tuple[str, str, float]:
     started = time.perf_counter()
     if not products or vertex_ai_service is None:
@@ -798,9 +774,7 @@ def _format_out_of_stock_store(product_name: str, store_name: str, alternatives:
 
 
 def _format_availability_answer(
-    target: dict[str, Any] | None,
-    alternatives: list[dict[str, Any]],
-    target_store_name: str | None = None,
+    target: dict[str, Any] | None, alternatives: list[dict[str, Any]], target_store_name: str | None = None
 ) -> str:
     if not target and not alternatives:
         return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
@@ -847,7 +821,4 @@ def _format_availability_answer(
     return base_sentence + found_clause
 
 
-__all__ = (
-    "GroundedRouteService",
-    "GroundedTurnResult",
-)
+__all__ = ("GroundedRouteService", "GroundedTurnResult")

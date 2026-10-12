@@ -20,12 +20,7 @@ if TYPE_CHECKING:
     from app.domain.ai.runtime._context import CallContext
     from app.domain.ai.runtime._model import GeminiModelClient
 
-__all__ = (
-    "AgentRuntime",
-    "BudgetExceededError",
-    "SpanManager",
-    "TurnBudget",
-)
+__all__ = ("AgentRuntime", "BudgetExceededError", "SpanManager", "TurnBudget")
 
 
 class AgentRuntime:
@@ -138,10 +133,7 @@ class AgentRuntime:
             saw_non_partial = False
 
             async for event in self._model_client.generate_stream(
-                contents,
-                tools=tool_decls,
-                system_instruction=current_spec.static_instruction,
-                model=current_spec.model,
+                contents, tools=tool_decls, system_instruction=current_spec.static_instruction, model=current_spec.model
             ):
                 _stamp_event(
                     event=event,
@@ -217,10 +209,7 @@ class AgentRuntime:
             self._span_manager.start_tool_span(tool_name=call.name, call_id=call.id) for call in pending_calls
         ]
         responses = await self._run_tools_with_spans(
-            pending_calls=pending_calls,
-            tools_map=tools_map,
-            ctx=ctx,
-            tool_spans=tool_spans,
+            pending_calls=pending_calls, tools_map=tools_map, ctx=ctx, tool_spans=tool_spans
         )
 
         next_spec = current_spec
@@ -239,12 +228,7 @@ class AgentRuntime:
         return next_spec, response_parts
 
     async def _run_tools_with_spans(
-        self,
-        *,
-        pending_calls: list[FunctionCall],
-        tools_map: dict[str, Tool],
-        ctx: CallContext,
-        tool_spans: list[Any],
+        self, *, pending_calls: list[FunctionCall], tools_map: dict[str, Tool], ctx: CallContext, tool_spans: list[Any]
     ) -> list[FunctionResponse]:
         try:
             responses = await execute_parallel(pending_calls, tools_map, ctx)
@@ -258,10 +242,7 @@ class AgentRuntime:
 
 
 def _build_initial_contents(
-    *,
-    user_message: str,
-    history: list[AgentEvent] | None,
-    dynamic_context: str | None,
+    *, user_message: str, history: list[AgentEvent] | None, dynamic_context: str | None
 ) -> list[Content]:
     history_events = list(history or [])
     contents: list[Content] = [ev.content for ev in history_events if ev.content]
@@ -297,25 +278,20 @@ def _stamp_event(
 
 
 def _normalize_budget(
-    *,
-    limits: AgentLimits | TurnBudget | None,
-    budget: TurnBudget | None,
+    *, limits: AgentLimits | TurnBudget | None, budget: TurnBudget | None
 ) -> tuple[TurnBudget, AgentLimits]:
     if budget is not None:
         return budget, AgentLimits(
-            max_model_calls_per_turn=budget.max_turns,
-            max_tool_calls_per_turn=budget.max_tool_calls,
+            max_model_calls_per_turn=budget.max_turns, max_tool_calls_per_turn=budget.max_tool_calls
         )
     if isinstance(limits, TurnBudget):
         return limits, AgentLimits(
-            max_model_calls_per_turn=limits.max_turns,
-            max_tool_calls_per_turn=limits.max_tool_calls,
+            max_model_calls_per_turn=limits.max_turns, max_tool_calls_per_turn=limits.max_tool_calls
         )
     resolved_limits = limits or AgentLimits()
     return (
         TurnBudget(
-            max_turns=resolved_limits.max_model_calls_per_turn,
-            max_tool_calls=resolved_limits.max_tool_calls_per_turn,
+            max_turns=resolved_limits.max_model_calls_per_turn, max_tool_calls=resolved_limits.max_tool_calls_per_turn
         ),
         resolved_limits,
     )

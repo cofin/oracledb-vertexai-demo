@@ -59,16 +59,11 @@ class DomainServiceProvider(Provider):
 
     @provide
     def provide_grounded_route_service(
-        self,
-        product_service: ProductService,
-        store_service: StoreService,
-        vertex_ai_service: VertexAIService,
+        self, product_service: ProductService, store_service: StoreService, vertex_ai_service: VertexAIService
     ) -> GroundedRouteService:
         """Provide GroundedRouteService for deterministic chat routes."""
         return GroundedRouteService(
-            product_service=product_service,
-            store_service=store_service,
-            vertex_ai_service=vertex_ai_service,
+            product_service=product_service, store_service=store_service, vertex_ai_service=vertex_ai_service
         )
 
     @provide

@@ -61,9 +61,7 @@ def test_domain_service_provider_builds_grounded_route_service() -> None:
     vertex_ai_service = MagicMock()
 
     grounded = provider.provide_grounded_route_service(
-        product_service=product_service,
-        store_service=store_service,
-        vertex_ai_service=vertex_ai_service,
+        product_service=product_service, store_service=store_service, vertex_ai_service=vertex_ai_service
     )
 
     assert isinstance(grounded, GroundedRouteService)

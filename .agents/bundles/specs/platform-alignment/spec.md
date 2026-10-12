@@ -2,18 +2,17 @@
 type: Spec
 flow_id: platform-alignment
 title: Settings, DI, Services, LitestarMCP 0.15, and Security Alignment
-state: active
+state: completed
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 4
-current_task: "3.4"
-last_operation: 20261012T194700Z-flow-executor-complete-3-3-00
+state_revision: 5
+current_task: null
+last_operation: 20261012T200820Z-flow-executor-complete-3-4-00
 operation_targets:
-  - "3.3"
   - "3.4"
-last_verified_checkpoint: 4ac8ecd
+last_verified_checkpoint: 0041a07
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T19:47:00Z
+updated_at: 2026-10-12T20:08:20Z
 description: Align the repository with Litestar reference platform conventions by modularizing lib/settings/ and ioc/, splitting monolithic domain services into private _*.py modules, dropping sqlspec[adk], upgrading to litestar-mcp>=0.15.0 (SkillController, PromptController, TurnBudget, AgentStreamFrame, SpanManager), hardening CSRF and optional MCP_API_KEY security, and enforcing Ruff TID251 banned-api rules.
 tags:
   - refactor
@@ -85,25 +84,26 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 ### Phase 2: LitestarMCP 0.15 Primitives, Security Hardening & Lint Gates
 
 - [x] 3.3 Adopt `litestar-mcp>=0.15.0` `SkillController`, `PromptController`, `TurnBudget`, `AgentStreamFrame`, `SpanManager`, and `domain/ai/protocols/`
-- [~] 3.4 Implement `build_security_config`, `build_mcp_config`, chat CSRF opt-in, optional `MCP_API_KEY` auth, `GET /health`, and Ruff `TID251` gates
+- [x] 3.4 Implement `build_security_config`, `build_mcp_config`, chat CSRF opt-in, optional `MCP_API_KEY` auth, `GET /health`, and Ruff `TID251` gates
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `platform-alignment` (`planned`)
+- **Active Flow / Lifecycle**: `platform-alignment` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `0041a07`
 - **Key Decisions**:
   - Split `lib/settings/` and `ioc/` into cohesive sub-modules while preserving top-level imports (`app.lib.settings`, `app.ioc`).
-  - Browser cookie-session chat POST endpoints opt into CSRF (`exclude_from_csrf: False`); `/mcp` and `/a2a` stay CSRF-exempt with optional `MCP_API_KEY` header authentication.
+  - Browser cookie-session chat POST endpoints opt into CSRF (`auth = exclude()`, `exclude_from_csrf: False`); `/mcp` and `/a2a` stay CSRF-exempt with optional `MCP_API_KEY` header authentication.
 - **Newest Discoveries**:
   1. `src/app/lib/log/_middleware.py` calls `get_settings()` at import time and raises `KeyError: 'headers'` on headerless ASGI start messages (`PL-06`, `PL-10`).
-  2. `PublicController` sets `exclude_from_csrf=True` on all routes in `litestar-security` 0.6.0 (`PL-08`).
-- **Blockers & Unblock Conditions**: Depends on `hybrid-rrf-retrieval`.
-- **Next Exact Step**: Claim and execute Task `3.1` (`tasks/3.1.md`) after `hybrid-rrf-retrieval` completes.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+  2. `PublicController` sets `exclude_from_csrf=True` on all routes in `litestar-security` 0.6.0 (`PL-08`); `auth = exclude()` on `CoffeeChatController` preserves native Litestar CSRF on `opt={"exclude_from_csrf": False}` POST handlers.
+- **Blockers & Unblock Conditions**: None
+- **Next Exact Step**: Execute Chapter 4 (`oracle-queues`).
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: feecf59`
+- **State Identity**: `state_revision: 5`, `last_operation: 20261012T200820Z-flow-executor-complete-3-4-00`, `operation_targets: ["3.4"]`
+
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/coffee-agent-stabilization-and-hybrid-search/research/research_codebase_audit_and_reference_patterns_20261012/research.md`
   - `.agents/bundles/knowledge/patterns/dishka-di.md`

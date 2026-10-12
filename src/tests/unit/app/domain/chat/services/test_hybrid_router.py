@@ -163,10 +163,7 @@ async def test_hybrid_route_resolver_passes_golden_suite(case: dict[str, Any]) -
     mock_driver.select = AsyncMock(side_effect=fake_select)
 
     resolver = HybridRouteResolver(mock_driver)
-    turn_ctx = await resolver.resolve_turn(
-        user_message=case["prompt"],
-        query_embedding=[0.01] * 3072,
-    )
+    turn_ctx = await resolver.resolve_turn(user_message=case["prompt"], query_embedding=[0.01] * 3072)
 
     assert isinstance(turn_ctx, HybridTurnContext)
     assert turn_ctx.intent_detected == case["expected_intent"]

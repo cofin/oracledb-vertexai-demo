@@ -4,9 +4,10 @@
 """APEX-safe JSON product-domain API."""
 
 import structlog
-from litestar import Controller, get, post
+from litestar import get, post
 from litestar.exceptions import ValidationException
 from litestar.params import FromPath, FromQuery
+from litestar_security import PublicController
 
 from app.__metadata__ import __version__
 from app.domain.products.controllers._vector_helpers import is_expected_service_unavailable
@@ -41,7 +42,7 @@ _OPERATION_IDS = [
 ]
 
 
-class ApexController(Controller):
+class ApexController(PublicController):
     """JSON endpoints shaped for APEX REST Source Catalog consumption."""
 
     path = "/api/apex"

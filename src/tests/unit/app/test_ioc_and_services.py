@@ -47,11 +47,7 @@ def test_products_services_resolve_from_private_modules() -> None:
     assert issubclass(InventoryService, StoreService)
     assert MapsService.__module__ == "app.domain.products.services._maps"
     assert "google.com/maps/search/" in MapsService.search_url(
-        name="Cymbal Coffee",
-        address="100 Main St",
-        city="Dallas",
-        state="TX",
-        zip_code="75201",
+        name="Cymbal Coffee", address="100 Main St", city="Dallas", state="TX", zip_code="75201"
     )
 
 

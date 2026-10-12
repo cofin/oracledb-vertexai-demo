@@ -16,12 +16,7 @@ from app.utils.fixtures import FixtureExporter, FixtureLoader
 if TYPE_CHECKING:
     from sqlspec.driver import AsyncDriverAdapterBase
 
-__all__ = (
-    "COFFEE_SHOP_TABLES",
-    "FIXTURE_TABLES",
-    "export_fixtures",
-    "load_fixtures",
-)
+__all__ = ("COFFEE_SHOP_TABLES", "FIXTURE_TABLES", "export_fixtures", "load_fixtures")
 
 COFFEE_SHOP_TABLES = ["store", "product", "store_product_inventory", "chat_route"]
 FIXTURE_TABLES = COFFEE_SHOP_TABLES

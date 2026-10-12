@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+from litestar.params import FromQuery
 from litestar_mcp import PromptController, PromptMessage, prompt
+from litestar_security import public
 
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION
 
@@ -17,6 +19,7 @@ class CoffeePromptController(PromptController):
 
     prefix = "coffee"
     instructions = BASE_SYSTEM_INSTRUCTION
+    opt = {"auth": public()}
 
     @prompt(
         name="barista-recommendation",
@@ -24,9 +27,7 @@ class CoffeePromptController(PromptController):
         description="Generate a grounded Cymbal Coffee drink recommendation from customer preferences.",
     )
     def barista_recommendation(
-        self,
-        preference: str = "bold dark roast",
-        dietary_notes: str = "",
+        self, preference: FromQuery[str] = "bold dark roast", dietary_notes: FromQuery[str] = ""
     ) -> list[PromptMessage]:
         """Build a prompt requesting a grounded drink recommendation."""
         dietary_clause = f" Dietary notes: {dietary_notes.strip()}." if dietary_notes.strip() else ""
@@ -42,9 +43,7 @@ class CoffeePromptController(PromptController):
         description="Check Cymbal Coffee store locations and product availability for a city or neighborhood.",
     )
     def store_inventory_check(
-        self,
-        product_name: str = "Espresso",
-        city: str = "Dallas",
+        self, product_name: FromQuery[str] = "Espresso", city: FromQuery[str] = "Dallas"
     ) -> list[PromptMessage]:
         """Build a prompt checking store availability for a Cymbal Coffee product."""
         text = (

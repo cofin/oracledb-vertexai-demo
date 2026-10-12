@@ -58,9 +58,7 @@ async def test_handle_product_rag_off_menu_folgers_guard() -> None:
     vertex_ai_service = AsyncMock()
 
     service = GroundedRouteService(
-        product_service=product_service,
-        store_service=store_service,
-        vertex_ai_service=vertex_ai_service,
+        product_service=product_service, store_service=store_service, vertex_ai_service=vertex_ai_service
     )
     candidates = [
         HybridProductCandidate(
@@ -97,12 +95,7 @@ async def test_handle_product_rag_off_menu_folgers_guard() -> None:
         oracle_text_query="{folgers}",
     )
 
-    result = await service.handle_product_rag(
-        "Do you have Folgers?",
-        turn_ctx,
-        embedding_ms=12.4,
-        oracle_ms=8.2,
-    )
+    result = await service.handle_product_rag("Do you have Folgers?", turn_ctx, embedding_ms=12.4, oracle_ms=8.2)
 
     assert result.intent_detected == "PRODUCT_RAG"
     assert "does not carry Folgers" in result.answer
@@ -131,9 +124,7 @@ async def test_handle_product_rag_in_catalog_recommendation() -> None:
     )()
 
     service = GroundedRouteService(
-        product_service=product_service,
-        store_service=store_service,
-        vertex_ai_service=vertex_ai_service,
+        product_service=product_service, store_service=store_service, vertex_ai_service=vertex_ai_service
     )
     candidates = [
         HybridProductCandidate(
@@ -169,11 +160,7 @@ async def test_handle_product_rag_in_catalog_recommendation() -> None:
     )
 
     result = await service.handle_product_rag(
-        "Recommend a bright Ethiopian pour-over",
-        turn_ctx,
-        persona="snob",
-        embedding_ms=10.0,
-        oracle_ms=6.5,
+        "Recommend a bright Ethiopian pour-over", turn_ctx, persona="snob", embedding_ms=10.0, oracle_ms=6.5
     )
 
     assert result.intent_detected == "PRODUCT_RAG"
@@ -208,10 +195,7 @@ async def test_handle_store_location_masks_browser_coordinates() -> None:
         )
     ]
 
-    service = GroundedRouteService(
-        product_service=product_service,
-        store_service=store_service,
-    )
+    service = GroundedRouteService(product_service=product_service, store_service=store_service)
     turn_ctx = _make_turn_context(
         user_message="Where is the closest Dallas coffee shop?",
         intent_detected="STORE_LOCATION",
@@ -225,7 +209,7 @@ async def test_handle_store_location_masks_browser_coordinates() -> None:
                 rrf_score=0.01639,
                 lexical_score=85.0,
                 lexical_rank=1,
-            ),
+            )
         ],
     )
     raw_location_context = {
@@ -235,9 +219,7 @@ async def test_handle_store_location_masks_browser_coordinates() -> None:
     }
 
     result = await service.handle_store_location(
-        "Where is the closest Dallas coffee shop?",
-        turn_ctx,
-        location_context=raw_location_context,
+        "Where is the closest Dallas coffee shop?", turn_ctx, location_context=raw_location_context
     )
 
     assert result.intent_detected == "STORE_LOCATION"
@@ -295,10 +277,7 @@ async def test_handle_product_availability_populates_inventory_and_maps() -> Non
         )
     ]
 
-    service = GroundedRouteService(
-        product_service=product_service,
-        store_service=store_service,
-    )
+    service = GroundedRouteService(product_service=product_service, store_service=store_service)
     turn_ctx = _make_turn_context(
         user_message="Is Velvet Espresso in stock at Bishop Arts?",
         intent_detected="PRODUCT_AVAILABILITY",
@@ -314,17 +293,14 @@ async def test_handle_product_availability_populates_inventory_and_maps() -> Non
                 vector_similarity=0.88,
                 lexical_rank=1,
                 vector_rank=1,
-            ),
+            )
         ],
     )
 
     result = await service.handle_product_availability(
         "Is Velvet Espresso in stock at Bishop Arts?",
         turn_ctx,
-        location_context={
-            "store_name": "Bishop Arts",
-            "coordinates": {"latitude": 32.75, "longitude": -96.83},
-        },
+        location_context={"store_name": "Bishop Arts", "coordinates": {"latitude": 32.75, "longitude": -96.83}},
     )
 
     assert result.intent_detected == "PRODUCT_AVAILABILITY"
@@ -337,10 +313,7 @@ async def test_handle_product_availability_populates_inventory_and_maps() -> Non
 
 async def test_handle_order_status_returns_deterministic_unsupported_message() -> None:
     """ORDER_STATUS returns the deterministic unsupported-capability response."""
-    service = GroundedRouteService(
-        product_service=AsyncMock(),
-        store_service=AsyncMock(),
-    )
+    service = GroundedRouteService(product_service=AsyncMock(), store_service=AsyncMock())
     turn_ctx = _make_turn_context(user_message="Where is my order #1042?", intent_detected="ORDER_STATUS")
 
     result = await service.handle_order_status("Where is my order #1042?", turn_ctx)
@@ -365,13 +338,10 @@ async def test_telemetry_builders_produce_valid_sql_phases_and_search_metrics() 
             vector_similarity=0.88,
             lexical_rank=1,
             vector_rank=1,
-        ),
+        )
     ]
     turn_ctx = _make_turn_context(
-        user_message="Velvet Espresso",
-        intent_detected="PRODUCT_RAG",
-        products=candidates,
-        term_hits={"velvet": 1},
+        user_message="Velvet Espresso", intent_detected="PRODUCT_RAG", products=candidates, term_hits={"velvet": 1}
     )
 
     phases = build_hybrid_sql_phases(
@@ -409,7 +379,8 @@ async def test_telemetry_builders_produce_valid_sql_phases_and_search_metrics() 
     assert cache_phase.sql_key == "get-cached-response"
     assert cache_phase.cache_status == "hit"
 
-    masked = safe_location_context(
-        {"city": "Dallas", "coordinates": {"latitude": 32.7, "longitude": -96.8, "accuracy_meters": 10.0}}
-    )
+    masked = safe_location_context({
+        "city": "Dallas",
+        "coordinates": {"latitude": 32.7, "longitude": -96.8, "accuracy_meters": 10.0},
+    })
     assert masked == {"city": "Dallas", "has_browser_coordinates": True, "accuracy_meters": 10.0}

@@ -5,14 +5,14 @@ title: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment
 state: active
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 3
-current_task: "platform-alignment"
-last_operation: 20261012T190200Z-flow-executor-complete-chapter-2-00
+state_revision: 4
+current_task: "oracle-queues"
+last_operation: 20261012T200820Z-flow-executor-complete-chapter-3-00
 operation_targets:
-  - "hybrid-rrf-retrieval"
-last_verified_checkpoint: 1736e70
+  - "platform-alignment"
+last_verified_checkpoint: 0041a07
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T19:02:00Z
+updated_at: 2026-10-12T20:08:20Z
 description: Master PRD roadmap stabilizing the native Gemini agent runtime, replacing LLM intent classification with a single-query Oracle 26ai Hybrid RRF search, aligning settings/DI/security/MCP with reference platform conventions, adding Oracle background queues, and refreshing slides and documentation.
 tags:
   - spec

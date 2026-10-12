@@ -95,9 +95,7 @@ class GeminiModelClient:
                     parts.append(
                         types.Part(
                             function_call=types.FunctionCall(
-                                id=p.function_call.id or None,
-                                name=p.function_call.name,
-                                args=p.function_call.args,
+                                id=p.function_call.id or None, name=p.function_call.name, args=p.function_call.args
                             ),
                             thought_signature=p.thought_signature,
                         )
@@ -114,19 +112,10 @@ class GeminiModelClient:
                     )
                 elif p.text is not None:
                     parts.append(
-                        types.Part(
-                            text=p.text,
-                            thought=p.thought or None,
-                            thought_signature=p.thought_signature,
-                        )
+                        types.Part(text=p.text, thought=p.thought or None, thought_signature=p.thought_signature)
                     )
                 elif p.thought_signature is not None:
-                    parts.append(
-                        types.Part(
-                            thought=p.thought or None,
-                            thought_signature=p.thought_signature,
-                        )
-                    )
+                    parts.append(types.Part(thought=p.thought or None, thought_signature=p.thought_signature))
             genai_contents.append(types.Content(role=c.role, parts=parts))
         return genai_contents
 

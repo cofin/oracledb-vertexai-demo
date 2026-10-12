@@ -156,13 +156,7 @@ def summarize_vector(values: Any) -> str:
 
 
 def build_sql_phase(
-    *,
-    label: str,
-    sql_key: str,
-    binds: dict[str, Any],
-    row_count: int,
-    runtime_ms: float,
-    cache_status: str = "miss",
+    *, label: str, sql_key: str, binds: dict[str, Any], row_count: int, runtime_ms: float, cache_status: str = "miss"
 ) -> SQLPhase:
     """Construct a single SQLPhase struct with sanitized bind parameters."""
     return SQLPhase(
@@ -255,9 +249,7 @@ def build_search_metrics(
 ) -> SearchMetrics:
     """Build SearchMetrics from a resolved HybridTurnContext and phase timings."""
     similarities = [
-        float(product.vector_similarity)
-        for product in turn_context.products
-        if product.vector_similarity is not None
+        float(product.vector_similarity) for product in turn_context.products if product.vector_similarity is not None
     ]
     rrf_scores = [float(product.rrf_score) for product in turn_context.products]
     lexical_hits = sum(1 for product in turn_context.products if product.lexical_rank is not None)
@@ -367,24 +359,14 @@ def build_map_actions(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
                 "type": "search",
                 "label": "Open in Google Maps",
                 "url": build_store_search_url(
-                    name=name,
-                    address=address,
-                    city=city,
-                    state=state,
-                    zip_code=zip_code,
-                    place_id=place_id,
+                    name=name, address=address, city=city, state=state, zip_code=zip_code, place_id=place_id
                 ),
             },
             {
                 "type": "directions",
                 "label": "Get directions",
                 "url": build_store_directions_url(
-                    name=name,
-                    address=address,
-                    city=city,
-                    state=state,
-                    zip_code=zip_code,
-                    place_id=place_id,
+                    name=name, address=address, city=city, state=state, zip_code=zip_code, place_id=place_id
                 ),
             },
         ))

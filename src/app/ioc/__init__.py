@@ -25,12 +25,7 @@ __all__ = (
     "make_container",
 )
 
-PROVIDERS: tuple[type[Provider], ...] = (
-    ConfigProvider,
-    DBProvider,
-    AIProvider,
-    DomainServiceProvider,
-)
+PROVIDERS: tuple[type[Provider], ...] = (ConfigProvider, DBProvider, AIProvider, DomainServiceProvider)
 
 
 def get_providers() -> tuple[Provider, ...]:

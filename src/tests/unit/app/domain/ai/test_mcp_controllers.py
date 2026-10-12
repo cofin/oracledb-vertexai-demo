@@ -58,9 +58,7 @@ def test_coffee_prompt_controller_renders_barista_and_inventory_prompts() -> Non
     assert controller.qualify_prompt_name("store-inventory-check") == "coffee/store-inventory-check"
 
     rec_messages = controller.barista_recommendation.fn(
-        controller,
-        preference="fruity pour-over",
-        dietary_notes="oat milk",
+        controller, preference="fruity pour-over", dietary_notes="oat milk"
     )
     assert len(rec_messages) == 1
     rec_dict = rec_messages[0].to_mcp_dict()
@@ -68,11 +66,7 @@ def test_coffee_prompt_controller_renders_barista_and_inventory_prompts() -> Non
     assert "fruity pour-over" in rec_dict["content"]["text"]
     assert "oat milk" in rec_dict["content"]["text"]
 
-    inv_messages = controller.store_inventory_check.fn(
-        controller,
-        product_name="Espresso Blend",
-        city="Dallas",
-    )
+    inv_messages = controller.store_inventory_check.fn(controller, product_name="Espresso Blend", city="Dallas")
     assert len(inv_messages) == 1
     inv_dict = inv_messages[0].to_mcp_dict()
     assert inv_dict["role"] == "user"
@@ -129,15 +123,9 @@ async def test_turn_budget_enforces_max_tool_calls_and_frame_conversion() -> Non
             model: str | None = None,
         ) -> AsyncIterator[AgentEvent]:
             del contents, tools, system_instruction, model
-            calls = [
-                Part(function_call=FunctionCall(name="noop_tool", args={}, id=f"call-{idx}"))
-                for idx in range(6)
-            ]
+            calls = [Part(function_call=FunctionCall(name="noop_tool", args={}, id=f"call-{idx}")) for idx in range(6)]
             yield AgentEvent(
-                session_id="s1",
-                invocation_id="i1",
-                content=Content(role="model", parts=calls),
-                partial=False,
+                session_id="s1", invocation_id="i1", content=Content(role="model", parts=calls), partial=False
             )
 
     def noop_tool(ctx: CallContext) -> dict[str, str]:
@@ -163,11 +151,7 @@ async def test_turn_budget_enforces_max_tool_calls_and_frame_conversion() -> Non
     events = [
         ev
         async for ev in runtime.execute_turn(
-            spec_tree=tree,
-            session_id="s1",
-            invocation_id="i1",
-            user_message="run tools",
-            ctx=ctx,
+            spec_tree=tree, session_id="s1", invocation_id="i1", user_message="run tools", ctx=ctx
         )
     ]
     assert any(ev.finish_reason == "TOOL_LIMIT_EXCEEDED" for ev in events)

@@ -60,18 +60,14 @@ async def search_products(ctx: CallContext, query: str, limit: int = 5) -> dict[
     bounded_limit = max(1, min(limit, 10))
     embed_started = time.perf_counter()
     embedding, cache_hit = await embed_svc.get_text_embedding(
-        query,
-        embedding_purpose="query",
-        return_cache_status=True,
+        query, embedding_purpose="query", return_cache_status=True
     )
     embed_ms = (time.perf_counter() - embed_started) * 1000
     text_query = build_oracle_text_query(query)
 
     oracle_started = time.perf_counter()
     products = await bundle.product_service.search_hybrid(
-        text_query=text_query,
-        query_embedding=embedding,
-        limit=bounded_limit,
+        text_query=text_query, query_embedding=embedding, limit=bounded_limit
     )
     oracle_ms = (time.perf_counter() - oracle_started) * 1000
     serialized = _coerce_list(sanitize_for_json(products))
@@ -130,11 +126,7 @@ async def get_product_details(ctx: CallContext, product_id_or_name: str) -> dict
 
 
 async def find_nearby_stores(
-    ctx: CallContext,
-    city: str = "",
-    state: str = "",
-    zip_code: str = "",
-    limit: int = 5,
+    ctx: CallContext, city: str = "", state: str = "", zip_code: str = "", limit: int = 5
 ) -> dict[str, Any]:
     """Find Cymbal Coffee store locations by browser coordinates or city/state/ZIP filters.
 
@@ -164,16 +156,10 @@ async def find_nearby_stores(
         binds: dict[str, Any] = {"origin": "<REQUEST_COORDINATES>", "limit": bounded_limit}
     else:
         raw_stores = await bundle.store_service.find_stores_by_location(
-            city=city.strip() or None,
-            state=state.strip() or None,
-            zip_code=zip_code.strip() or None,
+            city=city.strip() or None, state=state.strip() or None, zip_code=zip_code.strip() or None
         )
         sql_key = "find-stores-by-location"
-        binds = {
-            "city": city.strip() or None,
-            "state": state.strip() or None,
-            "zip_code": zip_code.strip() or None,
-        }
+        binds = {"city": city.strip() or None, "state": state.strip() or None, "zip_code": zip_code.strip() or None}
 
     runtime_ms = (time.perf_counter() - started) * 1000
     stores = _coerce_list(sanitize_for_json(raw_stores))
@@ -182,21 +168,13 @@ async def find_nearby_stores(
     ctx.state["map_actions"] = map_actions
     ctx.state.setdefault("sql_phases", []).append(
         build_sql_phase(
-            label="Store location lookup",
-            sql_key=sql_key,
-            binds=binds,
-            row_count=len(stores),
-            runtime_ms=runtime_ms,
+            label="Store location lookup", sql_key=sql_key, binds=binds, row_count=len(stores), runtime_ms=runtime_ms
         ).to_dict()
     )
     return {"stores": stores, "map_actions": map_actions, "results_count": len(stores)}
 
 
-async def check_product_availability(
-    ctx: CallContext,
-    product_query: str,
-    location_hint: str = "",
-) -> dict[str, Any]:
+async def check_product_availability(ctx: CallContext, product_query: str, location_hint: str = "") -> dict[str, Any]:
     """Check store-level inventory availability for a Cymbal Coffee product.
 
     Args:
@@ -216,9 +194,7 @@ async def check_product_availability(
     coordinates = request_coordinates(location_context if isinstance(location_context, dict) else None)
     started = time.perf_counter()
     raw_availability = await store_svc.find_product_availability(
-        product_query.strip(),
-        location_hint=location_hint.strip() or None,
-        coordinates=coordinates,
+        product_query.strip(), location_hint=location_hint.strip() or None, coordinates=coordinates
     )
     runtime_ms = (time.perf_counter() - started) * 1000
     availability = _coerce_list(sanitize_for_json(raw_availability))
@@ -252,11 +228,7 @@ def check_order_status(ctx: CallContext, order_id: str = "") -> dict[str, Any]:
         Dictionary stating that order tracking is not yet enabled in this demo.
     """
     del ctx
-    return {
-        "supported": False,
-        "order_id": order_id.strip(),
-        "message": _ORDER_UNSUPPORTED_MESSAGE,
-    }
+    return {"supported": False, "order_id": order_id.strip(), "message": _ORDER_UNSUPPORTED_MESSAGE}
 
 
 def build_coffee_tools() -> tuple[Tool, ...]:
@@ -277,11 +249,7 @@ def _resolve_bundle(ctx: CallContext) -> CoffeeToolContext:
     store_svc: StoreService | None = getattr(ctx.services, "store_service", None)
     vertex_svc: VertexAIService | None = getattr(ctx.services, "vertex_ai_service", None)
     if any((product_svc, store_svc, vertex_svc)):
-        return CoffeeToolContext(
-            product_service=product_svc,
-            store_service=store_svc,
-            vertex_ai_service=vertex_svc,
-        )
+        return CoffeeToolContext(product_service=product_svc, store_service=store_svc, vertex_ai_service=vertex_svc)
     return CoffeeToolContext()
 
 

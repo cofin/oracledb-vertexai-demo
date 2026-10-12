@@ -61,8 +61,6 @@ def _initialize() -> None:
     """Materialize every plugin instance from the resolved configuration."""
     global _initialized
 
-    from pathlib import Path
-
     from a2a.server.request_handlers import DefaultRequestHandler as _DefaultRequestHandler
     from a2a.server.tasks import InMemoryTaskStore as _InMemoryTaskStore
     from litestar.plugins.flash import FlashConfig as _FlashConfig
@@ -78,19 +76,16 @@ def _initialize() -> None:
     from litestar_mcp import A2AConfig as _A2AConfig
     from litestar_mcp import LitestarA2A as _LitestarA2A
     from litestar_mcp import LitestarMCP as _LitestarMCP
-    from litestar_mcp import MCPConfig as _MCPConfig
-    from litestar_mcp import MCPSkillsConfig as _MCPSkillsConfig
-    from litestar_security import SecurityConfig as _SecurityConfig
-    from litestar_security import SecurityHeadersConfig as _SecurityHeadersConfig
     from litestar_security import SecurityPlugin as _SecurityPlugin
-    from litestar_security import public as _public
     from litestar_vite import VitePlugin as _VitePlugin
     from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecPluginBase
 
     from app import config
     from app.domain.ai.a2a.card import build_agent_card
     from app.domain.ai.a2a.executor import CoffeeAgentExecutor, build_a2a_call_context
+    from app.lib.security import build_security_config
     from app.lib.settings import get_settings
+    from app.server.mcp import build_mcp_config, build_mcp_route_opt
 
     class SQLSpecPlugin(_SQLSpecPluginBase):
         """SQLSpec plugin that suppresses the ``db`` CLI group auto-mount."""
@@ -101,9 +96,6 @@ def _initialize() -> None:
     settings = get_settings()
     agent_card = build_agent_card(settings.app.URL)
 
-    skill_paths = [p for p in (Path(".agents/skills"), Path("skills")) if p.is_dir()]
-    skills_config = _MCPSkillsConfig(paths=skill_paths, directory_read=True) if skill_paths else None
-
     g = globals()
     g["structlog"] = _StructlogPlugin(config=config.log)
     g["granian"] = _GranianPlugin()
@@ -113,17 +105,8 @@ def _initialize() -> None:
     g["htmx"] = _HTMXPlugin()
     g["flash"] = _FlashPlugin(config=_FlashConfig(template_config=config.template))
     g["autowire"] = _AutowirePlugin(_AutowireConfig(domain_packages=["app.domain"], integrations=["dishka"]))
-    g["security"] = _SecurityPlugin(
-        config=_SecurityConfig(headers=_SecurityHeadersConfig.hardened(), exclude=[r"^/static"])
-    )
-    g["mcp"] = _LitestarMCP(
-        _MCPConfig(
-            name="Cymbal Coffee MCP",
-            instructions="Exposes coffee product catalog, vector search, store inventory, and skills.",
-            skills=skills_config,
-            route_opt={"auth": _public()},
-        )
-    )
+    g["security"] = _SecurityPlugin(config=build_security_config(settings))
+    g["mcp"] = _LitestarMCP(build_mcp_config(settings))
     g["a2a"] = _LitestarA2A(
         agent_card=agent_card,
         request_handler=_DefaultRequestHandler(
@@ -133,7 +116,7 @@ def _initialize() -> None:
             path="/a2a",
             agent_card_path="/.well-known/agent-card.json",
             context_builder=build_a2a_call_context,
-            route_opt={"auth": _public()},
+            route_opt=build_mcp_route_opt(settings),
         ),
     )
     if settings.otel.ENABLED:

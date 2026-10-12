@@ -16,15 +16,13 @@ from tests.support.paths import APP_ROOT
 
 MIGRATION_0002 = APP_ROOT / "db" / "migrations" / "0002_agent_runtime_and_hybrid_search.sql"
 CHAT_ROUTE_FIXTURE = APP_ROOT / "db" / "fixtures" / "chat_route.json"
-EXPECTED_ROUTE_LABELS = frozenset(
-    {
-        "PRODUCT_RAG",
-        "PRODUCT_AVAILABILITY",
-        "STORE_LOCATION",
-        "ORDER_STATUS",
-        "GENERAL_CONVERSATION",
-    }
-)
+EXPECTED_ROUTE_LABELS = frozenset({
+    "PRODUCT_RAG",
+    "PRODUCT_AVAILABILITY",
+    "STORE_LOCATION",
+    "ORDER_STATUS",
+    "GENERAL_CONVERSATION",
+})
 
 
 def test_migration_0002_includes_multi_column_datastore_and_chat_route() -> None:
@@ -90,10 +88,7 @@ async def test_generate_product_embeddings_embeds_products_and_chat_routes() -> 
     mock_vertex.get_text_embedding.return_value = [0.01] * 3072
 
     await generate_product_embeddings(
-        batch_size=10,
-        force=True,
-        product_service=mock_product_service,
-        vertex_ai_service=mock_vertex,
+        batch_size=10, force=True, product_service=mock_product_service, vertex_ai_service=mock_vertex
     )
 
     mock_product_service.get_products_for_embedding.assert_awaited_once_with(force=True)

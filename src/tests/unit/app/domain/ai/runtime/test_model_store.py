@@ -208,11 +208,7 @@ def test_gemini_model_client_convert_contents_preserves_ids_and_thought_signatur
         Content(
             role="user",
             parts=[
-                Part(
-                    function_response=FunctionResponse(
-                        id="call-42", name="search", response={"items": ["latte"]}
-                    )
-                )
+                Part(function_response=FunctionResponse(id="call-42", name="search", response={"items": ["latte"]}))
             ],
         ),
     ]

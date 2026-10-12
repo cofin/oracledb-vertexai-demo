@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from litestar_mcp import SkillController, Tool, tool
+from litestar_security import public
 
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION
 
@@ -22,13 +23,7 @@ def _describe_capabilities(self: SkillController) -> dict[str, Any]:
     return {
         "skill": self.to_agent_skill(),
         "instructions": self.get_instructions(),
-        "routes": [
-            "PRODUCT_RAG",
-            "PRODUCT_AVAILABILITY",
-            "STORE_LOCATION",
-            "ORDER_STATUS",
-            "GENERAL_CONVERSATION",
-        ],
+        "routes": ["PRODUCT_RAG", "PRODUCT_AVAILABILITY", "STORE_LOCATION", "ORDER_STATUS", "GENERAL_CONVERSATION"],
     }
 
 
@@ -38,11 +33,9 @@ class CoffeeSkillController(SkillController):
     name = "cymbal-coffee-barista"
     description = "Cymbal Coffee barista skill providing grounded menu, recipe, and store availability guidance."
     tags: Sequence[str] = ("coffee", "barista", "inventory", "oracle-26ai")
-    examples = (
-        "What dark roasts do you recommend?",
-        "Which Dallas stores have Espresso Blend in stock?",
-    )
+    examples = ("What dark roasts do you recommend?", "Which Dallas stores have Espresso Blend in stock?")
     instructions = BASE_SYSTEM_INSTRUCTION
+    opt = {"auth": public()}
 
     describe_capabilities: Tool = tool(
         _describe_capabilities,

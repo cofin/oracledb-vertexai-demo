@@ -29,13 +29,7 @@ from app.utils.serialization import schema_dump
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-__all__ = (
-    "BASE_SYSTEM_INSTRUCTION",
-    "MetricsService",
-    "PersonaConfig",
-    "PersonaManager",
-    "SystemService",
-)
+__all__ = ("BASE_SYSTEM_INSTRUCTION", "MetricsService", "PersonaConfig", "PersonaManager", "SystemService")
 
 BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Coffee. Your goal is to help customers find a drink they will love.
 

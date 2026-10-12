@@ -15,12 +15,7 @@ if TYPE_CHECKING:
     from app.domain.ai.runtime._tools import ToolDeclaration
     from app.domain.ai.runtime._types import AgentEvent, Content
 
-__all__ = (
-    "CoffeeToolContext",
-    "EventStoreProtocol",
-    "ModelClientProtocol",
-    "SessionStoreProtocol",
-)
+__all__ = ("CoffeeToolContext", "EventStoreProtocol", "ModelClientProtocol", "SessionStoreProtocol")
 
 
 @runtime_checkable
@@ -31,13 +26,7 @@ class SessionStoreProtocol(Protocol):
         """Fetch session state for a session and user."""
         ...
 
-    async def save_session(
-        self,
-        session_id: str,
-        user_id: str,
-        app_name: str,
-        state: dict[str, Any],
-    ) -> None:
+    async def save_session(self, session_id: str, user_id: str, app_name: str, state: dict[str, Any]) -> None:
         """Create or update a persisted session record."""
         ...
 

@@ -5,13 +5,14 @@
 
 import re
 from collections.abc import AsyncIterator
+from typing import ClassVar
 
 import structlog
 from litestar import post
 from litestar.exceptions import ValidationException
 from litestar.response import ServerSentEvent
 from litestar_htmx import HTMXRequest
-from litestar_security import PublicController
+from litestar_security import AuthenticationPolicy, PublicController, exclude
 
 from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.controllers._helpers import chat_form_from_request, location_context_from_form
@@ -26,6 +27,8 @@ _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 
 class CoffeeChatController(PublicController):
     """Coffee chat API controller — JSON for SPA clients, HTML partials for HTMX."""
+
+    auth: ClassVar[AuthenticationPolicy] = exclude()
 
     @staticmethod
     def validate_message(message: str) -> str:
@@ -65,7 +68,8 @@ class CoffeeChatController(PublicController):
             return "barista"
         return persona
 
-    @post(path="/api/chat/stream", name="chat.api.stream")
+    # docs:start-stream-handler
+    @post(path="/api/chat/stream", name="chat.api.stream", opt={"exclude_from_csrf": False})
     async def stream_chat_message(
         self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
     ) -> ServerSentEvent:
@@ -115,7 +119,11 @@ class CoffeeChatController(PublicController):
 
         return ServerSentEvent(stream_events(), status_code=200)
 
-    @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)
+    # docs:end-stream-handler
+
+    @post(
+        path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200, opt={"exclude_from_csrf": False}
+    )
     async def clear_chat_session(
         self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
     ) -> dict[str, str]:

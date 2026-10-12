@@ -15,10 +15,7 @@ from app.config import db_manager
 from app.domain.system.schemas import CacheStats, CacheStatsRow, EmbeddingCache, ResponseCache
 from app.lib.service import OracleAsyncService
 
-__all__ = (
-    "CacheService",
-    "ResponseCacheService",
-)
+__all__ = ("CacheService", "ResponseCacheService")
 
 
 class CacheService(OracleAsyncService):

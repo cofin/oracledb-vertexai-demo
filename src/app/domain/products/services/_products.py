@@ -85,9 +85,7 @@ class ProductService(OracleAsyncService):
 
     async def update_chat_route_embedding(self, route_id: int, embedding: list[float]) -> bool:
         """Persist a 3072-dimension document embedding for a ``chat_route`` exemplar row."""
-        result = await self.driver.execute(
-            sql.update("chat_route").set(embedding=embedding).where_eq("id", route_id)
-        )
+        result = await self.driver.execute(sql.update("chat_route").set(embedding=embedding).where_eq("id", route_id))
         await self.driver.commit()
         return result.rows_affected > 0
 

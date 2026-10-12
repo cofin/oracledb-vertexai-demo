@@ -34,30 +34,17 @@ def test_validate_persona_defaults_unknown_to_barista() -> None:
 def test_location_context_from_form_requires_consent_for_coordinates() -> None:
     """Verify browser coordinates are ignored unless location_consent is True."""
     without_consent = CoffeeChatForm(
-        message="closest store",
-        city="Dallas",
-        location_consent=False,
-        latitude=32.75,
-        longitude=-96.83,
+        message="closest store", city="Dallas", location_consent=False, latitude=32.75, longitude=-96.83
     )
     ctx_no_consent = location_context_from_form(without_consent)
     assert ctx_no_consent == {"city": "Dallas"}
     assert "coordinates" not in ctx_no_consent
 
     with_consent = CoffeeChatForm(
-        message="closest store",
-        city="Dallas",
-        location_consent=True,
-        latitude=32.75,
-        longitude=-96.83,
-        accuracy=10.0,
+        message="closest store", city="Dallas", location_consent=True, latitude=32.75, longitude=-96.83, accuracy=10.0
     )
     ctx_consent = location_context_from_form(with_consent)
-    assert ctx_consent["coordinates"] == {
-        "latitude": 32.75,
-        "longitude": -96.83,
-        "accuracy_meters": 10.0,
-    }
+    assert ctx_consent["coordinates"] == {"latitude": 32.75, "longitude": -96.83, "accuracy_meters": 10.0}
 
 
 async def test_stream_chat_message_passes_masked_dynamic_context() -> None:

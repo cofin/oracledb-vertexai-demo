@@ -183,9 +183,7 @@ def test_vector_search_sql_uses_fetch_approx_and_get_product_omits_embedding() -
 
     body = _vector_search_query()
     assert re.search(
-        r"ORDER\s+BY\s+VECTOR_DISTANCE\s*\(\s*embedding\s*,\s*:query_vector\s*,\s*COSINE\s*\)",
-        body,
-        re.IGNORECASE,
+        r"ORDER\s+BY\s+VECTOR_DISTANCE\s*\(\s*embedding\s*,\s*:query_vector\s*,\s*COSINE\s*\)", body, re.IGNORECASE
     )
     assert re.search(r"FETCH\s+APPROX\s+FIRST\s+:limit\s+ROWS\s+ONLY", body, re.IGNORECASE)
 
