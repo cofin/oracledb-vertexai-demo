@@ -5,15 +5,15 @@ title: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing
 state: active
 plan_revision: 1
 plan_commit: feecf59
-state_revision: 4
-current_task: "2.3"
-last_operation: 20261012T184130Z-flow-executor-claim-2-3-00
+state_revision: 5
+current_task: "2.4"
+last_operation: 20261012T185100Z-flow-executor-claim-2-4-00
 operation_targets:
-  - "2.2"
   - "2.3"
-last_verified_checkpoint: 63a0044
+  - "2.4"
+last_verified_checkpoint: 16785f8
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T18:41:30Z
+updated_at: 2026-10-12T18:51:00Z
 description: Replace FlashLiteIntentClassifier and separate vector searches with a single Oracle 26ai Hybrid RRF SQL query (CONTAINS/SCORE + VECTOR_DISTANCE), restore deterministic grounded routes and Folgers off-menu term_hits detection, and bind 5 grounded tools into AgentRuntime.
 tags:
   - feature
@@ -73,12 +73,12 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`) and compared against `ma
 ### Phase 1: Hybrid Schema, Exemplar Fixtures & Single-Query RRF Router
 
 - [x] 2.1 Add `MULTI_COLUMN_DATASTORE` Oracle Text indexes and `chat_route` table/fixtures to migration `0002` and CLI helpers (`63a0044`)
-- [x] 2.2 Implement `hybrid.sql` (`hybrid-search-turn` and `hybrid-term-hits`), `build_oracle_text_query`, and `HybridRouteResolver`
+- [x] 2.2 Implement `hybrid.sql` (`hybrid-search-turn` and `hybrid-term-hits`), `build_oracle_text_query`, and `HybridRouteResolver` (`16785f8`)
 
 ### Phase 2: Grounded Composers, Agent Tools & Classifier Removal
 
-- [~] 2.3 Implement grounded route composers (`_grounded.py`) with `term_hits` off-menu guard and telemetry builders (`_telemetry.py`)
-- [ ] 2.4 Register 5 grounded agent tools (`_tools.py`), wire single-query hybrid routing + cache/metrics into `agent_service.py`, and delete `classifier.py`
+- [x] 2.3 Implement grounded route composers (`_grounded.py`) with `term_hits` off-menu guard and telemetry builders (`_telemetry.py`)
+- [~] 2.4 Register 5 grounded agent tools (`_tools.py`), wire single-query hybrid routing + cache/metrics into `agent_service.py`, and delete `classifier.py`
 
 ---
 
