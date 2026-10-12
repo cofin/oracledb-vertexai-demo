@@ -239,6 +239,7 @@ async def test_oracle_session_store_crud() -> None:
         return_value={"id": "s1", "user_id": "u1", "app_name": "coffee", "state": '{"points": 100}'}
     )
     mock_driver.execute = AsyncMock(return_value=None)
+    mock_driver.commit = AsyncMock(return_value=None)
 
     store = OracleSessionStore(driver=mock_driver)
 
@@ -249,6 +250,7 @@ async def test_oracle_session_store_crud() -> None:
 
     await store.save_session("s1", "u1", "coffee", {"points": 120, "tier": "gold"})
     assert mock_driver.execute.await_count == 1
+    assert mock_driver.commit.await_count == 1
     call_kwargs = mock_driver.execute.await_args.kwargs
     assert call_kwargs["session_id"] == "s1"
     assert call_kwargs["user_id"] == "u1"
@@ -257,12 +259,14 @@ async def test_oracle_session_store_crud() -> None:
 
     await store.clear_session("s1", "u1")
     assert mock_driver.execute.await_count == 2
+    assert mock_driver.commit.await_count == 2
 
 
 async def test_oracle_event_store_append_and_list() -> None:
     """Verify OracleEventStore appends events and reconstructs typed AgentEvents."""
     mock_driver = MagicMock()
     mock_driver.execute = AsyncMock(return_value=None)
+    mock_driver.commit = AsyncMock(return_value=None)
 
     event_to_append = AgentEvent(
         session_id="s10",

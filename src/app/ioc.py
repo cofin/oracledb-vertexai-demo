@@ -95,6 +95,14 @@ class IntegrationsProvider(Provider):
     def provide_persona_manager(self) -> PersonaManager:
         return PersonaManager()
 
+    @provide(scope=Scope.APP)
+    def provide_session_store(self) -> OracleSessionStore:
+        return OracleSessionStore()
+
+    @provide(scope=Scope.APP)
+    def provide_event_store(self) -> OracleEventStore:
+        return OracleEventStore()
+
 
 class DomainServiceProvider(Provider):
     """REQUEST-scoped domain services."""
@@ -105,9 +113,6 @@ class DomainServiceProvider(Provider):
     store_service = provide(StoreService)
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
-
-    session_store = provide(OracleSessionStore)
-    event_store = provide(OracleEventStore)
 
     @provide
     def provide_agent_stream_service(self) -> AgentStreamService:

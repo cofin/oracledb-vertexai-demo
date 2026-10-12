@@ -9,11 +9,11 @@ SELECT
     state,
     created_at,
     updated_at
-FROM adk_session
+FROM agent_session
 WHERE id = :session_id AND user_id = :user_id;
 
 -- name: upsert-ai-session
-MERGE INTO adk_session dest
+MERGE INTO agent_session dest
 USING (
     SELECT
         :session_id AS id,
@@ -33,11 +33,11 @@ WHEN NOT MATCHED THEN
     VALUES (src.id, src.user_id, src.app_name, src.state, SYSTIMESTAMP, SYSTIMESTAMP);
 
 -- name: clear-ai-session
-DELETE FROM adk_session
+DELETE FROM agent_session
 WHERE id = :session_id AND user_id = :user_id;
 
 -- name: append-ai-event
-INSERT INTO adk_event (
+INSERT INTO agent_event (
     session_id,
     invocation_id,
     seq,
@@ -68,6 +68,11 @@ SELECT
     content,
     actions,
     created_at
-FROM adk_event
+FROM agent_event
 WHERE session_id = :session_id
-ORDER BY seq ASC;
+ORDER BY seq ASC, id ASC;
+
+-- name: next-ai-event-seq
+SELECT COALESCE(MAX(seq), 0) + 1 AS next_seq
+FROM agent_event
+WHERE session_id = :session_id;
