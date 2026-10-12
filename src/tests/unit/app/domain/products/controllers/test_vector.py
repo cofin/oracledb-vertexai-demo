@@ -15,13 +15,17 @@ These guard against three regressions that have bitten this repo before:
 from __future__ import annotations
 
 import re
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from dishka import Provider, Scope, make_async_container, provide
+from dishka.integrations.litestar import DishkaRouter, LitestarProvider, setup_dishka
+from litestar import Litestar
+from litestar.testing import AsyncTestClient
 
 from app.domain.products.controllers import VectorController
-from app.domain.products.schemas import ProductMatch
-from app.domain.products.services import OracleVectorSearchService
+from app.domain.products.schemas import ProductMatch, VectorDemo
+from app.domain.products.services import OracleVectorSearchService, ProductService
 from tests.support.paths import APP_ROOT
 
 PRODUCTS_SQL = APP_ROOT / "db" / "sql" / "products.sql"
@@ -62,8 +66,6 @@ def test_vector_search_query_projects_similarity_score_alias() -> None:
     assert re.search(r"AS\s+similarity_score\b", body, flags=re.IGNORECASE), (
         "vector-search-products must alias the distance expression as 'similarity_score'"
     )
-    # Sanity: the projection should NOT also expose a 'distance' column —
-    # callers must consume similarity_score directly.
     assert not re.search(r"AS\s+distance\b", body, flags=re.IGNORECASE), (
         "vector-search-products must not project a 'distance' column; callers use similarity_score"
     )
@@ -109,8 +111,6 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
 
 @pytest.mark.anyio
 async def test_product_service_search_by_vector_uses_store_aware_named_sql(mock_driver) -> None:
-    from app.domain.products.services import ProductService
-
     mock_driver.select = AsyncMock(return_value=[])
     service = ProductService(mock_driver)
 
@@ -125,11 +125,6 @@ async def test_product_service_search_by_vector_uses_store_aware_named_sql(mock_
 @pytest.mark.anyio
 async def test_vector_demo_controller_surfaces_price_and_similarity_without_distance() -> None:
     """The /api/vector-demo SPA response surfaces ``price`` and ``similarity`` (0-100), not ``distance``."""
-
-    from unittest.mock import MagicMock
-
-    from app.domain.products.schemas import VectorDemo
-
     mock_vector_search = AsyncMock()
     mock_vector_search.similarity_search.return_value = (
         [
@@ -168,12 +163,65 @@ async def test_vector_demo_controller_surfaces_price_and_similarity_without_dist
         assert row.price > 0
         assert 0 <= row.similarity <= 100
 
-    # similarity is a 0-100 percentage derived from similarity_score, so check round-trip.
     assert payload.results[0].similarity == pytest.approx(91.0)
     assert payload.results[0].price == pytest.approx(5.25)
 
-    # And the metrics record call uses similarity_score (not 1 - distance).
     assert mock_metrics.record_search.await_args is not None, "metrics_service.record_search must be awaited once"
     assert mock_metrics.record_search.await_args.args[0].similarity_score == pytest.approx(0.91), (
         "recorded similarity_score must come straight from the top result, not via 1 - distance"
     )
+
+
+def test_vector_search_sql_uses_fetch_approx_and_get_product_omits_embedding() -> None:
+    """Verify vector-search-products uses HNSW FETCH APPROX and get-product omits raw embedding vector."""
+    text = PRODUCTS_SQL.read_text()
+    get_product_match = re.search(
+        r"--\s*name:\s*get-product\s*\n(?P<body>.+?)(?=\n--\s*name:|\Z)", text, flags=re.DOTALL
+    )
+    assert get_product_match is not None
+    assert "embedding" not in get_product_match.group("body")
+
+    body = _vector_search_query()
+    assert re.search(
+        r"ORDER\s+BY\s+VECTOR_DISTANCE\s*\(\s*embedding\s*,\s*:query_vector\s*,\s*COSINE\s*\)",
+        body,
+        re.IGNORECASE,
+    )
+    assert re.search(r"FETCH\s+APPROX\s+FIRST\s+:limit\s+ROWS\s+ONLY", body, re.IGNORECASE)
+
+
+@pytest.mark.anyio
+async def test_vector_search_get_endpoint_accepts_query_param_and_validates_limit() -> None:
+    """Verify GET /api/vector-search?query=... binds query parameter cleanly and enforces limit bounds."""
+    mock_vector_search = AsyncMock(spec=OracleVectorSearchService)
+    mock_vector_search.similarity_search.return_value = (
+        [ProductMatch(id=1, name="Ethiopian Yirgacheffe", description="Floral", price=19.5, similarity_score=0.94)],
+        False,
+        {"embedding_ms": 5.0, "oracle_ms": 2.0},
+    )
+
+    class _TestProvider(Provider):
+        @provide(scope=Scope.REQUEST)
+        def provide_vector_search(self) -> OracleVectorSearchService:
+            return mock_vector_search
+
+        @provide(scope=Scope.REQUEST)
+        def provide_metrics(self) -> AsyncMock:
+            return AsyncMock()
+
+    container = make_async_container(LitestarProvider(), _TestProvider())
+    test_app = Litestar(route_handlers=[DishkaRouter(path="", route_handlers=[VectorController])])
+    setup_dishka(container, test_app)
+
+    async with AsyncTestClient(app=test_app) as client:
+        ok_resp = await client.get("/api/vector-search", params={"query": "fruity ethiopian", "limit": "3"})
+        assert ok_resp.status_code == 200
+        data = ok_resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Ethiopian Yirgacheffe"
+        assert data[0]["similarity"] == pytest.approx(94.0)
+
+        bad_limit_resp = await client.get("/api/vector-search", params={"query": "coffee", "limit": "99"})
+        assert bad_limit_resp.status_code == 400
+
+    await container.close()

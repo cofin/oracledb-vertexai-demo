@@ -10,7 +10,6 @@ SELECT id,
        sku,
        in_stock,
        metadata,
-       embedding,
        created_at,
        updated_at
 FROM product;
@@ -76,8 +75,8 @@ SELECT id,
        1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) AS similarity_score
 FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
-ORDER BY similarity_score DESC
-FETCH FIRST :limit ROWS ONLY;
+ORDER BY VECTOR_DISTANCE(embedding, :query_vector, COSINE)
+FETCH APPROX FIRST :limit ROWS ONLY;
 -- docs:end-vector-search-sql
 
 -- name: vector-search-products-by-store
@@ -114,5 +113,5 @@ SELECT id,
        1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) AS similarity_score
 FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
-ORDER BY similarity_score DESC
-FETCH FIRST :limit ROWS ONLY;
+ORDER BY VECTOR_DISTANCE(embedding, :query_vector, COSINE)
+FETCH APPROX FIRST :limit ROWS ONLY;

@@ -2,16 +2,17 @@
 type: Spec
 flow_id: coffee-agent-stabilization-and-hybrid-search
 title: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment
-state: planned
+state: active
 plan_revision: 1
-plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+plan_commit: feecf59
+state_revision: 2
+current_task: "hybrid-rrf-retrieval"
+last_operation: 20261012T182600Z-flow-executor-complete-chapter-1-00
+operation_targets:
+  - "runtime-stabilization"
+last_verified_checkpoint: 5e779b3
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T17:35:00Z
+updated_at: 2026-10-12T18:26:00Z
 description: Master PRD roadmap stabilizing the native Gemini agent runtime, replacing LLM intent classification with a single-query Oracle 26ai Hybrid RRF search, aligning settings/DI/security/MCP with reference platform conventions, adding Oracle background queues, and refreshing slides and documentation.
 tags:
   - spec

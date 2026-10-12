@@ -28,6 +28,7 @@ from app.domain.ai.runtime import (
     SpecTree,
 )
 from app.domain.ai.services import AgentOrchestrationService, get_coffee_spec_tree
+from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.chat.services.classifier import FlashLiteIntentClassifier
 from app.domain.products.services.services import (
     OracleVectorSearchService,
@@ -37,6 +38,8 @@ from app.domain.products.services.services import (
 )
 from app.domain.system.services.services import CacheService, MetricsService, PersonaManager
 from app.lib.settings import get_settings
+
+_PLACEHOLDER_VALUES = frozenset({"", "demo-project", "your-project-id", "placeholder", "your-api-key"})
 
 
 class LitestarPersistenceProvider(Provider):
@@ -69,10 +72,16 @@ class IntegrationsProvider(Provider):
 
     @provide(scope=Scope.APP)
     def provide_genai_client(self) -> Client:
+        """Provide a configured Google GenAI client or raise 503 AIServiceUnconfigured."""
         settings = get_settings()
-        if settings.ai.project_id:
-            return Client(vertexai=True, project=settings.ai.project_id, location=settings.ai.location)
-        return Client(api_key=settings.ai.api_key)
+        project_id = (settings.ai.project_id or "").strip()
+        api_key = (settings.ai.api_key or "").strip()
+        if project_id and project_id.lower() not in _PLACEHOLDER_VALUES:
+            return Client(vertexai=True, project=project_id, location=settings.ai.location)
+        if api_key and api_key.lower() not in _PLACEHOLDER_VALUES:
+            return Client(api_key=api_key)
+        msg = "Vertex AI or Google GenAI credentials are not configured."
+        raise AIServiceUnconfigured(msg)
 
     @provide(scope=Scope.APP)
     def provide_model_client(self, client: Client) -> GeminiModelClient:

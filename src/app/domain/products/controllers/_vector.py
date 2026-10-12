@@ -4,12 +4,13 @@
 import re
 import time
 import uuid
+from typing import Annotated
 from urllib.parse import quote
 
 import structlog
 from litestar import Response, get, post
 from litestar.exceptions import ValidationException
-from litestar.params import FromQuery
+from litestar.params import QueryParameter
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 from litestar_htmx import HTMXRequest, HTMXTemplate
 from litestar_security import PublicController
@@ -171,19 +172,22 @@ class VectorController(PublicController):
         path="/api/vector-search", name="vector.search", summary="Search Products by Vector", mcp_tool="search_products"
     )
     async def vector_search(
-        self, query: FromQuery[str], vector_search_service: Inject[OracleVectorSearchService], limit: FromQuery[int] = 5
+        self,
+        q: Annotated[str, QueryParameter(name="query", min_length=1, max_length=500)],
+        vector_search_service: Inject[OracleVectorSearchService],
+        limit: Annotated[int, QueryParameter(name="limit", ge=1, le=20)] = 5,
     ) -> list[VectorDemoMatch]:
         """Perform semantic vector search for coffee products.
 
         Args:
-            query: Natural language query string.
+            q: Natural language query string passed via the ``query`` URL parameter.
             vector_search_service: OracleVectorSearchService instance.
             limit: Maximum number of matching items to return.
 
         Returns:
             List of matching products with calculated similarity percentages.
         """
-        clean_query = self.validate_message(query)
+        clean_query = self.validate_message(q)
         results, _, _ = await vector_search_service.similarity_search(clean_query, k=limit)
         return [
             VectorDemoMatch(
