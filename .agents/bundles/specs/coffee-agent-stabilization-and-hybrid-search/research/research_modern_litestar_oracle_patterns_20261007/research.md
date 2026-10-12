@@ -1,7 +1,15 @@
 ---
 type: Research
+research_id: research_modern_litestar_oracle_patterns_20261007
 title: Modern Litestar Ecosystem, Worker Integration, Oracle TxEventQ, and HTMX 2.x Patterns
 description: Comprehensive technical research on modern Litestar plugins, background task workers, Oracle 26ai TxEventQ, HTMX 2.x, and codebase debloating
+scope: architecture
+status: stable
+state: promoted
+promoted_to: coffee-agent-stabilization-and-hybrid-search
+confidence: high
+created_at: 2026-10-07T00:00:00Z
+updated_at: 2026-10-12T17:35:00Z
 tags:
   - research
   - litestar
@@ -16,8 +24,8 @@ tags:
 
 # Modern Litestar Ecosystem, Worker Integration, Oracle TxEventQ, and HTMX 2.x Patterns
 
-**Workspace**: `.agents/bundles/research/research_modern_litestar_oracle_patterns_20261007/`
-**Status**: Complete
+**Workspace**: `.agents/bundles/specs/coffee-agent-stabilization-and-hybrid-search/research/research_modern_litestar_oracle_patterns_20261007/`
+**Status**: Promoted to `coffee-agent-stabilization-and-hybrid-search`
 **Type**: Architectural research and refactoring synthesis
 **Date**: 2026-10-07
 **Target Stack**: Litestar 2.24+, SQLSpec 0.65+, Dishka 1.10+, Oracle 26ai, HTMX 2.x

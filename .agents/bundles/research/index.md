@@ -1,11 +1,13 @@
 ---
 type: Index
 title: Research Index
-description: Technical research notes and investigations
+description: Technical research notes and investigations promoted into consuming Flow spec bundles
 ---
 
 # Research Index
 
 - Active technical research is promoted directly into consuming spec bundles under `specs/<flow_id>/research/`.
 - [research_apex26_ords_apexlang_schema_bridge](../specs/apex-ops-console/research/research_apex26_ords_apexlang_schema_bridge/research.md) - Promoted to `apex-ops-console`.
-- [research_modern_litestar_oracle_patterns_20261007](research_modern_litestar_oracle_patterns_20261007/research.md) - Modern Litestar ecosystem (`autowire`, `queues`, `security`, `mcp`), worker integration, Oracle TxEventQ, HTMX 2.x, and codebase debloating.
+- [research_modern_litestar_oracle_patterns_20261007](../specs/coffee-agent-stabilization-and-hybrid-search/research/research_modern_litestar_oracle_patterns_20261007/research.md) - Promoted to `coffee-agent-stabilization-and-hybrid-search` (modern Litestar ecosystem, worker integration, Oracle TxEventQ, HTMX 2.x, and codebase debloating).
+- [research_codebase_audit_and_reference_patterns_20261012](../specs/coffee-agent-stabilization-and-hybrid-search/research/research_codebase_audit_and_reference_patterns_20261012/research.md) - Promoted to `coffee-agent-stabilization-and-hybrid-search` (AI runtime, chat/products regression, and platform alignment audit).
+- [research_oracle_hybrid_rrf_20261012](../specs/hybrid-rrf-retrieval/research/research_oracle_hybrid_rrf_20261012/research.md) - Promoted to `hybrid-rrf-retrieval` (Oracle AI Database 26ai Text lexical scoring, `MULTI_COLUMN_DATASTORE`, and single-query RRF routing).
