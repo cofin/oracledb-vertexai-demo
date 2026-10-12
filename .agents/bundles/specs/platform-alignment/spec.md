@@ -2,16 +2,18 @@
 type: Spec
 flow_id: platform-alignment
 title: Settings, DI, Services, LitestarMCP 0.15, and Security Alignment
-state: planned
+state: active
 plan_revision: 1
-plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+plan_commit: feecf59
+state_revision: 2
+current_task: "3.2"
+last_operation: 20261012T191200Z-flow-executor-complete-3-1-00
+operation_targets:
+  - "3.1"
+  - "3.2"
+last_verified_checkpoint: a5ce685
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T17:35:00Z
+updated_at: 2026-10-12T19:12:00Z
 description: Align the repository with Litestar reference platform conventions by modularizing lib/settings/ and ioc/, splitting monolithic domain services into private _*.py modules, dropping sqlspec[adk], upgrading to litestar-mcp>=0.15.0 (SkillController, PromptController, TurnBudget, AgentStreamFrame, SpanManager), hardening CSRF and optional MCP_API_KEY security, and enforcing Ruff TID251 banned-api rules.
 tags:
   - refactor
@@ -77,8 +79,8 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 
 ### Phase 1: Modular Settings, Dependencies, Services & Dishka DI Package
 
-- [ ] 3.1 Drop `sqlspec[adk]`, upgrade `litestar-mcp>=0.15.0`, split `src/app/lib/settings/` package, and fix `log/_middleware.py`
-- [ ] 3.2 Split `products/services/` and `system/services/` into private `_*.py` modules and modularize `src/app/ioc/`
+- [x] 3.1 Drop `sqlspec[adk]`, upgrade `litestar-mcp>=0.15.0`, split `src/app/lib/settings/` package, and fix `log/_middleware.py`
+- [~] 3.2 Split `products/services/` and `system/services/` into private `_*.py` modules and modularize `src/app/ioc/`
 
 ### Phase 2: LitestarMCP 0.15 Primitives, Security Hardening & Lint Gates
 

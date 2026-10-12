@@ -27,13 +27,13 @@ if TYPE_CHECKING:
     from litestar.connection import Request
     from litestar.types.asgi_types import ASGIApp, Message, Receive, Scope, Send
 
+    from app.lib.settings import Settings
+
 LOGGER = structlog.getLogger()
 
 HTTP_RESPONSE_START: Literal["http.response.start"] = "http.response.start"
 HTTP_RESPONSE_BODY: Literal["http.response.body"] = "http.response.body"
 REQUEST_BODY_FIELD: Literal["body"] = "body"
-
-settings = get_settings()
 
 
 def StructlogMiddleware(app: ASGIApp) -> ASGIApp:
@@ -71,41 +71,45 @@ class BeforeSendHandler:
         "logger",
         "request_extractor",
         "response_extractor",
+        "settings",
     )
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Configure the handler."""
-        self.exclude_paths = re.compile(settings.log.EXCLUDE_PATHS)
-        self.do_log_request = bool(settings.log.REQUEST_FIELDS)
-        self.do_log_response = bool(settings.log.RESPONSE_FIELDS)
-        self.include_compressed_body = settings.log.INCLUDE_COMPRESSED_BODY
+        active_settings = settings or get_settings()
+        self.settings = active_settings
+        self.exclude_paths = re.compile(active_settings.log.EXCLUDE_PATHS)
+        self.do_log_request = bool(active_settings.log.REQUEST_FIELDS)
+        self.do_log_response = bool(active_settings.log.RESPONSE_FIELDS)
+        self.include_compressed_body = active_settings.log.INCLUDE_COMPRESSED_BODY
         self.request_extractor = ConnectionDataExtractor(
-            extract_body="body" in settings.log.REQUEST_FIELDS,
-            extract_client="client" in settings.log.REQUEST_FIELDS,
-            extract_content_type="content_type" in settings.log.REQUEST_FIELDS,
-            extract_cookies="cookies" in settings.log.REQUEST_FIELDS,
-            extract_headers="headers" in settings.log.REQUEST_FIELDS,
-            extract_method="method" in settings.log.REQUEST_FIELDS,
-            extract_path="path" in settings.log.REQUEST_FIELDS,
-            extract_path_params="path_params" in settings.log.REQUEST_FIELDS,
-            extract_query="query" in settings.log.REQUEST_FIELDS,
-            extract_scheme="scheme" in settings.log.REQUEST_FIELDS,
-            obfuscate_cookies=settings.log.OBFUSCATE_COOKIES,
-            obfuscate_headers=settings.log.OBFUSCATE_HEADERS,
+            extract_body="body" in active_settings.log.REQUEST_FIELDS,
+            extract_client="client" in active_settings.log.REQUEST_FIELDS,
+            extract_content_type="content_type" in active_settings.log.REQUEST_FIELDS,
+            extract_cookies="cookies" in active_settings.log.REQUEST_FIELDS,
+            extract_headers="headers" in active_settings.log.REQUEST_FIELDS,
+            extract_method="method" in active_settings.log.REQUEST_FIELDS,
+            extract_path="path" in active_settings.log.REQUEST_FIELDS,
+            extract_path_params="path_params" in active_settings.log.REQUEST_FIELDS,
+            extract_query="query" in active_settings.log.REQUEST_FIELDS,
+            extract_scheme="scheme" in active_settings.log.REQUEST_FIELDS,
+            obfuscate_cookies=active_settings.log.OBFUSCATE_COOKIES,
+            obfuscate_headers=active_settings.log.OBFUSCATE_HEADERS,
             parse_body=False,
             parse_query=False,
         )
         self.response_extractor = ResponseDataExtractor(
-            extract_body="body" in settings.log.RESPONSE_FIELDS,
-            extract_headers="headers" in settings.log.RESPONSE_FIELDS,
-            extract_status_code="status_code" in settings.log.RESPONSE_FIELDS,
-            obfuscate_cookies=settings.log.OBFUSCATE_COOKIES,
-            obfuscate_headers=settings.log.OBFUSCATE_HEADERS,
+            extract_body="body" in active_settings.log.RESPONSE_FIELDS,
+            extract_headers="headers" in active_settings.log.RESPONSE_FIELDS,
+            extract_status_code="status_code" in active_settings.log.RESPONSE_FIELDS,
+            obfuscate_cookies=active_settings.log.OBFUSCATE_COOKIES,
+            obfuscate_headers=active_settings.log.OBFUSCATE_HEADERS,
         )
 
     async def __call__(self, message: Message, scope: Scope) -> None:
         """Receive ASGI response messages and log per configuration."""
         if message["type"] == HTTP_RESPONSE_START:
+            message["headers"] = list(message.get("headers", []))
             apply_security_headers(message)
 
         if scope["type"] == ScopeType.HTTP and self.exclude_paths.findall(scope["path"]):
@@ -116,7 +120,7 @@ class BeforeSendHandler:
                 logging.ERROR if message["status"] >= HTTP_500_INTERNAL_SERVER_ERROR else logging.INFO
             )
             scope["state"][HTTP_RESPONSE_START] = message
-        elif message["type"] == HTTP_RESPONSE_BODY and message["more_body"] is False:
+        elif message["type"] == HTTP_RESPONSE_BODY and message.get("more_body", False) is False:
             scope["state"][HTTP_RESPONSE_BODY] = message
             try:
                 if self.do_log_request:
@@ -133,7 +137,7 @@ class BeforeSendHandler:
 
     async def log_request(self, scope: Scope) -> None:
         """Handle extracting the request data and logging the message."""
-        extracted_data = await self.extract_request_data(request=scope["app"].request_class(scope))  # pyright: ignore
+        extracted_data = await self.extract_request_data(request=scope["app"].request_class(scope))
         structlog.contextvars.bind_contextvars(**extracted_data)
 
     async def log_response(self, scope: Scope) -> None:
@@ -146,16 +150,16 @@ class BeforeSendHandler:
         data: dict[str, Any] = {}
         extracted_data = self.request_extractor(connection=request)
         missing = object()
-        for key in settings.log.REQUEST_FIELDS:
+        for key in self.settings.log.REQUEST_FIELDS:
             value = extracted_data.get(key, missing)
-            if value is missing:  # pragma: no cover
+            if value is missing:
                 continue
             if isawaitable(value):
                 try:
                     value = await value
                 except RuntimeError:
                     if key != REQUEST_BODY_FIELD:
-                        raise  # pragma: no cover
+                        raise
                     value = None
             data[key] = value
         return data
@@ -169,11 +173,11 @@ class BeforeSendHandler:
         missing = object()
         connection_state = ScopeState.from_scope(scope)
         response_body_compressed = value_or_default(connection_state.response_compressed, False)
-        for key in settings.log.RESPONSE_FIELDS:
+        for key in self.settings.log.RESPONSE_FIELDS:
             value = extracted_data.get(key, missing)
             if key == "body" and response_body_compressed and not self.include_compressed_body:
                 continue
-            if value is missing:  # pragma: no cover
+            if value is missing:
                 continue
             data[key] = value
         return data

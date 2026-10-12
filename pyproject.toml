@@ -17,9 +17,10 @@ classifiers = [
 dependencies = [
     "litestar[cryptography,jinja,jwt,opentelemetry,structlog]",
     "litestar-granian[uvloop]",
-    "litestar-mcp[a2a]>=0.14.0",
-    "sqlspec[adk,mypyc,oracledb,performance]",
-
+    "litestar-mcp[a2a,google-genai,opentelemetry]>=0.15.0",
+    "sqlspec[litestar,mypyc,oracledb,performance]>=0.65.0",
+    "google-genai>=1.68.0",
+    "tenacity>=9.0.0",
     "numpy",
     "python-dotenv",
     "dishka",
@@ -344,12 +345,6 @@ module = ["app.db.migrations.*"]
 [tool.pytest.ini_options]
 addopts = ["-ra"]
 filterwarnings = [
-    "ignore:.*authlib\\.jose module is deprecated.*:authlib.deprecate.AuthlibDeprecationWarning:authlib\\._joserfc_helpers",
-    "ignore:.*\\[EXPERIMENTAL\\] feature FeatureName\\.(PLUGGABLE_AUTH|PROGRESSIVE_SSE_STREAMING) is enabled\\.:UserWarning:google\\.adk\\.features\\._feature_decorator",
-    # google-adk raises this via ABCMeta, so it is attributed to `<frozen abc>` not `google.*` — match by message.
-    "ignore:.*BaseAgentConfig is deprecated.*:DeprecationWarning",
-    # sqlspec's ADK store uses the 3-arg generator throw() (deprecated in Python 3.12).
-    "ignore:.*the \\(type, exc, tb\\) signature of throw\\(\\) is deprecated.*:DeprecationWarning:sqlspec.*",
     "ignore::DeprecationWarning:pkg_resources",
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",

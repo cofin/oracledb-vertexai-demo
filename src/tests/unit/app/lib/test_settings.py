@@ -370,3 +370,34 @@ def test_database_observability_echo_and_telemetry_toggles(monkeypatch: MonkeyPa
     assert config.observability_config.print_sql is True
     assert config.observability_config.telemetry is not None
     assert config.observability_config.telemetry.enable_spans is False
+
+
+def test_agent_in_memory_prefers_primary_env_with_legacy_fallback(monkeypatch: MonkeyPatch) -> None:
+    """Verify ORACLE_AGENT_IN_MEMORY takes precedence with fallback to ORACLE_ADK_IN_MEMORY."""
+    from app.lib.settings import DatabaseSettings
+
+    monkeypatch.delenv("ORACLE_AGENT_IN_MEMORY", raising=False)
+    monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", "false")
+    legacy_db = DatabaseSettings()
+    assert legacy_db.AGENT_IN_MEMORY is False
+    assert legacy_db.ADK_IN_MEMORY is False
+
+    monkeypatch.setenv("ORACLE_AGENT_IN_MEMORY", "true")
+    primary_db = DatabaseSettings()
+    assert primary_db.AGENT_IN_MEMORY is True
+    assert primary_db.ADK_IN_MEMORY is True
+
+
+def test_app_settings_mcp_api_key_and_reload(monkeypatch: MonkeyPatch) -> None:
+    """Verify AppSettings.MCP_API_KEY parsing and reload_settings cache busting."""
+    from app.lib.settings import AppSettings, get_settings, reload_settings
+
+    monkeypatch.delenv("MCP_API_KEY", raising=False)
+    assert AppSettings().MCP_API_KEY is None
+
+    monkeypatch.setenv("MCP_API_KEY", "  secret-mcp-token  ")
+    assert AppSettings().MCP_API_KEY == "secret-mcp-token"
+
+    first = get_settings()
+    second = reload_settings(dotenv_filename=".missing-env")
+    assert second is not first
