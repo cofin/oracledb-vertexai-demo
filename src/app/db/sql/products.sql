@@ -115,3 +115,19 @@ FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
 ORDER BY VECTOR_DISTANCE(embedding, :query_vector, COSINE)
 FETCH APPROX FIRST :limit ROWS ONLY;
+
+-- name: list-chat-routes-for-embedding
+SELECT id, route_label, title, exemplar_text, keywords
+FROM chat_route
+ORDER BY id;
+
+-- name: update-chat-route-embedding
+UPDATE chat_route
+SET embedding = :embedding,
+    updated_at = SYSTIMESTAMP
+WHERE id = :id;
+
+-- name: export-chat-routes
+SELECT id, route_label, title, exemplar_text, keywords, embedding, created_at, updated_at
+FROM chat_route
+ORDER BY id;

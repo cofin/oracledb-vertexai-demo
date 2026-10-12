@@ -98,6 +98,23 @@ class ProductService(OracleAsyncService):
         await self.driver.commit()
         return result.rows_affected > 0
 
+    async def get_chat_routes_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
+        """Return (chat_routes_to_embed, total_count). force=True returns every route exemplar."""
+        query = sql.select("id", "route_label", "title", "exemplar_text", "keywords").from_("chat_route")
+        if not force:
+            query = query.where("embedding IS NULL")
+        query = query.order_by("id")
+        rows = await self.driver.select(query)
+        return [dict(row) for row in rows], len(rows)
+
+    async def update_chat_route_embedding(self, route_id: int, embedding: list[float]) -> bool:
+        """Persist a 3072-dimension document embedding for a chat_route exemplar row."""
+        result = await self.driver.execute(
+            sql.update("chat_route").set(embedding=embedding).where_eq("id", route_id)
+        )
+        await self.driver.commit()
+        return result.rows_affected > 0
+
     async def search_by_vector(
         self,
         query_embedding: list[float],

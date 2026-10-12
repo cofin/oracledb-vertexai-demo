@@ -2,16 +2,17 @@
 type: Spec
 flow_id: hybrid-rrf-retrieval
 title: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing
-state: planned
+state: active
 plan_revision: 1
-plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+plan_commit: feecf59
+state_revision: 2
+current_task: "2.2"
+last_operation: 20261012T183400Z-flow-executor-complete-2-1-00
+operation_targets:
+  - "2.1"
+last_verified_checkpoint: ec9562b
 created_at: 2026-10-12T17:35:00Z
-updated_at: 2026-10-12T17:35:00Z
+updated_at: 2026-10-12T18:34:00Z
 description: Replace FlashLiteIntentClassifier and separate vector searches with a single Oracle 26ai Hybrid RRF SQL query (CONTAINS/SCORE + VECTOR_DISTANCE), restore deterministic grounded routes and Folgers off-menu term_hits detection, and bind 5 grounded tools into AgentRuntime.
 tags:
   - feature
@@ -70,7 +71,7 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`) and compared against `ma
 
 ### Phase 1: Hybrid Schema, Exemplar Fixtures & Single-Query RRF Router
 
-- [ ] 2.1 Add `MULTI_COLUMN_DATASTORE` Oracle Text indexes and `chat_route` table/fixtures to migration `0002` and CLI helpers
+- [x] 2.1 Add `MULTI_COLUMN_DATASTORE` Oracle Text indexes and `chat_route` table/fixtures to migration `0002` and CLI helpers
 - [ ] 2.2 Implement `hybrid.sql` (`hybrid-search-turn` and `hybrid-term-hits`), `build_oracle_text_query`, and `HybridRouteResolver`
 
 ### Phase 2: Grounded Composers, Agent Tools & Classifier Removal
