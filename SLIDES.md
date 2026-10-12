@@ -168,7 +168,7 @@ When the hybrid router selects `GENERAL_CONVERSATION`, execution enters our ligh
   - `CoffeeAgentExecutor` reuses the app-scoped Dishka container and `OwnerScopedTaskStore` with deterministic caller identity and `X-Session-ID` continuity
 - **Oracle 26ai Background Task Queues (`litestar-queues[sqlspec]>=0.12.0`):**
   - Uses Oracle `FOR UPDATE SKIP LOCKED` via a dedicated `DatabaseSettings.get_queue_config()` pool (`session_key="queue_db_session"`) so `SQLSpecBackend`'s `fetch_lobs=False` setting never mutates `config.db`'s `enable_AutoLob=True`
-  - Runs `@task("system.cache_cleanup", cron="*/15 * * * *")` and `@task("products.embed_missing")` (`coffee bulk-embed --enqueue` / `coffee worker run`)
+  - Runs `@task("system.cache_cleanup", cron="*/15 * * * *")` and `@task("products.embed_missing")` (`coffee bulk-embed` / `coffee worker run`)
 
 ---
 

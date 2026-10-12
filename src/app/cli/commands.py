@@ -32,7 +32,7 @@ from sqlspec.migrations.commands import create_migration_commands
 
 import app.config as app_config
 from app.cli._helpers import configure_apex_cdn_helper
-from app.cli._helpers.embeddings import generate_product_embeddings
+from app.cli._helpers.embeddings import validate_batch_size
 from app.cli._helpers.fixtures import (
     display_available_tables,
     display_fixture_list,
@@ -44,7 +44,7 @@ from app.cli.main import cli
 from app.cli.utils import async_inject
 from app.db.utils import load_fixtures
 from app.domain.products.jobs import embed_missing_records
-from app.domain.products.services import ProductService, VertexAIService
+from app.domain.products.services import VertexAIService
 from app.domain.system.jobs import cleanup_expired_cache_and_sessions
 from app.domain.system.services import CacheService
 from app.lib.settings import Settings, get_settings
@@ -174,55 +174,22 @@ def _show_model_info(vertex_ai_service: VertexAIService) -> None:
     console.print()
 
 
-async def _enqueue_or_run_bulk_embed(
-    *,
-    batch_size: int,
-    force: bool,
-    enqueue: bool,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    queue_service: QueueService,
-) -> None:
-    """Enqueue ``products.embed_missing`` when ``enqueue=True`` or run inline."""
-    if enqueue:
-        console = get_console()
-        result = await queue_service.enqueue(embed_missing_records, batch_size=batch_size, force=force)
-        console.print(
-            f"[bold green]✓ Enqueued products.embed_missing task[/bold green] "
-            f"(id={result.id}, status={result.status or 'pending'})"
-        )
-        return
-
-    await generate_product_embeddings(batch_size, force, product_service, vertex_ai_service)
+async def _run_bulk_embed(*, batch_size: int, force: bool, queue_service: QueueService) -> None:
+    """Enqueue and execute ``products.embed_missing`` in the foreground via ``QueueService``."""
+    validate_batch_size(batch_size)
+    result = await queue_service.enqueue(
+        embed_missing_records, batch_size=batch_size, force=force, execution_backend="immediate"
+    )
+    await result.refresh()
 
 
 @cli.command(name="bulk-embed", help="Generate or refresh product embeddings with Vertex AI.")
 @click.option("--batch-size", default=50, show_default=True, help="Number of products to process per batch.")
 @click.option("--force", "-f", is_flag=True, help="Re-embed all products, even when embeddings already exist.")
-@click.option(
-    "--enqueue/--no-enqueue",
-    default=False,
-    show_default=True,
-    help="Enqueue products.embed_missing onto litestar-queues instead of running inline.",
-)
 @async_inject
-async def bulk_embed_cmd(
-    batch_size: int,
-    force: bool,
-    enqueue: bool,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    queue_service: QueueService,
-) -> None:
-    """Generate document-purpose embeddings inline or enqueue a background job."""
-    await _enqueue_or_run_bulk_embed(
-        batch_size=batch_size,
-        force=force,
-        enqueue=enqueue,
-        product_service=product_service,
-        vertex_ai_service=vertex_ai_service,
-        queue_service=queue_service,
-    )
+async def bulk_embed_cmd(batch_size: int, force: bool, queue_service: QueueService) -> None:
+    """Generate document-purpose embeddings through the litestar-queues task pipeline."""
+    await _run_bulk_embed(batch_size=batch_size, force=force, queue_service=queue_service)
 
 
 @cli.command(name="clear-cache", help="Clear response and embedding cache tables.")

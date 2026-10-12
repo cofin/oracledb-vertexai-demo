@@ -22,8 +22,12 @@ logger = structlog.get_logger()
 
 async def generate_product_embeddings(
     batch_size: int, force: bool, product_service: ProductService, vertex_ai_service: VertexAIService
-) -> None:
-    """Generate document-purpose embeddings for product and chat_route rows."""
+) -> dict[str, int]:
+    """Generate document-purpose embeddings for product and chat_route rows.
+
+    Returns:
+        Summary dictionary with ``products_embedded``, ``routes_embedded``, and ``errors`` counts.
+    """
     validate_batch_size(batch_size)
 
     console = get_console()
@@ -33,7 +37,8 @@ async def generate_product_embeddings(
     products, message = await fetch_products_to_embed(product_service, force)
     console.print(message)
 
-    total_success = 0
+    prod_success = 0
+    route_success = 0
     total_errors = 0
 
     if not products:
@@ -51,7 +56,6 @@ async def generate_product_embeddings(
                 batch, product_service, vertex_ai_service, start_idx, total
             ),
         )
-        total_success += prod_success
         total_errors += prod_errors
 
     routes, route_message = await fetch_chat_routes_to_embed(product_service, force)
@@ -64,10 +68,10 @@ async def generate_product_embeddings(
                 batch, product_service, vertex_ai_service, start_idx, total
             ),
         )
-        total_success += route_success
         total_errors += route_errors
 
-    print_embedding_results(total_success, total_errors)
+    print_embedding_results(prod_success + route_success, total_errors)
+    return {"products_embedded": prod_success, "routes_embedded": route_success, "errors": total_errors}
 
 
 async def fetch_products_to_embed(product_service: ProductService, force: bool) -> tuple[list[dict[str, Any]], str]:

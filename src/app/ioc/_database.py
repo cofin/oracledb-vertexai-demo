@@ -25,9 +25,18 @@ class DBProvider(Provider):
         return config.db
 
     @provide(scope=Scope.APP)
-    def provide_queue_service(self) -> QueueService:
-        """Provide the APP-scoped QueueService from QueuePlugin."""
-        return plugins.queue.get_service()
+    async def provide_queue_service(self) -> AsyncIterator[QueueService]:
+        """Provide the APP-scoped QueueService from QueuePlugin, opening it when outside server lifespan."""
+        active_service = getattr(plugins.queue, "_service", None)
+        if active_service is not None:
+            yield active_service
+            return
+        service = plugins.queue.get_service()
+        await service.open()
+        try:
+            yield service
+        finally:
+            await service.close()
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:

@@ -54,7 +54,7 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
   - Add `litestar-queues[sqlspec]>=0.12.0` to `pyproject.toml`, create `src/app/lib/settings/_queue.py` (`QueueSettings`), and add `DatabaseSettings.get_queue_config()` in `src/app/lib/settings/_database.py` returning a dedicated `OracleAsyncConfig` so `config.db` retains `fetch_lobs=True`.
   - Wire `QueuePlugin` and `AutowirePlugin(..., integrations=["dishka", "queues"])` in `src/app/server/plugins.py` and `src/app/ioc/_database.py`.
   - Create `src/app/lib/jobs.py` (`get_task_container()`), `src/app/domain/system/jobs.py` (`@task("system.cache_cleanup")` with 15-minute cron schedule cleaning expired `response_cache` and stale `agent_session` rows), and `src/app/domain/products/jobs.py` (`@task("products.embed_missing")` refreshing product and `chat_route` embeddings).
-  - Add `coffee worker` CLI subcommands and `coffee bulk-embed --enqueue` in `src/app/cli/commands.py`.
+  - Add `coffee worker` CLI subcommands and route `coffee bulk-embed` through `QueueService` (`execution_backend="immediate"`) in `src/app/cli/commands.py`.
 
 ### Requirement-to-Task Traceability
 
@@ -70,7 +70,7 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 ### Phase 1: Queue Backend & LOB-Isolated Oracle Config
 
 - [x] 4.1 Add `litestar-queues[sqlspec]>=0.12.0`, `QueueSettings`, dedicated `DatabaseSettings.get_queue_config()`, and `QueuePlugin` wiring
-- [x] 4.2 Implement `lib/jobs.py`, `system.cache_cleanup` and `products.embed_missing` tasks, `coffee worker` CLI group, and `bulk-embed --enqueue`
+- [x] 4.2 Implement `lib/jobs.py`, `system.cache_cleanup` and `products.embed_missing` tasks, `coffee worker` CLI group, and queue-backed `bulk-embed`
 
 ---
 

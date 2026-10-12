@@ -96,11 +96,15 @@ def test_queue_settings_builds_sqlspec_and_memory_configs(monkeypatch: MonkeyPat
     assert aq_qcfg.worker.placement == "server"
 
     monkeypatch.setenv("ORACLE_QUEUE_IN_MEMORY", "true")
+    monkeypatch.setenv("QUEUE_EXECUTION_BACKEND", "immediate")
     memory_queue = QueueSettings()
     assert memory_queue.in_memory is True
     assert memory_queue.backend == "memory"
+    assert memory_queue.execution_backend == "immediate"
     mem_qcfg = memory_queue.get_config(queue_db)
     assert mem_qcfg.queue_backend == "memory"
+    assert mem_qcfg.execution_backend == "immediate"
+    assert mem_qcfg.worker.placement == "external"
 
 
 @pytest.mark.anyio

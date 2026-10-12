@@ -56,7 +56,6 @@ uv run coffee run
 uv run coffee worker run
 uv run coffee worker status
 uv run coffee bulk-embed
-uv run coffee bulk-embed --enqueue
 uv run coffee export-fixtures
 uv run coffee clear-cache
 uv run coffee model-info

@@ -140,33 +140,29 @@ async def test_embed_missing_records_embeds_products_and_chat_routes() -> None:
 
 
 @pytest.mark.anyio
-async def test_bulk_embed_enqueue_dispatches_to_queue_service() -> None:
-    """Verify coffee bulk-embed --enqueue enqueues products.embed_missing via QueueService."""
+async def test_bulk_embed_runs_through_queue_service_with_immediate_execution() -> None:
+    """Verify coffee bulk-embed always runs products.embed_missing through QueueService with immediate execution."""
     assert cli_commands is not None
     mock_queue_service = AsyncMock(spec=QueueService)
     fake_record = MagicMock(spec=QueuedTaskRecord)
     fake_record.id = "00000000-0000-0000-0000-000000000042"
-    fake_record.status = "pending"
-    fake_result = MagicMock(spec=TaskResult)
+    fake_record.status = "completed"
+    fake_result = AsyncMock(spec=TaskResult)
     fake_result.id = fake_record.id
-    fake_result.status = "pending"
+    fake_result.status = "completed"
     fake_result.record = fake_record
     mock_queue_service.enqueue.return_value = fake_result
 
-    await cli_commands._enqueue_or_run_bulk_embed(
-        batch_size=25,
-        force=True,
-        enqueue=True,
-        product_service=AsyncMock(spec=ProductService),
-        vertex_ai_service=AsyncMock(spec=VertexAIService),
-        queue_service=mock_queue_service,
-    )
+    await cli_commands._run_bulk_embed(batch_size=25, force=True, queue_service=mock_queue_service)
 
-    mock_queue_service.enqueue.assert_awaited_once_with(embed_missing_records, batch_size=25, force=True)
+    mock_queue_service.enqueue.assert_awaited_once_with(
+        embed_missing_records, batch_size=25, force=True, execution_backend="immediate"
+    )
+    fake_result.refresh.assert_awaited_once()
 
 
 def test_cli_exposes_worker_and_queues_commands() -> None:
-    """Verify coffee CLI registers worker, queues, bulk-embed --enqueue, and run --no-worker."""
+    """Verify coffee CLI registers worker, queues, bulk-embed, and run --no-worker."""
     assert cli_commands is not None
     runner = CliRunner()
     help_res = runner.invoke(cli, ["--help"])
@@ -176,7 +172,9 @@ def test_cli_exposes_worker_and_queues_commands() -> None:
 
     embed_help = runner.invoke(cli, ["bulk-embed", "--help"])
     assert embed_help.exit_code == 0
-    assert "--enqueue" in embed_help.output
+    assert "--batch-size" in embed_help.output
+    assert "--force" in embed_help.output
+    assert "--enqueue" not in embed_help.output
 
     run_help = runner.invoke(cli, ["run", "--help"])
     assert run_help.exit_code == 0

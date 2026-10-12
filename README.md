@@ -51,7 +51,7 @@ Default Credentials or set `GOOGLE_API_KEY` / `VERTEX_AI_API_KEY`.
 | `uv run coffee worker run` | Start a standalone `litestar-queues` worker fleet |
 | `uv run coffee worker status` | Inspect background task queue counts |
 | `uv run coffee upgrade` | Apply migrations and load committed demo data |
-| `uv run coffee bulk-embed [--enqueue]` | Refresh embeddings inline or enqueue `products.embed_missing` |
+| `uv run coffee bulk-embed` | Refresh embeddings via `products.embed_missing` on `litestar-queues` (`execution_backend="immediate"`) |
 | `uv run coffee clear-cache --force` | Clear response and embedding caches |
 | `uv run coffee model-info` | Check active model configuration |
 

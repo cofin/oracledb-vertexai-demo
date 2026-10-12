@@ -11,7 +11,7 @@ enqueue/process background jobs, refresh embeddings, and inspect the app.
 | `coffee worker status` / `coffee queues status` | Inspect queued, running, completed, and failed background task counts. |
 | `coffee upgrade` | End-user install path: apply migrations and load committed fixtures. |
 | `coffee load-fixtures` | Populate Oracle from the committed gzipped demo data (products, stores, route exemplars, embeddings). |
-| `coffee bulk-embed [--enqueue]` | Generate `gemini-embedding-2` embeddings inline or enqueue `products.embed_missing` onto `litestar-queues`. |
+| `coffee bulk-embed` | Generate `gemini-embedding-2` embeddings via `products.embed_missing` on `litestar-queues` (`execution_backend="immediate"`). |
 | `coffee export-fixtures` | Dump the current database state back into committable fixture files. |
 | `coffee clear-cache --force` | Prune expired responses and truncate the response and embedding caches. |
 | `coffee model-info` | Print the active Vertex AI model + dimension settings. |

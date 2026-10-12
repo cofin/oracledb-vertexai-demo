@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 __all__ = ("QueueBackendMode", "QueueExecutionMode", "QueueSettings", "QueueWakeupMode")
 
 QueueBackendMode = Literal["sqlspec", "memory"]
-QueueExecutionMode = Literal["asgi", "standalone", "none"]
+QueueExecutionMode = Literal["asgi", "standalone", "immediate", "none"]
 QueueWakeupMode = Literal["polling", "oracle_aq"]
 
 
@@ -35,7 +35,7 @@ def _resolve_queue_backend() -> QueueBackendMode:
 def _resolve_execution_backend() -> QueueExecutionMode:
     """Resolve the worker execution mode from environment variables."""
     raw = os.getenv("QUEUE_EXECUTION_BACKEND", "asgi").strip().lower()
-    if raw in {"asgi", "standalone", "none"}:
+    if raw in {"asgi", "standalone", "immediate", "none"}:
         return cast("QueueExecutionMode", raw)
     return "asgi"
 
@@ -124,8 +124,11 @@ class QueueSettings:
         from litestar_queues.backends.sqlspec import SQLSpecBackendConfig, SQLSpecWorkerWakeupConfig
 
         effective_backend = self.backend
+        effective_execution: Literal["local", "immediate"] = (
+            "immediate" if self.execution_backend == "immediate" else "local"
+        )
         placement: WorkerPlacement
-        if not self.enabled or self.execution_backend == "none":
+        if not self.enabled or self.execution_backend in {"none", "immediate"}:
             placement = "external"
         elif self.execution_backend == "standalone":
             placement = "asgi" if effective_backend == "memory" else "server"
@@ -140,9 +143,9 @@ class QueueSettings:
             return QueueConfig(
                 namespace="coffee",
                 queue_backend="memory",
-                execution_backend="local",
+                execution_backend=effective_execution,
                 worker=worker_config,
-                initialize_schedules=self.enabled and self.execution_backend != "none",
+                initialize_schedules=self.enabled and self.execution_backend not in {"none", "immediate"},
             )
 
         if sqlspec_config is None:
@@ -159,7 +162,7 @@ class QueueSettings:
         return QueueConfig(
             namespace="coffee",
             queue_backend=backend_config,
-            execution_backend="local",
+            execution_backend=effective_execution,
             worker=worker_config,
-            initialize_schedules=self.enabled and self.execution_backend != "none",
+            initialize_schedules=self.enabled and self.execution_backend not in {"none", "immediate"},
         )
