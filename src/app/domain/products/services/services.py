@@ -129,6 +129,29 @@ class ProductService(OracleAsyncService):
             binds["store_id"] = store_id
         return await self.driver.select(db_manager.get_sql(sql_key), **binds, schema_type=ProductMatch)
 
+    async def search_hybrid(
+        self,
+        *,
+        text_query: str | None,
+        query_embedding: list[float],
+        similarity_threshold: float = 0.45,
+        rrf_k: int = 60,
+        limit: int = 5,
+    ) -> list[ProductMatch]:
+        """Run single-query Oracle 26ai Hybrid RRF product search combining CONTAINS/SCORE and VECTOR_DISTANCE."""
+        has_text_query = 1 if text_query is not None else 0
+        bind_text_query = text_query if text_query is not None else "{coffee}"
+        return await self.driver.select(
+            db_manager.get_sql("hybrid-search-products"),
+            has_text_query=has_text_query,
+            text_query=bind_text_query,
+            query_vector=query_embedding,
+            threshold=similarity_threshold,
+            rrf_k=rrf_k,
+            limit=limit,
+            schema_type=ProductMatch,
+        )
+
 
 class StoreService(OracleAsyncService):
     """Service for managing store locations."""
