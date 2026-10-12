@@ -2,13 +2,14 @@
 type: Spec
 flow_id: oracle-queues
 title: Oracle 26ai Background Task Queues (litestar-queues)
-state: planned
+state: in_progress
 plan_revision: 1
 plan_commit: null
-state_revision: 0
-current_task: null
-last_operation: null
-operation_targets: []
+state_revision: 1
+current_task: "4.1"
+last_operation: claim_task
+operation_targets:
+  - oracle-queues:4.1
 last_verified_checkpoint: null
 created_at: 2026-10-12T17:35:00Z
 updated_at: 2026-10-12T17:35:00Z
@@ -68,7 +69,7 @@ Files examined on `feat/gemini-embeddings` (`@3a3cbd1`):
 
 ### Phase 1: Queue Backend & LOB-Isolated Oracle Config
 
-- [ ] 4.1 Add `litestar-queues[sqlspec]>=0.12.0`, `QueueSettings`, dedicated `DatabaseSettings.get_queue_config()`, and `QueuePlugin` wiring
+- [x] 4.1 Add `litestar-queues[sqlspec]>=0.12.0`, `QueueSettings`, dedicated `DatabaseSettings.get_queue_config()`, and `QueuePlugin` wiring
 - [ ] 4.2 Implement `lib/jobs.py`, `system.cache_cleanup` and `products.embed_missing` tasks, `coffee worker` CLI group, and `bulk-embed --enqueue`
 
 ---

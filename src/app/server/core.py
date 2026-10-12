@@ -69,6 +69,7 @@ class ApplicationCore(InitPluginProtocol):
             plugins.vite,
             plugins.htmx,
             plugins.flash,
+            plugins.queue,
             plugins.autowire,
             plugins.mcp,
             plugins.a2a,

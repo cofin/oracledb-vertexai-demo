@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
@@ -14,18 +15,17 @@ if TYPE_CHECKING:
 
     from litestar import Litestar
     from litestar.testing import AsyncTestClient
+    from pytest import MonkeyPatch
 
 from app.lib import settings as app_settings
 
-if TYPE_CHECKING:
-    from pytest import MonkeyPatch
-
-
 pytestmark = pytest.mark.anyio
 
-# Tests connect to the repo-managed Oracle database. Start it with
-# `make start-infra`; integration fixtures apply SQLSpec migrations before
-# requests touch Oracle-backed Litestar or ADK session tables.
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Configure test defaults so unit tests use the in-memory queue backend."""
+    del config
+    os.environ.setdefault("QUEUE_BACKEND", "memory")
 
 
 @pytest.fixture(scope="session")
@@ -41,7 +41,6 @@ def test_settings(
 
     Creates a temporary test .env file with safe test values.
     """
-    # Create temporary .env for testing
     test_dir = tmp_path_factory.mktemp("test_env")
     test_env = test_dir / ".env.testing"
     test_env.write_text("""# Test Configuration
@@ -63,6 +62,7 @@ LITESTAR_PORT=5007
 LITESTAR_GRANIAN_IN_SUBPROCESS=false
 LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true
 SECRET_KEY=test-secret-key-32-characters-12
+QUEUE_BACKEND=memory
 
 VITE_DEV_MODE=False
 """)

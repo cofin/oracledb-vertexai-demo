@@ -120,6 +120,54 @@ class DatabaseSettings:
         Raises:
             ValueError: If Autonomous Database is enabled without a wallet location.
         """
+        from litestar_queues.backends.sqlspec.extension import configure_queue_migration_extension
+
+        pool_config = self._build_pool_config(min_sessions=self.POOL_MIN_SIZE, max_sessions=self.POOL_MAX_SIZE)
+        config = OracleAsyncConfig(
+            connection_config=pool_config,
+            observability_config=self._build_observability_config(),
+            driver_features={"enable_AutoLob": True},
+            migration_config={
+                "version_table_name": "migrations",
+                "script_location": self.MIGRATION_PATH,
+                "project_root": BASE_DIR,
+                "include_extensions": ["litestar"],
+            },
+            extension_config={
+                "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
+                "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
+            },
+        )
+        configure_queue_migration_extension(config, manage_schema=True)
+        return config
+
+    def get_config(self) -> OracleAsyncConfig:
+        """Alias for ``create_config`` matching reference platform conventions."""
+        return self.create_config()
+
+    def get_queue_config(self) -> OracleAsyncConfig:
+        """Create a dedicated OracleAsyncConfig for ``litestar-queues`` SQLSpec storage.
+
+        Isolates ``OracledbAsyncQueueStore``'s ``driver_features["fetch_lobs"] = False``
+        mutation from the primary application ``OracleAsyncConfig``.
+
+        Returns:
+            Dedicated ``OracleAsyncConfig`` for background queue persistence.
+        """
+        pool_config = self._build_pool_config(min_sessions=1, max_sessions=4)
+        return OracleAsyncConfig(
+            connection_config=pool_config,
+            observability_config=self._build_observability_config(),
+            driver_features={"fetch_lobs": False},
+            extension_config={
+                "litestar": {"session_key": "queue_db_session", "disable_di": True},
+                "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
+                "litestar_queues": {"in_memory": self.AGENT_IN_MEMORY},
+            },
+        )
+
+    def _build_pool_config(self, *, min_sessions: int, max_sessions: int) -> dict[str, Any]:
+        """Construct the Oracle connection pool parameter dictionary."""
         conn_params = self.get_connection_params()
 
         if self.is_autonomous:
@@ -137,7 +185,7 @@ class DatabaseSettings:
             if pem_path.exists():
                 ssl_ctx.load_verify_locations(cafile=str(pem_path))
 
-            pool_config: dict[str, Any] = {
+            return {
                 "user": conn_params["user"],
                 "password": conn_params["password"],
                 "dsn": conn_params["dsn"],
@@ -145,39 +193,22 @@ class DatabaseSettings:
                 "config_dir": absolute_wallet_path,
                 "wallet_password": conn_params["wallet_password"],
                 "ssl_context": ssl_ctx,
-                "min": self.POOL_MIN_SIZE,
-                "max": self.POOL_MAX_SIZE,
-            }
-        else:
-            pool_config = {
-                "user": conn_params["user"],
-                "password": conn_params["password"],
-                "dsn": conn_params["dsn"],
-                "min": self.POOL_MIN_SIZE,
-                "max": self.POOL_MAX_SIZE,
+                "min": min_sessions,
+                "max": max_sessions,
             }
 
-        observability_config = ObservabilityConfig(
+        return {
+            "user": conn_params["user"],
+            "password": conn_params["password"],
+            "dsn": conn_params["dsn"],
+            "min": min_sessions,
+            "max": max_sessions,
+        }
+
+    def _build_observability_config(self) -> ObservabilityConfig:
+        """Construct SQLSpec observability settings."""
+        return ObservabilityConfig(
             print_sql=self.ECHO,
             telemetry=TelemetryConfig(enable_spans=self.ENABLE_TELEMETRY),
             logging=LoggingConfig(include_trace_context=True, include_sql_hash=True),
         )
-
-        return OracleAsyncConfig(
-            connection_config=pool_config,
-            observability_config=observability_config,
-            migration_config={
-                "version_table_name": "migrations",
-                "script_location": self.MIGRATION_PATH,
-                "project_root": BASE_DIR,
-                "include_extensions": ["litestar"],
-            },
-            extension_config={
-                "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
-                "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
-            },
-        )
-
-    def get_config(self) -> OracleAsyncConfig:
-        """Alias for ``create_config`` matching reference platform conventions."""
-        return self.create_config()

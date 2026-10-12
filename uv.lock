@@ -94,10 +94,11 @@ dependencies = [
     { name = "dishka" },
     { name = "google-genai" },
     { name = "litestar", extra = ["cryptography", "jinja", "jwt", "opentelemetry", "structlog"] },
-    { name = "litestar-autowire", extra = ["dishka"] },
+    { name = "litestar-autowire", extra = ["dishka", "queues"] },
     { name = "litestar-granian", extra = ["uvloop"] },
     { name = "litestar-htmx" },
     { name = "litestar-mcp", extra = ["a2a", "google-genai", "opentelemetry"] },
+    { name = "litestar-queues", extra = ["sqlspec"] },
     { name = "litestar-security" },
     { name = "litestar-vite" },
     { name = "numpy" },
@@ -181,10 +182,11 @@ requires-dist = [
     { name = "dishka" },
     { name = "google-genai", specifier = ">=1.68.0" },
     { name = "litestar", extras = ["cryptography", "jinja", "jwt", "opentelemetry", "structlog"] },
-    { name = "litestar-autowire", extras = ["dishka"], specifier = ">=0.2.0" },
+    { name = "litestar-autowire", extras = ["dishka", "queues"], specifier = ">=0.2.0" },
     { name = "litestar-granian", extras = ["uvloop"] },
     { name = "litestar-htmx", specifier = ">=0.5.0" },
     { name = "litestar-mcp", extras = ["a2a", "google-genai", "opentelemetry"], specifier = ">=0.15.0" },
+    { name = "litestar-queues", extras = ["sqlspec"], specifier = ">=0.12.0" },
     { name = "litestar-security", specifier = ">=0.6.0" },
     { name = "litestar-vite" },
     { name = "numpy" },
@@ -1187,6 +1189,9 @@ wheels = [
 dishka = [
     { name = "dishka" },
 ]
+queues = [
+    { name = "litestar-queues" },
+]
 
 [[package]]
 name = "litestar-granian"
@@ -1241,6 +1246,24 @@ google-genai = [
 ]
 opentelemetry = [
     { name = "opentelemetry-api" },
+]
+
+[[package]]
+name = "litestar-queues"
+version = "0.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "litestar" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/72/4b8b3be610ca19754c881bea2098e0441cd0898865c19ea76a6c0e729876/litestar_queues-0.12.0.tar.gz", hash = "sha256:ef17f2e529a2dd8f97c3dfd8672deb1808f38023102a1b1431a82d116f11025a", size = 1234527, upload-time = "2026-09-17T17:48:07.1Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/a6/878a6af23d2a577e73eebceed6c7681acb78a08e4356e1f80e53764ed484/litestar_queues-0.12.0-py3-none-any.whl", hash = "sha256:b36c5b0afe1a6a3bf37c346b9ab468834e6c6e4b9d9c70421f1039163ef5c848", size = 401366, upload-time = "2026-09-17T17:48:05.107Z" },
+]
+
+[package.optional-dependencies]
+sqlspec = [
+    { name = "sqlspec" },
 ]
 
 [[package]]

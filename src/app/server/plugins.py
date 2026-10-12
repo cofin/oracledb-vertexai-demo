@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from litestar_granian import GranianPlugin
     from litestar_htmx import HTMXPlugin
     from litestar_mcp import LitestarA2A, LitestarMCP
+    from litestar_queues import QueuePlugin
     from litestar_security import SecurityPlugin
     from litestar_vite import VitePlugin
     from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecBase
@@ -50,6 +51,7 @@ db: _SQLSpecBase
 vite: VitePlugin
 htmx: HTMXPlugin
 flash: FlashPlugin
+queue: QueuePlugin
 autowire: AutowirePlugin
 opentelemetry: OpenTelemetryPlugin
 security: SecurityPlugin
@@ -76,6 +78,7 @@ def _initialize() -> None:
     from litestar_mcp import A2AConfig as _A2AConfig
     from litestar_mcp import LitestarA2A as _LitestarA2A
     from litestar_mcp import LitestarMCP as _LitestarMCP
+    from litestar_queues import QueuePlugin as _QueuePlugin
     from litestar_security import SecurityPlugin as _SecurityPlugin
     from litestar_vite import VitePlugin as _VitePlugin
     from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecPluginBase
@@ -104,7 +107,10 @@ def _initialize() -> None:
     g["vite"] = _VitePlugin(config=config.vite)
     g["htmx"] = _HTMXPlugin()
     g["flash"] = _FlashPlugin(config=_FlashConfig(template_config=config.template))
-    g["autowire"] = _AutowirePlugin(_AutowireConfig(domain_packages=["app.domain"], integrations=["dishka"]))
+    g["queue"] = _QueuePlugin(config=config.queue)
+    g["autowire"] = _AutowirePlugin(
+        _AutowireConfig(domain_packages=["app.domain"], integrations=["dishka", "queues"])
+    )
     g["security"] = _SecurityPlugin(config=build_security_config(settings))
     g["mcp"] = _LitestarMCP(build_mcp_config(settings))
     g["a2a"] = _LitestarA2A(
@@ -136,6 +142,7 @@ def _reset() -> None:
         "vite",
         "htmx",
         "flash",
+        "queue",
         "autowire",
         "opentelemetry",
         "security",

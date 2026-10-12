@@ -19,6 +19,7 @@ from app.lib.settings._env import BASE_DIR, DEFAULT_MODULE_NAME, _env_bool, _env
 from app.lib.settings._log import LogSettings
 from app.lib.settings._maps import MapsSettings
 from app.lib.settings._otel import OpenTelemetrySettings
+from app.lib.settings._queue import QueueBackendMode, QueueExecutionMode, QueueSettings, QueueWakeupMode
 from app.lib.settings._server import ServerSettings, ViteSettings
 
 __all__ = (
@@ -31,6 +32,10 @@ __all__ = (
     "LogSettings",
     "MapsSettings",
     "OpenTelemetrySettings",
+    "QueueBackendMode",
+    "QueueExecutionMode",
+    "QueueSettings",
+    "QueueWakeupMode",
     "ServerSettings",
     "Settings",
     "ViteSettings",
@@ -57,6 +62,7 @@ class Settings:
     vite: ViteSettings = field(default_factory=ViteSettings)
     maps: MapsSettings = field(default_factory=MapsSettings)
     otel: OpenTelemetrySettings = field(default_factory=OpenTelemetrySettings)
+    queue: QueueSettings = field(default_factory=QueueSettings)
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""

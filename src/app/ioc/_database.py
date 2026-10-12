@@ -7,20 +7,27 @@ import sys
 from collections.abc import AsyncIterator
 
 from dishka import Provider, Scope, provide
+from litestar_queues import QueueService
 from sqlspec.adapters.oracledb import OracleAsyncConfig, OracleAsyncDriver
 
 from app import config
+from app.server import plugins
 
 __all__ = ("DBProvider", "LitestarPersistenceProvider")
 
 
 class DBProvider(Provider):
-    """Oracle config (APP) and per-request driver (REQUEST)."""
+    """Oracle config (APP), queue service (APP), and per-request driver (REQUEST)."""
 
     @provide(scope=Scope.APP)
     def provide_config(self) -> OracleAsyncConfig:
         """Provide the APP-scoped OracleAsyncConfig."""
         return config.db
+
+    @provide(scope=Scope.APP)
+    def provide_queue_service(self) -> QueueService:
+        """Provide the APP-scoped QueueService from QueuePlugin."""
+        return plugins.queue.get_service()
 
     @provide(scope=Scope.REQUEST)
     async def provide_driver(self) -> AsyncIterator[OracleAsyncDriver]:

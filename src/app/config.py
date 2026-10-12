@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from litestar.stores.base import Store
     from litestar.stores.registry import StoreRegistry
     from litestar.template import TemplateConfig
+    from litestar_queues import QueueConfig
     from litestar_vite import ViteConfig
     from sqlspec.adapters.oracledb import OracleAsyncConfig
     from sqlspec.base import SQLSpec
@@ -45,6 +46,8 @@ _initialized: bool = False
 _settings: Settings
 db_manager: SQLSpec
 db: OracleAsyncConfig
+queue_db: OracleAsyncConfig
+queue: QueueConfig
 stores: StoreRegistry
 session_config: ServerSideSessionConfig
 csrf: CSRFConfig
@@ -126,6 +129,8 @@ def _initialize() -> None:
     settings = get_settings()
     log_as_json = not log_conf.is_tty()
     db_cfg = settings.db.create_config()
+    queue_db_cfg = settings.db.get_queue_config()
+    queue_cfg = settings.queue.get_config(queue_db_cfg)
     db_mgr = _SQLSpec(observability_config=db_cfg.observability_config)
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
@@ -213,6 +218,8 @@ def _initialize() -> None:
     g["_settings"] = settings
     g["db_manager"] = db_mgr
     g["db"] = db_cfg
+    g["queue_db"] = queue_db_cfg
+    g["queue"] = queue_cfg
     g["stores"] = store_registry
     g["session_config"] = _SessionConfig(store="sessions")
     g["csrf"] = _CSRFConfig(
@@ -239,6 +246,8 @@ def _reset() -> None:
         "_settings",
         "db_manager",
         "db",
+        "queue_db",
+        "queue",
         "stores",
         "session_config",
         "csrf",
