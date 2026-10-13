@@ -5,16 +5,18 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import msgspec
 import pytest
+import rich_click as click
 
 from app.cli._helpers.embeddings import generate_product_embeddings
+from app.cli.commands import _upgrade_database
 from app.db.utils import COFFEE_SHOP_TABLES
 from tests.support.paths import APP_ROOT
 
-MIGRATION_0002 = APP_ROOT / "db" / "migrations" / "0002_agent_runtime_and_hybrid_search.sql"
+MIGRATION_0001 = APP_ROOT / "db" / "migrations" / "0001_cymball_coffee_products.sql"
 CHAT_ROUTE_FIXTURE = APP_ROOT / "db" / "fixtures" / "chat_route.json"
 EXPECTED_ROUTE_LABELS = frozenset({
     "PRODUCT_RAG",
@@ -25,9 +27,9 @@ EXPECTED_ROUTE_LABELS = frozenset({
 })
 
 
-def test_migration_0002_includes_multi_column_datastore_and_chat_route() -> None:
-    """Verify migration 0002 defines MULTI_COLUMN_DATASTORE preferences, hybrid text indexes, and chat_route."""
-    sql_text = MIGRATION_0002.read_text(encoding="utf-8")
+def test_migration_0001_includes_multi_column_datastore_and_chat_route() -> None:
+    """Verify baseline migration 0001 defines MULTI_COLUMN_DATASTORE preferences, hybrid text indexes, and chat_route."""
+    sql_text = MIGRATION_0001.read_text(encoding="utf-8")
 
     assert "product_search_ds" in sql_text
     assert "store_search_ds" in sql_text
@@ -38,6 +40,29 @@ def test_migration_0002_includes_multi_column_datastore_and_chat_route() -> None
     assert "chat_route_ctx_idx" in sql_text
     assert "chat_route_embedding_idx" in sql_text
     assert "SYNC (ON COMMIT)" in sql_text
+    assert "idx_agent_event_session_seq" not in sql_text
+
+
+@pytest.mark.anyio
+async def test_upgrade_database_aborts_before_loading_fixtures_on_migration_failure() -> None:
+    """Verify _upgrade_database raises ClickException and skips load_fixtures when a migration fails."""
+    mock_commands = MagicMock()
+    mock_commands._apply_single_migration = AsyncMock(return_value=None)
+
+    async def _fake_upgrade(*, revision: str, dry_run: bool) -> None:
+        _ = (revision, dry_run)
+        await mock_commands._apply_single_migration()
+
+    mock_commands.upgrade = AsyncMock(side_effect=_fake_upgrade)
+
+    with (
+        patch("app.cli.commands.create_migration_commands", return_value=mock_commands),
+        patch("app.cli.commands.load_fixtures", new_callable=AsyncMock) as mock_load_fixtures,
+        pytest.raises(click.ClickException, match="Database migration failed"),
+    ):
+        await _upgrade_database("head", no_fixtures=False, dry_run=False)
+
+    mock_load_fixtures.assert_not_awaited()
 
 
 def test_fixture_tables_include_chat_route_and_fixture_file_has_25_exemplars() -> None:

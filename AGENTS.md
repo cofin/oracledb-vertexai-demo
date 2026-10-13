@@ -86,7 +86,7 @@ src/app/
 │   └── utils.py           # async_inject
 ├── db/
 │   ├── fixtures/          # committed demo fixture data
-│   ├── migrations/        # SQLSpec migrations (0001 baseline, 0002 agent & hybrid RRF)
+│   ├── migrations/        # SQLSpec migrations (0001 baseline with agent runtime & hybrid RRF)
 │   └── sql/               # named SQL files (products, stores, inventory, system, ai-runtime, hybrid)
 ├── domain/
 │   ├── ai/

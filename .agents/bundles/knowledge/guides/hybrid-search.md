@@ -24,11 +24,11 @@ Previously, every chat turn made an LLM intent-classification call (`Gemini Flas
 
 ## 2. Oracle Text `MULTI_COLUMN_DATASTORE` & `SYNC(ON COMMIT)`
 
-In `src/app/db/migrations/0002_native_ai_and_hybrid_rrf.sql`, multi-column Oracle Text preferences index combined text attributes on `product`, `store`, and `chat_route`:
+In `src/app/db/migrations/0001_cymball_coffee_products.sql`, multi-column Oracle Text preferences index combined text attributes on `product`, `store`, and `chat_route`:
 
-- `product_hybrid_text_idx` on `product(description)` with `MULTI_COLUMN_DATASTORE` across `name, description, category, sku` and `SYNC(ON COMMIT)`.
-- `store_hybrid_text_idx` on `store(address)` with `MULTI_COLUMN_DATASTORE` across `name, address, city, state, zip` and `SYNC(ON COMMIT)`.
-- `chat_route_text_idx` on `chat_route(exemplar_text)` with `MULTI_COLUMN_DATASTORE` across `title, exemplar_text, keywords` and `SYNC(ON COMMIT)`.
+- `product_hybrid_ctx_idx` on `product(description)` with `MULTI_COLUMN_DATASTORE` across `name, category, sku, description` and `SYNC (ON COMMIT)`.
+- `store_hybrid_ctx_idx` on `store(address)` with `MULTI_COLUMN_DATASTORE` across `name, address, city, state, zip` and `SYNC (ON COMMIT)`.
+- `chat_route_ctx_idx` on `chat_route(exemplar_text)` with `MULTI_COLUMN_DATASTORE` across `route_label, title, keywords, exemplar_text` and `SYNC (ON COMMIT)`.
 
 > **Lexical Scoring Note:** Oracle Text `CONTAINS(..., :text_query, 1) > 0` paired with `SCORE(1)` computes an inverse-frequency TF-IDF relevance score (0–100), providing **BM25-style lexical ranking** over relational columns. Oracle AI Database 26ai also supports `VECTOR(..., SPARSE)` for client-generated BM25/SPLADE sparse vectors when external sparse encoders are used.
 

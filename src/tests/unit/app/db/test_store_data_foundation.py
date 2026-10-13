@@ -24,7 +24,7 @@ def _read_fixture(name: str) -> list[dict[str, Any]]:
 def test_store_data_foundation_stays_in_baseline_migration() -> None:
     migration_files = sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
 
-    assert migration_files[0] == "0001_cymball_coffee_products.sql"
+    assert migration_files == ["0001_cymball_coffee_products.sql"]
 
     migration = (MIGRATIONS_DIR / "0001_cymball_coffee_products.sql").read_text(encoding="utf-8")
     assert "latitude NUMBER(9, 6)" in migration

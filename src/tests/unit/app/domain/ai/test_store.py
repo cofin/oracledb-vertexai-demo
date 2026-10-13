@@ -15,13 +15,14 @@ pytestmark = pytest.mark.anyio
 
 
 def test_ai_runtime_sql_targets_agent_session_and_agent_event() -> None:
-    """Verify ai-runtime.sql targets agent_session/agent_event and migration 0002 exists."""
-    migration_path = Path("src/app/db/migrations/0002_agent_runtime_and_hybrid_search.sql")
+    """Verify ai-runtime.sql targets agent_session/agent_event and baseline migration 0001 defines them."""
+    migration_path = Path("src/app/db/migrations/0001_cymball_coffee_products.sql")
     assert migration_path.exists()
     migration_sql = migration_path.read_text(encoding="utf-8").lower()
     assert "create table agent_session" in migration_sql
     assert "create table agent_event" in migration_sql
     assert "on delete cascade" in migration_sql
+    assert "idx_agent_event_session_seq" not in migration_sql
 
     get_session_sql = str(db_manager.get_sql("get-ai-session")).lower()
     upsert_session_sql = str(db_manager.get_sql("upsert-ai-session")).lower()

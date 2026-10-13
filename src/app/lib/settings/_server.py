@@ -9,7 +9,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from litestar_vite import PathConfig, TypeGenConfig, ViteConfig
+from litestar_vite import PathConfig, ViteConfig
 
 from app.lib.settings._env import BASE_DIR, _env_bool, _env_int
 
@@ -50,13 +50,7 @@ class ViteSettings:
         return ViteConfig(
             mode="htmx",
             dev_mode=self.DEV_MODE,
-            types=TypeGenConfig(
-                output=Path("generated"),
-                generate_sdk=False,
-                generate_routes=False,
-                generate_schemas=False,
-                generate_page_props=False,
-            ),
+            types=False,
             paths=PathConfig(
                 root=BASE_DIR.parent / "resources",
                 resource_dir=Path(),

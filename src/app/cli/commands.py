@@ -229,7 +229,23 @@ async def _upgrade_database(revision: str, no_fixtures: bool, dry_run: bool) -> 
     console.rule("[bold blue]Database Upgrade", style="blue", align="left")
     console.print()
     migration_commands = cast("Any", create_migration_commands(config=app_config.db))
+    migration_failed = False
+    original_apply = getattr(migration_commands, "_apply_single_migration", None)
+    if original_apply is not None:
+
+        async def _tracked_apply(*args: Any, **kwargs: Any) -> Any:
+            nonlocal migration_failed
+            result = await original_apply(*args, **kwargs)
+            if result is None:
+                migration_failed = True
+            return result
+
+        migration_commands._apply_single_migration = _tracked_apply
+
     await migration_commands.upgrade(revision=revision, dry_run=dry_run)
+    if migration_failed or getattr(migration_commands, "_last_command_error", None) is not None:
+        msg = "Database migration failed; aborting fixture load."
+        raise click.ClickException(msg)
 
     if dry_run:
         console.print("[yellow]i[/yellow]  Dry run — skipping fixture load")
