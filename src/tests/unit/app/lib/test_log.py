@@ -61,7 +61,7 @@ def test_log_settings_excludes_static_assets_by_default():
 
 
 def test_settings_sets_litestar_granian_env(monkeypatch):
-    """Settings should carry the default server logging environment variables."""
+    """Settings should carry the default server logging environment variables without deprecated Granian flags."""
     for key in (
         "LITESTAR_APP",
         "LITESTAR_APP_NAME",
@@ -76,8 +76,8 @@ def test_settings_sets_litestar_granian_env(monkeypatch):
 
         assert os.environ["LITESTAR_APP"] == "app.server.asgi:create_app"
         assert os.environ["LITESTAR_APP_NAME"] == settings.app.NAME
-        assert os.environ["LITESTAR_GRANIAN_IN_SUBPROCESS"] == "false"
-        assert os.environ["LITESTAR_GRANIAN_USE_LITESTAR_LOGGER"] == "true"
+        assert "LITESTAR_GRANIAN_IN_SUBPROCESS" not in os.environ
+        assert "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER" not in os.environ
     finally:
         Settings.from_env.cache_clear()
 

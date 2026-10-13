@@ -129,8 +129,6 @@ def test_settings(
         "LITESTAR_DEBUG=true\n"
         "LITESTAR_HOST=127.0.0.1\n"
         "LITESTAR_PORT=5007\n"
-        "LITESTAR_GRANIAN_IN_SUBPROCESS=false\n"
-        "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true\n"
         "SECRET_KEY=test-secret-key-32-characters-12\n"
         "VITE_DEV_MODE=False\n"
         f"VITE_BUNDLE_DIR={bundle_dir}\n",

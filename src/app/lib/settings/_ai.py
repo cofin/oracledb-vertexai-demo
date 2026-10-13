@@ -18,7 +18,12 @@ class AISettings:
     """Vertex AI / Google GenAI configuration settings."""
 
     project_id: str = field(
-        default_factory=lambda: os.getenv("VERTEX_AI_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT") or ""
+        default_factory=lambda: (
+            os.getenv("VERTEX_AI_PROJECT_ID")
+            or os.getenv("GOOGLE_CLOUD_PROJECT")
+            or os.getenv("GOOGLE_PROJECT_ID")
+            or ""
+        )
     )
     """Google Cloud Project ID for Vertex AI."""
     location: str = field(
@@ -26,10 +31,12 @@ class AISettings:
             os.getenv("VERTEX_AI_LOCATION")
             or os.getenv("GOOGLE_CLOUD_LOCATION")
             or os.getenv("GOOGLE_LOCATION")
-            or "us-central1"
+            or "global"
         )
     )
-    """Vertex AI location/region."""
+    """Vertex AI location/region (defaults to ``global`` for Gemini 3.8 preview models)."""
+    gcp_region: str = field(default_factory=lambda: os.getenv("GCP_REGION") or "us-central1")
+    """Primary GCP deployment region."""
     api_key: str | None = field(default_factory=lambda: os.getenv("VERTEX_AI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
     """Optional API key for Google AI clients."""
     chat_model: str = field(default_factory=lambda: os.getenv("VERTEX_AI_CHAT_MODEL", "gemini-3.8-flash"))
@@ -45,6 +52,17 @@ class AISettings:
     def intent_model(self) -> str:
         """Intent-classification model, falling back to the chat model."""
         return self.intent_model_override or self.chat_model
+
+    def resolve_location(self, gcp_region: str | None = None) -> str:
+        """Resolve the effective Vertex AI endpoint location.
+
+        Gemini 3.8 preview models are served on the ``global`` Vertex AI
+        endpoint unless an explicit location override is configured.
+        """
+        del gcp_region
+        if self.location and self.location.strip():
+            return self.location.strip()
+        return "global"
 
 
 @dataclass(frozen=True)

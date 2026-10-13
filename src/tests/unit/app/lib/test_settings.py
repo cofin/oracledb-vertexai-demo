@@ -57,7 +57,11 @@ def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
 
     for key in (
         "GOOGLE_CLOUD_PROJECT",
+        "GOOGLE_PROJECT_ID",
         "VERTEX_AI_PROJECT_ID",
+        "VERTEX_AI_LOCATION",
+        "GOOGLE_CLOUD_LOCATION",
+        "GOOGLE_LOCATION",
         "VERTEX_AI_EMBEDDING_MODEL",
         "VERTEX_AI_CHAT_MODEL",
         "VERTEX_AI_INTENT_MODEL",
@@ -69,8 +73,22 @@ def test_ai_settings_defaults(monkeypatch: MonkeyPatch) -> None:
     assert settings.chat_model == "gemini-3.8-flash"
     assert settings.embedding_model == "gemini-embedding-2"
     assert settings.embedding_dimensions == 3072
+    assert settings.location == "global"
+    assert settings.resolve_location() == "global"
     assert settings.intent_model_override is None
     assert settings.intent_model == settings.chat_model
+
+
+def test_ai_settings_falls_back_to_google_project_id(monkeypatch: MonkeyPatch) -> None:
+    from app.lib.settings import AISettings
+
+    monkeypatch.delenv("VERTEX_AI_PROJECT_ID", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.setenv("GOOGLE_PROJECT_ID", "db-black-belts-playground-01")
+
+    settings = AISettings()
+
+    assert settings.project_id == "db-black-belts-playground-01"
 
 
 def test_intent_model_override_wins(monkeypatch: MonkeyPatch) -> None:

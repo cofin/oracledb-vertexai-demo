@@ -5,12 +5,18 @@
 
 from __future__ import annotations
 
+import ssl
+from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+import pytest
+from google.auth.exceptions import RefreshError
 
 import app.ioc as ioc_module
 from app.domain.ai.runtime import AgentRuntime, GeminiModelClient, SpecTree
 from app.domain.chat.services import GroundedRouteService
 from app.domain.system.services import PersonaManager
+from app.ioc._ai import _build_vertex_http_options, _VertexFallbackCredentials
 
 
 def test_integrations_provider_builds_model_client_from_injected_client() -> None:
@@ -68,3 +74,60 @@ def test_domain_service_provider_builds_grounded_route_service() -> None:
     assert grounded.product_service is product_service
     assert grounded.store_service is store_service
     assert grounded.vertex_ai_service is vertex_ai_service
+
+
+def test_vertex_fallback_credentials_prefers_standard_google_auth() -> None:
+    """Verify _VertexFallbackCredentials uses wrapped google-auth credentials when refresh succeeds."""
+    wrapped = MagicMock()
+    wrapped.quota_project_id = "db-black-belts-playground-01"
+    wrapped.token = "initial-token"  # ruff: ignore[hardcoded-password-string]
+    wrapped.expiry = None
+
+    def _refresh(_request: object) -> None:
+        wrapped.token = "refreshed-via-google-auth"  # ruff: ignore[hardcoded-password-string]
+
+    wrapped.refresh.side_effect = _refresh
+    creds = _VertexFallbackCredentials(wrapped, quota_project_id="db-black-belts-playground-01")
+    creds.refresh(object())
+
+    assert creds.token == "refreshed-via-google-auth"  # ruff: ignore[hardcoded-password-string]
+    assert creds.quota_project_id == "db-black-belts-playground-01"
+    assert creds._prefer_gcloud is False
+
+
+def test_vertex_fallback_credentials_falls_back_to_gcloud_on_refresh_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify _VertexFallbackCredentials falls back to gcloud ADC token minting when google-auth refresh fails."""
+    wrapped = MagicMock()
+    wrapped.quota_project_id = "db-black-belts-playground-01"
+    wrapped.token = None
+    wrapped.expiry = None
+    wrapped.refresh.side_effect = RefreshError("access_denied: Account restricted")  # type: ignore[no-untyped-call]
+
+    monkeypatch.setattr("app.ioc._ai.shutil.which", lambda _cmd: "/usr/bin/gcloud")
+    monkeypatch.setattr(
+        "app.ioc._ai.subprocess.run", lambda *_args, **_kwargs: SimpleNamespace(stdout="gcloud-minted-token\n")
+    )
+
+    creds = _VertexFallbackCredentials(wrapped, quota_project_id="db-black-belts-playground-01")
+    creds.refresh(object())
+
+    assert creds.token == "gcloud-minted-token"  # ruff: ignore[hardcoded-password-string]
+    assert creds.expiry is not None
+    assert creds._prefer_gcloud is True
+    assert creds.valid is True
+
+
+def test_build_vertex_http_options_uses_mtls_endpoint_when_client_cert_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify _build_vertex_http_options configures mTLS base_url when client certs are active."""
+    ctx = ssl.create_default_context()
+    monkeypatch.setattr("app.ioc._ai._resolve_vertex_mtls_ssl_context", lambda: ctx)
+
+    global_opts = _build_vertex_http_options("global")
+    regional_opts = _build_vertex_http_options("us-central1")
+
+    assert global_opts.base_url == "https://aiplatform.mtls.googleapis.com/"
+    assert regional_opts.base_url == "https://us-central1-aiplatform.mtls.googleapis.com/"
+
+    monkeypatch.setattr("app.ioc._ai._resolve_vertex_mtls_ssl_context", lambda: None)
+    standard_opts = _build_vertex_http_options("global")
+    assert standard_opts.base_url is None

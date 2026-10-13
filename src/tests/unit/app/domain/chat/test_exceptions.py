@@ -32,7 +32,9 @@ def test_provide_genai_client_raises_on_placeholder_credentials(
     """Verify IntegrationsProvider.provide_genai_client raises AIServiceUnconfigured on placeholder project IDs."""
     fake_settings = MagicMock()
     fake_settings.ai.project_id = placeholder_project
-    fake_settings.ai.location = "us-central1"
+    fake_settings.ai.location = "global"
+    fake_settings.ai.gcp_region = "us-central1"
+    fake_settings.ai.resolve_location.return_value = "global"
     fake_settings.ai.api_key = None
     monkeypatch.setattr("app.ioc.get_settings", lambda: fake_settings)
 

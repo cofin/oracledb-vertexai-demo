@@ -25,6 +25,9 @@ def test_managed_env_template_targets_local_container(monkeypatch: MonkeyPatch, 
     assert "DATABASE_HOST=localhost" in env_content
     assert "DATABASE_PORT=1521" in env_content
     assert "DATABASE_SERVICE_NAME=freepdb1" in env_content
+    assert "VERTEX_AI_LOCATION=global" in env_content
+    assert "LITESTAR_GRANIAN_IN_SUBPROCESS=" not in env_content
+    assert "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=" not in env_content
 
     # Local container must stay non-autonomous: no wallet/URL keys that would flip
     # DatabaseSettings.is_autonomous to True and route through the wallet/SSL branch.

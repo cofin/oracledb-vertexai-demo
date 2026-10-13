@@ -72,8 +72,6 @@ class Settings:
         os.environ.setdefault("APP_URL", app_url)
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
-        os.environ.setdefault("LITESTAR_GRANIAN_IN_SUBPROCESS", "false")
-        os.environ.setdefault("LITESTAR_GRANIAN_USE_LITESTAR_LOGGER", "true")
         os.environ.setdefault("OTEL_SERVICE_NAME", self.otel.SERVICE_NAME)
 
     def configure_genai_env(self) -> None:
@@ -89,7 +87,7 @@ class Settings:
             os.environ.pop("VERTEX_AI_API_KEY", None)
             os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
             os.environ["GOOGLE_CLOUD_PROJECT"] = self.ai.project_id
-            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.location
+            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.resolve_location(self.ai.gcp_region)
 
     @classmethod
     @lru_cache(maxsize=1, typed=True)

@@ -160,15 +160,14 @@ def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  #
     env_content += f"GOOGLE_PROJECT_ID={google_project}\n"
     if google_api_key:
         env_content += f"GOOGLE_API_KEY={google_api_key}\n"
-    env_content += "VERTEX_AI_PROJECT_ID=${GOOGLE_PROJECT_ID}\n\n"
+    env_content += "VERTEX_AI_PROJECT_ID=${GOOGLE_PROJECT_ID}\n"
+    env_content += "VERTEX_AI_LOCATION=global\n\n"
 
     # Server settings
     env_content += "# server\n"
     env_content += "LITESTAR_DEBUG=true\n"
     env_content += "LITESTAR_HOST=0.0.0.0\n"
     env_content += "LITESTAR_PORT=5006\n"
-    env_content += "LITESTAR_GRANIAN_IN_SUBPROCESS=false\n"
-    env_content += "LITESTAR_GRANIAN_USE_LITESTAR_LOGGER=true\n"
     env_content += f"SECRET_KEY={secret_key}\n\n"
 
     # Development settings
