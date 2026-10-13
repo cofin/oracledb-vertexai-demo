@@ -78,32 +78,32 @@ def test_write_antigravity_mcp_config_does_not_touch_legacy_gemini_settings(
 
 def test_install_mcp_toolbox_dry_run_prints_guidance_without_writes(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
 
-    with CliRunner().isolated_filesystem(temp_dir=tmp_path):
-        result = CliRunner().invoke(install_group, ["mcp-toolbox", "--dry-run"])
+    result = CliRunner().invoke(install_group, ["mcp-toolbox", "--dry-run"])
 
-        assert result.exit_code == 0
-        assert ".agents/mcp_config.json" in result.output
-        assert "toolbox --prebuilt oracledb --stdio" in result.output
-        assert "npx skills add oracle/skills/apex" in result.output
-        assert "npx skills add oracle/skills/db" in result.output
-        assert not Path(".agents/mcp_config.json").exists()
-        assert not Path(".agents/plugins/oracle-skills").exists()
-        assert not (tmp_path / "home" / ".gemini" / "settings.json").exists()
+    assert result.exit_code == 0
+    assert ".agents/mcp_config.json" in result.output
+    assert "toolbox --prebuilt oracledb --stdio" in result.output
+    assert "npx skills add oracle/skills/apex" in result.output
+    assert "npx skills add oracle/skills/db" in result.output
+    assert not Path(".agents/mcp_config.json").exists()
+    assert not Path(".agents/plugins/oracle-skills").exists()
+    assert not (tmp_path / "home" / ".gemini" / "settings.json").exists()
 
 
 def test_install_mcp_toolbox_workspace_writes_antigravity_config_only(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.chdir(tmp_path)
 
-    with CliRunner().isolated_filesystem(temp_dir=tmp_path):
-        result = CliRunner().invoke(install_group, ["mcp-toolbox", "--workspace"])
+    result = CliRunner().invoke(install_group, ["mcp-toolbox", "--workspace"])
 
-        assert result.exit_code == 0
-        config_path = Path(".agents/mcp_config.json")
-        assert config_path.exists()
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-        assert set(config["mcpServers"]) >= {"sqlcl", "oracle-toolbox"}
-        password_key = "ORACLE_" + "PASSWORD"
-        assert config["mcpServers"]["oracle-toolbox"]["env"][password_key] == "${" + password_key + "}"
-        assert not Path(".agents/plugins/oracle-skills").exists()
-        assert not (tmp_path / "home" / ".gemini" / "settings.json").exists()
+    assert result.exit_code == 0
+    config_path = Path(".agents/mcp_config.json")
+    assert config_path.exists()
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    assert set(config["mcpServers"]) >= {"sqlcl", "oracle-toolbox"}
+    password_key = "ORACLE_" + "PASSWORD"
+    assert config["mcpServers"]["oracle-toolbox"]["env"][password_key] == "${" + password_key + "}"
+    assert not Path(".agents/plugins/oracle-skills").exists()
+    assert not (tmp_path / "home" / ".gemini" / "settings.json").exists()

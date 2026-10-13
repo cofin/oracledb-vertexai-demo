@@ -154,7 +154,7 @@ class VectorController(PublicController):
             )
         )
 
-    @get(path="/api/explain-plan", name="vector.explain_plan", exclude_from_auth=True)
+    @get(path="/api/explain-plan", name="vector.explain_plan")
     async def explain_plan(
         self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]
     ) -> ExplainPlan:

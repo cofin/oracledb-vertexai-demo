@@ -62,11 +62,11 @@ resource "google_cloud_run_v2_service" "coffee_app" {
         value = "true"
       }
       env {
-        name  = "GEMINI_MODEL"
+        name  = "VERTEX_AI_CHAT_MODEL"
         value = "gemini-3.8-flash"
       }
       env {
-        name  = "EMBEDDING_MODEL"
+        name  = "VERTEX_AI_EMBEDDING_MODEL"
         value = "gemini-embedding-2"
       }
       env {

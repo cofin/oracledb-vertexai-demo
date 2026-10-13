@@ -34,6 +34,47 @@ if TYPE_CHECKING:
 __all__ = ("build_security_config",)
 
 
+def build_security_config(settings: Settings) -> SecurityConfig[Any]:
+    """Build the application SecurityConfig with hardened headers and optional API-key auth.
+
+    Args:
+        settings: Resolved application settings instance.
+
+    Returns:
+        Configured SecurityConfig instance for SecurityPlugin.
+    """
+    hardened = SecurityHeadersConfig.hardened()
+    static_headers: dict[str, str] = {**hardened.static, "Permissions-Policy": "geolocation=(self)"}
+    if settings.maps.embed_enabled:
+        static_headers["Content-Security-Policy"] = (
+            "frame-src 'self' https://www.google.com https://www.google.com/maps/;"
+        )
+    headers = SecurityHeadersConfig(static=static_headers)
+
+    expected_key = (settings.app.MCP_API_KEY or "").strip()
+    if not expected_key:
+        return SecurityConfig(headers=headers, exclude=[r"^/static"])
+
+    return SecurityConfig(
+        headers=headers,
+        slots=(_ApiKeySlot(),),
+        mechanisms=(
+            AuthenticationMechanism(
+                authenticator=_ApiKeyVerifier(expected_key=expected_key),
+                resolver=_ApiKeyResolver(),
+                scheme_name="ApiKeyAuth",
+                security_scheme=SecurityScheme(
+                    type="apiKey",
+                    name="X-API-Key",
+                    security_scheme_in="header",
+                    description="Shared API key for MCP and A2A endpoints.",
+                ),
+            ),
+        ),
+        exclude=[r"^/static"],
+    )
+
+
 @dataclass(slots=True)
 class _ApiKeySlot:
     """CredentialSlot extracting an API key from X-API-Key or Authorization Bearer header."""
@@ -90,39 +131,3 @@ class _ApiKeyResolver:
         """Resolve verified API key claims into a Principal."""
         user_payload: dict[str, object] = {"id": claims, "is_authenticated": True}
         return Principal(id=claims, user=user_payload)
-
-
-def build_security_config(settings: Settings) -> SecurityConfig[Any]:
-    """Build the application SecurityConfig with hardened headers and optional API-key auth.
-
-    Args:
-        settings: Resolved application settings instance.
-
-    Returns:
-        Configured SecurityConfig instance for SecurityPlugin.
-    """
-    hardened = SecurityHeadersConfig.hardened()
-    headers = SecurityHeadersConfig(static={**hardened.static, "Permissions-Policy": "geolocation=(self)"})
-
-    expected_key = (settings.app.MCP_API_KEY or "").strip()
-    if not expected_key:
-        return SecurityConfig(headers=headers, exclude=[r"^/static"])
-
-    return SecurityConfig(
-        headers=headers,
-        slots=(_ApiKeySlot(),),
-        mechanisms=(
-            AuthenticationMechanism(
-                authenticator=_ApiKeyVerifier(expected_key=expected_key),
-                resolver=_ApiKeyResolver(),
-                scheme_name="ApiKeyAuth",
-                security_scheme=SecurityScheme(
-                    type="apiKey",
-                    name="X-API-Key",
-                    security_scheme_in="header",
-                    description="Shared API key for MCP and A2A endpoints.",
-                ),
-            ),
-        ),
-        exclude=[r"^/static"],
-    )

@@ -3,10 +3,10 @@
 
 """Chat domain controllers."""
 
-from litestar import Controller
+from litestar_security import PublicController
 
 from app.domain.chat.controllers._chat import CoffeeChatController
 
-controllers: list[type[Controller]] = [CoffeeChatController]
+controllers: list[type[PublicController]] = [CoffeeChatController]
 
 __all__ = ("CoffeeChatController", "controllers")

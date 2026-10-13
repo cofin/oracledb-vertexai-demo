@@ -135,8 +135,6 @@ def _initialize() -> None:
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
 
-    from typing import cast
-
     store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
 
     structlog_config = _StructlogConfig(

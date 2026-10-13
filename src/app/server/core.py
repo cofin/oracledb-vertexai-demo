@@ -11,30 +11,23 @@ from litestar.middleware import ASGIMiddleware
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import ScalarRenderPlugin
 from litestar.plugins import InitPluginProtocol
+from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app import config
 from app.__metadata__ import __version__
+from app.domain.ai.services import AgentOrchestrationService
+from app.domain.products.services import OracleVectorSearchService, ProductService
+from app.domain.system.services import CacheService, MetricsService
+from app.lib import log
 from app.lib.di import request_container_var
+from app.lib.settings import get_settings
 from app.server import plugins
 
 if TYPE_CHECKING:
     from litestar.config.app import AppConfig
     from litestar.types import ASGIApp, Receive, Scope, Send
 
-
-class _RequestContainerMiddleware(ASGIMiddleware):
-    """Bind the active Dishka request container to request_container_var."""
-
-    async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
-        """Set request_container_var from the active request scope state."""
-        state = scope.get("state")
-        container = state.get("dishka_container") if isinstance(state, dict) else None
-        token = request_container_var.set(container) if container is not None else None
-        try:
-            await next_app(scope, receive, send)
-        finally:
-            if token is not None:
-                request_container_var.reset(token)
+__all__ = ("ApplicationCore",)
 
 
 class ApplicationCore(InitPluginProtocol):
@@ -42,9 +35,6 @@ class ApplicationCore(InitPluginProtocol):
 
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
         """Initialize application middleware, plugins, and OpenAPI config."""
-        from app.lib import log
-        from app.lib.settings import get_settings
-
         settings = get_settings()
 
         app_config.middleware.insert(0, log.StructlogMiddleware)
@@ -86,12 +76,6 @@ class ApplicationCore(InitPluginProtocol):
             render_plugins=[ScalarRenderPlugin(version="latest")],
         )
 
-        from sqlspec.adapters.oracledb import OracleAsyncDriver
-
-        from app.domain.ai.services import AgentOrchestrationService
-        from app.domain.products.services import OracleVectorSearchService, ProductService
-        from app.domain.system.services import CacheService, MetricsService
-
         app_config.signature_namespace.update({
             "OracleAsyncDriver": OracleAsyncDriver,
             "ProductService": ProductService,
@@ -102,3 +86,18 @@ class ApplicationCore(InitPluginProtocol):
         })
 
         return app_config
+
+
+class _RequestContainerMiddleware(ASGIMiddleware):
+    """Bind the active Dishka request container to request_container_var."""
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp) -> None:
+        """Set request_container_var from the active request scope state."""
+        state = scope.get("state")
+        container = state.get("dishka_container") if isinstance(state, dict) else None
+        token = request_container_var.set(container) if container is not None else None
+        try:
+            await next_app(scope, receive, send)
+        finally:
+            if token is not None:
+                request_container_var.reset(token)

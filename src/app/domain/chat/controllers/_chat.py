@@ -16,7 +16,6 @@ from litestar_security import AuthenticationPolicy, PublicController, exclude
 
 from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.controllers._helpers import chat_form_from_request, location_context_from_form
-from app.domain.chat.services._telemetry import safe_location_context
 from app.domain.chat.session import chat_session_identity, clear_chat_session_identity
 from app.lib.di import Inject
 from app.utils.serialization import to_json
@@ -85,14 +84,7 @@ class CoffeeChatController(PublicController):
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
         location_context = location_context_from_form(data)
-        safe_loc = safe_location_context(location_context)
         user_id, session_id = chat_session_identity(request)
-
-        dynamic_context = (
-            f"Persona: {validated_persona}\nLocation Context: {safe_loc}"
-            if safe_loc
-            else f"Persona: {validated_persona}"
-        )
 
         async def stream_events() -> AsyncIterator[dict[str, str]]:
             try:
@@ -101,7 +93,6 @@ class CoffeeChatController(PublicController):
                     user_id=user_id,
                     message=clean_message,
                     services=request,
-                    dynamic_context=dynamic_context,
                     persona=validated_persona,
                     location_context=location_context,
                 ):

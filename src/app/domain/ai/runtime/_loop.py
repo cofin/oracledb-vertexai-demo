@@ -17,6 +17,7 @@ from app.domain.ai.runtime._types import AgentEvent, AgentLimits, Content, Funct
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from app.domain.ai.protocols._runtime import ModelClientProtocol
     from app.domain.ai.runtime._context import CallContext
     from app.domain.ai.runtime._model import GeminiModelClient
 
@@ -28,7 +29,7 @@ class AgentRuntime:
 
     def __init__(
         self,
-        model_client: GeminiModelClient,
+        model_client: GeminiModelClient | ModelClientProtocol,
         limits: AgentLimits | TurnBudget | None = None,
         *,
         budget: TurnBudget | None = None,
@@ -149,6 +150,28 @@ class AgentRuntime:
                     saw_non_partial = True
                 yield event
 
+            if pending_calls and (
+                tool_calls_count + len(pending_calls) > self._budget.max_tool_calls
+                or model_calls >= self._budget.max_turns
+            ):
+                exceeded_tools = tool_calls_count + len(pending_calls) > self._budget.max_tool_calls
+                finish_reason = "TOOL_LIMIT_EXCEEDED" if exceeded_tools else "TURN_LIMIT_EXCEEDED"
+                limit_text = (
+                    "Tool execution limit reached for this turn."
+                    if exceeded_tools
+                    else "Model turn limit reached for this turn."
+                )
+                yield AgentEvent(
+                    session_id=session_id,
+                    invocation_id=invocation_id,
+                    turn=ctx.turn,
+                    agent=current_spec.name,
+                    finish_reason=finish_reason,
+                    partial=False,
+                    content=Content(role="model", parts=[Part(text=limit_text)]),
+                )
+                break
+
             if not saw_non_partial and accumulated_parts:
                 yield AgentEvent(
                     session_id=session_id,
@@ -164,16 +187,6 @@ class AgentRuntime:
                 break
 
             tool_calls_count += len(pending_calls)
-            if tool_calls_count > self._budget.max_tool_calls:
-                yield AgentEvent(
-                    session_id=session_id,
-                    invocation_id=invocation_id,
-                    turn=ctx.turn,
-                    agent=current_spec.name,
-                    finish_reason="TOOL_LIMIT_EXCEEDED",
-                    content=Content(role="model", parts=[Part(text="Tool execution limit reached for this turn.")]),
-                )
-                break
 
             current_spec, response_parts = await self._dispatch_tools(
                 pending_calls=pending_calls,

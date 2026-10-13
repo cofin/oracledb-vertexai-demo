@@ -244,11 +244,13 @@ coverage: ## Run tests with coverage report
 .PHONY: lint
 lint: ## Run all linting and type checking (Python + frontend)
 	@echo "${INFO} Running prek (pre-commit) checks... 🔎"
-	@uvx prek run --color=always --all-files
+	@uv run prek run --color=always --all-files
 	@echo "${OK} prek checks passed ✨"
 	@echo "${INFO} Running type checkers... 🔍"
-	@uv run mypy src/app tools manage.py
-	@uv run pyright src/app tools manage.py
+	@uv run mypy src/app src/tests tools manage.py
+	@uv run pyright src/app src/tests tools manage.py
+	@uv run slotscheck -m app
+	@uv run python tools/ci/check_code_hygiene.py
 	@$(MAKE) frontend-typecheck
 	@echo "${OK} All linting and type checks complete ✨"
 
@@ -262,17 +264,23 @@ format: ## Run code formatters
 .PHONY: mypy
 mypy: ## Run mypy type checker using local packages
 	@echo "${INFO} Running mypy type checker... 🔍"
-	@uv run mypy src/app tools manage.py
+	@uv run mypy src/app src/tests tools manage.py
 	@echo "${OK} Mypy type checking complete ✨"
 
 .PHONY: pyright
 pyright: ## Run pyright type checker using local packages
 	@echo "${INFO} Running pyright type checker... 🔍"
-	@uv run pyright src/app tools manage.py
+	@uv run pyright src/app src/tests tools manage.py
 	@echo "${OK} Pyright type checking complete ✨"
 
+.PHONY: slotscheck
+slotscheck: ## Run slotscheck on application modules
+	@echo "${INFO} Running slotscheck... 🔍"
+	@uv run slotscheck -m app
+	@echo "${OK} Slotscheck complete ✨"
+
 .PHONY: typecheck
-typecheck: mypy pyright ## Run all type checkers
+typecheck: mypy pyright slotscheck ## Run all type checkers
 	@echo "${OK} All type checks complete ✨"
 
 # =============================================================================

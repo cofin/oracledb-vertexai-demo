@@ -32,13 +32,13 @@ AgentOrchestrationService (REQUEST scope)
          ├─► Grounded Route Composers (PRODUCT_RAG, STORE_LOCATION, PRODUCT_AVAILABILITY, ORDER_STATUS)
          ├─► Session / Context (CallContext, OracleSessionStore, OracleEventStore)
          ▼
-AgentRuntime.run_stream() (APP scope, GENERAL_CONVERSATION fallback)
+AgentRuntime.execute_turn() (APP scope, GENERAL_CONVERSATION fallback)
          │
          ├─► Prompt Fencing & Specialist Delegation (SpecTree, AgentSpec)
          ├─► Model Interaction (GeminiModelClient -> google-genai -> gemini-3.8-flash)
          ├─► Dynamic Tool Dispatch (Tool, declare(), execute_parallel())
          ▼
-AgentStreamService.stream()
+AgentStreamService.adapt()
          │
          ▼
 SSE Frames: session -> tool_call -> tool_end -> delta -> ping -> final (full ChatResponse payload)
@@ -89,8 +89,8 @@ store_tool = declare(find_nearby_stores)
 
 Key invariants:
 - **Argument Coercion**: `Tool.invoke()` uses `msgspec.convert(..., strict=False)` to validate model arguments against parameter type hints.
-- **Parallel Execution**: `execute_parallel(tools, calls, ctx)` executes independent tool calls concurrently via `asyncio.gather()`.
-- **Request-Scoped Isolation**: Tools access request-scoped dependencies (database driver, domain services) through `ctx.state` without global state.
+- **Parallel Execution**: `execute_parallel(calls, tools_map, ctx)` executes independent tool calls concurrently via `asyncio.gather()`.
+- **Request-Scoped Isolation**: Tools access request-scoped dependencies (database driver, domain services) through `ctx.services` (`CoffeeToolContext`) and `ctx.state` without global state.
 
 ---
 
@@ -109,8 +109,8 @@ Key invariants:
 
 Sessions and event histories are persisted in Oracle 26ai using SQLSpec named queries in `src/app/db/sql/ai-runtime.sql`:
 
-- `OracleSessionStore`: Manages `AGENT_SESSION` rows with session metadata and JSON state payloads (`save_session`, `get_session`, `delete_session`).
-- `OracleEventStore`: Manages ordered event logs in `AGENT_EVENT` (`append_event`, `list_events`, `delete_events`).
+- `OracleSessionStore`: Manages `AGENT_SESSION` rows with session metadata and JSON state payloads (`save_session`, `get_session`, `clear_session`).
+- `OracleEventStore`: Manages ordered event logs in `AGENT_EVENT` (`get_next_seq`, `append_event`, `list_events`).
 - Event histories are reconstructed cleanly into `Content` and `AgentEvent` streams across conversation turns.
 
 ---
@@ -118,13 +118,12 @@ Sessions and event histories are persisted in Oracle 26ai using SQLSpec named qu
 ## 6. Execution Loop & Terminal-Aware SSE Streaming
 
 The runtime execution loop in `AgentRuntime.execute_turn()` supports:
-- **Turn & Step Budgets**: Configurable step limits prevent runaway tool loops, emitting a terminal event with `finish_reason="TOOL_LIMIT_EXCEEDED"` if exhausted.
+- **Turn & Step Budgets**: Configurable step limits prevent runaway tool loops, emitting a terminal event with `finish_reason="TOOL_LIMIT_EXCEEDED"` or `"TURN_LIMIT_EXCEEDED"` if exhausted.
 - **Hierarchical Delegation**: `SpecTree` enables a root coordinator to route subtasks to specialist specs with prompt fencing:
   ```text
-  <<<BEGIN_SYSTEM_INSTRUCTION>>>
-  Role: Coffee Menu Specialist
+  <ACTIVE_SESSION_CONTEXT>
   ...
-  <<<END_SYSTEM_INSTRUCTION>>>
+  </ACTIVE_SESSION_CONTEXT>
   ```
 - **SSE Stream Adapter (`AgentStreamService`)**:
   - Drains queue asynchronously with periodic keep-alive pings (`type: ping`) every 5 seconds to prevent browser or proxy timeouts.
@@ -137,11 +136,11 @@ The runtime execution loop in `AgentRuntime.execute_turn()` supports:
 
 ### Model Context Protocol (`LitestarMCP`)
 - Mounted at `POST /mcp` in `src/app/server/plugins.py`.
-- Exposes route-level annotated controllers as tools via `mcp_tool="search_coffee_products"`.
+- Exposes route-level annotated controllers as tools via `mcp_tool="search_products"` and `mcp_tool="find_nearby_stores"`.
 - Configures local skill discovery via `MCPSkillsConfig(paths=[Path(".agents/skills")])`.
-- Authentication is delegated to `litestar-security` using `route_opt={"auth": public()}`.
+- Authentication is enforced by `require_mcp_api_key` when `MCP_API_KEY` is configured.
 
 ### Agent-to-Agent Protocol (`LitestarA2A`)
 - Mounted at `POST /a2a` via `LitestarA2A` and `a2a-sdk`.
-- Advertises agent capabilities at `GET /.well-known/agent-card.json` (`COFFEE_AGENT_CARD`).
+- Advertises agent capabilities at `GET /.well-known/agent-card.json` (`build_agent_card`).
 - Executes incoming A2A messages via `CoffeeAgentExecutor`, bridging them into `AgentOrchestrationService`.

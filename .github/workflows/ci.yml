@@ -58,6 +58,15 @@ jobs:
       - name: Build frontend assets
         run: uv run python manage.py assets build
 
+      - name: Run static analysis & code hygiene gates
+        run: |
+          uv run ruff check --no-fix src tools manage.py
+          uv run ruff format --check src tools manage.py
+          uv run mypy src/app src/tests tools manage.py
+          uv run pyright src/app src/tests tools manage.py
+          uv run slotscheck -m app
+          uv run python tools/ci/check_code_hygiene.py
+
       - name: Run unit tests
         run: uv run pytest src/tests/unit
 

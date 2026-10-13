@@ -341,7 +341,7 @@ def test_wait_for_healthy_rejects_unready_ords_http() -> None:
     runtime.run_command.return_value = (0, "ORDS Release 26.1.2.r123", "")
 
     with patch.object(sidecar, "_http_ready", return_value=False):
-        assert sidecar.wait_for_healthy(timeout=0.01, interval=0) is False
+        assert sidecar.wait_for_healthy(timeout=0, interval=0) is False
 
 
 def test_http_ready_accepts_non_5xx_for_ords() -> None:

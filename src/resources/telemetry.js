@@ -37,7 +37,8 @@ const formatMetricMs = (value) => {
 
 const payloadSqlPhases = (payload) => (Array.isArray(payload.sql_phases) ? payload.sql_phases : [])
 
-const phasesFor = (payload, sqlKey) => payloadSqlPhases(payload).filter((phase) => phase.sql_key === sqlKey)
+const phasesFor = (payload, ...sqlKeys) =>
+  payloadSqlPhases(payload).filter((phase) => sqlKeys.includes(phase.sql_key))
 
 const telemetryDetail = (title, summary, sqlPhases = [], options = {}) => ({
   title,
@@ -263,7 +264,7 @@ export const renderMessageTelemetry = (payload) => {
           telemetryDetail(
             "Intent classification",
             `The request was classified as ${payload.intent_detected}.`,
-            [],
+            phasesFor(payload, "hybrid-search-turn"),
           ),
         )
       : null,
@@ -276,7 +277,7 @@ export const renderMessageTelemetry = (payload) => {
           telemetryDetail(
             "Oracle vector search",
             `The product RAG lookup used "${vectorQuery}".`,
-            phasesFor(payload, "vector-search-products"),
+            phasesFor(payload, "hybrid-search-turn", "hybrid-search-products", "vector-search-products"),
             { planQuery: vectorQuery },
           ),
         )
@@ -312,7 +313,13 @@ export const renderMessageTelemetry = (payload) => {
           telemetryDetail(
             "Oracle vector phase",
             `Oracle vector search completed in ${formatMetricMs(metrics.oracle_ms)}.`,
-            phasesFor(payload, "vector-search-products"),
+            phasesFor(
+              payload,
+              "hybrid-search-turn",
+              "hybrid-term-hits",
+              "hybrid-search-products",
+              "vector-search-products",
+            ),
             vectorQuery ? { planQuery: vectorQuery } : {},
           ),
         )

@@ -8,12 +8,12 @@ description: Active and planned Flow specifications for Cymbal Coffee
 
 ## Active Roadmap: Native Agent Stabilization, Hybrid RRF Retrieval & Platform Alignment
 
-- [coffee-agent-stabilization-and-hybrid-search](coffee-agent-stabilization-and-hybrid-search/spec.md) - Master PRD: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment (planned)
-  - [runtime-stabilization](runtime-stabilization/spec.md) - Chapter 1: Native AI Runtime, Persistence, Streaming & Endpoint Stabilization (planned)
-  - [hybrid-rrf-retrieval](hybrid-rrf-retrieval/spec.md) - Chapter 2: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing (planned)
-  - [platform-alignment](platform-alignment/spec.md) - Chapter 3: Settings, DI, Services, LitestarMCP 0.15, and Security Alignment (planned)
-  - [oracle-queues](oracle-queues/spec.md) - Chapter 4: Oracle 26ai Background Task Queues (`litestar-queues`) (planned)
-  - [slides-and-docs-refresh](slides-and-docs-refresh/spec.md) - Chapter 5: Slides, Sphinx Documentation, and Knowledge Bundle Refresh (planned)
+- [coffee-agent-stabilization-and-hybrid-search](coffee-agent-stabilization-and-hybrid-search/spec.md) - Master PRD: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment (done)
+  - [native-ai-runtime-and-protocols](native-ai-runtime-and-protocols/spec.md) - Chapter 1: Native AI Runtime, Persistence, Streaming & Endpoint Stabilization (done)
+  - [oracle-26ai-hybrid-rrf-search](oracle-26ai-hybrid-rrf-search/spec.md) - Chapter 2: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing (done)
+  - [chat-grounded-routes-and-tools](chat-grounded-routes-and-tools/spec.md) - Chapter 3: Grounded Route Composers & Closure-Bound Tools (done)
+  - [platform-settings-di-and-queues](platform-settings-di-and-queues/spec.md) - Chapter 4: Settings, DI, Services, LitestarMCP 0.15, Security & Oracle Queues (done)
+  - [docs-slides-and-verification-gates](docs-slides-and-verification-gates/spec.md) - Chapter 5: Slides, Sphinx Documentation, and Knowledge Bundle Refresh (done)
 
 ## Active Roadmap: Google Cloud Knowledge Catalog + Oracle 26ai `ANNOTATIONS` Grounding & Demo
 

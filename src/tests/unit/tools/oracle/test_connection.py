@@ -52,7 +52,7 @@ def test_connection_config_matches_database_settings_defaults(monkeypatch: pytes
     assert config.get_dsn() == settings.DSN
 
 
-def test_connection_tester_uses_wallet_directory_as_config_dir(monkeypatch: object, tmp_path: Path) -> None:
+def test_connection_tester_uses_wallet_directory_as_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """TNS aliases require config_dir in addition to wallet_location/TNS_ADMIN."""
     wallet_dir = tmp_path / "tns"
     wallet_dir.mkdir()

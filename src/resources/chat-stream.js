@@ -342,6 +342,11 @@ const readEventStream = async (response) => {
   }
 }
 
+const csrfHeader = () => {
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content")
+  return token ? { "x-csrftoken": token } : {}
+}
+
 export const handleChatSubmit = async (form) => {
   const input = form.elements.namedItem("message")
   if (!(input instanceof HTMLInputElement)) {
@@ -368,7 +373,7 @@ export const handleChatSubmit = async (form) => {
     const response = await fetch(form.action, {
       method: "POST",
       body: formData,
-      headers: { Accept: "text/event-stream" },
+      headers: { Accept: "text/event-stream", ...csrfHeader() },
     })
     if (!response.ok) {
       throw new Error(`Chat failed with status ${response.status}`)
@@ -387,7 +392,10 @@ export const handleChatSubmit = async (form) => {
 }
 
 export const handleClearChat = () => {
-  fetch("/api/chat/session/clear", { method: "POST", headers: { Accept: "application/json" } })
+  fetch("/api/chat/session/clear", {
+    method: "POST",
+    headers: { Accept: "application/json", ...csrfHeader() },
+  })
     .then((response) => {
       if (!response.ok) {
         throw new Error(`Clear chat failed with status ${response.status}`)

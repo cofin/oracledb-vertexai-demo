@@ -5,12 +5,18 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
+
+from litestar import Litestar
+
+from app.ioc import make_container
+from app.lib.di import LitestarProvider, setup_dishka
+from app.lib.settings import get_settings
+from app.server.core import ApplicationCore
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-
-    from litestar import Litestar
 
 __all__ = ("app", "create_app")
 
@@ -19,15 +25,6 @@ app: Litestar
 
 def create_app() -> Litestar:
     """Create and configure the Litestar ASGI application."""
-    from contextlib import asynccontextmanager
-
-    from litestar import Litestar
-
-    from app.ioc import make_container
-    from app.lib.di import LitestarProvider, setup_dishka
-    from app.lib.settings import get_settings
-    from app.server.core import ApplicationCore
-
     settings = get_settings()
     container = make_container(LitestarProvider())
 

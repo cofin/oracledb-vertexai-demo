@@ -9,10 +9,13 @@ import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, cast
 
+from litestar_queues import QueueConfig, WorkerConfig, WorkerPlacement
+from litestar_queues.backends.sqlspec import SQLSpecBackendConfig, SQLSpecWorkerWakeupConfig
+
+from app.lib.settings._database import DatabaseSettings
 from app.lib.settings._env import _env_bool, _env_float, _env_int
 
 if TYPE_CHECKING:
-    from litestar_queues import QueueConfig, WorkerPlacement
     from sqlspec.adapters.oracledb import OracleAsyncConfig
 
 __all__ = ("QueueBackendMode", "QueueExecutionMode", "QueueSettings", "QueueWakeupMode")
@@ -20,32 +23,6 @@ __all__ = ("QueueBackendMode", "QueueExecutionMode", "QueueSettings", "QueueWake
 QueueBackendMode = Literal["sqlspec", "memory"]
 QueueExecutionMode = Literal["asgi", "standalone", "immediate", "none"]
 QueueWakeupMode = Literal["polling", "oracle_aq"]
-
-
-def _resolve_queue_backend() -> QueueBackendMode:
-    """Resolve the queue storage backend from environment variables."""
-    if _env_bool("ORACLE_QUEUE_IN_MEMORY", False):
-        return "memory"
-    raw = os.getenv("QUEUE_BACKEND", "sqlspec").strip().lower()
-    if raw == "memory":
-        return "memory"
-    return "sqlspec"
-
-
-def _resolve_execution_backend() -> QueueExecutionMode:
-    """Resolve the worker execution mode from environment variables."""
-    raw = os.getenv("QUEUE_EXECUTION_BACKEND", "asgi").strip().lower()
-    if raw in {"asgi", "standalone", "immediate", "none"}:
-        return cast("QueueExecutionMode", raw)
-    return "asgi"
-
-
-def _resolve_wakeup_mode() -> QueueWakeupMode:
-    """Resolve the worker wakeup transport mode from environment variables."""
-    raw = os.getenv("QUEUE_WAKEUP_MODE", "polling").strip().lower()
-    if raw == "oracle_aq":
-        return "oracle_aq"
-    return "polling"
 
 
 @dataclass(frozen=True)
@@ -56,11 +33,29 @@ class QueueSettings:
     """Enable background task queue processing."""
     IN_MEMORY: bool = field(default_factory=lambda: _env_bool("ORACLE_QUEUE_IN_MEMORY", False))
     """Force in-memory queue storage instead of Oracle SQLSpec persistence."""
-    BACKEND: QueueBackendMode = field(default_factory=_resolve_queue_backend)
+    BACKEND: QueueBackendMode = field(
+        default_factory=lambda: (
+            "memory"
+            if _env_bool("ORACLE_QUEUE_IN_MEMORY", False)
+            or os.getenv("QUEUE_BACKEND", "sqlspec").strip().lower() == "memory"
+            else "sqlspec"
+        )
+    )
     """Queue storage backend ('sqlspec' or 'memory')."""
-    EXECUTION_BACKEND: QueueExecutionMode = field(default_factory=_resolve_execution_backend)
+    EXECUTION_BACKEND: QueueExecutionMode = field(
+        default_factory=lambda: (
+            cast("QueueExecutionMode", raw)
+            if (raw := os.getenv("QUEUE_EXECUTION_BACKEND", "asgi").strip().lower())
+            in {"asgi", "standalone", "immediate", "none"}
+            else "asgi"
+        )
+    )
     """Worker placement mode ('asgi', 'standalone', or 'none')."""
-    WAKEUP_MODE: QueueWakeupMode = field(default_factory=_resolve_wakeup_mode)
+    WAKEUP_MODE: QueueWakeupMode = field(
+        default_factory=lambda: (
+            "oracle_aq" if os.getenv("QUEUE_WAKEUP_MODE", "polling").strip().lower() == "oracle_aq" else "polling"
+        )
+    )
     """Worker wakeup transport ('polling' or 'oracle_aq')."""
     CONCURRENCY: int = field(default_factory=lambda: _env_int("QUEUE_CONCURRENCY", 4))
     """Maximum concurrent tasks executed by the worker."""
@@ -120,9 +115,6 @@ class QueueSettings:
         Returns:
             Configured ``QueueConfig`` for ``QueuePlugin``.
         """
-        from litestar_queues import QueueConfig, WorkerConfig
-        from litestar_queues.backends.sqlspec import SQLSpecBackendConfig, SQLSpecWorkerWakeupConfig
-
         effective_backend = self.backend
         effective_execution: Literal["local", "immediate"] = (
             "immediate" if self.execution_backend == "immediate" else "local"
@@ -149,9 +141,7 @@ class QueueSettings:
             )
 
         if sqlspec_config is None:
-            from app.lib.settings import get_settings
-
-            sqlspec_config = get_settings().db.get_queue_config()
+            sqlspec_config = DatabaseSettings().get_queue_config()
 
         transport = "txeventq" if self.wakeup_mode == "oracle_aq" else "polling"
         backend_config = SQLSpecBackendConfig(

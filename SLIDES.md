@@ -1,228 +1,232 @@
-# How the Cymbal Coffee Native AI & Hybrid Search Pipeline Works
+# How the Cymbal Coffee Demo Works
 
-> A walkthrough of the Cymbal Coffee architecture: Litestar → single-query
-> Oracle 26ai Hybrid RRF routing & retrieval → deterministic grounded composers
-> & native `AgentRuntime` (`google-genai`) → Oracle-backed sessions, MCP/A2A
-> protocols, and `litestar-queues`. Code references point at
-> `src/app/domain/chat/`, `src/app/domain/ai/`, and `src/app/db/sql/`.
+> Architecture notes for Oracle DBAs: how a chat request moves from the browser
+> through Oracle 26ai (`CTXSYS.CONTEXT` text indexes + `VECTOR(3072, FLOAT32)`
+> HNSW indexes) and Vertex AI (`gemini-embedding-2` and `Gemini 3.8 Flash`).
+> Code paths below are relative to `src/app/`.
 
 ---
 
-## Slide 0 — The whole turn at a glance
+## Slide 0 — Request flow for one chat turn
 
 ```text
 Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
-                                              │ validate msg/persona, read opt-in coords
-                                              │ derive (user_id, session_id)
+                                              │ validate input, read opt-in lat/lng
+                                              │ map cookie → (user_id, session_id)
                                               ▼
                               AgentOrchestrationService.stream_conversation_turn
        ┌──────────────────────────────────────┼────────────────────────────────────────┐
        ▼                                      ▼                                        ▼
-  Response-cache check          Single-Query Oracle 26ai Hybrid RRF            Oracle AI Session
-  (skipped if coords)           `hybrid-search-turn` + `hybrid-term-hits`      (`agent_session` /
-       │ hit → yield final      1 embedding + 1 SQL round trip (~15–25 ms)      `agent_event`)
-       │                        fuses BM25-style CONTAINS/SCORE + HNSW vector
-       └──────────────────────► Route + Product & Store Candidates + Term Hits
+  Response-cache lookup         One hybrid SQL query in Oracle 26ai           Session tables
+  (skipped if lat/lng set)      `hybrid-search-turn` + `hybrid-term-hits`     (`agent_session`,
+       │ hit → return cached     1 embedding + 1 SQL call (~15–25 ms)          `agent_event`)
+       │                         combines Oracle Text SCORE + vector distance
+       └──────────────────────► Picks route + top products/stores + term hits
                                               │
         ┌──────────────┬───────────────┬──────┴─────────┬──────────────────────┐
         ▼              ▼               ▼                ▼                      ▼
    PRODUCT_RAG   STORE_LOCATION  PRODUCT_AVAIL    ORDER_STATUS         GENERAL_CONVERSATION
-   (grounded +    (grounded +     (grounded +      (explicit            → Native AgentRuntime
-    off-menu       distance/maps)  inventory SQL)   unsupported)          (`Gemini 3.8 Flash`
-    term_hits)                                                             + 5 closure tools)
-        │              │               │                │                      │
+   (SQL rows →    (SQL rows →     (SQL rows →      (static notice:      (Gemini 3.8 Flash
+    Python text)   Python text)    Python text)     not implemented)     + 5 parameterized
+        │              │               │                │                SQL tool functions)
         └──────────────┴───────────────┴────────────────┴──────────────────────┘
                                               ▼
-                     AgentStreamService → SSE frames (`session`, `tool_call`,
-                     `tool_end`, `delta`, `ping`, `final` with full telemetry)
+                     Server-Sent Events (`session`, `tool_call`, `tool_end`,
+                     `delta`, `ping`, `final` with SQL execution timings)
 ```
 
 ---
 
-## Slide 1 — One chat turn, one SSE stream
+## Slide 1 — What a vector is, in Oracle terms
 
-**The shape of the system**
+**Before looking at the app code, here is how the AI pieces map to Oracle 26ai:**
 
-- Single streaming endpoint: `POST /api/chat/stream` → returns a
-  `ServerSentEvent` stream (`domain/chat/controllers/_chat.py`)
-- Structured wire frames (`AgentStreamService` in `domain/ai/runtime/_stream.py`):
-  - `session` → establishes `session_id` and `turn_id`
-  - `tool_call` / `tool_end` → live tool invocation progress
-  - `delta` → incremental token chunks
-  - `ping` → 5-second keep-alive frames
-  - `final` → complete `ChatResponse` payload (`answer`, `intent_detected`,
-    `search_metrics`, `sql_phases`, `from_cache`, `embedding_cache_hit`,
-    `store_results`, `inventory_results`, `map_actions`, `location_context`)
-
-> Every turn—whether served from the response cache, answered by a deterministic
-> grounded route, or streamed from the multi-step `AgentRuntime`—emits the exact
-> same SSE frame contract consumed by `chat-stream.js` and `telemetry.js`.
+- **Embeddings (`VECTOR(3072, FLOAT32)`):** An embedding model (`gemini-embedding-2`) takes a string—like a product description or a customer's question—and returns an array of 3,072 32-bit floats (`~12 KB` per row). Texts about similar topics produce arrays that point in a similar direction, which Oracle compares using `VECTOR_DISTANCE(col, :query_vec, COSINE)`.
+- **Vector indexes (`INMEMORY NEIGHBOR GRAPH`):** Scanning `VECTOR_DISTANCE` across a table is a full scan. Oracle 26ai's HNSW vector index is an in-memory graph stored in the SGA's Vector Pool (sized by `vector_memory_size`).
+- **Getting the optimizer to use the index:** Just as a B-tree index requires a matching predicate, Oracle only uses an HNSW vector index when the query orders by `VECTOR_DISTANCE(...)` and includes `FETCH APPROX FIRST :k ROWS ONLY`. Without `FETCH APPROX`, Oracle performs an exact full table scan.
+- **Why we still use Oracle Text (`CTXSYS.CONTEXT`):** Vector distance measures broad topic similarity, not exact words. It is great for *"something bright and citrusy for a morning pour-over,"* but poor at exact strings like `"decaf"`, SKU codes, ZIP codes (`"75208"`), or brand names. Oracle Text (`CONTAINS` / `SCORE`) already handles exact words well, so we run both in the same SQL statement.
 
 ---
 
-## Slide 2 — From browser session to native Oracle AI session
+## Slide 2 — One HTTP endpoint, streamed back as Server-Sent Events
 
-**Durable session & event persistence (`domain/ai/runtime/_store.py`)**
+**`POST /api/chat/stream` (`domain/chat/controllers/_chat.py`)**
 
-- Litestar assigns each browser an anonymous cookie session
-- At the controller boundary, `session_id` and `user_id = f"web:{session_id}"`
-  bridge the browser session into the AI runtime
-- Conversation state and ordered turn events live in **Oracle 26ai** via
-  `OracleSessionStore` and `OracleEventStore` (`db/sql/ai-runtime.sql`):
-  - `agent_session` — session metadata, persona/state JSON CLOB, timestamps
-  - `agent_event` — monotonically sequenced (`UNIQUE (session_id, seq)`),
-    cascade-deleted (`ON DELETE CASCADE`) user, model, and tool events
-- Each store operation opens a short-lived session from the app-scoped `SQLSpec`
-  manager and explicitly commits (`await driver.commit()`), preventing
-  interleaved streaming transactions
+- The browser opens one HTTP POST and reads a stream of JSON frames (`domain/ai/runtime/_stream.py`):
+  - `session` — returns the `session_id` and `turn_id`
+  - `tool_call` / `tool_end` — emitted when the model runs a database lookup function
+  - `delta` — chunks of response text as they arrive
+  - `ping` — 5-second keep-alive so load balancers do not drop idle connections
+  - `final` — the finished `ChatResponse` payload, including `sql_phases` (every named SQL query that ran, its bind summary, row count, and elapsed milliseconds)
+- Whether a request is answered from the response cache, formatted directly from SQL rows, or handled by the LLM, the browser receives the same `final` event structure.
 
 ---
 
-## Slide 3 — Why One Hybrid RRF Query Lets Us Skip the Classifier Search
+## Slide 3 — Storing conversation history without holding transactions open
 
-**Replacing "Classify-Then-Search" with Single-Query Hybrid RRF (`domain/chat/services/_router.py`)**
+**`OracleSessionStore` and `OracleEventStore` (`domain/ai/runtime/_store.py`, `db/sql/ai-runtime.sql`)**
 
-Previously, every uncached chat turn made **two serial steps** before composing an answer:
-1. An LLM intent-classification call (`Gemini Flash-Lite` enum output, ~300–450 ms)
-2. A separate Oracle vector search (`vector-search-products`) or store query
+- The web framework gives each browser an anonymous cookie session. The chat controller maps that cookie to `session_id` and `user_id = f"web:{session_id}"`.
+- Conversation history is stored in two regular Oracle tables (`db/migrations/0002_native_ai_and_hybrid_rrf.sql`):
+  - `agent_session` — session metadata and JSON state (`CLOB CHECK (state IS JSON)`)
+  - `agent_event` — ordered turn history (`UNIQUE (session_id, seq)`, `ON DELETE CASCADE`) recording user messages, model replies, and tool calls/results
+- **Transaction boundary:** LLM calls over the network take hundreds of milliseconds to several seconds. You never want a database session holding an open transaction or row locks while waiting on an external API. Each store method borrows a connection from the pool, runs its `MERGE` or `INSERT`, commits immediately (`await driver.commit()`), and returns the connection to the pool before any model call begins.
 
-Now, **one query embedding** (`gemini-embedding-2`, 3072 dims, cached in `embedding_cache`) drives **one Oracle 26ai Hybrid RRF SQL statement (`hybrid-search-turn`)** that simultaneously ranks route exemplars (`chat_route`), products (`product`), and stores (`coffee_store`):
+---
 
-| Dimension | Old: LLM Classifier + Vector Search | New: Single-Query Oracle 26ai Hybrid RRF |
+## Slide 4 — Replacing a separate LLM router call with one SQL query
+
+**`HybridRouteResolver` (`domain/chat/services/_router.py`)**
+
+Earlier versions of this app made two sequential trips before answering a question:
+
+1. Call a smaller LLM (`Flash-Lite`) to classify the user's question into one of 5 route labels (`~300–450 ms` network round trip).
+2. Run a separate vector search or store lookup in Oracle.
+
+We replaced that first LLM call by putting our 5 route descriptions into a small lookup table (`chat_route`, 5 rows with both text keywords and a 3,072-float embedding) and querying `chat_route`, `product`, and `store` together in a single SQL statement (`hybrid-search-turn`):
+
+| Step | Previous two-step pipeline | Single hybrid SQL query |
 |---|---|---|
-| **Network round trips before answer** | 1 Vertex embedding + 1 LLM call + 1–2 SQL queries | **1 Vertex embedding (cached) + 1 Hybrid SQL query** |
-| **Routing + retrieval latency** | ~350–500 ms | **~15–25 ms inside Oracle 26ai** |
-| **Exact token matching** (`"decaf"`, `"75208"`, `"Bishop Arts"`, SKUs) | Weak (dense embeddings blur exact tokens & negations) | **Strong** — BM25-style lexical ranking via Oracle Text `CONTAINS`/`SCORE` (`MULTI_COLUMN_DATASTORE`) |
-| **Semantic vibe matching** (`"bright citrus morning pour-over"`) | Strong (`VECTOR_DISTANCE` cosine similarity) | **Strong** — HNSW `ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX` |
-| **Off-menu brand detection** (`"Do you carry Folgers?"`) | Required a second constrained LLM call | **In-DB lexical term hits (`hybrid-term-hits`)** proves `folgers = 0` hits in the same turn |
+| **Calls before composing answer** | 1 embedding call + 1 LLM classifier call + 1–2 SQL queries | 1 embedding call (cached in `embedding_cache`) + 1 SQL query |
+| **Routing + retrieval time** | ~350–500 ms (dominated by the extra LLM network call) | ~15–25 ms inside Oracle 26ai (example local timings) |
+| **Exact terms** (`"decaf"`, `"75208"`, `"Bishop Arts"`) | Handled poorly by vector search alone | Matched by `CTXSYS.CONTEXT` (`MULTI_COLUMN_DATASTORE`) via `CONTAINS` / `SCORE` |
+| **Descriptive questions** (`"low-acid dark roast"`) | Matched by `VECTOR_DISTANCE` | Matched by HNSW `ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX` |
+| **Off-menu brand check** (`"Do you sell Folgers?"`) | Needed another LLM call to detect the off-menu brand | Checked in the same database turn with `CONTAINS` over `JSON_TABLE` (`hybrid-term-hits`) |
 
-> **Note on Oracle 26ai Lexical Scoring & Sparse Vectors:** Oracle Text `CONTAINS(...)` / `SCORE(1)` uses an inverse-frequency TF-IDF scoring formula (0–100) over `CTXSYS.CONTEXT` indexes—providing **BM25-style lexical ranking** directly on relational columns (`MULTI_COLUMN_DATASTORE` across `name`, `description`, `category`, and store `city`/`state`/`postal_code`). Oracle AI Database 26ai also supports `VECTOR(..., SPARSE)` for client-generated BM25/SPLADE sparse vectors when external sparse encoders are used.
+> **A note on Oracle Text scoring:** Oracle Text `CONTAINS(...)` / `SCORE(...)` computes an inverse-frequency TF-IDF score (`0–100`) over `CTXSYS.CONTEXT` indexes. It serves the same role here that BM25 plays in search engines: rewarding exact, rare word matches across `name`, `description`, `category`, and store `city`/`state`/`zip`.
 
 ---
 
-## Slide 4 — Inside the Single-Query Hybrid RRF SQL
+## Slide 5 — How the hybrid RRF query works
 
-**Reciprocal Rank Fusion (`db/sql/hybrid.sql` — `hybrid-search-turn`)**
+**`hybrid-search-turn` (`db/sql/hybrid.sql`)**
 
-Oracle 26ai fuses the **lexical rank** ($r_{\text{lex}}$ from `CONTAINS` / `SCORE(1)`) and the **HNSW vector rank** ($r_{\text{vec}}$ from `VECTOR_DISTANCE(..., COSINE) FETCH APPROX`) across `chat_route`, `product`, and `coffee_store` in a single statement using Reciprocal Rank Fusion ($k = 60$):
+Oracle Text `SCORE(...)` returns an integer from `1` to `100`, while `1 - VECTOR_DISTANCE(..., COSINE)` returns a float from `-1.0` to `1.0`. Because those two scales are not directly comparable, you cannot just add the raw scores together without one dominating the other.
 
-$$\text{RRF}(d) = \frac{1}{k + r_{\text{lex}}(d)} + \frac{1}{k + r_{\text{vec}}(d)}, \quad k = 60$$
+Instead, we rank each list with `ROW_NUMBER()` and combine the **positions** using Reciprocal Rank Fusion (RRF):
+
+$$\text{RRF}(d) = \frac{1}{60 + r_{\text{lex}}(d)} + \frac{1}{60 + r_{\text{vec}}(d)}$$
+
+- **Why the `60` is there:** Without a constant offset, rank #1 (`1/1 = 1.0`) is worth ten times rank #10 (`1/10 = 0.1`), so a single noisy #1 match in one list beats a row that ranked #3 in *both* lists (`1/3 + 1/3 = 0.67`). Adding `60` flattens the curve so a product that scores well in both text and vector search (`1/63 + 1/63 = 0.0317`) beats a product that only ranked #1 in one list (`1/61 + 0 = 0.0164`).
 
 ```sql
-WITH vec_products AS (
-    SELECT p.id AS entity_id,
-           ROW_NUMBER() OVER (
-               ORDER BY VECTOR_DISTANCE(p.embedding, TO_VECTOR(:query_vector, 3072, FLOAT32), COSINE)
-           ) AS vec_rank,
-           ROUND(1 - VECTOR_DISTANCE(p.embedding, TO_VECTOR(:query_vector, 3072, FLOAT32), COSINE), 4) AS similarity_score
+WITH prod_lex AS (
+    SELECT p.id, p.name, p.description, p.category, p.price,
+           CASE WHEN p.in_stock THEN 1 ELSE 0 END AS in_stock,
+           SCORE(2) AS lexical_score,
+           ROW_NUMBER() OVER (ORDER BY SCORE(2) DESC, p.id) AS lexical_rank
     FROM product p
-    WHERE p.embedding IS NOT NULL AND p.in_stock = 1
-    ORDER BY VECTOR_DISTANCE(p.embedding, TO_VECTOR(:query_vector, 3072, FLOAT32), COSINE)
-    FETCH APPROX FIRST :vec_k ROWS ONLY
+    WHERE :has_text_query = 1
+      AND CONTAINS(p.description, :text_query, 2) > 0
+    FETCH FIRST 15 ROWS ONLY
 ),
-lex_products AS (
-    SELECT p.id AS entity_id,
-           SCORE(1) AS lex_score,
-           ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC, p.id ASC) AS lex_rank
+prod_vec AS (
+    SELECT p.id, p.name, p.description, p.category, p.price,
+           CASE WHEN p.in_stock THEN 1 ELSE 0 END AS in_stock,
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vector_similarity,
+           ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE), p.id) AS vector_rank
     FROM product p
-    WHERE :has_text_query = 1 AND p.in_stock = 1
-      AND CONTAINS(p.search_text, :text_query, 1) > 0
-    FETCH FIRST :lex_k ROWS ONLY
+    WHERE p.embedding IS NOT NULL
+    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+    FETCH APPROX FIRST 15 ROWS ONLY
 )
-SELECT COALESCE(v.entity_id, l.entity_id) AS entity_id,
-       (NVL(1.0 / (:rrf_k + l.lex_rank), 0) + NVL(1.0 / (:rrf_k + v.vec_rank), 0)) AS rrf_score
-FROM vec_products v
-FULL OUTER JOIN lex_products l ON v.entity_id = l.entity_id;
+SELECT COALESCE(l.id, v.id) AS entity_id,
+       (CASE WHEN l.lexical_rank IS NOT NULL THEN 1.0 / (:rrf_k + l.lexical_rank) ELSE 0 END) +
+       (CASE WHEN v.vector_rank IS NOT NULL THEN 1.0 / (:rrf_k + v.vector_rank) ELSE 0 END) AS rrf_score
+FROM prod_lex l
+FULL OUTER JOIN prod_vec v ON l.id = v.id
+ORDER BY rrf_score DESC
+FETCH FIRST :limit ROWS ONLY;
 ```
 
-- **Why `FETCH APPROX` matters:** Ordering directly by `VECTOR_DISTANCE(..., COSINE)` with `FETCH APPROX FIRST :vec_k ROWS ONLY` activates the Oracle 26ai `INMEMORY NEIGHBOR GRAPH` (HNSW) index instead of falling back to a full table scan.
-- **Injection-safe Oracle Text queries:** `build_oracle_text_query()` wraps every sanitized token in `{token}` literal braces and joins them with `ACCUM` (`{decaf} ACCUM {espresso}`), neutralizing Oracle Text operators (`SYN`, `NEAR`, `FUZZY`, `%`) in user input.
+- **Escaping user input for `CONTAINS`:** Oracle Text has its own query grammar (`AND`, `OR`, `NOT`, `NEAR`, `FUZZY`, `SYN`, `%`). Passing raw user input to `CONTAINS` can raise `DRG-50901` syntax errors. `build_oracle_text_query()` strips punctuation and reserved words, wraps each token in literal braces `{token}`, and joins them with `ACCUM` (e.g., `{decaf} ACCUM {espresso}`).
 
 ---
 
-## Slide 5 — Native `AgentRuntime` & Per-Request Closure-Bound Tools
+## Slide 6 — Grounded SQL answers vs. open-ended LLM turns
 
-**Skipping static ADK graphs for a native `google-genai` runtime (`domain/ai/runtime/_loop.py`)**
+**Why product prices and store inventory cannot be hallucinated**
 
-When the hybrid router selects `GENERAL_CONVERSATION`, execution enters our lightweight, re-entrant `AgentRuntime`:
+When `hybrid-search-turn` comes back, 4 of the 5 routes are handled deterministically by `GroundedRouteService` (`domain/chat/services/_grounded.py`):
 
-- **Single aggregated model event per step:** `GeminiModelClient.generate_stream` yields `partial=True` token chunks for low-latency SSE `delta` frames, then `AgentRuntime.run_stream` emits one `partial=False` `AgentEvent` carrying the full text, tool calls, `usage_metadata`, and base64-encoded Gemini 3 `thought_signature` + `call_id`s
-- **5 grounded tools bound per turn (`domain/chat/services/_tools.py`):**
-  - `search_products` (Oracle 26ai Hybrid RRF product search)
-  - `get_product_details` (catalog lookup by name or ID)
-  - `find_nearby_stores` (Haversine distance + city/ZIP search + Google Maps links)
-  - `check_product_availability` (store-by-store `store_product_inventory` join)
-  - `check_order_status` (explicit unsupported stub)
-- Each tool closure captures the request-scoped Dishka services and `TurnTelemetryState`, recording every executed SQL statement (`sql_phases`) for the frontend telemetry drawer
-
----
-
-## Slide 6 — Multi-Protocol Surface & Oracle 26ai Background Queues
-
-**One domain layer powering Web SSE, MCP, A2A, and `litestar-queues`**
-
-- **Model Context Protocol (`LitestarMCP` 0.15 at `POST /mcp`):**
-  - `CoffeeMCPController` exposes `search_coffee_products`, `find_coffee_stores`, and `check_coffee_inventory`
-  - `CoffeeSkillController` and `CoffeePromptController` publish structured agent skills and prompt templates
-- **Agent-to-Agent Protocol (`LitestarA2A` at `POST /a2a` & `/.well-known/agent-card.json`):**
-  - `CoffeeAgentExecutor` reuses the app-scoped Dishka container and `OwnerScopedTaskStore` with deterministic caller identity and `X-Session-ID` continuity
-- **Oracle 26ai Background Task Queues (`litestar-queues[sqlspec]>=0.12.0`):**
-  - Uses Oracle `FOR UPDATE SKIP LOCKED` via a dedicated `DatabaseSettings.get_queue_config()` pool (`session_key="queue_db_session"`) so `SQLSpecBackend`'s `fetch_lobs=False` setting never mutates `config.db`'s `enable_AutoLob=True`
-  - Runs `@task("system.cache_cleanup", cron="*/15 * * * *")` and `@task("products.embed_missing")` (`coffee bulk-embed` / `coffee worker run`)
-
----
-
-## Slide 7 — State, Caching, Telemetry & Privacy
-
-**What persists, what's measured, what's protected**
-
-- **Persisted in Oracle 26ai:** `agent_session` and `agent_event` conversation history; `response_cache`; `embedding_cache`; per-turn `search_metric` telemetry; and `litestar-queues` task tables
-- **Live SQL phase telemetry:** Every turn records `sql_phases` (`hybrid-search-turn`, `hybrid-term-hits`, `hybrid-search-products`, store/inventory queries) with execution time, row count, and masked binds for the UI's "What Queries Ran" inspector
-- **Coordinate privacy by construction:** Browser geolocation coordinates are opt-in, request-scoped, masked as `<REQUEST_COORDINATES>` in telemetry, never written to `agent_event` or logs, and automatically bypass `response_cache`
-
----
-
-## Appendix A — What's deterministic vs. LLM-written
-
-| Stage | Engine | Free-form LLM text? |
+| Route | How the reply is built | Calls Gemini? |
 |---|---|---|
-| Turn routing & candidate retrieval | **Oracle 26ai Hybrid RRF (`hybrid-search-turn`)** | **No** (single SQL query over `chat_route`, `product`, `coffee_store`) |
-| Off-menu token verification | **Oracle Text `JSON_TABLE` + `CONTAINS` (`hybrid-term-hits`)** | **No** (exact per-token catalog hit counts) |
-| `PRODUCT_RAG` answer | Deterministic grounded formatter (`_grounded.py`) over RRF candidates + `term_hits` | **No** (facts, prices, and off-menu pivot built directly from Oracle rows) |
-| `STORE_LOCATION` answer | Deterministic formatter over store/distance rows + Maps URLs | **No** |
-| `PRODUCT_AVAILABILITY` answer | Deterministic formatter over `store_product_inventory` rows | **No** |
-| `ORDER_STATUS` answer | Explicit unsupported response | **No** |
-| `GENERAL_CONVERSATION` answer | Native `AgentRuntime` (`Gemini 3.8 Flash` + 5 grounded tools) | **Yes** |
+| `PRODUCT_RAG` | Python formats the top RRF product rows (with constrained ID selection or deterministic off-menu fallback) | Constrained ID selector only (0 for off-menu) |
+| `STORE_LOCATION` | Python formats `store` rows, Haversine distance, and Google Maps links | No |
+| `PRODUCT_AVAILABILITY` | Python formats `store_product_inventory` join rows (`quantity_available`, `stock_status`) | No |
+| `ORDER_STATUS` | Returns a static message that order tracking is not part of the demo | No |
+| `GENERAL_CONVERSATION` | Runs `AgentRuntime` (`Gemini 3.8 Flash`) with 5 parameterized SQL tool functions | **Yes** |
 
-**Takeaway:** Routing, candidate retrieval, and off-menu brand detection all happen in **one Oracle 26ai database turn** without an extra LLM classifier or post-generation guard call. The LLM is invoked only when open-ended conversation or multi-step tool reasoning is needed.
+When a question is open-ended (`GENERAL_CONVERSATION`), it runs `AgentRuntime` (`domain/ai/runtime/_loop.py`). The model cannot write arbitrary SQL; it can only ask the application to invoke 5 predefined Python functions (`domain/ai/services/_tools.py`):
+
+- `search_products` — runs `hybrid-search-products` (or `vector-search-products`)
+- `get_product_details` — runs `get-product-by-id` or lexical lookup
+- `find_nearby_stores` — runs `list-stores` or `find-stores-by-location`
+- `check_product_availability` — runs `find-stores-with-product-inventory` or `find-product-availability-by-query`
+- `check_order_status` — returns the unsupported-feature notice
+
+Each function uses standard `:bind` parameters on the request's database connection and appends its execution time and row count to `sql_phases` so the UI can show the exact SQL that ran.
 
 ---
 
-## Appendix B — Off-menu / competitor handling with BM25-style `term_hits` + RRF
+## Slide 7 — Background jobs, LOB isolation, and MCP / A2A endpoints
 
-**Example: user asks `"Do you carry Folgers?"` vs `"I need something bold"`**
+**How the rest of the service connects to Oracle 26ai**
 
-### The Dense-Vector Trap
+- **Database-backed job queue (`litestar-queues`):**
+  - Instead of adding Redis or an external broker, background jobs (`products.embed_missing` for `coffee bulk-embed` and `system.cache_cleanup` every 15 minutes) use a table in Oracle 26ai polled with `FOR UPDATE SKIP LOCKED`.
+  - **Driver detail worth knowing (`get_queue_config()` in `lib/settings/_database.py`):** `python-oracledb` lets you toggle `fetch_lobs` per pool. The queue library sets `fetch_lobs=False` on its config to stream raw LOB locators, whereas our application queries rely on `enable_AutoLob=True` so `CLOB` columns arrive as plain Python `str` values. Giving the queue its own `OracleAsyncConfig` (`session_key="queue_db_session"`) keeps it from flipping `fetch_lobs` on the main application pool.
+- **External tool endpoints (`/mcp` and `/a2a`):**
+  - The same product, store, and inventory queries are also exposed over the Model Context Protocol (`POST /mcp` in `domain/ai/mcp/`) and Agent-to-Agent protocol (`POST /a2a` in `domain/ai/a2a/`), gated by `MCP_API_KEY` when configured.
 
-In 3,072-dimensional embedding space (`gemini-embedding-2`), `"Do you carry Folgers?"` and `"I need something bold"` land in the **exact same cosine similarity band (~0.65–0.72)** against Cymbal Coffee dark roasts because *Folgers is coffee*. A vector distance threshold cannot separate a valid taste preference from an off-menu brand request.
+---
 
-### How Single-Query Hybrid RRF + `hybrid-term-hits` Solves It Without an Extra LLM Call
+## Slide 8 — Caching, query telemetry, and location privacy
 
-Instead of paying for a second LLM call to guess whether the user named an off-menu brand, we let **Oracle Text lexical matching and dense vector search work together in the same database turn**:
+**What we store in Oracle and what we keep out of the database**
 
-1. **Hybrid RRF (`hybrid-search-turn`)** runs both legs at once:
-   - The **dense vector leg** (`VECTOR_DISTANCE ... FETCH APPROX`) retrieves our closest in-stock dark/medium roasts (e.g., *House Blend*, *Midnight Espresso*).
-   - The **lexical leg** (`CONTAINS(p.search_text, '{folgers}', 1)`) returns **0 rows** because `"Folgers"` appears nowhere in `product(name, description, category)`.
-2. **Per-Token Lexical Hit Check (`hybrid-term-hits`)** evaluates each content token from the user's message against the `product` Oracle Text index in a single `JSON_TABLE` query:
+- **Stored in Oracle:**
+  - `embedding_cache` — caches the 3,072-float vector for repeated search phrases so we do not re-call Vertex AI for the same text
+  - `response_cache` — caches final answers keyed by `sha256(version:model:persona:normalized_query)`
+  - `search_metric` — logs query latency, vector vs. hybrid search type, and cache hit rate for the analytics dashboard
+- **Shown in the UI telemetry drawer:**
+  - Every `final` SSE event includes `sql_phases`: the named query key, elapsed milliseconds, row count, and sanitized bind parameters
+- **Kept out of the database (browser coordinates):**
+  - If a user clicks "Share location" to find nearby stores, their latitude and longitude are used only in memory as `:lat` / `:lng` binds for that single request's distance calculation. Coordinates are replaced with `<REQUEST_COORDINATES>` in telemetry, never written to `agent_event` or logs, and bypass `response_cache` so one user's nearby store result is never served to another user.
+
+---
+
+## Appendix — Handling off-menu brands (`"Do you carry Folgers?"`) without an extra LLM call
+
+**Why pure vector search gets this wrong**
+
+If a customer asks *"I want a bold morning coffee"* and another asks *"Do you carry Folgers?"*, `gemini-embedding-2` places both questions at roughly the same cosine similarity (`~0.65–0.72`) against our dark roasts—because Folgers is coffee.
+
+If you only run vector search, you cannot tell those two questions apart with a distance cutoff:
+
+- Set the similarity cutoff around `0.60`, and *"Do you carry Folgers?"* gets answered with *"Try our House Blend!"* as if we sell Folgers or didn't read the question.
+- Raise the cutoff to `0.80`, and *"I want a bold morning coffee"* returns zero results.
+
+**How `hybrid-term-hits` solves this in SQL**
+
+Instead of making a second LLM call to check whether the user asked for a brand we don't carry, we check the user's words against the `product` Oracle Text index in the same database turn (`hybrid-term-hits` in `db/sql/hybrid.sql`):
+
+1. **Extract non-stopwords from the question:** `extract_candidate_terms()` pulls content words from the prompt (for *"Do you carry Folgers?"*, the token is `"folgers"`).
+2. **Count exact matches per word using `JSON_TABLE` + `CONTAINS`:**
+
    ```sql
-   SELECT t.term,
-          (SELECT COUNT(*) FROM product p
-           WHERE p.in_stock = 1 AND CONTAINS(p.name, t.term_query, 1) > 0) AS hit_count
-   FROM JSON_TABLE(:terms_json, '$[*]'
-       COLUMNS (term VARCHAR2(64) PATH '$.term', term_query VARCHAR2(128) PATH '$.term_query')
-   ) t;
+   SELECT jt.term AS term,
+          (SELECT COUNT(*)
+           FROM product p
+           WHERE CONTAINS(p.description, '{' || jt.term || '}') > 0) AS hit_count
+   FROM JSON_TABLE(
+       :terms_json,
+       '$[*]' COLUMNS (term VARCHAR2(128) PATH '$')
+   ) jt;
    ```
-3. **Deterministic Grounded Pivot (`compose_product_rag_answer` in `domain/chat/services/_grounded.py`)**:
-   - When a specific product/brand noun token has `term_hits[token] == 0` while vector candidates exist, the composer deterministically responds:
-     > *"We don't carry **Folgers** on our menu, but based on your interest, our closest match is **House Blend** (\$3.75) — a smooth, balanced medium roast."*
-   - When the user asks for `"decaf oat milk latte"`, `term_hits` confirms catalog matches AND the lexical RRF leg boosts exact `"decaf"` products to rank #1 above higher-vector-similarity caffeinated roasts.
+
+3. **Branch in Python (`GroundedRouteService.handle_product_rag` in `domain/chat/services/_grounded.py`):**
+   - `hybrid-search-turn` still returns our closest coffee (`House Blend`, `$3.75`) via the vector leg, while `hybrid-term-hits` tells us `folgers -> 0` rows in `product(description)` (`MULTI_COLUMN_DATASTORE` over `name`, `description`, `category`, `sku`).
+   - When the prompt asks for a specific noun that has `0` catalog hits, the formatter replies directly:
+     > *"Cymbal Coffee does not carry **Folgers**, but **House Blend** (\$3.75) is the closest menu option."*
+   - When the user asks for *"decaf oat milk latte"*, `CONTAINS` matches `"decaf"` in the catalog (`hit_count > 0`) and the RRF query boosts the decaf rows to the top of the result set.

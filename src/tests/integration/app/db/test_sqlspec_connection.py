@@ -188,11 +188,10 @@ class TestSQLSpecConnection:
             value="first",
         )
 
-        # Verify insert
         result = await driver.select_one_or_none("SELECT value FROM test_merge_tmp WHERE id = :id", id=1)
+        assert result is not None
         assert result["value"] == "first"
 
-        # Update via MERGE
         await driver.execute(
             """
             MERGE INTO test_merge_tmp t
@@ -207,8 +206,8 @@ class TestSQLSpecConnection:
             value="updated",
         )
 
-        # Verify update
         result = await driver.select_one_or_none("SELECT value FROM test_merge_tmp WHERE id = :id", id=1)
+        assert result is not None
         assert result["value"] == "updated"
 
         # Cleanup

@@ -10,16 +10,10 @@ from app.domain.system.schemas import MetricCard, MetricsCharts, MetricsSummary
 from app.domain.system.services import CacheService, MetricsService
 from app.lib.di import Inject
 
+__all__ = ("MetricsController",)
+
 _FAST_SEARCH_THRESHOLD_MS: float = 50.0
 _HIGH_CACHE_HIT_RATE_PCT: float = 80.0
-
-
-def _calculate_trend(current: float, previous: float) -> tuple[str, float]:
-    """Calculate percentage trend between two metric values."""
-    if not previous:
-        return "neutral", 0.0
-    change = ((current - previous) / previous) * 100.0
-    return ("up" if change > 0 else "down", abs(change))
 
 
 class MetricsController(PublicController):
@@ -62,3 +56,11 @@ class MetricsController(PublicController):
     async def get_chart_data(self, metrics_service: Inject[MetricsService]) -> MetricsCharts:
         """Return the Explore dashboard chart payload."""
         return await metrics_service.get_chart_data(hours=1)
+
+
+def _calculate_trend(current: float, previous: float) -> tuple[str, float]:
+    """Calculate percentage trend between two metric values."""
+    if not previous:
+        return "neutral", 0.0
+    change = ((current - previous) / previous) * 100.0
+    return ("up" if change > 0 else "down", abs(change))

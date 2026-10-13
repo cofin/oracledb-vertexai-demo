@@ -12,19 +12,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from litestar_queues.backends.sqlspec.extension import configure_queue_migration_extension
 from sqlspec.adapters.oracledb import OracleAsyncConfig
 from sqlspec.observability import LoggingConfig, ObservabilityConfig, TelemetryConfig
 
 from app.lib.settings._env import BASE_DIR, _env_bool, _env_int
 
 __all__ = ("DatabaseSettings",)
-
-
-def _resolve_agent_in_memory() -> bool:
-    """Resolve ORACLE_AGENT_IN_MEMORY with fallback to legacy ORACLE_ADK_IN_MEMORY."""
-    if os.getenv("ORACLE_AGENT_IN_MEMORY") is not None:
-        return _env_bool("ORACLE_AGENT_IN_MEMORY", True)
-    return _env_bool("ORACLE_ADK_IN_MEMORY", True)
 
 
 @dataclass(frozen=True)
@@ -48,20 +42,19 @@ class DatabaseSettings:
     """Oracle Database Port."""
     SERVICE_NAME: str = field(default_factory=lambda: os.getenv("DATABASE_SERVICE_NAME", "freepdb1"))
     """Oracle Database Service Name."""
-    DSN: str = field(
-        default_factory=lambda: os.getenv(
-            "DATABASE_DSN",
-            f"{os.getenv('DATABASE_HOST', 'localhost')}:{os.getenv('DATABASE_PORT', '1521')}/{os.getenv('DATABASE_SERVICE_NAME', 'freepdb1')}",
-        )
-    )
+    DSN: str = field(default_factory=lambda: os.getenv("DATABASE_DSN", ""))
     """Oracle Database DSN."""
     POOL_MIN_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MIN_SIZE", 5))
     """Minimum pool size."""
     POOL_MAX_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MAX_SIZE", 20))
     """Maximum pool size."""
-    AGENT_IN_MEMORY: bool = field(default_factory=_resolve_agent_in_memory)
+    AGENT_IN_MEMORY: bool = field(
+        default_factory=lambda: _env_bool("ORACLE_AGENT_IN_MEMORY", _env_bool("ORACLE_ADK_IN_MEMORY", True))
+    )
     """Enable Oracle INMEMORY for agent session/event tables when licensed."""
-    ADK_IN_MEMORY: bool = field(default_factory=_resolve_agent_in_memory)
+    ADK_IN_MEMORY: bool = field(
+        default_factory=lambda: _env_bool("ORACLE_AGENT_IN_MEMORY", _env_bool("ORACLE_ADK_IN_MEMORY", True))
+    )
     """Backward-compatible alias for AGENT_IN_MEMORY."""
     ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: _env_bool("ADK_ENABLE_MEMORY", True))
     """Backward-compatible flag for legacy memory table settings."""
@@ -89,6 +82,11 @@ class DatabaseSettings:
         default_factory=lambda: _env_bool("DATABASE_ENABLE_TELEMETRY", _env_bool("SQLSPEC_ENABLE_TELEMETRY", True))
     )
     """Enable SQLSpec OpenTelemetry spans and trace context propagation."""
+
+    def __post_init__(self) -> None:
+        """Populate DSN from HOST, PORT, and SERVICE_NAME when not explicitly provided."""
+        if not self.DSN:
+            object.__setattr__(self, "DSN", f"{self.HOST}:{self.PORT}/{self.SERVICE_NAME}")
 
     @property
     def is_autonomous(self) -> bool:
@@ -120,8 +118,6 @@ class DatabaseSettings:
         Raises:
             ValueError: If Autonomous Database is enabled without a wallet location.
         """
-        from litestar_queues.backends.sqlspec.extension import configure_queue_migration_extension
-
         pool_config = self._build_pool_config(min_sessions=self.POOL_MIN_SIZE, max_sessions=self.POOL_MAX_SIZE)
         config = OracleAsyncConfig(
             connection_config=pool_config,
@@ -134,7 +130,12 @@ class DatabaseSettings:
                 "include_extensions": ["litestar"],
             },
             extension_config={
-                "litestar": {"session_table": "app_session", "in_memory": self.LITESTAR_SESSION_IN_MEMORY},
+                "litestar": {
+                    "session_table": "app_session",
+                    "in_memory": self.LITESTAR_SESSION_IN_MEMORY,
+                    "disable_di": True,
+                    "manage_lifespan": True,
+                },
                 "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
             },
         )

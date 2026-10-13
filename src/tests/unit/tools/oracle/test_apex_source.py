@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from src.tests.support.paths import SRC_ROOT
+from tests.support.paths import SRC_ROOT
 
 APP_ROOT = SRC_ROOT / "apex" / "cymbal-coffee-ops"
 

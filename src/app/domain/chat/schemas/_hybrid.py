@@ -3,8 +3,6 @@
 
 """Hybrid RRF search and route resolution schemas for the chat domain."""
 
-from __future__ import annotations
-
 from typing import Literal
 
 import msgspec

@@ -56,11 +56,6 @@ WHERE (:q IS NULL
        OR LOWER(sku) = LOWER(:q))
   AND (:category IS NULL OR LOWER(category) = LOWER(:category));
 
--- name: list-products-for-embedding
-SELECT id, name, description
-FROM product
-ORDER BY id;
-
 -- name: get-vector-readiness
 SELECT COUNT(*) AS product_count,
        COALESCE(SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END), 0) AS embedded_product_count
@@ -115,19 +110,3 @@ FROM product
 WHERE 1 - VECTOR_DISTANCE(embedding, :query_vector, COSINE) > :threshold
 ORDER BY VECTOR_DISTANCE(embedding, :query_vector, COSINE)
 FETCH APPROX FIRST :limit ROWS ONLY;
-
--- name: list-chat-routes-for-embedding
-SELECT id, route_label, title, exemplar_text, keywords
-FROM chat_route
-ORDER BY id;
-
--- name: update-chat-route-embedding
-UPDATE chat_route
-SET embedding = :embedding,
-    updated_at = SYSTIMESTAMP
-WHERE id = :id;
-
--- name: export-chat-routes
-SELECT id, route_label, title, exemplar_text, keywords, embedding, created_at, updated_at
-FROM chat_route
-ORDER BY id;

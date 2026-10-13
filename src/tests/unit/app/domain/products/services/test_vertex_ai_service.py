@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -15,9 +16,9 @@ pytestmark = pytest.mark.anyio
 
 async def test_gemini_embedding_2_uses_prompt_instruction_not_task_type() -> None:
     embed_content = AsyncMock(return_value=SimpleNamespace(embeddings=[SimpleNamespace(values=[0.1, 0.2])]))
-    cache_service = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
+    cache_service: Any = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
     service = VertexAIService(
-        client=SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content))),
+        client=cast("Any", SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content)))),
         model="gemini-3.1-flash-lite",
         embedding_model="gemini-embedding-2",
         embedding_dimensions=3072,
@@ -27,6 +28,7 @@ async def test_gemini_embedding_2_uses_prompt_instruction_not_task_type() -> Non
     result = await service.get_text_embedding("cold brew", embedding_purpose="query")
 
     assert result == [0.1, 0.2]
+    assert embed_content.await_args is not None
     kwargs = embed_content.await_args.kwargs
     assert kwargs["model"] == "gemini-embedding-2"
     assert kwargs["contents"].startswith("Task: Generate an embedding for a search query")

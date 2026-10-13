@@ -98,11 +98,22 @@ class ProductService(OracleAsyncService):
         store_id: int | None = None,
     ) -> list[ProductMatch]:
         """Search products by HNSW cosine similarity."""
-        sql_key = "vector-search-products-by-store" if store_id is not None else "vector-search-products"
-        binds: dict[str, Any] = {"query_vector": query_embedding, "threshold": similarity_threshold, "limit": limit}
         if store_id is not None:
-            binds["store_id"] = store_id
-        return await self.driver.select(db_manager.get_sql(sql_key), **binds, schema_type=ProductMatch)
+            return await self.driver.select(
+                db_manager.get_sql("vector-search-products-by-store"),
+                query_vector=query_embedding,
+                threshold=similarity_threshold,
+                limit=limit,
+                store_id=store_id,
+                schema_type=ProductMatch,
+            )
+        return await self.driver.select(
+            db_manager.get_sql("vector-search-products"),
+            query_vector=query_embedding,
+            threshold=similarity_threshold,
+            limit=limit,
+            schema_type=ProductMatch,
+        )
 
     async def search_hybrid(
         self,

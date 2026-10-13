@@ -13,7 +13,7 @@ flowchart TD
     Q[user question] --> E[embed with gemini-embedding-2]
     E --> R[(Oracle 26ai Hybrid RRF<br/>hybrid-search-turn)]
     R --> T[(Oracle Text JSON_TABLE<br/>hybrid-term-hits)]
-    T --> G[grounded composer<br/>compose_product_rag_answer]
+    T --> G[grounded composer<br/>GroundedRouteService.handle_product_rag]
     G --> A[row-rendered<br/>grounded answer]
 ```
 
@@ -21,7 +21,7 @@ flowchart TD
 
 **1. Fuse Lexical & Vector Retrieval (`hybrid-search-turn`).** The user question
 is embedded once, and a single SQL query combines Oracle Text `CONTAINS`/`SCORE`
-(over `MULTI_COLUMN_DATASTORE` indexing `name`, `description`, `category`) with
+(over `MULTI_COLUMN_DATASTORE` indexing `name`, `description`, `category`, `sku`) with
 HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` via Reciprocal Rank Fusion
 ($k = 60$).
 
@@ -32,7 +32,7 @@ match dark roasts at ~0.68 similarity, but `term_hits["folgers"] == 0` proves
 `"Folgers"` is not on the menu—allowing the composer to explicitly pivot to
 closest in-stock alternatives without a second LLM call.
 
-**3. Render Grounded Answer (`compose_product_rag_answer`).** The final answer
+**3. Render Grounded Answer (`GroundedRouteService.handle_product_rag`).** The final answer
 is rendered directly from the returned Oracle product rows (names, prices,
 descriptions) and yielded as a grounded SSE `final` event.
 

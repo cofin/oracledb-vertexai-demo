@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,7 +14,7 @@ from tools.oracle.container import ContainerRuntime
 from tools.oracle.database import DatabaseConfig, OracleDatabase
 
 
-def _installer(*run_outputs: tuple[int, str, str]) -> tuple[ApexInstaller, MagicMock]:
+def _installer(*run_outputs: tuple[int, str, str]) -> tuple[Any, MagicMock]:
     """Build an installer whose runtime.run_command yields the queued results."""
     runtime = MagicMock(spec=ContainerRuntime)
     if len(run_outputs) == 1:
@@ -105,7 +106,7 @@ def test_exec_sysdba_runs_in_pdb_as_sysdba() -> None:
     assert "apex_release" in script
 
 
-def _orchestration_installer(*run_outputs: tuple[int, str, str]):
+def _orchestration_installer(*run_outputs: tuple[int, str, str]) -> tuple[Any, MagicMock]:
     """Installer with stage_media/provision_workspace mocked to isolate install()."""
     runtime = MagicMock(spec=ContainerRuntime)
     runtime.run_command.side_effect = list(run_outputs)
@@ -206,7 +207,7 @@ def test_install_fails_loudly_when_target_not_reached() -> None:
 
 def _exec_script(runtime: MagicMock) -> str:
     """Return the single bash -c script passed to run_command."""
-    return runtime.run_command.call_args.args[0][4]
+    return str(runtime.run_command.call_args.args[0][4])
 
 
 def test_provision_workspace_issues_ported_plsql() -> None:

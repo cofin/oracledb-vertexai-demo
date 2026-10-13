@@ -39,6 +39,10 @@ class SessionStoreProtocol(Protocol):
 class EventStoreProtocol(Protocol):
     """Protocol for ordered agent conversation event persistence."""
 
+    async def get_next_seq(self, session_id: str) -> int:
+        """Return the next monotonic event sequence number for a session."""
+        ...
+
     async def append_event(self, event: AgentEvent) -> None:
         """Persist a single AgentEvent row."""
         ...

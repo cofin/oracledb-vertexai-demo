@@ -11,14 +11,8 @@ from unittest.mock import MagicMock
 import pytest
 from click.testing import CliRunner
 from tools.oracle.cli.database import database_remove, database_start
-from tools.oracle.container import ContainerRuntime
-from tools.oracle.database import (
-    DEFAULT_IMAGE,
-    ContainerNotFoundError,
-    ContainerStartError,
-    DatabaseConfig,
-    OracleDatabase,
-)
+from tools.oracle.container import ContainerNotFoundError, ContainerRuntime
+from tools.oracle.database import DEFAULT_IMAGE, ContainerStartError, DatabaseConfig, OracleDatabase
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -150,7 +150,7 @@ async def test_orchestrator_deterministic_hybrid_route_short_circuits_agent_loop
     )
 
     orchestrator = AgentOrchestrationService(
-        runtime=AgentRuntime(model_client=_FakeModelClient()),  # type: ignore[arg-type]
+        runtime=AgentRuntime(model_client=_FakeModelClient()),
         stream_service=AgentStreamService(),
         spec_tree=get_coffee_spec_tree(),
         session_store=session_store,
@@ -205,7 +205,7 @@ async def test_orchestrator_skips_response_cache_when_location_present_and_never
     metrics_service = AsyncMock()
 
     orchestrator = AgentOrchestrationService(
-        runtime=AgentRuntime(model_client=_FakeModelClient()),  # type: ignore[arg-type]
+        runtime=AgentRuntime(model_client=_FakeModelClient()),
         stream_service=AgentStreamService(),
         spec_tree=get_coffee_spec_tree(),
         session_store=session_store,

@@ -20,7 +20,7 @@ inventory, and maps.
 - **AI & Retrieval**: Vertex AI `gemini-embedding-2` (3072 dims), single-query Oracle 26ai Hybrid RRF routing (`hybrid-search-turn` + `hybrid-term-hits`), and `Gemini 3.8 Flash` (`google-genai`) chat/tool turns.
 - **Agent runtime**: Native `domain/ai` runtime with re-entrant `AgentRuntime`, `GeminiModelClient`,
   and Oracle-backed session/event stores (`agent_session`, `agent_event`).
-- **Protocols**: `LitestarMCP` 0.15 (`POST /mcp` with `CoffeeMCPController`, `CoffeeSkillController`, `CoffeePromptController`) and `LitestarA2A` (`POST /a2a`, `GET /.well-known/agent-card.json`).
+- **Protocols**: `LitestarMCP` 0.15 (`POST /mcp` with route-level `mcp_tool=` endpoints, `CoffeeSkillController`, `CoffeePromptController`) and `LitestarA2A` (`POST /a2a`, `GET /.well-known/agent-card.json`).
 - **Queues**: `litestar-queues[sqlspec]>=0.12.0` on Oracle 26ai `FOR UPDATE SKIP LOCKED` with a dedicated LOB-isolated `DatabaseSettings.get_queue_config()` pool (`session_key="queue_db_session"`).
 - **DI**: Dishka with three modular provider modules in `src/app/ioc/` (`_database.py`, `_ai.py`, `_domain.py`).
 - **Security & Tracing**: `litestar-security` with `PublicController` (CSRF re-enabled on cookie-session POSTs, optional `MCP_API_KEY` on `/mcp` and `/a2a`) and OpenTelemetry enabled by default.
@@ -203,7 +203,7 @@ in history, cache, metrics, or logs.
 
 ### Settings
 
-Settings are modularized under `src/app/lib/settings/` (`_base.py`, `_app.py`, `_database.py`, `_ai.py`, `_vite.py`, `_maps.py`, `_mcp.py`, `_queue.py`) with cached `Settings.from_env()`.
+Settings are modularized under `src/app/lib/settings/` (`_env.py`, `_app.py`, `_server.py`, `_database.py`, `_ai.py`, `_log.py`, `_maps.py`, `_otel.py`, `_queue.py`) with cached `Settings.from_env()`.
 
 ## Testing Patterns
 

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app.config import db_manager
 from tests.support.paths import APP_ROOT, SRC_ROOT
 
 if TYPE_CHECKING:
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 SQL_DIR = APP_ROOT / "db" / "sql"
 DOMAIN_DIR = APP_ROOT / "domain"
 
-EXPECTED_FILES = ("ai-runtime.sql", "inventory.sql", "products.sql", "stores.sql", "system.sql")
+EXPECTED_FILES = ("ai-runtime.sql", "hybrid.sql", "inventory.sql", "products.sql", "stores.sql", "system.sql")
 
 _NAME_DIRECTIVE = re.compile(r"^--\s*name:\s*([a-zA-Z0-9_-]+)", flags=re.MULTILINE)
 
@@ -29,7 +30,7 @@ def _discover_named_keys() -> tuple[str, ...]:
 
 
 def _discover_service_files() -> tuple[Path, ...]:
-    files = sorted(DOMAIN_DIR.glob("*/services/services.py"))
+    files = [p for p in sorted(DOMAIN_DIR.glob("*/services/*.py")) if p.name != "__init__.py"]
     ai_store = DOMAIN_DIR / "ai" / "runtime" / "_store.py"
     if ai_store.exists():
         files.append(ai_store)
@@ -52,26 +53,25 @@ def test_sql_directory_and_files_exist() -> None:
 
 @pytest.mark.parametrize("key", EXPECTED_KEYS)
 def test_expected_named_query_loads(key: str) -> None:
-    from app.config import db_manager
-
     assert db_manager.has_sql_query(key), (
-        f"db_manager has no named query '{key}' — check src/py/app/db/sql/*.sql for `-- name: {key}`"
+        f"db_manager has no named query '{key}' — check src/app/db/sql/*.sql for `-- name: {key}`"
     )
 
 
 def test_named_query_registry_matches_get_sql_call_sites() -> None:
-    from app.config import db_manager
-
     referenced: set[str] = set()
     call_pattern = re.compile(r'get_sql\(\s*["\']([a-zA-Z0-9_-]+)["\']')
-    for service_file in SERVICE_FILES:
-        text = service_file.read_text()
+    for py_file in sorted(APP_ROOT.rglob("*.py")):
+        text = py_file.read_text()
         referenced.update(call_pattern.findall(text))
 
-    assert referenced, "expected at least one db_manager.get_sql('<key>') call in domain services"
+    assert referenced, "expected at least one db_manager.get_sql('<key>') call in src/app"
 
-    missing = [key for key in referenced if not db_manager.has_sql_query(key)]
+    missing = [key for key in sorted(referenced) if not db_manager.has_sql_query(key)]
     assert not missing, f"get_sql() references with no matching .sql definition: {missing}"
+
+    unreferenced = sorted(set(EXPECTED_KEYS) - referenced)
+    assert not unreferenced, f"Named SQL queries with no get_sql() reference in src/app: {unreferenced}"
 
 
 @pytest.mark.parametrize("service_file", SERVICE_FILES, ids=lambda p: p.relative_to(SRC_ROOT).as_posix())

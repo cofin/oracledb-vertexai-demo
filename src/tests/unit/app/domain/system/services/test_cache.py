@@ -31,6 +31,7 @@ async def test_get_cached_response_is_single_typed_select(mock_driver) -> None:
     result = await CacheService(mock_driver).get_cached_response("cache-key")
 
     assert result is cached
+    assert mock_driver.select_one_or_none.await_args is not None
     _, kwargs = mock_driver.select_one_or_none.await_args
     assert kwargs["key"] == "cache-key"
     assert kwargs["schema_type"] is ResponseCache
@@ -55,6 +56,7 @@ async def test_get_embedding_maps_full_row_to_typed_struct(mock_driver) -> None:
     result = await CacheService(mock_driver).get_embedding("dark roast", "gemini-embedding-2")
 
     assert result == [0.1, 0.2, 0.3]
+    assert mock_driver.select_one_or_none.await_args is not None
     _, kwargs = mock_driver.select_one_or_none.await_args
     assert kwargs["schema_type"] is EmbeddingCache
     mock_driver.execute.assert_awaited_once()

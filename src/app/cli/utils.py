@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from functools import wraps
 from typing import TYPE_CHECKING, Any, cast, get_type_hints
 
@@ -68,8 +69,6 @@ async def _resolve_dependencies(
     for name, type_hint in get_type_hints(func).items():
         if name == "return" or name in existing_kwargs:
             continue
-        try:
+        with contextlib.suppress(Exception):
             injected[name] = await container.get(type_hint)
-        except Exception:  # ruff: ignore[try-except-continue]
-            continue
     return injected

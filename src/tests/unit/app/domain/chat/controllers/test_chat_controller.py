@@ -75,9 +75,7 @@ async def test_stream_chat_message_passes_masked_dynamic_context() -> None:
     request.json = _json
 
     sse_response = await controller.stream_chat_message.fn(
-        controller,
-        orchestrator=_StubOrchestrator(),  # type: ignore[arg-type]
-        request=request,
+        controller, orchestrator=_StubOrchestrator(), request=request
     )
     chunks = [chunk async for chunk in sse_response.iterator]
     assert len(chunks) == 2

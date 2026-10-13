@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -57,7 +58,7 @@ def test_coffee_prompt_controller_renders_barista_and_inventory_prompts() -> Non
     assert controller.qualify_prompt_name("barista-recommendation") == "coffee/barista-recommendation"
     assert controller.qualify_prompt_name("store-inventory-check") == "coffee/store-inventory-check"
 
-    rec_messages = controller.barista_recommendation.fn(
+    rec_messages: list[Any] = controller.barista_recommendation.fn(  # type: ignore[assignment]
         controller, preference="fruity pour-over", dietary_notes="oat milk"
     )
     assert len(rec_messages) == 1
@@ -66,7 +67,9 @@ def test_coffee_prompt_controller_renders_barista_and_inventory_prompts() -> Non
     assert "fruity pour-over" in rec_dict["content"]["text"]
     assert "oat milk" in rec_dict["content"]["text"]
 
-    inv_messages = controller.store_inventory_check.fn(controller, product_name="Espresso Blend", city="Dallas")
+    inv_messages: list[Any] = controller.store_inventory_check.fn(  # type: ignore[assignment]
+        controller, product_name="Espresso Blend", city="Dallas"
+    )
     assert len(inv_messages) == 1
     inv_dict = inv_messages[0].to_mcp_dict()
     assert inv_dict["role"] == "user"
@@ -134,7 +137,7 @@ async def test_turn_budget_enforces_max_tool_calls_and_frame_conversion() -> Non
 
     budget = TurnBudget(max_turns=5, max_tool_calls=10)
     span_manager = SpanManager()
-    runtime = AgentRuntime(model_client=_LoopingModelClient(), budget=budget, span_manager=span_manager)  # type: ignore[arg-type]
+    runtime = AgentRuntime(model_client=_LoopingModelClient(), budget=budget, span_manager=span_manager)
     assert runtime.budget is budget
     assert runtime.span_manager is span_manager
 

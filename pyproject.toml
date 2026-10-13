@@ -211,53 +211,53 @@ skip-magic-trailing-comma = true
 [tool.ruff.lint]
 fixable = ["ALL"]
 ignore = [
-    "A003",    # flake8-builtins - class attribute {name} is shadowing a python builtin
-    "A005",    # flake8-builtins - module {name} shadows a Python standard-library module
-    "B008",    # flake8-bugbear - do not perform function call in argument defaults (Litestar's Dependency/Parameter idiom)
-    "B010",    # flake8-bugbear - do not call setattr with a constant attribute value
-    "D100",    # pydocstyle - missing docstring in public module
-    "D101",    # pydocstyle - missing docstring in public class
-    "D102",    # pydocstyle - missing docstring in public method
-    "D103",    # pydocstyle - missing docstring in public function
-    "D104",    # pydocstyle - missing docstring in public package
-    "D105",    # pydocstyle - missing docstring in magic method
-    "D106",    # pydocstyle - missing docstring in public nested class
-    "D107",    # pydocstyle - missing docstring in __init__
-    "D202",    # pydocstyle - no blank lines allowed after function docstring
-    "D205",    # pydocstyle - 1 blank line required between summary line and description
-    "D415",    # pydocstyle - first line should end with a period, question mark, or exclamation point
+    "builtin-attribute-shadowing",    # flake8-builtins - class attribute {name} is shadowing a python builtin
+    "stdlib-module-shadowing",    # flake8-builtins - module {name} shadows a Python standard-library module
+    "function-call-in-default-argument",    # flake8-bugbear - do not perform function call in argument defaults (Litestar's Dependency/Parameter idiom)
+    "set-attr-with-constant",    # flake8-bugbear - do not call setattr with a constant attribute value
+    "undocumented-public-module",    # pydocstyle - missing docstring in public module
+    "undocumented-public-class",    # pydocstyle - missing docstring in public class
+    "undocumented-public-method",    # pydocstyle - missing docstring in public method
+    "undocumented-public-function",    # pydocstyle - missing docstring in public function
+    "undocumented-public-package",    # pydocstyle - missing docstring in public package
+    "undocumented-magic-method",    # pydocstyle - missing docstring in magic method
+    "undocumented-public-nested-class",    # pydocstyle - missing docstring in public nested class
+    "undocumented-public-init",    # pydocstyle - missing docstring in __init__
+    "blank-line-after-function",    # pydocstyle - no blank lines allowed after function docstring
+    "missing-blank-line-after-summary",    # pydocstyle - 1 blank line required between summary line and description
+    "missing-terminal-punctuation",    # pydocstyle - first line should end with a period, question mark, or exclamation point
     "DOC",     # pydoclint - docstring content policy is too noisy for this app gate
-    "E501",    # pydocstyle line too long, handled by black
-    "PLW2901", # pylint - for loop variable overwritten by assignment target
-    "RUF012",  # Ruff-specific rule - annotated with classvar
-    "RUF067",  # Ruff-specific rule - __init__ module registry contracts are intentional
-    "ANN401",  # Dynamically typed expressions (Any)
+    "line-too-long",    # pydocstyle line too long, handled by black
+    "redefined-loop-name", # pylint - for loop variable overwritten by assignment target
+    "mutable-class-default",  # Ruff-specific rule - annotated with classvar
+    "non-empty-init-module",  # Ruff-specific rule - __init__ module registry contracts are intentional
+    "any-type",  # Dynamically typed expressions (Any)
     "FBT",     # Boolean trap
-    "PLR0913", # too many arguments
+    "too-many-arguments", # too many arguments
     "PT",      # Pytest rules
     "TD",      # Todo rules
-    "ARG001",  # ignore for now; investigate
-    "ARG002",  # ignore for now; investigate
-    "ARG003",  # ignore for now; investigate
-    "PERF203", # ignore for now; investigate
-    "PLR0912", # Too many branches
-    "ISC001",  # Implicit string concatenation
-    "COM812",  # Trailing comma
-    "PGH003",  # Blanket type ignore
-    "FA100",   # Future annotations
-    "PLC0415", # import should be at the top of the file
-    "PLR0904", # too many public methods
-    "PLR0917", # Too many positional arguments
-    "PLC2701", # Import private name
-    "PLW3201", # Bad dunder method name
-    "PLR6301", # No self use
-    "N818",    # Keep established exception names stable in this demo app
-    "BLE001",  # flake8-blind-except - resilient exception logging and fallbacks
+    "unused-function-argument",  # ignore for now; investigate
+    "unused-method-argument",  # ignore for now; investigate
+    "unused-class-method-argument",  # ignore for now; investigate
+    "try-except-in-loop", # ignore for now; investigate
+    "too-many-branches", # Too many branches
+    "single-line-implicit-string-concatenation",  # Implicit string concatenation
+    "missing-trailing-comma",  # Trailing comma
+    "blanket-type-ignore",  # Blanket type ignore
+    "future-rewritable-type-annotation",   # Future annotations
+    "import-outside-top-level", # import should be at the top of the file
+    "too-many-public-methods", # too many public methods
+    "too-many-positional-arguments", # Too many positional arguments
+    "import-private-name", # Import private name
+    "bad-dunder-method-name", # Bad dunder method name
+    "no-self-use", # No self use
+    "error-suffix-on-exception-name",    # Keep established exception names stable in this demo app
+    "blind-except",  # flake8-blind-except - resilient exception logging and fallbacks
     "TC",      # flake8-type-checking - runtime introspection for Litestar, Dishka, msgspec
-    "PLC2801", # pylint - unnecessary dunder call
-    "PLW0603", # pylint - global statement in PEP 562 modules
-    "N802",    # pep8-naming - function name should be lowercase
-    "SLF001",  # flake8-self - private member access
+    "unnecessary-dunder-call", # pylint - unnecessary dunder call
+    "global-statement", # pylint - global statement in PEP 562 modules
+    "invalid-function-name",    # pep8-naming - function name should be lowercase
+    "private-member-access",  # flake8-self - private member access
 ]
 select = ["ALL"]
 # Allow unused variables when underscore-prefixed.
@@ -286,43 +286,46 @@ split-on-trailing-comma = false
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "google.adk".msg = "Use the native app.domain.ai runtime and litestar-mcp agent primitives instead of google.adk."
+"litestar.Controller".msg = "Inherit from litestar_security.PublicController or SecureController instead of bare litestar.Controller."
 "litestar.plugins.htmx".msg = "Import HTMX primitives from litestar_htmx instead of litestar.plugins.htmx."
 "orjson".msg = "Use msgspec via app.utils.serialization instead of orjson."
+"pydantic".msg = "Use msgspec.Struct instead of pydantic."
+"pydantic.BaseModel".msg = "Use msgspec.Struct instead of pydantic.BaseModel."
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401", "D104"]
+"__init__.py" = ["unused-import", "undocumented-public-package"]
 "src/tests/*.py" = [
     "ANN",
     "ARG",
-    "D103",
-    "D104",
+    "undocumented-public-function",
+    "undocumented-public-package",
     "EM",
-    "PLR2004",
-    "PLW1514",
-    "RUF029",
-    "RUF069",
-    "S101",
-    "S108",
-    "SLF001",
+    "magic-value-comparison",
+    "unspecified-encoding",
+    "unused-async",
+    "float-equality-comparison",
+    "assert",
+    "hardcoded-temp-file",
+    "private-member-access",
     "TRY",
 ]
 "src/tests/**/*.py" = [
     "ANN",
     "ARG",
-    "D103",
-    "D104",
+    "undocumented-public-function",
+    "undocumented-public-package",
     "EM",
-    "PLR2004",
-    "PLW1514",
-    "RUF029",
-    "RUF069",
-    "S101",
-    "S108",
-    "SLF001",
+    "magic-value-comparison",
+    "unspecified-encoding",
+    "unused-async",
+    "float-equality-comparison",
+    "assert",
+    "hardcoded-temp-file",
+    "private-member-access",
     "TRY",
 ]
-"tools/*.py" = ["INP001", "ERA001", "N999"]
-"tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "INP001", "S603", "S404", "PLR0915"]
+"tools/*.py" = ["implicit-namespace-package", "commented-out-code", "invalid-module-name"]
+"tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "implicit-namespace-package", "subprocess-without-shell-equals-true", "suspicious-subprocess-import", "too-many-statements"]
 
 [tool.slotscheck]
 strict-imports = false
@@ -340,13 +343,26 @@ exclude = '''(?x)(
 ^.venv/
 )'''
 plugins = []
+show_error_codes = true
 strict = true
+warn_redundant_casts = true
 warn_unreachable = true
+warn_unused_configs = true
 
 
 [[tool.mypy.overrides]]
 ignore_errors = true
 module = ["app.db.migrations.*"]
+
+[[tool.mypy.overrides]]
+disallow_untyped_decorators = false
+module = ["app.domain.ai.mcp.*"]
+
+[[tool.mypy.overrides]]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_decorators = false
+module = ["tests.*", "tools.*"]
 
 [tool.pytest.ini_options]
 addopts = ["-ra"]
@@ -362,5 +378,9 @@ testpaths = ["src/tests"]
 [tool.pyright]
 exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
 extraPaths = ["src"]
-include = ["src/app", "src/tests"]
+include = ["src/app", "src/tests", "tools", "manage.py"]
+pythonVersion = "3.12"
 reportMissingImports = "information"
+reportMissingTypeStubs = false
+venv = ".venv"
+venvPath = "."

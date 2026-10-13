@@ -61,7 +61,7 @@ def test_log_settings_excludes_static_assets_by_default():
 
 
 def test_settings_sets_litestar_granian_env(monkeypatch):
-    """Settings should carry accelerator's server logging environment defaults."""
+    """Settings should carry the default server logging environment variables."""
     for key in (
         "LITESTAR_APP",
         "LITESTAR_APP_NAME",
@@ -82,8 +82,8 @@ def test_settings_sets_litestar_granian_env(monkeypatch):
         Settings.from_env.cache_clear()
 
 
-def test_structlog_config_uses_accelerator_style_tty_processors(monkeypatch):
-    """TTY stdlib logs should filter duplicate message fields like accelerator."""
+def test_structlog_config_uses_tty_processors(monkeypatch):
+    """TTY stdlib logs should filter duplicate message fields."""
     from app import config
     from app.lib import log as log_conf
 

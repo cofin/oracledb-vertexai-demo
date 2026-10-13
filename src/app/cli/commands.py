@@ -50,7 +50,99 @@ from app.domain.system.services import CacheService
 from app.lib.settings import Settings, get_settings
 from app.server.asgi import create_app
 
+__all__ = (
+    "bulk_embed_cmd",
+    "clear_cache_cmd",
+    "configure_apex_cmd",
+    "export_fixtures_cmd",
+    "load_fixtures_cmd",
+    "model_info_cmd",
+    "upgrade_cmd",
+    "worker_group",
+)
+
 _REGISTERED_JOBS = (embed_missing_records, cleanup_expired_cache_and_sessions)
+
+
+@cli.command(name="bulk-embed", help="Generate or refresh product embeddings with Vertex AI.")
+@click.option("--batch-size", default=50, show_default=True, help="Number of products to process per batch.")
+@click.option("--force", "-f", is_flag=True, help="Re-embed all products, even when embeddings already exist.")
+@async_inject
+async def bulk_embed_cmd(batch_size: int, force: bool, queue_service: QueueService) -> None:
+    """Generate document-purpose embeddings through the litestar-queues task pipeline."""
+    await _run_bulk_embed(batch_size=batch_size, force=force, queue_service=queue_service)
+
+
+@cli.command(name="clear-cache", help="Clear response and embedding cache tables.")
+@click.option("--force", "-f", is_flag=True, help="Skip confirmation prompt")
+@async_inject
+async def clear_cache_cmd(force: bool, cache_service: CacheService) -> None:
+    """Clear application caches (response_cache + embedding_cache)."""
+    await _clear_application_cache(force, cache_service)
+
+
+@cli.command(name="model-info", help="Show information about currently configured AI models.")
+@async_inject
+async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
+    """Show information about currently configured AI models."""
+    await asyncio.sleep(0)
+    _show_model_info(vertex_ai_service)
+
+
+@cli.command(name="upgrade", help="Upgrade database schema and load fixture data.")
+@click.option("--revision", "-r", default="head", show_default=True, help="Target revision")
+@click.option("--no-fixtures", is_flag=True, help="Skip fixture loading after migration")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
+@async_inject
+async def upgrade_cmd(revision: str, no_fixtures: bool, dry_run: bool) -> None:
+    """Upgrade database to a specific revision and optionally load fixtures."""
+    await _upgrade_database(revision, no_fixtures, dry_run)
+
+
+@cli.command(name="load-fixtures", help="Load application fixture data into the database.")
+@click.option("--tables", "-t", help="Comma-separated list of specific tables to load (loads all if not specified)")
+@click.option("--list", "list_fixtures", is_flag=True, help="List available fixture files")
+@async_inject
+async def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
+    """Load application fixture data into the database."""
+    if list_fixtures:
+        display_fixture_list()
+        return
+
+    await load_fixture_data(tables)
+
+
+@cli.command(name="export-fixtures", help="Export coffee data tables to fixture JSON files.")
+@click.option("--tables", "-t", help="Comma-separated list of tables to export. Exports all if omitted.")
+@click.option("--output-dir", "-o", help="Custom output directory. Defaults to configured fixtures directory.")
+@click.option("--no-compress", is_flag=True, help="Export uncompressed JSON. Default is gzipped.")
+@click.option("--list", "list_tables", is_flag=True, help="List available tables for export")
+@async_inject
+async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_compress: bool, list_tables: bool) -> None:
+    """Export coffee shop fixture tables for committed demo data."""
+    if list_tables:
+        display_available_tables()
+        return
+
+    await export_fixture_data(tables, output_dir, no_compress)
+
+
+@cli.command(name="configure-apex-cdn", help="Run APEX CDN configuration against the database as SYSDBA.")
+def configure_apex_cmd() -> None:
+    """Run APEX CDN configuration against the database as SYSDBA."""
+    system_password = os.getenv("DATABASE_SYSTEM_PASSWORD")
+    if not system_password:
+        msg = "DATABASE_SYSTEM_PASSWORD environment variable is not set"
+        raise click.ClickException(msg)
+
+    configure_apex_cdn_helper(system_password)
+
+
+@cli.group(name="worker", help="Run and inspect Oracle 26ai background queue workers.")
+@click.pass_context
+def worker_group(ctx: click.RichContext, /) -> None:
+    """Bind Litestar application environment for background worker commands."""
+    _bind_litestar_env(ctx)
 
 
 def _bind_litestar_env(ctx: click.Context) -> LitestarEnv:
@@ -181,87 +273,6 @@ async def _run_bulk_embed(*, batch_size: int, force: bool, queue_service: QueueS
         embed_missing_records, batch_size=batch_size, force=force, execution_backend="immediate"
     )
     await result.refresh()
-
-
-@cli.command(name="bulk-embed", help="Generate or refresh product embeddings with Vertex AI.")
-@click.option("--batch-size", default=50, show_default=True, help="Number of products to process per batch.")
-@click.option("--force", "-f", is_flag=True, help="Re-embed all products, even when embeddings already exist.")
-@async_inject
-async def bulk_embed_cmd(batch_size: int, force: bool, queue_service: QueueService) -> None:
-    """Generate document-purpose embeddings through the litestar-queues task pipeline."""
-    await _run_bulk_embed(batch_size=batch_size, force=force, queue_service=queue_service)
-
-
-@cli.command(name="clear-cache", help="Clear response and embedding cache tables.")
-@click.option("--force", "-f", is_flag=True, help="Skip confirmation prompt")
-@async_inject
-async def clear_cache_cmd(force: bool, cache_service: CacheService) -> None:
-    """Clear application caches (response_cache + embedding_cache)."""
-    await _clear_application_cache(force, cache_service)
-
-
-@cli.command(name="model-info", help="Show information about currently configured AI models.")
-@async_inject
-async def model_info_cmd(vertex_ai_service: VertexAIService) -> None:
-    """Show information about currently configured AI models."""
-    await asyncio.sleep(0)
-    _show_model_info(vertex_ai_service)
-
-
-@cli.command(name="upgrade", help="Upgrade database schema and load fixture data.")
-@click.option("--revision", "-r", default="head", show_default=True, help="Target revision")
-@click.option("--no-fixtures", is_flag=True, help="Skip fixture loading after migration")
-@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes")
-@async_inject
-async def upgrade_cmd(revision: str, no_fixtures: bool, dry_run: bool) -> None:
-    """Upgrade database to a specific revision and optionally load fixtures."""
-    await _upgrade_database(revision, no_fixtures, dry_run)
-
-
-@cli.command(name="load-fixtures", help="Load application fixture data into the database.")
-@click.option("--tables", "-t", help="Comma-separated list of specific tables to load (loads all if not specified)")
-@click.option("--list", "list_fixtures", is_flag=True, help="List available fixture files")
-@async_inject
-async def load_fixtures_cmd(tables: str | None, list_fixtures: bool) -> None:
-    """Load application fixture data into the database."""
-    if list_fixtures:
-        display_fixture_list()
-        return
-
-    await load_fixture_data(tables)
-
-
-@cli.command(name="export-fixtures", help="Export coffee data tables to fixture JSON files.")
-@click.option("--tables", "-t", help="Comma-separated list of tables to export. Exports all if omitted.")
-@click.option("--output-dir", "-o", help="Custom output directory. Defaults to configured fixtures directory.")
-@click.option("--no-compress", is_flag=True, help="Export uncompressed JSON. Default is gzipped.")
-@click.option("--list", "list_tables", is_flag=True, help="List available tables for export")
-@async_inject
-async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_compress: bool, list_tables: bool) -> None:
-    """Export coffee shop fixture tables for committed demo data."""
-    if list_tables:
-        display_available_tables()
-        return
-
-    await export_fixture_data(tables, output_dir, no_compress)
-
-
-@cli.command(name="configure-apex-cdn", help="Run APEX CDN configuration against the database as SYSDBA.")
-def configure_apex_cmd() -> None:
-    """Run APEX CDN configuration against the database as SYSDBA."""
-    system_password = os.getenv("DATABASE_SYSTEM_PASSWORD")
-    if not system_password:
-        msg = "DATABASE_SYSTEM_PASSWORD environment variable is not set"
-        raise click.ClickException(msg)
-
-    configure_apex_cdn_helper(system_password)
-
-
-@cli.group(name="worker", help="Run and inspect Oracle 26ai background queue workers.")
-@click.pass_context
-def worker_group(ctx: click.RichContext, /) -> None:
-    """Bind Litestar application environment for background worker commands."""
-    _bind_litestar_env(ctx)
 
 
 def _register_queue_cli_commands() -> None:

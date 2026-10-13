@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from sqlspec.driver._async import AsyncDriverAdapterBase
@@ -19,8 +19,10 @@ class RecordingDriver(AsyncDriverAdapterBase):
         self.executed: list[Any] = []
         self.committed = False
 
-    async def execute(self, statement: Any) -> None:
+    async def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+        del args, kwargs
         self.executed.append(statement)
+        return None
 
     async def commit(self) -> None:
         self.committed = True
@@ -28,8 +30,8 @@ class RecordingDriver(AsyncDriverAdapterBase):
 
 @pytest.mark.anyio
 async def test_record_search_uses_database_column_names() -> None:
-    driver = RecordingDriver()
-    service = MetricsService(driver)
+    driver = RecordingDriver()  # type: ignore[abstract]
+    service = MetricsService(cast("Any", driver))
 
     await service.record_search(
         SearchMetricsCreate(

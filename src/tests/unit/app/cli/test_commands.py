@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Behavioral tests for the ``coffee run`` command's port resolution."""
 
+from typing import Any
+
 import pytest
 from click.testing import CliRunner
 
@@ -12,8 +14,8 @@ from app.cli.main import cli
 def _resolve_port(monkeypatch: pytest.MonkeyPatch, args: list[str], env: dict[str, str | None]) -> int:
     captured: dict[str, int] = {}
 
-    def fake_callback(**kwargs: object) -> None:  # granian callback stand-in
-        captured["port"] = int(kwargs["port"])  # type: ignore[arg-type]
+    def fake_callback(**kwargs: Any) -> None:
+        captured["port"] = int(kwargs["port"])
 
     # The wrapped command forwards to granian's callback via original_command.callback.
     monkeypatch.setattr("app.cli.commands.litestar_run_command.callback", fake_callback)

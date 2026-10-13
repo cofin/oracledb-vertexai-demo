@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from litestar_mcp import SkillController, Tool, tool
+from litestar_mcp import SkillController, tool
 from litestar_security import public
 
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION
@@ -16,15 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 __all__ = ("CoffeeSkillController",)
-
-
-def _describe_capabilities(self: SkillController) -> dict[str, Any]:
-    """Return structured metadata describing the Cymbal Coffee barista skill."""
-    return {
-        "skill": self.to_agent_skill(),
-        "instructions": self.get_instructions(),
-        "routes": ["PRODUCT_RAG", "PRODUCT_AVAILABILITY", "STORE_LOCATION", "ORDER_STATUS", "GENERAL_CONVERSATION"],
-    }
 
 
 class CoffeeSkillController(SkillController):
@@ -37,8 +28,14 @@ class CoffeeSkillController(SkillController):
     instructions = BASE_SYSTEM_INSTRUCTION
     opt = {"auth": public()}
 
-    describe_capabilities: Tool = tool(
-        _describe_capabilities,
+    @tool(
         name="describe_barista_capabilities",
         description="Describe the Cymbal Coffee barista agent skills, grounded routes, and supported tools.",
     )
+    def describe_capabilities(self) -> dict[str, Any]:
+        """Return structured metadata describing the Cymbal Coffee barista skill."""
+        return {
+            "skill": self.to_agent_skill(),
+            "instructions": self.get_instructions(),
+            "routes": ["PRODUCT_RAG", "PRODUCT_AVAILABILITY", "STORE_LOCATION", "ORDER_STATUS", "GENERAL_CONVERSATION"],
+        }

@@ -67,7 +67,7 @@ src/app/
     web/                # Web UI templates and controllers
       controllers/
       templates/
-  ioc/                  # Modular Dishka providers (_database.py, _integrations.py, _services.py)
+  ioc/                  # Modular Dishka providers (_database.py, _ai.py, _domain.py)
   lib/                  # Infrastructure helpers, modular settings/ package, jobs.py, and DI utilities
   config.py             # App instantiation, session settings, queue config, and logging configuration
   server/               # Litestar application factory and plugin registry
@@ -84,16 +84,16 @@ We use Dishka for dependency injection. Containers are configured in `src/app/io
 
 ### Providers
 We register three user providers at application boot:
-1. **`LitestarPersistenceProvider`** (`src/app/ioc/_database.py`):
-   - Scope: APP -> `OracleAsyncConfig`, `QueueService`
+1. **`DatabaseProvider`** (`src/app/ioc/_database.py`):
+   - Scope: APP -> `OracleAsyncConfig`, `SQLSpec`, `QueueService`
    - Scope: REQUEST -> `OracleAsyncDriver`
-2. **`IntegrationsProvider`** (`src/app/ioc/_integrations.py`):
+2. **`AIProvider`** (`src/app/ioc/_ai.py`):
    - Scope: APP -> Google GenAI `Client`, `GeminiModelClient`
    - Scope: APP -> `OracleSessionStore`, `OracleEventStore`
-   - Scope: APP -> `AgentRuntime`, `CoffeeAgentExecutor`
-3. **`DomainServiceProvider`** (`src/app/ioc/_services.py`):
+   - Scope: APP -> `AgentRuntime`, `SpecTree`, `CoffeeAgentExecutor`
+3. **`DomainServiceProvider`** (`src/app/ioc/_domain.py`):
    - Scope: REQUEST -> `ProductService`, `StoreService`, `CacheService`, `MetricsService`
-   - Scope: REQUEST -> `VertexAIService`, `OracleVectorSearchService`, `HybridRouteResolver`
+   - Scope: REQUEST -> `VertexAIService`, `OracleVectorSearchService`, `HybridRouteResolver`, `GroundedRouteService`
    - Scope: REQUEST -> `AgentOrchestrationService`, `AgentStreamService`
 
 ### DI Annotations Rule

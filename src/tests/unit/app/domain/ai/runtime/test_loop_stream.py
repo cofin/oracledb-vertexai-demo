@@ -4,6 +4,7 @@
 """Unit tests for AgentRuntime execution loop, SSE stream adapter, and orchestration."""
 
 import asyncio
+from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -205,7 +206,7 @@ async def test_agent_stream_service_emits_session_deltas_final() -> None:
     """Verify AgentStreamService adapts AgentEvents into session, delta, and final frames."""
     adapter = AgentStreamService(ping_interval=10.0)
 
-    async def sample_events() -> Any:
+    async def sample_events() -> AsyncIterator[AgentEvent]:
         yield AgentEvent(
             session_id="sess-100",
             invocation_id="inv-100",
@@ -239,7 +240,7 @@ async def test_agent_stream_service_keepalive_ping() -> None:
     """Verify AgentStreamService emits ping frame during idle delays."""
     adapter = AgentStreamService(ping_interval=0.05)
 
-    async def slow_events() -> Any:
+    async def slow_events() -> AsyncIterator[AgentEvent]:
         await asyncio.sleep(0.12)
         yield AgentEvent(
             session_id="sess-ping",

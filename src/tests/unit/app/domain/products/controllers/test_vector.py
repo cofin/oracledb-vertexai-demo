@@ -116,6 +116,7 @@ async def test_product_service_search_by_vector_uses_store_aware_named_sql(mock_
 
     await service.search_by_vector([0.1] * 3072, similarity_threshold=0.4, limit=3, store_id=16)
 
+    assert mock_driver.select.await_args is not None
     statement = mock_driver.select.await_args.args[0]
     assert "store_product_inventory" in str(statement.sql)
     assert mock_driver.select.await_args.kwargs["store_id"] == 16

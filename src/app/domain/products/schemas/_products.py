@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""Product, store, inventory, and vector search schemas."""
 
 from datetime import datetime
 from typing import Any, Literal
@@ -9,6 +9,22 @@ from typing import Any, Literal
 from msgspec import field
 
 from app.lib.schema import CamelizedBaseStruct
+
+__all__ = (
+    "ExplainPlan",
+    "ExplainPlanRow",
+    "Product",
+    "ProductAvailability",
+    "ProductMatch",
+    "StockStatus",
+    "Store",
+    "StoreDistance",
+    "StoreHours",
+    "StoreProductInventory",
+    "VectorDemo",
+    "VectorDemoMatch",
+    "VectorQuery",
+)
 
 StockStatus = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
 

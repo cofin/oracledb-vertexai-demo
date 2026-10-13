@@ -11,6 +11,8 @@ from hashlib import sha256
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import uuid4
 
+import msgspec
+
 from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._spec import AgentSpec, GenerationConfig, SpecTree
 from app.domain.ai.runtime._types import AgentEvent, Content, Part
@@ -140,24 +142,25 @@ class AgentOrchestrationService:
         """Execute a conversation turn and stream normalized SSE frames."""
         turn_started = time.perf_counter()
         invocation_id = uuid4().hex
-        history, turn_num, next_seq = await self._prepare_session_and_user_event(
+        history, turn_num, next_seq, session_state = await self._prepare_session_and_user_event(
             session_id=session_id, user_id=user_id, invocation_id=invocation_id, message=message
         )
 
-        safe_loc = safe_location_context(location_context)
         cache_key, cached_payload, cache_phase = await self._lookup_response_cache(
-            message=message, persona=persona, safe_loc=safe_loc
+            message=message, persona=persona, safe_loc=safe_location_context(location_context)
         )
         if cached_payload is not None and cache_phase is not None:
             async for frame in self._emit_cached_turn(
                 session_id=session_id,
+                user_id=user_id,
                 invocation_id=invocation_id,
                 turn_num=turn_num,
                 next_seq=next_seq,
                 turn_started=turn_started,
                 cached_payload=cached_payload,
                 cache_phase=cache_phase,
-                safe_loc=safe_loc,
+                safe_loc=safe_location_context(location_context),
+                session_state=session_state,
             ):
                 yield frame
             return
@@ -169,6 +172,7 @@ class AgentOrchestrationService:
                 turn_context,
                 location_context=location_context,
                 persona=persona,
+                last_products=_extract_last_products(session_state),
                 embedding_ms=embed_ms,
                 oracle_ms=oracle_ms,
                 embedding_cache_hit=embed_hit,
@@ -177,6 +181,7 @@ class AgentOrchestrationService:
             if grounded is not None:
                 async for frame in self._emit_grounded_turn(
                     session_id=session_id,
+                    user_id=user_id,
                     invocation_id=invocation_id,
                     turn_num=turn_num,
                     next_seq=next_seq,
@@ -184,6 +189,7 @@ class AgentOrchestrationService:
                     grounded=grounded,
                     cache_key=cache_key,
                     cache_phase=cache_phase,
+                    session_state=session_state,
                 ):
                     yield frame
                 return
@@ -216,12 +222,11 @@ class AgentOrchestrationService:
         events = await self._event_store.list_events(session_id=session_id)
         display_messages: list[ChatMessage] = []
         for event in events:
-            if not event.content:
+            text = event.text()
+            if not text:
                 continue
             source: Literal["human", "ai"] = "human" if event.agent == "user" else "ai"
-            text_parts = [p.text for p in event.content.parts if p.text]
-            if text_parts:
-                display_messages.append(ChatMessage(message="".join(text_parts), source=source))
+            display_messages.append(ChatMessage(message=text, source=source))
         return display_messages
 
     async def clear_session(self, session_id: str, user_id: str) -> None:
@@ -230,11 +235,12 @@ class AgentOrchestrationService:
 
     async def _prepare_session_and_user_event(
         self, *, session_id: str, user_id: str, invocation_id: str, message: str
-    ) -> tuple[list[AgentEvent], int, int]:
+    ) -> tuple[list[AgentEvent], int, int, dict[str, Any]]:
         existing = await self._session_store.get_session(session_id=session_id, user_id=user_id)
+        session_state = _extract_session_state(existing)
         if existing is None:
             await self._session_store.save_session(
-                session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state={}
+                session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state=session_state
             )
         history = await self._event_store.list_events(session_id=session_id)
         turn_num = len(history) // 2 + 1
@@ -252,7 +258,7 @@ class AgentOrchestrationService:
             content=Content(role="user", parts=[Part(text=message)]),
         )
         await self._event_store.append_event(user_event)
-        return history, turn_num, next_seq + 1
+        return history, turn_num, next_seq + 1, session_state
 
     async def _lookup_response_cache(
         self, *, message: str, persona: str, safe_loc: dict[str, Any]
@@ -305,6 +311,7 @@ class AgentOrchestrationService:
         self,
         *,
         session_id: str,
+        user_id: str,
         invocation_id: str,
         turn_num: int,
         next_seq: int,
@@ -312,11 +319,18 @@ class AgentOrchestrationService:
         cached_payload: dict[str, Any],
         cache_phase: SQLPhase,
         safe_loc: dict[str, Any],
+        session_state: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         answer = str(cached_payload.get("answer") or "")
         await self._append_assistant_event(
             session_id=session_id, invocation_id=invocation_id, turn_num=turn_num, seq=next_seq, answer=answer
         )
+        cached_last_products = cached_payload.get("last_products")
+        if isinstance(cached_last_products, list) and cached_last_products:
+            session_state["last_products"] = [str(item) for item in cached_last_products if str(item).strip()]
+            await self._session_store.save_session(
+                session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state=session_state
+            )
         elapsed_ms = round((time.perf_counter() - turn_started) * 1000, 2)
         metrics = dict(cached_payload.get("search_metrics") or {})
         metrics["total_ms"] = round(elapsed_ms)
@@ -344,6 +358,7 @@ class AgentOrchestrationService:
         self,
         *,
         session_id: str,
+        user_id: str,
         invocation_id: str,
         turn_num: int,
         next_seq: int,
@@ -351,10 +366,16 @@ class AgentOrchestrationService:
         grounded: GroundedTurnResult,
         cache_key: str | None,
         cache_phase: SQLPhase | None,
+        session_state: dict[str, Any],
     ) -> AsyncGenerator[dict[str, Any], None]:
         await self._append_assistant_event(
             session_id=session_id, invocation_id=invocation_id, turn_num=turn_num, seq=next_seq, answer=grounded.answer
         )
+        if grounded.last_products:
+            session_state["last_products"] = list(grounded.last_products)
+            await self._session_store.save_session(
+                session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state=session_state
+            )
         elapsed_ms = round((time.perf_counter() - turn_started) * 1000, 2)
         metrics_dict = grounded.search_metrics.to_dict()
         metrics_dict["total_ms"] = round(elapsed_ms)
@@ -591,13 +612,11 @@ class AgentOrchestrationService:
         safe_loc: dict[str, Any],
         turn_context: HybridTurnContext | None,
     ) -> str:
-        parts: list[str] = []
+        persona_cfg = self._persona_manager.PERSONAS.get(persona, self._persona_manager.PERSONAS["barista"])
+        parts: list[str] = [f"Persona: {persona_cfg.name}\n{persona_cfg.system_prompt_addon}"]
         if dynamic_context:
             parts.append(dynamic_context)
-        else:
-            persona_cfg = self._persona_manager.PERSONAS.get(persona, self._persona_manager.PERSONAS["barista"])
-            parts.append(f"Persona: {persona_cfg.name}\n{persona_cfg.system_prompt_addon}")
-        if safe_loc:
+        if safe_loc and (not dynamic_context or "Location Context:" not in dynamic_context):
             parts.append(f"Location Context: {safe_loc}")
         if turn_context is not None and turn_context.products:
             candidate_lines = [f"- {p.name} (${p.price:.2f}): {p.description}" for p in turn_context.products[:3]]
@@ -620,3 +639,25 @@ class AgentOrchestrationService:
                 content=Content(role="model", parts=[Part(text=answer)]),
             )
         )
+
+
+def _extract_session_state(existing: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(existing, dict):
+        return {}
+    raw_state = existing.get("state")
+    if isinstance(raw_state, dict):
+        return dict(raw_state)
+    if isinstance(raw_state, str) and raw_state.strip():
+        try:
+            decoded = msgspec.json.decode(raw_state.encode("utf-8"))
+        except msgspec.DecodeError:
+            return {}
+        return dict(decoded) if isinstance(decoded, dict) else {}
+    return {}
+
+
+def _extract_last_products(session_state: dict[str, Any]) -> list[str] | None:
+    raw = session_state.get("last_products")
+    if not isinstance(raw, list):
+        return None
+    return [str(item) for item in raw if str(item).strip()] or None

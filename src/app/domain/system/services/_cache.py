@@ -93,6 +93,7 @@ class CacheService(OracleAsyncService):
             .update("embedding_cache")
             .set(hit_count=sql.raw("hit_count + 1"), last_accessed=sql.raw("CURRENT_TIMESTAMP"))
             .where_eq("text_hash", text_hash)
+            .where_eq("model", model)
         )
         await self.driver.commit()
         return cached.embedding
@@ -100,7 +101,7 @@ class CacheService(OracleAsyncService):
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         existing = await self.driver.select_value_or_none(
-            sql.select("id").from_("embedding_cache").where_eq("text_hash", text_hash)
+            sql.select("id").from_("embedding_cache").where_eq("text_hash", text_hash).where_eq("model", model)
         )
         if existing is None:
             await self.driver.execute(

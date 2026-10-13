@@ -3,8 +3,6 @@
 
 """Scheduled background maintenance tasks for the system domain."""
 
-from __future__ import annotations
-
 import structlog
 from litestar_queues import task
 

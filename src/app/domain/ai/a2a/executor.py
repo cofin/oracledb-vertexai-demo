@@ -152,14 +152,19 @@ class CoffeeAgentExecutor(AgentExecutor):
         """Run one orchestrated turn inside a REQUEST scope and publish artifacts to TaskUpdater."""
         async with container(scope=Scope.REQUEST) as req_container:
             orchestrator = await req_container.get(AgentOrchestrationService)
-            accumulated_answer = [
-                str(frame.get("text", ""))
-                async for frame in orchestrator.stream_conversation_turn(
-                    session_id=session_id, user_id=user_id, message=user_text, services=req_container
-                )
-                if frame.get("type") == "delta"
-            ]
-            answer_text = "".join(accumulated_answer)
+            accumulated_answer: list[str] = []
+            final_answer = ""
+            async for frame in orchestrator.stream_conversation_turn(
+                session_id=session_id, user_id=user_id, message=user_text, services=req_container
+            ):
+                frame_type = frame.get("type")
+                if frame_type == "error":
+                    raise RuntimeError(str(frame.get("message") or "Agent stream execution failed."))
+                if frame_type == "delta":
+                    accumulated_answer.append(str(frame.get("text", "")))
+                elif frame_type == "final":
+                    final_answer = str(frame.get("answer") or "")
+            answer_text = "".join(accumulated_answer) or final_answer
             if answer_text:
                 await updater.add_artifact(parts=[Part(text=answer_text)], name="response")
             agent_msg = updater.new_agent_message(parts=[Part(text=answer_text)])

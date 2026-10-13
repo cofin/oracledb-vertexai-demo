@@ -11,6 +11,17 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from litestar_htmx import HTMXRequest
 
+__all__ = (
+    "ADK_SESSION_KEY",
+    "ADK_USER_KEY",
+    "CHAT_SESSION_KEY",
+    "CHAT_USER_KEY",
+    "adk_session_identity",
+    "chat_session_identity",
+    "clear_adk_session_identity",
+    "clear_chat_session_identity",
+)
+
 CHAT_SESSION_KEY = "chat_session_id"
 CHAT_USER_KEY = "chat_user_id"
 
@@ -46,14 +57,3 @@ def clear_chat_session_identity(request: HTMXRequest) -> None:
 
 adk_session_identity = chat_session_identity
 clear_adk_session_identity = clear_chat_session_identity
-
-__all__ = (
-    "ADK_SESSION_KEY",
-    "ADK_USER_KEY",
-    "CHAT_SESSION_KEY",
-    "CHAT_USER_KEY",
-    "adk_session_identity",
-    "chat_session_identity",
-    "clear_adk_session_identity",
-    "clear_chat_session_identity",
-)

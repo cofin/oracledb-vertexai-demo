@@ -19,6 +19,21 @@ from app.utils.serialization import sanitize_for_json
 if TYPE_CHECKING:
     from app.domain.chat.schemas import HybridTurnContext
 
+__all__ = (
+    "SQLPhase",
+    "SearchMetrics",
+    "build_hybrid_sql_phases",
+    "build_map_actions",
+    "build_response_cache_phase",
+    "build_search_metrics",
+    "build_sql_phase",
+    "extract_location_filters",
+    "extract_product_query",
+    "request_coordinates",
+    "safe_location_context",
+    "summarize_vector",
+)
+
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0
 _MIN_LONGITUDE = -180.0
@@ -212,11 +227,10 @@ def build_hybrid_sql_phases(
                 "has_text_query": 1 if turn_context.oracle_text_query is not None else 0,
                 "text_query": turn_context.oracle_text_query or "{coffee}",
                 "query_vector": summarize_vector(query_embedding),
-                "threshold": similarity_threshold,
                 "rrf_k": rrf_k,
                 "limit": limit,
             },
-            row_count=len(turn_context.products) + len(turn_context.stores) + 1,
+            row_count=len(turn_context.products) + len(turn_context.stores) + len(turn_context.route_scores),
             runtime_ms=oracle_ms,
             cache_status="miss",
         ),
@@ -382,19 +396,3 @@ def _named_sql_text(sql_key: str) -> str:
 
 def _sha256_text(value: str) -> str:
     return sha256(value.encode()).hexdigest()
-
-
-__all__ = (
-    "SQLPhase",
-    "SearchMetrics",
-    "build_hybrid_sql_phases",
-    "build_map_actions",
-    "build_response_cache_phase",
-    "build_search_metrics",
-    "build_sql_phase",
-    "extract_location_filters",
-    "extract_product_query",
-    "request_coordinates",
-    "safe_location_context",
-    "summarize_vector",
-)

@@ -21,8 +21,8 @@ The path of this message:
 
 1. The browser opens an SSE stream to `/api/chat/stream`.
 2. Vertex AI embeds the question with `gemini-embedding-2` (with an Oracle-backed `embedding_cache` in front).
-3. Oracle 26ai executes `hybrid-search-turn`, fusing BM25-style `CONTAINS`/`SCORE` lexical ranking with HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` across `chat_route`, `product`, and `coffee_store` via Reciprocal Rank Fusion ($k=60$).
-4. `HybridRouterService` resolves the `PRODUCT_RAG` route and product candidates from that single query, checks `hybrid-term-hits` for off-menu nouns, and renders a grounded `final` SSE event.
+3. Oracle 26ai executes `hybrid-search-turn`, fusing BM25-style `CONTAINS`/`SCORE` lexical ranking with HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` across `chat_route`, `product`, and `store` via Reciprocal Rank Fusion ($k=60$).
+4. `HybridRouteResolver` resolves the `PRODUCT_RAG` route and product candidates from that single query, checks `hybrid-term-hits` for off-menu nouns, and renders a grounded `final` SSE event.
 
 ```{mermaid}
 flowchart LR
@@ -63,7 +63,7 @@ flowchart TD
 :::{tour-stop}
 The chat controller is intentionally thin. Input validation, CSRF enforcement,
 session bridging, and error sanitization happen here; orchestration and
-grounding live in `AgentOrchestrationService` and `HybridRouterService`.
+grounding live in `AgentOrchestrationService` and `HybridRouteResolver`.
 :::
 
 ## 2. Vertex AI embeds the question
@@ -124,9 +124,9 @@ index shape and the `vector_memory_size` knob.
 
 ## 4. The orchestrator emits a grounded final event
 
-`HybridRouterService.resolve_turn` fuses lexical (`CONTAINS`/`SCORE`) and
+`HybridRouteResolver.resolve_turn` fuses lexical (`CONTAINS`/`SCORE`) and
 vector (`VECTOR_DISTANCE`) rankings across `chat_route`, `product`, and
-`coffee_store` in one query (`hybrid-search-turn`), eliminating a separate LLM
+`store` in one query (`hybrid-search-turn`), eliminating a separate LLM
 intent-classification round trip:
 
 ```{literalinclude} ../src/app/domain/chat/services/_router.py

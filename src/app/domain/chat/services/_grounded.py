@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from app.domain.chat.schemas import HybridProductCandidate, HybridRouteLabel, HybridTurnContext
     from app.domain.products.services import ProductService, StoreService, VertexAIService
 
+__all__ = ("GroundedRouteService", "GroundedTurnResult")
+
 logger = structlog.get_logger()
 
 _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
@@ -424,13 +426,21 @@ class GroundedRouteService:
     ) -> tuple[list[dict[str, Any]], SQLPhase]:
         lookup_started = time.perf_counter()
         lat, lon = coordinates if coordinates is not None else (None, None)
-        if turn_context.products:
-            top_product = turn_context.products[0]
+        query_folded = product_query.casefold()
+        matched_candidate = next(
+            (
+                candidate
+                for candidate in turn_context.products
+                if candidate.name.casefold() == query_folded or query_folded in candidate.name.casefold()
+            ),
+            None,
+        )
+        if matched_candidate is not None:
             availability_rows = await self.store_service.find_stores_with_product(
-                top_product.id, latitude=lat, longitude=lon
+                matched_candidate.id, latitude=lat, longitude=lon
             )
             sql_key = "find-stores-with-product-inventory"
-            binds: dict[str, Any] = {"product_id": top_product.id}
+            binds: dict[str, Any] = {"product_id": matched_candidate.id}
         else:
             availability_rows = await self.store_service.find_product_availability(
                 product_query, coordinates=coordinates
@@ -453,13 +463,17 @@ class GroundedRouteService:
 
 
 def _resolve_product_query(query: str, turn_context: HybridTurnContext, last_products: list[str] | None) -> str:
+    query_folded = query.casefold()
+    for candidate in turn_context.products:
+        if candidate.name.casefold() in query_folded:
+            return candidate.name
     extracted = extract_product_query(query)
     if extracted:
         return extracted
-    if turn_context.products:
-        return turn_context.products[0].name
     if last_products:
         return last_products[0]
+    if turn_context.products:
+        return turn_context.products[0].name
     return query
 
 
@@ -819,6 +833,3 @@ def _format_availability_answer(
     base_sentence = in_stock_sentence.removesuffix(".")
     found_clause = f". I found {len(available_alternatives)} stores with matching availability."
     return base_sentence + found_clause
-
-
-__all__ = ("GroundedRouteService", "GroundedTurnResult")

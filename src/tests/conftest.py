@@ -151,4 +151,4 @@ class MockOracleAsyncDriver(AsyncDriverAdapterBase):
 @pytest.fixture
 def mock_driver() -> MockOracleAsyncDriver:
     """Fixture returning a mock driver that passes type checks."""
-    return MockOracleAsyncDriver()
+    return MockOracleAsyncDriver()  # type: ignore[abstract]

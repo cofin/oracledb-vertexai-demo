@@ -3,9 +3,9 @@
 A chat turn starts with a single Oracle 26ai Hybrid RRF query, not with an LLM
 intent-classification draft. `AgentOrchestrationService` checks the response
 cache, embeds the user message once with `gemini-embedding-2`, and runs
-`hybrid-search-turn` (`HybridRouterService.resolve_turn`) to fuse BM25-style
+`hybrid-search-turn` (`HybridRouteResolver.resolve_turn`) to fuse BM25-style
 lexical ranking (`CONTAINS`/`SCORE`) with HNSW vector similarity (`FETCH APPROX`)
-across `chat_route`, `product`, and `coffee_store`. Grounded routes render
+across `chat_route`, `product`, and `store`. Grounded routes render
 directly from the returned rows; only `GENERAL_CONVERSATION` enters the native
 `AgentRuntime` loop (`Gemini 3.8 Flash`).
 
@@ -28,7 +28,7 @@ flowchart TD
 
 ## Grounded Routes
 
-`HybridRouterService.resolve_turn` resolves one of five route labels alongside
+`HybridRouteResolver.resolve_turn` resolves one of five route labels alongside
 top-ranked product and store candidates in a single Oracle round trip:
 
 - `PRODUCT_RAG` for menu, recommendation, roast, price, caffeine, and product
@@ -48,9 +48,9 @@ top-ranked product and store candidates in a single Oracle round trip:
 
 ## Native `AgentRuntime` & Closure-Bound Tools
 
-Open-ended turns run through `AgentRuntime.run_stream()` (`src/app/domain/ai/runtime/_loop.py`)
+Open-ended turns run through `AgentRuntime.execute_turn()` (`src/app/domain/ai/runtime/_loop.py`)
 backed by `GeminiModelClient` (`google-genai`). Each turn binds five request-scoped
-tool closures (`build_coffee_tools` in `src/app/domain/chat/services/_tools.py`):
+tool closures (`build_coffee_tools` in `src/app/domain/ai/services/_tools.py`):
 
 - `search_products` — single-query Oracle 26ai Hybrid RRF product search
 - `get_product_details` — exact product lookup by ID or name

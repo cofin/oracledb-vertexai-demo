@@ -23,7 +23,7 @@ _MISSING = object()
 @dataclass
 class CoffeeChatForm:
     message: str
-    persona: str = "enthusiast"
+    persona: str = "barista"
     location_consent: bool = False
     latitude: float | None = None
     longitude: float | None = None
@@ -114,7 +114,7 @@ async def chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
         payload = await request.form()
     return CoffeeChatForm(
         message=payload_value(payload, "message"),
-        persona=payload_value(payload, "persona", default="enthusiast"),
+        persona=payload_value(payload, "persona", default="barista"),
         location_consent=payload_bool(payload, "locationConsent", "location_consent"),
         latitude=payload_float(payload, "latitude", "lat"),
         longitude=payload_float(payload, "longitude", "lng", "lon"),

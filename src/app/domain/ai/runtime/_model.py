@@ -3,7 +3,7 @@
 
 """Direct Google GenAI client targeting Gemini 3.8 Flash with streaming."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 from google.genai import Client, types
@@ -16,18 +16,6 @@ from app.domain.ai.runtime._types import AgentEvent, Content, FunctionCall, Part
 __all__ = ("HTTP_429_TOO_MANY_REQUESTS", "GeminiModelClient")
 
 HTTP_429_TOO_MANY_REQUESTS = 429
-
-
-def _is_rate_limit_error(exc: BaseException) -> bool:
-    """Return True if an APIError indicates rate limiting.
-
-    Args:
-        exc: Exception instance raised during model invocation.
-
-    Returns:
-        Boolean indicating whether HTTP status code is 429.
-    """
-    return isinstance(exc, APIError) and getattr(exc, "code", None) == HTTP_429_TOO_MANY_REQUESTS
 
 
 class GeminiModelClient:
@@ -45,9 +33,9 @@ class GeminiModelClient:
 
     async def generate_stream(
         self,
-        contents: list[Content],
+        contents: Sequence[Content],
         *,
-        tools: list[ToolDeclaration] | None = None,
+        tools: Sequence[ToolDeclaration] | None = None,
         system_instruction: str | None = None,
         model: str | None = None,
         temperature: float = 0.2,
@@ -85,7 +73,7 @@ class GeminiModelClient:
                     usage=usage,
                 )
 
-    def _convert_contents(self, contents: list[Content]) -> list[types.Content]:
+    def _convert_contents(self, contents: Sequence[Content]) -> list[types.Content]:
         """Convert runtime Content items to google.genai types.Content objects."""
         genai_contents: list[types.Content] = []
         for c in contents:
@@ -158,7 +146,7 @@ class GeminiModelClient:
                 extracted.append(Part(thought_signature=sig_bytes))
         return extracted
 
-    def _convert_tool_declarations(self, tools: list[ToolDeclaration]) -> list[Any]:
+    def _convert_tool_declarations(self, tools: Sequence[ToolDeclaration]) -> list[Any]:
         """Convert runtime ToolDeclarations into google.genai types.Tool.
 
         Args:
@@ -175,12 +163,6 @@ class GeminiModelClient:
         ]
         return [types.Tool(function_declarations=decls)]
 
-    @retry(
-        retry=retry_if_exception(_is_rate_limit_error),
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=0.1, min=0.1, max=10),
-        reraise=True,
-    )
     async def _call_stream(self, model: str, contents: list[types.Content], config: types.GenerateContentConfig) -> Any:
         """Call Google GenAI streaming generation API with rate limit retry.
 
@@ -192,4 +174,26 @@ class GeminiModelClient:
         Returns:
             GenAI streaming response iterator.
         """
-        return await self._client.aio.models.generate_content_stream(model=model, contents=contents, config=config)
+
+        @retry(
+            retry=retry_if_exception(_is_rate_limit_error),
+            stop=stop_after_attempt(5),
+            wait=wait_exponential(multiplier=0.1, min=0.1, max=10),
+            reraise=True,
+        )
+        async def _invoke() -> Any:
+            return await self._client.aio.models.generate_content_stream(model=model, contents=contents, config=config)
+
+        return await _invoke()
+
+
+def _is_rate_limit_error(exc: BaseException) -> bool:
+    """Return True if an APIError indicates rate limiting.
+
+    Args:
+        exc: Exception instance raised during model invocation.
+
+    Returns:
+        Boolean indicating whether HTTP status code is 429.
+    """
+    return isinstance(exc, APIError) and getattr(exc, "code", None) == HTTP_429_TOO_MANY_REQUESTS

@@ -357,9 +357,9 @@ def app(test_settings: object) -> Litestar:
 async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
     """Wipe fixture-managed tables so each test session starts from a known state.
 
-    Mirrors the accelerator pattern: schema is durable, data is ephemeral. This
-    purges any zero-vector pollution left by prior ``coffee load-fixtures`` runs
-    against the dev container so vector-search assertions stay deterministic.
+    Schema is durable while data is ephemeral. This purges any zero-vector
+    pollution left by prior ``coffee load-fixtures`` runs against the dev
+    container so vector-search assertions stay deterministic.
     """
     for table in ("store_product_inventory", "product", "store"):
         with contextlib.suppress(Exception):

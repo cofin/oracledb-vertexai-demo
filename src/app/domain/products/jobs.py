@@ -3,8 +3,6 @@
 
 """Background embedding tasks for the products domain."""
 
-from __future__ import annotations
-
 import structlog
 from litestar_queues import RetryBackoff, task
 

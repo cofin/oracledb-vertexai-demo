@@ -41,6 +41,7 @@ async def test_find_stores_by_location_uses_named_sql_and_typed_store_results(mo
     result = await service.find_stores_by_location(city="Dallas", state="TX", zip_code="75201")
 
     assert result[0].name == "Cymbal Coffee Dallas Arts District"
+    assert mock_driver.select.await_args is not None
     statement = mock_driver.select.await_args.args[0]
     assert "LOWER(city)" in str(statement.sql)
     assert mock_driver.select.await_args.kwargs["city"] == "Dallas"
@@ -78,6 +79,7 @@ async def test_find_nearest_stores_ranks_with_local_seeded_coordinates(mock_driv
     assert [store.id for store in result] == [16, 13]
     assert all(isinstance(store, StoreDistance) for store in result)
     assert result[0].distance_miles < 1.0
+    assert mock_driver.select.await_args is not None
     statement = mock_driver.select.await_args.args[0]
     assert "FROM store" in str(statement.sql)
 
@@ -124,6 +126,7 @@ async def test_find_stores_with_product_returns_typed_rows_and_sorts_by_coordina
 
     assert [row.store_id for row in stores_with_product] == [16, 13]
     assert stores_with_product[0].distance_miles is not None
+    assert mock_driver.select.await_args is not None
     assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
 
 
@@ -134,6 +137,7 @@ async def test_list_store_inventory_uses_named_query_and_typed_rows(mock_driver)
     rows = await service.list_store_inventory(16)
 
     assert rows == []
+    assert mock_driver.select.await_args is not None
     statement = mock_driver.select.await_args.args[0]
     assert "WHERE spi.store_id = :store_id" in str(statement.sql)
     assert mock_driver.select.await_args.kwargs["store_id"] == 16
@@ -179,6 +183,7 @@ async def test_find_product_availability_does_not_filter_location_hint(mock_driv
 
     assert len(result) == 2
     assert [row.store_id for row in result] == [16, 13]
+    assert mock_driver.select.await_args is not None
     assert mock_driver.select.await_args.kwargs["product_query"] == "Espresso Romano"
     assert mock_driver.select.await_args.kwargs["schema_type"] is ProductAvailability
 

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -25,9 +25,10 @@ def test_litestar_session_in_memory_wires_to_sqlspec_config(monkeypatch: MonkeyP
         monkeypatch.delenv("ORACLE_LITESTAR_SESSION_IN_MEMORY", raising=False)
 
     config = DatabaseSettings().create_config()
+    litestar_ext = cast("dict[str, Any]", config.extension_config["litestar"])
 
-    assert config.extension_config["litestar"]["in_memory"] is True
-    assert config.extension_config["litestar"]["session_table"] == "app_session"
+    assert litestar_ext["in_memory"] is True
+    assert litestar_ext["session_table"] == "app_session"
 
 
 def test_litestar_env_defaults_app_url_from_litestar_port(monkeypatch: MonkeyPatch) -> None:

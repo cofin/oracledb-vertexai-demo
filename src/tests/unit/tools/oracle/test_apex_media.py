@@ -6,12 +6,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tools.oracle.apex_media import ApexMedia, ApexMediaConfig, ApexMediaError
 
 
-def _recording_fetcher(payload: bytes, declared: int | None = None):
+def _recording_fetcher(payload: bytes, declared: int | None = None) -> Any:
     """A fake fetcher that writes ``payload`` to dest and reports ``declared`` length.
 
     ``declared=None`` means "report the real byte count" (a well-behaved server);
@@ -28,7 +29,7 @@ def _recording_fetcher(payload: bytes, declared: int | None = None):
     return fetch
 
 
-def _exploding_fetcher():
+def _exploding_fetcher() -> Any:
     """A fetcher that fails the test if it is ever called (asserts a cache hit)."""
 
     def fetch(url: str, dest: Path) -> int:  # pragma: no cover - must not run
@@ -372,7 +373,7 @@ def _zip_bytes(members: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
-def _good_zip_fetcher():
+def _good_zip_fetcher() -> Any:
     """A fetcher that delivers a valid APEX-shaped zip (passes verify + extract)."""
     return _recording_fetcher(_zip_bytes(_good_members()))
 

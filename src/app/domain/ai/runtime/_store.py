@@ -10,6 +10,7 @@ from typing import Any
 import msgspec
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
+from app import config
 from app.config import db_manager
 from app.domain.ai.runtime._types import AgentEvent, Content
 
@@ -28,7 +29,7 @@ class OracleSessionStore:
         """
         self._driver = driver
 
-    async def get_session(self, session_id: str, user_id: str) -> dict[str, object] | None:
+    async def get_session(self, session_id: str, user_id: str) -> dict[str, Any] | None:
         """Fetch session metadata and state dictionary.
 
         Args:
@@ -43,7 +44,7 @@ class OracleSessionStore:
                 db_manager.get_sql("get-ai-session"), session_id=session_id, user_id=user_id
             )
 
-    async def save_session(self, session_id: str, user_id: str, app_name: str, state: dict[str, object]) -> None:
+    async def save_session(self, session_id: str, user_id: str, app_name: str, state: dict[str, Any]) -> None:
         """Upsert session metadata and state JSON document and commit.
 
         Args:
@@ -79,7 +80,6 @@ class OracleSessionStore:
         if self._driver is not None:
             yield self._driver
             return
-        from app import config
 
         async with config.db_manager.provide_session(config.db) as driver:
             yield driver
@@ -131,17 +131,20 @@ class OracleEventStore:
             )
             await driver.commit()
 
-    async def list_events(self, session_id: str) -> list[AgentEvent]:
+    async def list_events(self, session_id: str, limit: int = 100) -> list[AgentEvent]:
         """Fetch ordered history events for a given session.
 
         Args:
             session_id: Unique session identifier.
+            limit: Maximum number of most-recent events to return.
 
         Returns:
             Chronological list of AgentEvent instances.
         """
         async with self._acquire_driver() as driver:
             rows = await driver.select(db_manager.get_sql("list-ai-events"), session_id=session_id)
+        if limit > 0 and len(rows) > limit:
+            rows = rows[-limit:]
         events: list[AgentEvent] = []
         for r in rows:
             content: Content | None = None
@@ -179,7 +182,6 @@ class OracleEventStore:
         if self._driver is not None:
             yield self._driver
             return
-        from app import config
 
         async with config.db_manager.provide_session(config.db) as driver:
             yield driver

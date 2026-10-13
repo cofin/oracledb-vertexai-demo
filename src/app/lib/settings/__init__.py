@@ -66,7 +66,9 @@ class Settings:
 
     def setup_litestar_env(self) -> None:
         """Set Litestar and Granian defaults expected by the app server."""
-        app_url = os.getenv("APP_URL") or f"http://localhost:{os.getenv('LITESTAR_PORT', '8000')}"
+        port = os.getenv("LITESTAR_PORT") or str(self.server.PORT)
+        os.environ.setdefault("LITESTAR_PORT", port)
+        app_url = os.getenv("APP_URL") or f"http://localhost:{port}"
         os.environ.setdefault("APP_URL", app_url)
         os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
         os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)

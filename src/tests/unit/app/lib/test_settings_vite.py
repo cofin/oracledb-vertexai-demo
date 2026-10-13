@@ -16,5 +16,5 @@ def test_vite_config_uses_resources_as_frontend_root() -> None:
     assert config.paths.root == BASE_DIR.parent / "resources"
     assert config.paths.resource_dir == Path()
     assert config.paths.static_dir == Path("public")
-    assert config.types is not None
+    assert config.types is not None and not isinstance(config.types, bool)
     assert config.types.output == BASE_DIR.parent / "resources" / "generated"
