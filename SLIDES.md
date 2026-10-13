@@ -4,10 +4,16 @@
 > through Oracle 26ai (`CTXSYS.CONTEXT` text indexes + `VECTOR(3072, FLOAT32)`
 > HNSW indexes) and Vertex AI (`gemini-embedding-2` and `Gemini 3.8 Flash`).
 > Code paths below are relative to `src/app/`.
+>
+> **Presentation guide:** For the full 36-slide "Oracle in the Age of Gemini"
+> deck storyboard, speaker guide, and verified facts, see
+> [`.agents/bundles/knowledge/presentation/index.md`](.agents/bundles/knowledge/presentation/index.md).
+> The sections below correspond to **Part 3: Build Real Apps (Slides 23–34)**
+> and **Backups B1–B17**.
 
 ---
 
-## Slide 0 — Request flow for one chat turn
+## Slide 0 — Request flow for one chat turn (Deck Slide 24)
 
 ```text
 Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
@@ -37,7 +43,7 @@ Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
 
 ---
 
-## Slide 1 — What a vector is, in Oracle terms
+## Slide 1 — What a vector is, in Oracle terms (Deck Slides 25–27)
 
 **Before looking at the app code, here is how the AI pieces map to Oracle 26ai:**
 
@@ -48,7 +54,7 @@ Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
 
 ---
 
-## Slide 2 — One HTTP endpoint, streamed back as Server-Sent Events
+## Slide 2 — One HTTP endpoint, streamed back as Server-Sent Events (Deck Slide 24)
 
 **`POST /api/chat/stream` (`domain/chat/controllers/_chat.py`)**
 
@@ -62,19 +68,19 @@ Browser ──POST /api/chat/stream (SSE)──► CoffeeChatController
 
 ---
 
-## Slide 3 — Storing conversation history without holding transactions open
+## Slide 3 — Storing conversation history without holding transactions open (Deck Slide 34)
 
 **`OracleSessionStore` and `OracleEventStore` (`domain/ai/runtime/_store.py`, `db/sql/ai-runtime.sql`)**
 
 - The web framework gives each browser an anonymous cookie session. The chat controller maps that cookie to `session_id` and `user_id = f"web:{session_id}"`.
-- Conversation history is stored in two regular Oracle tables (`db/migrations/0002_native_ai_and_hybrid_rrf.sql`):
+- Conversation history is stored in two regular Oracle tables (`db/migrations/0001_cymball_coffee_products.sql`):
   - `agent_session` — session metadata and JSON state (`CLOB CHECK (state IS JSON)`)
   - `agent_event` — ordered turn history (`UNIQUE (session_id, seq)`, `ON DELETE CASCADE`) recording user messages, model replies, and tool calls/results
 - **Transaction boundary:** LLM calls over the network take hundreds of milliseconds to several seconds. You never want a database session holding an open transaction or row locks while waiting on an external API. Each store method borrows a connection from the pool, runs its `MERGE` or `INSERT`, commits immediately (`await driver.commit()`), and returns the connection to the pool before any model call begins.
 
 ---
 
-## Slide 4 — Replacing a separate LLM router call with one SQL query
+## Slide 4 — Replacing a separate LLM router call with one SQL query (Deck Slide 28)
 
 **`HybridRouteResolver` (`domain/chat/services/_router.py`)**
 
@@ -97,7 +103,7 @@ We replaced that first LLM call by putting our 5 route descriptions into a small
 
 ---
 
-## Slide 5 — How the hybrid RRF query works
+## Slide 5 — How the hybrid RRF query works (Deck Slides 29–30)
 
 **`hybrid-search-turn` (`db/sql/hybrid.sql`)**
 
@@ -143,7 +149,7 @@ FETCH FIRST :limit ROWS ONLY;
 
 ---
 
-## Slide 6 — Grounded SQL answers vs. open-ended LLM turns
+## Slide 6 — Grounded SQL answers vs. open-ended LLM turns (Deck Slide 32)
 
 **Why product prices and store inventory cannot be hallucinated**
 
@@ -169,7 +175,7 @@ Each function uses standard `:bind` parameters on the request's database connect
 
 ---
 
-## Slide 7 — Background jobs, LOB isolation, and MCP / A2A endpoints
+## Slide 7 — Background jobs, LOB isolation, and MCP / A2A endpoints (Deck Slides 33–34)
 
 **How the rest of the service connects to Oracle 26ai**
 
@@ -181,7 +187,7 @@ Each function uses standard `:bind` parameters on the request's database connect
 
 ---
 
-## Slide 8 — Caching, query telemetry, and location privacy
+## Slide 8 — Caching, query telemetry, and location privacy (Deck Slide 34)
 
 **What we store in Oracle and what we keep out of the database**
 
@@ -196,7 +202,7 @@ Each function uses standard `:bind` parameters on the request's database connect
 
 ---
 
-## Appendix — Handling off-menu brands (`"Do you carry Folgers?"`) without an extra LLM call
+## Appendix — Handling off-menu brands (`"Do you carry Folgers?"`) without an extra LLM call (Deck Slide 31)
 
 **Why pure vector search gets this wrong**
 

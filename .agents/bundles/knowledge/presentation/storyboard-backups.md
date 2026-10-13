@@ -79,12 +79,12 @@ Notes on backups do not need a `BRIDGE:` line.
            'strong coffee for a cold morning',
            JSON('{"provider": "vertexai",
                   "credential_name": "VERTEX_CRED",
-                  "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/<project>/locations/us-central1/publishers/google/models/",
-                  "model": "<embedding-model>"}'))
+                  "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/<project-num>/locations/us-central1/publishers/google/models/",
+                  "model": "text-embedding-004:predict"}'))
   FROM dual;
   ```
 
-- **Notes:** the access token is short-lived, so production use needs a job that refreshes the credential. Check which embedding models the Vertex AI provider accepts before naming one on the slide.
+- **Notes:** the access token is short-lived, so production use needs a job that refreshes the credential. Include `:predict` on the model name (`text-embedding-004:predict` or `gemini-embedding-001:predict`) and pass the numeric GCP project number so `"url"` stays within Oracle 26ai's 128-character buffer.
 
 ### B12. Cloud Run Functions as SQL Functions
 
