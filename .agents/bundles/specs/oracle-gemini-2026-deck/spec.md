@@ -5,14 +5,14 @@ title: Build the "Oracle in the Age of Gemini" Deck from the Presentation Guide
 state: active
 plan_revision: 1
 plan_commit: null
-state_revision: 9
+state_revision: 11
 current_task: null
-last_operation: 20261013T165500Z-flow-executor-close-1-4-00
+last_operation: 20261013T171430Z-flow-executor-close-1-5-00
 operation_targets:
-  - "1.4"
-last_verified_checkpoint: 2026-10-13T16:55:00Z
+  - "1.5"
+last_verified_checkpoint: 2026-10-13T17:14:30Z
 created_at: 2026-10-13T15:55:00Z
-updated_at: 2026-10-13T16:55:00Z
+updated_at: 2026-10-13T17:14:30Z
 description: Restructure and rewrite the target Google Slides deck into the 36-slide "Oracle in the Age of Gemini" talk (extend your workflow, be a better DBA, build real apps) plus 17 skipped backups, using the committed presentation guide, the offline manage.py slides tooling, and the oracle-slides skill.
 tags:
   - spec
@@ -94,7 +94,7 @@ public repository.
 - [x] 1.2 Opening and Part 1 content (slides 1–14)
 - [x] 1.3 Part 2 content (slides 15–22)
 - [x] 1.4 Part 3 content (slides 23–34)
-- [ ] 1.5 Close, backups, QR codes, and deck-wide notes pass (35–36, B1–B17)
+- [x] 1.5 Close, backups, QR codes, and deck-wide notes pass (35–36, B1–B17)
 - [ ] 1.6 Lab checks, demo clips, and `SLIDES.md` refresh
 
 ---
@@ -114,7 +114,7 @@ public repository.
 
 - **Active Flow / Lifecycle**: `oracle-gemini-2026-deck` (`active`)
 - **Current Task & Claimant**: `null` (`null`)
-- **Last Verified Checkpoint**: `2026-10-13T16:55:00Z`
+- **Last Verified Checkpoint**: `2026-10-13T17:14:30Z`
 - **Key Decisions**:
   - The talk follows the earlier NorCal arc (offerings, Gemini with Oracle, agents today, developer tools, building agents) reorganized into extend / improve / build.
   - Select AI is shown with the Gemini API (`google` provider); Vertex AI paths are `DBMS_VECTOR`, Cloud Run functions from SQL, and the app tier.
@@ -124,9 +124,9 @@ public repository.
   1. The target deck's slide and element objectIds match the Postgres Summit US 2026 deck it was copied from, so storyboard targets are stable across copies.
   2. Earlier decks contain SQL that skips the HNSW index and a PostGIS-only distance function; see `porting-corrections.md`.
 - **Blockers & Unblock Conditions**: Event length and demo database availability are assumptions (50 minutes; doc-based diagrams for slides 13 and 22 without an Autonomous AI Database).
-- **Next Exact Step**: Claim Task 1.5 (Close, backups, QR codes, and deck-wide notes pass).
+- **Next Exact Step**: Claim Task 1.6 (Lab checks, demo clips, and SLIDES.md refresh).
 - **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 9`, `last_operation: 20261013T165500Z-flow-executor-close-1-4-00`, `operation_targets: ["1.4"]`
+- **State Identity**: `state_revision: 11`, `last_operation: 20261013T171430Z-flow-executor-close-1-5-00`, `operation_targets: ["1.5"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/knowledge/presentation/index.md`
   - `.agents/skills/oracle-slides/SKILL.md`
