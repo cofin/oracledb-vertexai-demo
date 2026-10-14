@@ -49,27 +49,28 @@ def test_settings(
     """Patch settings with a temporary test `.env.testing` configuration."""
     test_dir = tmp_path_factory.mktemp("test_env")
     test_env = test_dir / ".env.testing"
-    test_env.write_text("""DATABASE_USER=test_app
-DATABASE_PASSWORD=test-secret
-DATABASE_HOST=localhost
-DATABASE_PORT=1521
-DATABASE_SERVICE_NAME=myatp_low
-DATABASE_URL=oracle+oracledb://app:SuperSecret1@myatp_low
-WALLET_PASSWORD=SuperSecret1
-TNS_ADMIN=.envs/tns
+    env_defaults = {
+        "DATABASE_USER": "test_app",
+        "DATABASE_PASSWORD": "test-secret",
+        "DATABASE_HOST": "localhost",
+        "DATABASE_PORT": "1521",
+        "DATABASE_SERVICE_NAME": "freepdb1",
+        "GOOGLE_CLOUD_PROJECT": "test-project",
+        "GOOGLE_API_KEY": "test-api-key",
+        "LITESTAR_DEBUG": "true",
+        "LITESTAR_HOST": "127.0.0.1",
+        "LITESTAR_PORT": "5007",
+        "SECRET_KEY": "test-secret-key-32-characters-12",
+        "QUEUE_BACKEND": "memory",
+        "VITE_DEV_MODE": "False",
+    }
+    for unset_key in ("DATABASE_URL", "DATABASE_DSN", "WALLET_LOCATION", "WALLET_PASSWORD", "TNS_ADMIN"):
+        monkeypatch.delenv(unset_key, raising=False)
+    for key, value in env_defaults.items():
+        monkeypatch.setenv(key, value)
+    test_env.write_text("\n".join(f"{k}={v}" for k, v in env_defaults.items()) + "\n", encoding="utf-8")
 
-GOOGLE_CLOUD_PROJECT=test-project
-GOOGLE_API_KEY=test-api-key
-
-LITESTAR_DEBUG=true
-LITESTAR_HOST=127.0.0.1
-LITESTAR_PORT=5007
-SECRET_KEY=test-secret-key-32-characters-12
-QUEUE_BACKEND=memory
-
-VITE_DEV_MODE=False
-""")
-
+    app_settings.Settings.from_env.cache_clear()
     settings = app_settings.Settings.from_env(str(test_env))
 
     def get_settings(dotenv_filename: str = ".env.testing") -> app_settings.Settings:
