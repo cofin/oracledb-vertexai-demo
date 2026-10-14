@@ -20,6 +20,8 @@ from litestar_security import AuthenticationPolicy, PublicController, exclude
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.products.controllers._vector_helpers import (
     SERVICE_UNAVAILABLE_MESSAGE,
+    build_explore_telemetry_context,
+    build_vector_demo_matches,
     is_expected_service_unavailable,
     payload_value,
     unavailable_plan,
@@ -79,6 +81,7 @@ class VectorController(PublicController):
                 raise
             await logger.awarning("Vector search demo unavailable", error_type=type(exc).__name__)
             if request.htmx:
+                telemetry_ctx = build_explore_telemetry_context(query, matches=[])
                 return HTMXTemplate(
                     template_name="partials/explore_search_response.html.j2",
                     context={
@@ -87,6 +90,7 @@ class VectorController(PublicController):
                         "error": SERVICE_UNAVAILABLE_MESSAGE,
                         "plan": unavailable_plan(),
                         "plan_oob": True,
+                        **telemetry_ctx,
                     },
                 )
             return Response(
@@ -114,15 +118,14 @@ class VectorController(PublicController):
         )
         detailed_timings["metrics_recording_ms"] = (time.perf_counter() - metrics_record_start) * 1000
 
-        matches = [
-            VectorDemoMatch(
-                name=row.name,
-                description=row.description,
-                price=row.price,
-                similarity=round(row.similarity_score * 100, 1),
-            )
-            for row in results
-        ]
+        matches = build_vector_demo_matches(results)
+        telemetry_ctx = build_explore_telemetry_context(
+            query,
+            matches=matches,
+            embedding_ms=vector_timings["embedding_ms"],
+            oracle_ms=vector_timings["oracle_ms"],
+            cache_hit=embedding_cache_hit,
+        )
 
         total_ms = (time.perf_counter() - full_request_start) * 1000
         detailed_timings["total_endpoint_ms"] = total_ms
@@ -145,7 +148,7 @@ class VectorController(PublicController):
                 plan = unavailable_plan()
             return HTMXTemplate(
                 template_name="partials/explore_search_response.html.j2",
-                context={"matches": matches, "query": query, "plan": plan, "plan_oob": True},
+                context={"matches": matches, "query": query, "plan": plan, "plan_oob": True, **telemetry_ctx},
                 push_url=f"/explore?query={quote(query)}",
             )
 
@@ -158,6 +161,10 @@ class VectorController(PublicController):
                 cache_hit=embedding_cache_hit,
                 performance_level=performance_level,
                 debug_timings={k: round(v, 2) for k, v in detailed_timings.items()},
+                search_mode="hybrid",
+                rrf_k=int(telemetry_ctx["rrf_k"]),
+                oracle_text_query=telemetry_ctx["oracle_text_query"],
+                sql_phases=telemetry_ctx["sql_phases"],
             )
         )
 
@@ -165,9 +172,12 @@ class VectorController(PublicController):
     async def explain_plan(
         self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]
     ) -> ExplainPlan:
-        """Return the Oracle EXPLAIN PLAN for the vector-search SQL."""
+        """Return the Oracle EXPLAIN PLAN for the hybrid RRF or vector-search SQL."""
         query = self.validate_message(payload_value(request.query_params, "query"))
+        mode = payload_value(request.query_params, "mode").strip().lower()
         try:
+            if mode == "vector":
+                return await vector_search_service.explain_search_plan(query, mode="vector")
             return await vector_search_service.explain_search_plan(query)
         except Exception as exc:
             if not is_expected_service_unavailable(exc):
@@ -201,12 +211,4 @@ class VectorController(PublicController):
             if is_expected_service_unavailable(exc):
                 raise AIServiceUnconfigured(SERVICE_UNAVAILABLE_MESSAGE) from exc
             raise
-        return [
-            VectorDemoMatch(
-                name=row.name,
-                description=row.description,
-                price=row.price,
-                similarity=round(row.similarity_score * 100, 1),
-            )
-            for row in results
-        ]
+        return build_vector_demo_matches(results)

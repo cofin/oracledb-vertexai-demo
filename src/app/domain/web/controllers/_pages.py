@@ -14,6 +14,7 @@ from litestar_security import PublicController
 
 from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.session import chat_session_identity
+from app.domain.products.controllers._vector_helpers import build_explore_telemetry_context
 from app.domain.products.services import StoreService
 from app.lib.di import Inject
 
@@ -64,4 +65,8 @@ class PageController(PublicController):
         except Exception as exc:
             await logger.awarning("Store inventory selector unavailable", error_type=type(exc).__name__)
             stores = []
-        return Template(template_name="pages/explore.html.j2", context={"query": search_query or "", "stores": stores})
+        query_value = search_query or ""
+        telemetry_ctx = build_explore_telemetry_context(query_value, matches=[])
+        return Template(
+            template_name="pages/explore.html.j2", context={"query": query_value, "stores": stores, **telemetry_ctx}
+        )

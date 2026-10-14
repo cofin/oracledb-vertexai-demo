@@ -10,13 +10,22 @@ const ROW_MIN = 1_000
 const ROW_MAX = 100_000_000
 const DIMENSION_MIN = 1
 const DIMENSION_MAX = 4_096
-const HNSW_VECTOR_POOL_FACTOR = 1.3
+const FTS_DOC_BYTES_MIN = 0
+const FTS_DOC_BYTES_MAX = 16_384
+const HNSW_VECTOR_PAYLOAD_FACTOR = 1.25
+const HNSW_GRAPH_BYTES_PER_ROW = 640
+const IVF_DISK_INDEX_FACTOR = 1.1
+const IVF_CENTROID_OVERHEAD_FACTOR = 3
+const FTS_INVERTED_INDEX_RATIO = 0.42
+const FTS_MAPPING_BYTES_PER_ROW = 36
+const FTS_MIN_SEGMENT_BYTES = 576 * KIB
 
 const DEFAULTS = {
   rowCount: 1_000_000,
   dimensions: 3_072,
   format: "FLOAT32",
   indexType: "HNSW",
+  ftsDocBytes: 400,
 }
 
 const FORMAT_BYTES = {
@@ -52,28 +61,56 @@ const rawVectorBytes = (rowCount, dimensions, format) => {
   return rowCount * dimensions * (FORMAT_BYTES[format] ?? FORMAT_BYTES.FLOAT32)
 }
 
-const indexBytes = (rawSize, indexType) => {
+const indexBytes = (rawSize, rowCount, indexType) => {
   if (indexType === "HNSW") {
-    return Math.round(rawSize * HNSW_VECTOR_POOL_FACTOR)
+    return Math.round(rawSize * HNSW_VECTOR_PAYLOAD_FACTOR + rowCount * HNSW_GRAPH_BYTES_PER_ROW)
+  }
+  if (indexType === "IVF") {
+    return Math.round(rawSize * IVF_DISK_INDEX_FACTOR)
   }
   return 0
 }
 
-const vectorMemoryBytes = (indexSize, indexType) => {
+const vectorMemoryBytes = (rawSize, indexSize, rowCount, dimensions, indexType) => {
   if (indexType === "HNSW") {
     return indexSize
   }
+  if (indexType === "IVF") {
+    const partitions = clamp(Math.floor(Math.sqrt(rowCount)), 1, 65_536)
+    const centroidBytes = Math.max(Math.ceil(rawSize / rowCount), dimensions * 4)
+    return Math.round(partitions * centroidBytes * IVF_CENTROID_OVERHEAD_FACTOR)
+  }
   return 0
 }
 
-const indexNoteFor = (indexType) => {
+const ftsIndexBytes = (rowCount, ftsDocBytes) => {
+  if (ftsDocBytes <= 0) {
+    return 0
+  }
+  return Math.max(
+    FTS_MIN_SEGMENT_BYTES,
+    Math.round(rowCount * (ftsDocBytes * FTS_INVERTED_INDEX_RATIO + FTS_MAPPING_BYTES_PER_ROW)),
+  )
+}
+
+const ftsNoteFor = (ftsDocBytes) => {
+  if (ftsDocBytes <= 0) {
+    return "CTXSYS.CONTEXT index disabled (0 B/row)."
+  }
+  return "CTXSYS.CONTEXT ($I postings + $X B-tree + $K/$R IOT) for MULTI_COLUMN_DATASTORE."
+}
+
+const indexNoteFor = (indexType, format) => {
   if (indexType === "HNSW") {
-    return "HNSW uses Oracle's rough 1.3x Vector Pool estimate."
+    if (format === "INT8" || format === "BINARY") {
+      return "HNSW in-memory graph (~1.25x vectors + ~640 B/row neighbor links in Vector Pool)."
+    }
+    return "HNSW uses Oracle's ~1.3x SGA Vector Pool estimate (vectors + neighbor graph links)."
   }
   if (indexType === "IVF") {
-    return "Use DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR for IVF partition sizing."
+    return "IVF stores ~1.1x partitioned vectors on disk and caches ~sqrt(N) centroids in Vector Pool."
   }
-  return "No vector index pool estimate is added."
+  return "Exact full scan; no vector index or SGA Vector Pool allocation."
 }
 
 export const formatBytes = (bytes) => {
@@ -108,7 +145,11 @@ export const mediaComparisonFor = (bytes) => {
 
 const vectorMemoryImpact = (bytes, indexType) => {
   if (indexType === "IVF") {
-    return { percent: 0, label: "Use the DBMS_VECTOR advisor for IVF centroid memory" }
+    const percent = bytes > 0 ? clamp((bytes / (4 * GIB)) * 100, 2, 100) : 0
+    return {
+      percent,
+      label: `IVF caches ~sqrt(N) centroids in SGA Vector Pool (${formatBytes(bytes)}); partitions stay on disk`,
+    }
   }
   if (bytes <= 0) {
     return { percent: 0, label: "No Vector memory pool needed" }
@@ -129,14 +170,22 @@ const vectorMemoryImpact = (bytes, indexType) => {
 export const calculateVectorFootprint = (options = {}) => {
   const rowCount = toInteger(options.rowCount, DEFAULTS.rowCount, ROW_MIN, ROW_MAX)
   const dimensions = toInteger(options.dimensions, DEFAULTS.dimensions, DIMENSION_MIN, DIMENSION_MAX)
-  const format = Object.prototype.hasOwnProperty.call(FORMAT_BYTES, options.format) || options.format === "BINARY" ? options.format : DEFAULTS.format
+  const format =
+    Object.prototype.hasOwnProperty.call(FORMAT_BYTES, options.format) || options.format === "BINARY"
+      ? options.format
+      : DEFAULTS.format
   const indexType = ["HNSW", "IVF", "NONE"].includes(options.indexType) ? options.indexType : DEFAULTS.indexType
+  const ftsDocBytes = toInteger(options.ftsDocBytes, DEFAULTS.ftsDocBytes, FTS_DOC_BYTES_MIN, FTS_DOC_BYTES_MAX)
   const rawSize = rawVectorBytes(rowCount, dimensions, format)
-  const indexSize = indexBytes(rawSize, indexType)
-  const totalSize = rawSize + indexSize
+  const indexSize = indexBytes(rawSize, rowCount, indexType)
+  const ftsSize = ftsIndexBytes(rowCount, ftsDocBytes)
+  const totalSize = rawSize + indexSize + ftsSize
   const baselineSize = baselineFloat32Bytes(rowCount, dimensions)
-  const savingsPercent = clamp((1 - rawSize / baselineSize) * 100, 0, 100)
-  const vectorMemory = vectorMemoryBytes(indexSize, indexType)
+  const rawDeltaPercent = (1 - rawSize / baselineSize) * 100
+  const savingsPercent = clamp(rawDeltaPercent, 0, 100)
+  const savingsLabel =
+    rawDeltaPercent < 0 ? `${rawDeltaPercent.toFixed(1)}% (2x FLOAT32)` : `${savingsPercent.toFixed(1)}%`
+  const vectorMemory = vectorMemoryBytes(rawSize, indexSize, rowCount, dimensions, indexType)
   const memoryImpact = vectorMemoryImpact(vectorMemory, indexType)
 
   return {
@@ -144,14 +193,18 @@ export const calculateVectorFootprint = (options = {}) => {
     dimensions,
     format,
     indexType,
+    ftsDocBytes,
     rawSize,
     indexSize,
+    ftsSize,
     totalSize,
     baselineSize,
     savingsPercent,
+    savingsLabel,
     vectorMemory,
     memoryImpact,
-    indexNote: indexNoteFor(indexType),
+    indexNote: indexNoteFor(indexType, format),
+    ftsNote: ftsNoteFor(ftsDocBytes),
     mediaComparison: mediaComparisonFor(totalSize),
   }
 }
@@ -192,23 +245,28 @@ const readState = (root) => ({
   dimensions: inputFor(root, "dimensions")?.value,
   format: inputFor(root, "format")?.value,
   indexType: inputFor(root, "indexType")?.value,
+  ftsDocBytes: inputFor(root, "ftsDocBytes")?.value,
 })
 
 const renderCalculator = (root) => {
   const estimate = calculateVectorFootprint(readState(root))
   syncInputs(root, "rowCount", estimate.rowCount)
   syncInputs(root, "dimensions", estimate.dimensions)
+  syncInputs(root, "ftsDocBytes", estimate.ftsDocBytes)
 
   writeOutput(root, "rowCount", estimate.rowCount.toLocaleString())
   writeOutput(root, "dimensions", estimate.dimensions.toLocaleString())
+  writeOutput(root, "ftsDocBytes", `${estimate.ftsDocBytes.toLocaleString()} B`)
   writeOutput(root, "rawSize", formatBytes(estimate.rawSize))
   writeOutput(root, "indexSize", formatBytes(estimate.indexSize))
+  writeOutput(root, "ftsSize", formatBytes(estimate.ftsSize))
   writeOutput(root, "totalSize", formatBytes(estimate.totalSize))
   writeOutput(root, "vectorMemory", formatBytes(estimate.vectorMemory))
-  writeOutput(root, "savingsPercent", `${estimate.savingsPercent.toFixed(1)}%`)
+  writeOutput(root, "savingsPercent", estimate.savingsLabel)
   writeOutput(root, "mediaComparison", estimate.mediaComparison)
   writeOutput(root, "memoryImpact", estimate.memoryImpact.label)
   writeOutput(root, "indexNote", estimate.indexNote)
+  writeOutput(root, "ftsNote", estimate.ftsNote)
   setVisualPercent(root, "compression", estimate.savingsPercent)
   setVisualPercent(root, "vectorMemory", estimate.memoryImpact.percent)
 }

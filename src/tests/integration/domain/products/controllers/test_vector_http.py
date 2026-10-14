@@ -60,6 +60,11 @@ async def test_htmx_vector_search_route_through_test_client(
     assert response.status_code == 200, response.text[:500]
     assert response.headers["HX-Push-Url"] == "/explore?query=dark%20roast"
     assert "Cold Brew" in response.text
+    assert "RRF 0.0164" in response.text
+    assert "Vec #1" in response.text
+    assert "data-telemetry-detail=" in response.text
+    assert "hybrid-search-products" in response.text
+    assert "vector-search-products" in response.text
     assert 'id="plan" hx-swap-oob="outerHTML"' in response.text
     assert "TABLE ACCESS BY VECTOR" in response.text
 

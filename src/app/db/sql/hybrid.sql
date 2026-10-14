@@ -13,18 +13,25 @@ route_lex AS (
     FROM chat_route r
     WHERE :has_text_query = 1
       AND CONTAINS(r.exemplar_text, :text_query, 1) > 0
-    FETCH FIRST 10 ROWS ONLY
+    FETCH FIRST :limit ROWS ONLY
 ),
-route_vec AS (
+route_vec_top AS (
     SELECT r.id,
            r.route_label,
            r.title,
-           1 - VECTOR_DISTANCE(r.embedding, :query_vector, COSINE) AS vector_similarity,
-           ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(r.embedding, :query_vector, COSINE), r.id) AS vector_rank
+           1 - VECTOR_DISTANCE(r.embedding, :query_vector, COSINE) AS vector_similarity
     FROM chat_route r
     WHERE r.embedding IS NOT NULL
     ORDER BY VECTOR_DISTANCE(r.embedding, :query_vector, COSINE)
-    FETCH APPROX FIRST 10 ROWS ONLY
+    FETCH APPROX FIRST :limit ROWS ONLY
+),
+route_vec AS (
+    SELECT rv.id,
+           rv.route_label,
+           rv.title,
+           rv.vector_similarity,
+           ROWNUM AS vector_rank
+    FROM route_vec_top rv
 ),
 route_fused AS (
     SELECT COALESCE(l.id, v.id) AS entity_id,
@@ -71,21 +78,31 @@ prod_lex AS (
     FROM product p
     WHERE :has_text_query = 1
       AND CONTAINS(p.description, :text_query, 2) > 0
-    FETCH FIRST 15 ROWS ONLY
+    FETCH FIRST :limit ROWS ONLY
 ),
-prod_vec AS (
+prod_vec_top AS (
     SELECT p.id,
            p.name,
            p.description,
            p.category,
            p.price,
            CASE WHEN p.in_stock THEN 1 ELSE 0 END AS in_stock,
-           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vector_similarity,
-           ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE), p.id) AS vector_rank
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vector_similarity
     FROM product p
     WHERE p.embedding IS NOT NULL
     ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-    FETCH APPROX FIRST 15 ROWS ONLY
+    FETCH APPROX FIRST :limit ROWS ONLY
+),
+prod_vec AS (
+    SELECT pv.id,
+           pv.name,
+           pv.description,
+           pv.category,
+           pv.price,
+           pv.in_stock,
+           pv.vector_similarity,
+           ROWNUM AS vector_rank
+    FROM prod_vec_top pv
 ),
 prod_rrf AS (
     SELECT 'product' AS entity_type,
@@ -167,32 +184,93 @@ prod_lex AS (
            p.name,
            p.description,
            p.price,
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score,
            SCORE(1) AS lexical_score,
            ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC, p.id) AS lexical_rank
     FROM product p
     WHERE :has_text_query = 1
       AND CONTAINS(p.description, :text_query, 1) > 0
-    FETCH FIRST 20 ROWS ONLY
+    FETCH FIRST :limit ROWS ONLY
 ),
-prod_vec AS (
+prod_vec_top AS (
     SELECT p.id,
            p.name,
            p.description,
            p.price,
-           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score,
-           ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE), p.id) AS vector_rank
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score
     FROM product p
-    WHERE p.embedding IS NOT NULL
-      AND 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
+    WHERE 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
     ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-    FETCH APPROX FIRST 20 ROWS ONLY
+    FETCH APPROX FIRST :limit ROWS ONLY
+),
+prod_vec AS (
+    SELECT v.id,
+           v.name,
+           v.description,
+           v.price,
+           v.similarity_score,
+           ROWNUM AS vector_rank
+    FROM prod_vec_top v
 )
 SELECT COALESCE(l.id, v.id) AS id,
        COALESCE(l.name, v.name) AS name,
        COALESCE(l.description, v.description) AS description,
        COALESCE(l.price, v.price) AS price,
-       COALESCE(v.similarity_score, 0) AS similarity_score,
+       COALESCE(v.similarity_score, l.similarity_score, 0) AS similarity_score,
        COALESCE(l.lexical_score, 0) AS lexical_score,
+       l.lexical_rank,
+       v.vector_rank,
+       (CASE WHEN l.lexical_rank IS NOT NULL THEN 1.0 / (:rrf_k + l.lexical_rank) ELSE 0 END) +
+       (CASE WHEN v.vector_rank IS NOT NULL THEN 1.0 / (:rrf_k + v.vector_rank) ELSE 0 END) AS rrf_score
+FROM prod_lex l
+FULL OUTER JOIN prod_vec v ON l.id = v.id
+ORDER BY rrf_score DESC, similarity_score DESC
+FETCH FIRST :limit ROWS ONLY;
+
+-- name: explain-plan-hybrid-search
+EXPLAIN PLAN FOR
+WITH
+prod_lex AS (
+    SELECT p.id,
+           p.name,
+           p.description,
+           p.price,
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score,
+           SCORE(1) AS lexical_score,
+           ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC, p.id) AS lexical_rank
+    FROM product p
+    WHERE :has_text_query = 1
+      AND CONTAINS(p.description, :text_query, 1) > 0
+    FETCH FIRST :limit ROWS ONLY
+),
+prod_vec_top AS (
+    SELECT p.id,
+           p.name,
+           p.description,
+           p.price,
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score
+    FROM product p
+    WHERE 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
+    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+    FETCH APPROX FIRST :limit ROWS ONLY
+),
+prod_vec AS (
+    SELECT v.id,
+           v.name,
+           v.description,
+           v.price,
+           v.similarity_score,
+           ROWNUM AS vector_rank
+    FROM prod_vec_top v
+)
+SELECT COALESCE(l.id, v.id) AS id,
+       COALESCE(l.name, v.name) AS name,
+       COALESCE(l.description, v.description) AS description,
+       COALESCE(l.price, v.price) AS price,
+       COALESCE(v.similarity_score, l.similarity_score, 0) AS similarity_score,
+       COALESCE(l.lexical_score, 0) AS lexical_score,
+       l.lexical_rank,
+       v.vector_rank,
        (CASE WHEN l.lexical_rank IS NOT NULL THEN 1.0 / (:rrf_k + l.lexical_rank) ELSE 0 END) +
        (CASE WHEN v.vector_rank IS NOT NULL THEN 1.0 / (:rrf_k + v.vector_rank) ELSE 0 END) AS rrf_score
 FROM prod_lex l

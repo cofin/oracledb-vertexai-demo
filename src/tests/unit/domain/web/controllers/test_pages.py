@@ -50,7 +50,13 @@ async def test_explore_page_loads_dynamic_store_inventory_selector() -> None:
 
     stores_service.get_all_stores.assert_awaited_once_with()
     assert response.template_name == "pages/explore.html.j2"
-    assert response.context == {"query": "dark roast", "stores": stores}
+    assert response.context["query"] == "dark roast"
+    assert response.context["stores"] == stores
+    assert response.context["search_mode"] == "hybrid"
+    assert response.context["rrf_k"] == 60
+    assert response.context["oracle_text_query"] == "{dark} ACCUM {roast}"
+    assert "hybrid-search-products" in response.context["hybrid_detail_json"]
+    assert "vector-search-products" in response.context["vector_detail_json"]
 
 
 async def test_explore_page_renders_when_store_selector_is_unavailable() -> None:
@@ -64,4 +70,9 @@ async def test_explore_page_renders_when_store_selector_is_unavailable() -> None
 
     stores_service.get_all_stores.assert_awaited_once_with()
     assert response.template_name == "pages/explore.html.j2"
-    assert response.context == {"query": "", "stores": []}
+    assert not response.context["query"]
+    assert response.context["stores"] == []
+    assert response.context["search_mode"] == "hybrid"
+    assert response.context["rrf_k"] == 60
+    assert "hybrid-search-products" in response.context["hybrid_detail_json"]
+    assert "vector-search-products" in response.context["vector_detail_json"]

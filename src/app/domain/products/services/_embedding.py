@@ -13,11 +13,10 @@ from google.genai.types import EmbedContentConfig, GenerateContentConfig
 
 from app.config import db_manager
 from app.domain.products.schemas import ExplainPlan, ExplainPlanRow, ProductMatch
+from app.domain.products.services._products import ProductService, sanitize_oracle_text_query
 
 if TYPE_CHECKING:
     from google.genai import Client
-
-    from app.domain.products.services._products import ProductService
 
 __all__ = (
     "EMBEDDING_PURPOSE_INSTRUCTIONS",
@@ -90,7 +89,7 @@ class OracleVectorSearchService:
     async def similarity_search(
         self, query: str, k: int = 5, threshold: float = 0.5, *, store_id: int | None = None
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
-        """Embed a query and execute Oracle vector similarity search."""
+        """Embed a query and execute Oracle Hybrid RRF or store-scoped vector search."""
         start_time = time.perf_counter()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query, embedding_purpose="query", return_cache_status=True
@@ -98,27 +97,51 @@ class OracleVectorSearchService:
         embedding_ms = (time.perf_counter() - start_time) * 1000
 
         oracle_start = time.perf_counter()
-        results = await self.product_service.search_by_vector(
-            embedding, similarity_threshold=threshold, limit=k, store_id=store_id
-        )
+        results: list[ProductMatch] = []
+        if store_id is None and isinstance(self.product_service, ProductService):
+            results = await self.product_service.search_hybrid(
+                text_query=query,
+                query_embedding=embedding,
+                similarity_threshold=min(threshold, 0.45),
+                rrf_k=60,
+                limit=k,
+            )
+        if not results:
+            results = await self.product_service.search_by_vector(
+                embedding, similarity_threshold=threshold, limit=k, store_id=store_id
+            )
         oracle_ms = (time.perf_counter() - oracle_start) * 1000
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}
 
-    async def explain_search_plan(self, query: str) -> ExplainPlan:
-        """Run EXPLAIN PLAN against the vector-search SQL and pull the plan."""
+    async def explain_search_plan(self, query: str, *, mode: str = "hybrid") -> ExplainPlan:
+        """Run EXPLAIN PLAN against the hybrid RRF or vector-search SQL and pull the plan."""
         embedding, _ = await self.vertex_ai_service.get_text_embedding(
             query, embedding_purpose="query", return_cache_status=True
         )
-        await self.product_service.driver.execute(
-            db_manager.get_sql("explain-plan-vector-search"), query_vector=embedding, threshold=0.5, limit=5
-        )
+        if mode == "vector":
+            await self.product_service.driver.execute(
+                db_manager.get_sql("explain-plan-vector-search"), query_vector=embedding, threshold=0.5, limit=5
+            )
+        else:
+            sanitized = sanitize_oracle_text_query(query)
+            await self.product_service.driver.execute(
+                db_manager.get_sql("explain-plan-hybrid-search"),
+                has_text_query=1 if sanitized is not None else 0,
+                text_query=sanitized if sanitized is not None else "{coffee}",
+                query_vector=embedding,
+                threshold=0.45,
+                rrf_k=60,
+                limit=5,
+            )
         rows = await self.product_service.driver.select(db_manager.get_sql("explain-plan-display"))
         plan_lines = [str(row["plan_table_output"]) for row in rows]
         plan_rows = self.parse_plan_rows(plan_lines)
-        plan_summary = next(
-            (f"{row.operation} {row.name}".strip() for row in plan_rows if row.is_vector),
-            plan_rows[0].operation if plan_rows else (plan_lines[0].strip() if plan_lines else ""),
+        highlighted = [f"{row.operation} {row.name}".strip() for row in plan_rows if row.is_vector]
+        plan_summary = (
+            " + ".join(dict.fromkeys(highlighted))
+            if highlighted
+            else (plan_rows[0].operation if plan_rows else (plan_lines[0].strip() if plan_lines else ""))
         )
         return ExplainPlan(plan_lines=plan_lines, plan_summary=plan_summary, plan_rows=plan_rows)
 
@@ -140,6 +163,7 @@ class OracleVectorSearchService:
             if not plan_id:
                 continue
             operation = re.sub(r"\s+", " ", operation_cell).strip()
+            upper_line = line.upper()
             rows.append(
                 ExplainPlanRow(
                     id=plan_id,
@@ -150,7 +174,7 @@ class OracleVectorSearchService:
                     cost=_plan_cell(cells, 5),
                     time=_plan_cell(cells, 6),
                     raw_line=line,
-                    is_vector="VECTOR" in line.upper(),
+                    is_vector=any(token in upper_line for token in ("VECTOR", "DOMAIN INDEX", "CTX_IDX")),
                 )
             )
         return rows

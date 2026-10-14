@@ -67,15 +67,39 @@ async def test_explain_plan_rejects_empty_query() -> None:
 
 
 def test_explain_plan_parser_extracts_table_rows() -> None:
-    """Verify `OracleVectorSearchService.parse_plan_rows` extracts structured table rows."""
+    """Verify `OracleVectorSearchService.parse_plan_rows` extracts structured table rows and highlights hybrid indexes."""
     rows = OracleVectorSearchService.parse_plan_rows([
         "Plan hash value: 12345",
-        "| Id  | Operation                 | Name    | Rows | Bytes | Cost (%CPU)| Time     |",
-        "|   0 | SELECT STATEMENT          |         |    5 |   400 |     3   (0)| 00:00:01 |",
-        "|   2 |   TABLE ACCESS BY VECTOR  | PRODUCT |    5 |   400 |     3   (0)| 00:00:01 |",
+        "| Id  | Operation                            | Name                   | Rows | Bytes | Cost (%CPU)| Time     |",
+        "|   0 | SELECT STATEMENT                     |                        |    5 |   400 |     3   (0)| 00:00:01 |",
+        "|* 11 |   DOMAIN INDEX                       | PRODUCT_HYBRID_CTX_IDX |      |       |     4   (0)| 00:00:01 |",
+        "|  19 |   VECTOR INDEX HNSW SCAN IN-FILTER   | PRODUCT_EMBEDDING_IDX  |    1 |   256 |   156   (0)| 00:00:01 |",
     ])
 
-    assert rows[1].id == "2"
-    assert rows[1].operation == "TABLE ACCESS BY VECTOR"
-    assert rows[1].name == "PRODUCT"
+    assert rows[0].is_vector is False
+    assert rows[1].id == "11"
+    assert rows[1].operation == "DOMAIN INDEX"
+    assert rows[1].name == "PRODUCT_HYBRID_CTX_IDX"
     assert rows[1].is_vector is True
+    assert rows[2].id == "19"
+    assert rows[2].operation == "VECTOR INDEX HNSW SCAN IN-FILTER"
+    assert rows[2].name == "PRODUCT_EMBEDDING_IDX"
+    assert rows[2].is_vector is True
+
+
+@pytest.mark.anyio
+async def test_explain_plan_passes_vector_mode_when_requested() -> None:
+    """Verify `VectorController.explain_plan` forwards `mode='vector'` when requested via query params."""
+    mock_service = AsyncMock()
+    mock_service.explain_search_plan.return_value = {
+        "plan_lines": ["Plan hash value: 999"],
+        "plan_summary": "VECTOR INDEX HNSW SCAN",
+        "plan_rows": [],
+    }
+    controller = VectorController(owner=MagicMock())
+    request = MagicMock()
+    request.query_params = {"query": "dark roast", "mode": "vector"}
+    response = await VectorController.explain_plan.fn(controller, request=request, vector_search_service=mock_service)
+
+    assert response["plan_summary"] == "VECTOR INDEX HNSW SCAN"
+    mock_service.explain_search_plan.assert_awaited_once_with("dark roast", mode="vector")

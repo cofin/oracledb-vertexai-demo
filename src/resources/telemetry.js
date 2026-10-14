@@ -10,9 +10,15 @@ export const renderMetrics = (payload) => {
   }
   const metrics = payload.search_metrics ?? {}
   const vectorQuery = metrics.vector_query ?? metrics.query
+  const topRrf =
+    Array.isArray(metrics.rrf_scores) && metrics.rrf_scores.length && Number.isFinite(metrics.rrf_scores[0])
+      ? Number(metrics.rrf_scores[0]).toFixed(4)
+      : null
   const badges = [
     ["Intent", payload.intent_detected],
     ["Query", vectorQuery],
+    ["Top RRF", topRrf],
+    ["Lexical hits", Number.isFinite(metrics.lexical_hits) && metrics.lexical_hits > 0 ? String(metrics.lexical_hits) : null],
     ["Total", Number.isFinite(metrics.total_ms) ? `${metrics.total_ms} ms` : null],
     ["Oracle", Number.isFinite(metrics.oracle_ms) ? `${metrics.oracle_ms} ms` : null],
     ["Embedding", Number.isFinite(metrics.embedding_ms) ? `${metrics.embedding_ms} ms` : null],
@@ -184,20 +190,79 @@ const loadExplainPlan = async (query) => {
   }
 }
 
+const renderRrfSection = (detail) => {
+  const formula = typeof detail.rrfFormula === "string" && detail.rrfFormula.trim() ? detail.rrfFormula.trim() : null
+  const textQuery =
+    typeof detail.oracleTextQuery === "string" && detail.oracleTextQuery.trim() ? detail.oracleTextQuery.trim() : null
+  const rows = Array.isArray(detail.rrfRows) ? detail.rrfRows : []
+  if (!formula && rows.length === 0) {
+    return ""
+  }
+  const rowsMarkup = rows.length
+    ? `<div class="mt-2 overflow-auto border-y border-border bg-surface/45">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-surface-strong text-muted">
+            <tr>
+              <th class="px-2.5 py-1.5 font-semibold">Product</th>
+              <th class="px-2.5 py-1.5 font-semibold">Lexical (SCORE · #)</th>
+              <th class="px-2.5 py-1.5 font-semibold">Vector (Sim · #)</th>
+              <th class="px-2.5 py-1.5 font-semibold">Equation</th>
+              <th class="px-2.5 py-1.5 text-right font-semibold">RRF</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map((row) => {
+                const lexText = row.lexicalRank
+                  ? `SCORE ${Number(row.lexicalScore ?? 0).toFixed(0)} · #${row.lexicalRank}`
+                  : "—"
+                const vecText = row.vectorRank
+                  ? `${Number(row.similarity ?? 0).toFixed(1)}% · #${row.vectorRank}`
+                  : `${Number(row.similarity ?? 0).toFixed(1)}%`
+                return `<tr class="border-t border-border text-strong">
+                  <td class="px-2.5 py-1.5 font-medium">${escapeHtml(String(row.name ?? ""))}</td>
+                  <td class="px-2.5 py-1.5 font-mono text-muted">${escapeHtml(lexText)}</td>
+                  <td class="px-2.5 py-1.5 font-mono text-muted">${escapeHtml(vecText)}</td>
+                  <td class="px-2.5 py-1.5 font-mono text-[11px] text-muted">${escapeHtml(String(row.formula ?? ""))}</td>
+                  <td class="px-2.5 py-1.5 text-right font-mono font-semibold text-accent-strong">${escapeHtml(
+                    Number(row.rrfScore ?? 0).toFixed(4),
+                  )}</td>
+                </tr>`
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>`
+    : ""
+  return `<section class="mt-3 rounded-lg border border-border bg-surface-strong/60 p-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h3 class="text-xs font-semibold uppercase text-muted">Reciprocal Rank Fusion (RRF)</h3>
+      ${textQuery ? `<span class="font-mono text-xs text-muted">CONTAINS: ${escapeHtml(textQuery)}</span>` : ""}
+    </div>
+    ${
+      formula
+        ? `<p class="mt-1.5 rounded bg-deep px-2.5 py-1.5 font-mono text-xs text-white">${escapeHtml(formula)}</p>`
+        : ""
+    }
+    ${rowsMarkup}
+  </section>`
+}
+
 export const showTelemetryPopover = (detail) => {
-  const root = document.querySelector("[data-ui-popover-root='chat']")
+  const root = document.querySelector("[data-ui-popover-root]")
   if (!root) {
     return
   }
   const sqlPhases = Array.isArray(detail.sqlPhases) ? detail.sqlPhases : []
   const planQuery = typeof detail.planQuery === "string" && detail.planQuery.trim() ? detail.planQuery.trim() : null
+  const rrfMarkup = renderRrfSection(detail)
   const sqlMarkup = sqlPhases.length
     ? sqlPhases.map(renderSqlPhase).join("")
     : '<p class="mt-2 text-sm text-muted">No SQL was executed for this phase.</p>'
   root.hidden = false
   root.removeAttribute("aria-hidden")
   root.setAttribute("role", "dialog")
-  root.className = "popover-surface fixed bottom-4 right-4 z-50 max-h-[70vh] w-[min(34rem,calc(100vw-2rem))] overflow-auto p-4"
+  root.className = "popover-surface fixed bottom-4 right-4 z-50 max-h-[75vh] w-[min(40rem,calc(100vw-2rem))] overflow-auto p-4"
   root.innerHTML = `<header class="flex items-start justify-between gap-3">
     <div>
       <h2 class="text-base font-semibold text-strong">${escapeHtml(detail.title ?? "Telemetry")}</h2>
@@ -205,11 +270,12 @@ export const showTelemetryPopover = (detail) => {
     </div>
     <button type="button" class="icon-button" data-telemetry-close aria-label="Close telemetry detail">X</button>
   </header>
+  ${rrfMarkup}
   ${
     planQuery
       ? `<section class="mt-3 border-t border-border pt-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <h3 class="text-sm font-semibold text-strong">Oracle vector search</h3>
+            <h3 class="text-sm font-semibold text-strong">Oracle 26ai execution plan</h3>
             <span class="font-mono text-xs text-muted">${escapeHtml(planQuery)}</span>
           </div>
           <div data-explain-plan-host class="mt-3">
@@ -235,7 +301,7 @@ export const showTelemetryPopover = (detail) => {
 }
 
 export const hideTelemetryPopover = () => {
-  const root = document.querySelector("[data-ui-popover-root='chat']")
+  const root = document.querySelector("[data-ui-popover-root]")
   if (!root) {
     return
   }
@@ -254,6 +320,11 @@ export const renderMessageTelemetry = (payload) => {
 
   const metrics = payload.search_metrics ?? {}
   const vectorQuery = metrics.vector_query ?? metrics.query
+  const topRrf =
+    Array.isArray(metrics.rrf_scores) && metrics.rrf_scores.length && Number.isFinite(metrics.rrf_scores[0])
+      ? Number(metrics.rrf_scores[0]).toFixed(4)
+      : null
+  const rrfFormula = "RRF(d) = 1 / (60 + lexical_rank) + 1 / (60 + vector_rank)"
   const chips = [
     payload.intent_detected
       ? telemetryChip(
@@ -263,22 +334,23 @@ export const renderMessageTelemetry = (payload) => {
           "neutral",
           telemetryDetail(
             "Intent classification",
-            `The request was classified as ${payload.intent_detected}.`,
+            `The request was classified as ${payload.intent_detected} via single-query Oracle 26ai Hybrid RRF.`,
             phasesFor(payload, "hybrid-search-turn"),
+            { rrfFormula },
           ),
         )
       : null,
     vectorQuery
       ? telemetryChip(
           "Q",
-          "Vector query",
+          "Hybrid RRF query",
           `"${vectorQuery}"`,
           "neutral",
           telemetryDetail(
-            "Oracle vector search",
-            `The product RAG lookup used "${vectorQuery}".`,
+            "Oracle 26ai Hybrid RRF & Vector search",
+            `The lookup used "${vectorQuery}"${topRrf ? ` (top RRF ${topRrf}, lexical hits: ${metrics.lexical_hits ?? 0})` : ""}.`,
             phasesFor(payload, "hybrid-search-turn", "hybrid-search-products", "vector-search-products"),
-            { planQuery: vectorQuery },
+            { planQuery: vectorQuery, rrfFormula },
           ),
         )
       : null,
@@ -307,12 +379,12 @@ export const renderMessageTelemetry = (payload) => {
     formatMetricMs(metrics.oracle_ms)
       ? telemetryChip(
           "O",
-          "Oracle vector phase",
+          "Oracle Hybrid RRF phase",
           formatMetricMs(metrics.oracle_ms),
           "neutral",
           telemetryDetail(
-            "Oracle vector phase",
-            `Oracle vector search completed in ${formatMetricMs(metrics.oracle_ms)}.`,
+            "Oracle Hybrid RRF phase",
+            `Oracle 26ai Hybrid RRF search completed in ${formatMetricMs(metrics.oracle_ms)}${topRrf ? ` (top RRF ${topRrf})` : ""}.`,
             phasesFor(
               payload,
               "hybrid-search-turn",
@@ -320,7 +392,7 @@ export const renderMessageTelemetry = (payload) => {
               "hybrid-search-products",
               "vector-search-products",
             ),
-            vectorQuery ? { planQuery: vectorQuery } : {},
+            vectorQuery ? { planQuery: vectorQuery, rrfFormula } : { rrfFormula },
           ),
         )
       : null,

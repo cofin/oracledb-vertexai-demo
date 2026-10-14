@@ -40,3 +40,11 @@ Dense embeddings map off-menu brands (e.g. *"Do you carry Folgers?"*) to high co
 1. `extract_candidate_terms(message)` extracts candidate product/brand tokens.
 2. `hybrid-term-hits` executes a single `JSON_TABLE(:terms_json)` + `CONTAINS(p.description, '{' || jt.term || '}') > 0` query to count catalog hits per term.
 3. When a specific brand noun has 0 catalog hits, `GroundedRouteService` deterministically reports that Cymbal Coffee does not carry that brand and offers the top RRF-ranked in-stock alternatives.
+
+## 4. HNSW Index Access inside RRF CTEs & Storage Sizing
+
+- **Subquery Isolation for `ROWNUM` Ranking**: In Oracle AI Database 26ai (`23.26.0.0.0`), placing `ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(..., COSINE))` directly inside the same query block as `ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX FIRST :limit ROWS ONLY` prevents the Cost-Based Optimizer from selecting `VECTOR INDEX HNSW SCAN` and falls back to `TABLE ACCESS FULL`. Always isolate the `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST :limit ROWS ONLY` inside an inner subquery (`*_vec_top`) and assign `ROWNUM AS vector_rank` in the outer CTE so the optimizer combines `VECTOR INDEX HNSW SCAN IN-FILTER` (`PRODUCT_EMBEDDING_IDX`) with `DOMAIN INDEX` (`PRODUCT_HYBRID_CTX_IDX`).
+- **Validated Storage Calculator Formulas (`src/resources/vector-calculator.js`)**:
+  - **HNSW (`INMEMORY NEIGHBOR GRAPH`)**: Per `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR`, requires `1.25x` raw vector bytes (`row_count * dimensions * dtype_bytes * 1.25`) plus hierarchical graph link structures (`~640 B/row` at default `NEIGHBORS=32, EFCONSTRUCTION=200`) in the SGA Vector Pool (`VECTOR_MEMORY_SIZE`).
+  - **IVF (`NEIGHBOR PARTITIONS`)**: Per `DBMS_VECTOR.INDEX_VECTOR_MEMORY_ADVISOR`, allocates `1.1x` (`1 + 1/TARGET_ACCURACY` at 90% accuracy) on disk for inverted partition tables plus `~sqrt(N)` partition centroid vectors (`sqrt(N) * dimensions * dtype_bytes * 1.1`) in the SGA Vector Pool.
+  - **Oracle Text FTS (`CTXSYS.CONTEXT` `MULTI_COLUMN_DATASTORE`)**: Allocates four internal segments (`DR$<index>$I` token postings BLOB, `$X` B-tree on `(TOKEN_TEXT, TOKEN_TYPE, TOKEN_FIRST, TOKEN_LAST, TOKEN_COUNT)`, `$K` DOCID-to-ROWID IOT, and `$R` ROWID-to-DOCID mapping table), sized at `~35%` of indexed text volume plus `$I`/`$X`/`$K`/`$R` segment metadata overhead.

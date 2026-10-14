@@ -132,6 +132,12 @@ async def test_explore_page_prefills_shared_query(client: AsyncTestClient) -> No
     assert body.count("text-surface placeholder:text-surface/60") == 1
     assert "Table + Vector Pool" in body
     assert "Vector pool estimate" in body
+    assert "Oracle Text FTS index" in body
+    assert 'data-vector-input="ftsDocBytes"' in body
+    assert 'data-output="ftsSize"' in body
+    assert "Hybrid RRF SQL" in body
+    assert "Vector HNSW SQL" in body
+    assert "1/(60 + r_lex) + 1/(60 + r_vec)" in body
     assert "HNSW M" not in body
 
 

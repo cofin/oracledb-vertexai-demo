@@ -266,3 +266,62 @@ async def test_vector_search_get_endpoint_accepts_query_param_and_validates_limi
         assert bad_limit_resp.status_code == 400
 
     await container.close()
+
+
+@pytest.mark.anyio
+async def test_vector_demo_surfaces_hybrid_rrf_scores_ranks_and_sql_phases() -> None:
+    """Verify `VectorController.vector_search_demo` surfaces RRF scores, ranks, and SQL telemetry phases."""
+    mock_vector_search = AsyncMock()
+    mock_vector_search.similarity_search.return_value = (
+        [
+            ProductMatch(
+                id=1,
+                name="Cold Brew",
+                description="smooth dark cold brew",
+                price=5.25,
+                similarity_score=0.91,
+                lexical_score=24.0,
+                lexical_rank=1,
+                vector_rank=1,
+                rrf_score=0.0328,
+            ),
+            ProductMatch(
+                id=2,
+                name="Mocha",
+                description="chocolate espresso",
+                price=4.75,
+                similarity_score=0.83,
+                lexical_score=0.0,
+                lexical_rank=None,
+                vector_rank=2,
+                rrf_score=0.0161,
+            ),
+        ],
+        True,
+        {"embedding_ms": 1.2, "oracle_ms": 3.4},
+    )
+    mock_metrics = AsyncMock()
+    request = MagicMock()
+    request.htmx = False
+    request.headers = {"content-type": "application/json"}
+    request.json = AsyncMock(return_value={"query": "dark cold brew"})
+
+    response = await VectorController.vector_search_demo.fn(
+        VectorController(owner=MagicMock()),
+        vector_search_service=mock_vector_search,
+        metrics_service=mock_metrics,
+        request=request,
+    )
+
+    payload = response.content
+    assert isinstance(payload, VectorDemo)
+    assert payload.search_mode == "hybrid"
+    assert payload.rrf_k == 60
+    assert payload.oracle_text_query == "{dark} ACCUM {cold} ACCUM {brew}"
+    assert len(payload.sql_phases) == 2
+    assert {phase["sql_key"] for phase in payload.sql_phases} == {"hybrid-search-products", "vector-search-products"}
+    assert payload.results[0].rrf_score == pytest.approx(0.0328)
+    assert payload.results[0].lexical_rank == 1
+    assert payload.results[0].vector_rank == 1
+    assert payload.results[1].lexical_rank is None
+    assert payload.results[1].vector_rank == 2

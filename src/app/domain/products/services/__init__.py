@@ -14,7 +14,7 @@ from app.domain.products.services._embedding import (
 )
 from app.domain.products.services._inventory import InventoryService
 from app.domain.products.services._maps import MapsService, build_store_directions_url, build_store_search_url
-from app.domain.products.services._products import ProductService
+from app.domain.products.services._products import ProductService, sanitize_oracle_text_query
 from app.domain.products.services._stores import StoreService
 
 __all__ = (
@@ -29,4 +29,5 @@ __all__ = (
     "VertexAIService",
     "build_store_directions_url",
     "build_store_search_url",
+    "sanitize_oracle_text_query",
 )
