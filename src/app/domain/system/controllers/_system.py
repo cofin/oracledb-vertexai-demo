@@ -9,6 +9,8 @@ from litestar_security import PublicController
 
 from app.lib.settings import BASE_DIR
 
+__all__ = ("SystemController",)
+
 
 class SystemController(PublicController):
     """System controller for root-level and un-grouped system routes."""

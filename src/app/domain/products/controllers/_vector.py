@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Vector search controller for HTMX demo, explain plan, and MCP search tool."""
+
 import re
 import time
 import uuid
-from typing import Annotated
+from typing import Annotated, ClassVar
 from urllib.parse import quote
 
 import structlog
@@ -13,8 +15,9 @@ from litestar.exceptions import ValidationException
 from litestar.params import QueryParameter
 from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 from litestar_htmx import HTMXRequest, HTMXTemplate
-from litestar_security import PublicController
+from litestar_security import AuthenticationPolicy, PublicController, exclude
 
+from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.products.controllers._vector_helpers import (
     SERVICE_UNAVAILABLE_MESSAGE,
     is_expected_service_unavailable,
@@ -28,6 +31,8 @@ from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
 
+__all__ = ("VectorController",)
+
 logger = structlog.get_logger()
 _PERF_EXCELLENT_MS: float = 100.0
 _PERF_GOOD_MS: float = 500.0
@@ -35,6 +40,8 @@ _PERF_GOOD_MS: float = 500.0
 
 class VectorController(PublicController):
     """Vector search controller with HTMX-aware partial / JSON responses and MCP tools."""
+
+    auth: ClassVar[AuthenticationPolicy] = exclude()
 
     @staticmethod
     def validate_message(message: str) -> str:
@@ -50,7 +57,7 @@ class VectorController(PublicController):
 
         return message
 
-    @post(path="/api/vector-demo", name="vector.demo")
+    @post(path="/api/vector-demo", name="vector.demo", opt={"exclude_from_csrf": False})
     async def vector_search_demo(
         self,
         vector_search_service: Inject[OracleVectorSearchService],
@@ -61,10 +68,10 @@ class VectorController(PublicController):
         data = await vector_query_from_request(request)
         query = self.validate_message(data.query)
 
-        full_request_start = time.time()
+        full_request_start = time.perf_counter()
         detailed_timings: dict[str, float] = {}
 
-        similarity_search_start = time.time()
+        similarity_search_start = time.perf_counter()
         try:
             results, embedding_cache_hit, vector_timings = await vector_search_service.similarity_search(query, k=5)
         except Exception as exc:
@@ -90,22 +97,22 @@ class VectorController(PublicController):
                 },
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
             )
-        detailed_timings["similarity_search_total_ms"] = (time.time() - similarity_search_start) * 1000
+        detailed_timings["similarity_search_total_ms"] = (time.perf_counter() - similarity_search_start) * 1000
         detailed_timings.update(vector_timings)
 
-        metrics_record_start = time.time()
+        metrics_record_start = time.perf_counter()
         await metrics_service.record_search(
             SearchMetricsCreate(
                 query_id=str(uuid.uuid4()),
                 user_id="demo_user",
-                search_time_ms=(time.time() - full_request_start) * 1000,
+                search_time_ms=(time.perf_counter() - full_request_start) * 1000,
                 embedding_time_ms=vector_timings["embedding_ms"],
                 oracle_time_ms=vector_timings["oracle_ms"],
                 similarity_score=results[0].similarity_score if results else 0,
                 result_count=len(results),
             )
         )
-        detailed_timings["metrics_recording_ms"] = (time.time() - metrics_record_start) * 1000
+        detailed_timings["metrics_recording_ms"] = (time.perf_counter() - metrics_record_start) * 1000
 
         matches = [
             VectorDemoMatch(
@@ -117,7 +124,7 @@ class VectorController(PublicController):
             for row in results
         ]
 
-        total_ms = (time.time() - full_request_start) * 1000
+        total_ms = (time.perf_counter() - full_request_start) * 1000
         detailed_timings["total_endpoint_ms"] = total_ms
 
         performance_level = (
@@ -188,7 +195,12 @@ class VectorController(PublicController):
             List of matching products with calculated similarity percentages.
         """
         clean_query = self.validate_message(q)
-        results, _, _ = await vector_search_service.similarity_search(clean_query, k=limit)
+        try:
+            results, _, _ = await vector_search_service.similarity_search(clean_query, k=limit)
+        except Exception as exc:
+            if is_expected_service_unavailable(exc):
+                raise AIServiceUnconfigured(SERVICE_UNAVAILABLE_MESSAGE) from exc
+            raise
         return [
             VectorDemoMatch(
                 name=row.name,

@@ -251,10 +251,15 @@ CREATE TABLE agent_session (
     user_id VARCHAR2(128) NOT NULL,
     app_name VARCHAR2(128) NOT NULL,
     state CLOB DEFAULT '{}' NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL FOR INSERT AND UPDATE CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT pk_agent_session PRIMARY KEY (id),
     CONSTRAINT chk_agent_session_state_json CHECK (state IS JSON)
+)
+ANNOTATIONS (
+    Display 'Agent sessions',
+    Description 'Conversation session state for native Gemini agent runtime',
+    Privacy 'No raw browser coordinates persisted'
 );
 
 CREATE TABLE agent_event (
@@ -266,12 +271,18 @@ CREATE TABLE agent_event (
     agent VARCHAR2(128) NOT NULL,
     content CLOB,
     actions CLOB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL FOR INSERT AND UPDATE CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT fk_agent_event_session FOREIGN KEY (session_id)
         REFERENCES agent_session(id) ON DELETE CASCADE,
     CONSTRAINT uq_agent_event_session_seq UNIQUE (session_id, seq),
     CONSTRAINT chk_agent_event_content_json CHECK (content IS NULL OR content IS JSON),
     CONSTRAINT chk_agent_event_actions_json CHECK (actions IS NULL OR actions IS JSON)
+)
+ANNOTATIONS (
+    Display 'Agent events',
+    Description 'Ordered turn and tool events for native Gemini agent sessions',
+    Privacy 'No raw browser coordinates persisted'
 );
 
 
@@ -282,10 +293,22 @@ CREATE TABLE chat_route (
     title VARCHAR2(200) NOT NULL,
     exemplar_text CLOB NOT NULL,
     keywords VARCHAR2(1000) NOT NULL,
-    embedding VECTOR(3072, FLOAT32),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
-) INMEMORY PRIORITY HIGH;
+    embedding VECTOR(3072, FLOAT32)
+        ANNOTATIONS (
+            Display 'Route exemplar embedding',
+            Embedding_Model 'gemini-embedding-2',
+            Embedding_Dimensions '3072',
+            Embedding_Purpose 'document',
+            Distance 'COSINE'
+        ),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT ON NULL FOR INSERT AND UPDATE CURRENT_TIMESTAMP NOT NULL
+) INMEMORY PRIORITY HIGH
+ANNOTATIONS (
+    Display 'Chat routing exemplars',
+    Description 'Hybrid RRF routing exemplars combining Oracle Text and HNSW vectors',
+    AI_Surface 'INTENT_ROUTING'
+);
 
 
 -- Indexes for performance optimization
@@ -298,13 +321,6 @@ DISTANCE COSINE
 WITH TARGET ACCURACY 95
 PARAMETERS (TYPE HNSW, NEIGHBORS 40, EFCONSTRUCTION 500);
 -- docs:end-hnsw-index
-
--- Vector similarity index for embedding cache (HNSW INMEMORY)
-CREATE VECTOR INDEX embedding_cache_embedding_idx ON embedding_cache (embedding)
-ORGANIZATION INMEMORY NEIGHBOR GRAPH
-DISTANCE COSINE
-WITH TARGET ACCURACY 95
-PARAMETERS (TYPE HNSW, NEIGHBORS 40, EFCONSTRUCTION 500);
 
 -- Vector similarity index for chat_route exemplars (HNSW INMEMORY)
 CREATE VECTOR INDEX chat_route_embedding_idx ON chat_route (embedding)
@@ -507,8 +523,6 @@ BEGIN EXECUTE IMMEDIATE 'DROP INDEX store_product_inventory_store_idx'; EXCEPTIO
 BEGIN EXECUTE IMMEDIATE 'DROP INDEX chat_route_embedding_idx'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
 BEGIN EXECUTE IMMEDIATE 'DROP INDEX product_embedding_idx'; EXCEPTION WHEN OTHERS THEN NULL; END;
-
-BEGIN EXECUTE IMMEDIATE 'DROP INDEX embedding_cache_embedding_idx'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
 
 -- Drop tables in reverse dependency order

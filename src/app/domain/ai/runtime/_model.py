@@ -3,6 +3,7 @@
 
 """Direct Google GenAI client targeting Gemini 3.8 Flash with streaming."""
 
+import uuid
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
@@ -135,7 +136,7 @@ class GeminiModelClient:
                 continue
             if part.function_call:
                 call = FunctionCall(
-                    id=part.function_call.id or "",
+                    id=part.function_call.id or f"call_{uuid.uuid4().hex[:12]}",
                     name=part.function_call.name or "",
                     args=part.function_call.args or {},
                 )
@@ -163,7 +164,7 @@ class GeminiModelClient:
         ]
         return [types.Tool(function_declarations=decls)]
 
-    async def _call_stream(self, model: str, contents: list[types.Content], config: types.GenerateContentConfig) -> Any:
+    async def _call_stream(self, model: str, contents: Any, config: types.GenerateContentConfig) -> Any:
         """Call Google GenAI streaming generation API with rate limit retry.
 
         Args:

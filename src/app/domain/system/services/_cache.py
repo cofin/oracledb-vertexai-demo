@@ -22,6 +22,7 @@ class CacheService(OracleAsyncService):
     """Handles database operations for response and embedding cache."""
 
     async def get_cached_response(self, cache_key: str) -> ResponseCache | None:
+        """Fetch an unexpired cached response row by ``cache_key``."""
         return await self.driver.select_one_or_none(
             db_manager.get_sql("get-cached-response"), key=cache_key, schema_type=ResponseCache
         )
@@ -56,6 +57,7 @@ class CacheService(OracleAsyncService):
     async def set_cached_response(
         self, cache_key: str, response_data: dict[str, Any], ttl_minutes: int = 60
     ) -> ResponseCache | None:
+        """Upsert a cached response payload with an expiration window in minutes."""
         expires_at = datetime.now(UTC) + timedelta(minutes=ttl_minutes)
 
         existing = await self.driver.select_value_or_none(
@@ -82,6 +84,7 @@ class CacheService(OracleAsyncService):
         )
 
     async def get_embedding(self, text: str, model: str) -> list[float] | None:
+        """Retrieve a cached embedding vector and increment its hit counter."""
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         cached = await self.driver.select_one_or_none(
             db_manager.get_sql("get-cached-embedding"), hash=text_hash, model=model, schema_type=EmbeddingCache
@@ -99,6 +102,7 @@ class CacheService(OracleAsyncService):
         return cached.embedding
 
     async def save_embedding(self, text: str, embedding: list[float], model: str) -> None:
+        """Persist a newly generated text embedding vector if not already cached."""
         text_hash = hashlib.sha256(text.encode()).hexdigest()
         existing = await self.driver.select_value_or_none(
             sql.select("id").from_("embedding_cache").where_eq("text_hash", text_hash).where_eq("model", model)
@@ -110,6 +114,7 @@ class CacheService(OracleAsyncService):
             await self.driver.commit()
 
     async def get_cache_stats(self) -> CacheStats:
+        """Compute embedding cache entry count, total hits, and estimated hit rate."""
         row = await self.driver.select_one_or_none(db_manager.get_sql("get-cache-stats"), schema_type=CacheStatsRow)
         total_hits = row.total_hits if row else 0
         return CacheStats(

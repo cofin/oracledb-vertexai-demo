@@ -156,6 +156,7 @@ dev = [
     { include-group = "test" },
     { include-group = "build" },
     { include-group = "docs" },
+    { include-group = "slides" },
 ]
 docs = [
     "sphinx>=9.0.4,<10",
@@ -181,6 +182,7 @@ lint = [
     "types-requests",
     "types-psutil",
 ]
+slides = ["pygments", "qrcode[pil]"]
 test = [
     "aiofiles",
     "anyio",
@@ -285,6 +287,8 @@ known-first-party = ["tests", "app", "config"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
+"app.config".msg = "Inject config/services via Dishka; only composition roots and SQL query lookups may import app.config."
+"app.lib.settings.get_settings".msg = "Inject typed settings via Dishka; only composition roots and CLI entrypoints may call get_settings()."
 "google.adk".msg = "Use the native app.domain.ai runtime and litestar-mcp agent primitives instead of google.adk."
 "litestar.Controller".msg = "Inherit from litestar_security.PublicController or SecureController instead of bare litestar.Controller."
 "litestar.plugins.htmx".msg = "Import HTMX primitives from litestar_htmx instead of litestar.plugins.htmx."
@@ -294,9 +298,24 @@ split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["unused-import", "undocumented-public-package"]
+"manage.py" = ["banned-api"]
+"src/app/cli/**/*.py" = ["banned-api"]
+"src/app/config.py" = ["banned-api"]
+"src/app/db/utils.py" = ["banned-api"]
+"src/app/domain/ai/runtime/_store.py" = ["banned-api"]
+"src/app/domain/chat/services/_router.py" = ["banned-api"]
+"src/app/domain/chat/services/_telemetry.py" = ["banned-api"]
+"src/app/domain/products/services/_embedding.py" = ["banned-api"]
+"src/app/domain/products/services/_products.py" = ["banned-api"]
+"src/app/domain/products/services/_stores.py" = ["banned-api"]
+"src/app/domain/system/services/_cache.py" = ["banned-api"]
+"src/app/domain/system/services/_health.py" = ["banned-api"]
+"src/app/ioc/**/*.py" = ["banned-api"]
+"src/app/server/**/*.py" = ["banned-api"]
 "src/tests/*.py" = [
     "ANN",
     "ARG",
+    "banned-api",
     "undocumented-public-function",
     "undocumented-public-package",
     "EM",
@@ -306,12 +325,16 @@ split-on-trailing-comma = false
     "float-equality-comparison",
     "assert",
     "hardcoded-temp-file",
+    "hardcoded-password-string",
+    "hardcoded-password-func-arg",
+    "hardcoded-password-default",
     "private-member-access",
     "TRY",
 ]
 "src/tests/**/*.py" = [
     "ANN",
     "ARG",
+    "banned-api",
     "undocumented-public-function",
     "undocumented-public-package",
     "EM",
@@ -321,11 +344,14 @@ split-on-trailing-comma = false
     "float-equality-comparison",
     "assert",
     "hardcoded-temp-file",
+    "hardcoded-password-string",
+    "hardcoded-password-func-arg",
+    "hardcoded-password-default",
     "private-member-access",
     "TRY",
 ]
-"tools/*.py" = ["implicit-namespace-package", "commented-out-code", "invalid-module-name"]
-"tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "implicit-namespace-package", "subprocess-without-shell-equals-true", "suspicious-subprocess-import", "too-many-statements"]
+"tools/*.py" = ["banned-api", "implicit-namespace-package", "commented-out-code", "invalid-module-name"]
+"tools/**/*.*" = ["D", "ARG", "EM", "TRY", "G", "FBT", "banned-api", "implicit-namespace-package", "subprocess-without-shell-equals-true", "suspicious-subprocess-import", "too-many-statements"]
 
 [tool.slotscheck]
 strict-imports = false
@@ -351,10 +377,6 @@ warn_unused_configs = true
 
 
 [[tool.mypy.overrides]]
-ignore_errors = true
-module = ["app.db.migrations.*"]
-
-[[tool.mypy.overrides]]
 disallow_untyped_decorators = false
 module = ["app.domain.ai.mcp.*"]
 
@@ -371,7 +393,10 @@ filterwarnings = [
     "ignore::DeprecationWarning:google.*",
     "ignore::PendingDeprecationWarning",
 ]
-markers = ["slow: marks tests as slow (integration/runtime checks)"]
+markers = [
+    "integration: marks tests as integration (require live Oracle 26ai)",
+    "slow: marks tests as slow (integration/runtime checks)",
+]
 pythonpath = ["src"]
 testpaths = ["src/tests"]
 

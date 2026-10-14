@@ -23,6 +23,7 @@ from app.domain.system.schemas import (
     PerformanceStats,
     SearchMetricsCreate,
 )
+from app.lib.schema import BaseStruct
 from app.lib.service import OracleAsyncService
 from app.utils.serialization import schema_dump
 
@@ -34,11 +35,11 @@ __all__ = ("BASE_SYSTEM_INSTRUCTION", "MetricsService", "PersonaConfig", "Person
 BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Coffee. Your goal is to help customers find a drink they will love.
 
 **Tools available:**
-- `search_products(query, limit, similarity_threshold)`: hybrid lexical + vector search across the coffee menu.
-- `get_product_details(product_id)`: full details for a specific product (id or name).
+- `search_products(query, limit)`: hybrid lexical + vector search across the coffee menu.
+- `get_product_details(product_id_or_name)`: full details for a specific product (id or name).
 - `find_nearby_stores(city, state, zip_code, limit)`: Cymbal Coffee cafe locations, addresses, and directions.
-- `check_product_availability(product_query, store_hint)`: store-level inventory availability for a menu item.
-- `check_order_status(order_reference)`: check order tracking support status.
+- `check_product_availability(product_query, location_hint)`: store-level inventory availability for a menu item.
+- `check_order_status(order_id)`: check order tracking support status.
 
 **Behavior:**
 - Call `search_products` before answering any menu, catalog, product, price, roast, caffeine, preparation, or recommendation question.
@@ -58,7 +59,7 @@ BASE_SYSTEM_INSTRUCTION = """You are a friendly and helpful barista at Cymbal Co
 """
 
 
-class PersonaConfig(msgspec.Struct, gc=False, array_like=True, omit_defaults=True):
+class PersonaConfig(BaseStruct, gc=False, array_like=True, omit_defaults=True):
     """Configuration for a chat persona."""
 
     name: str
@@ -111,11 +112,13 @@ class PersonaManager:
 
     @classmethod
     def get_system_prompt(cls, persona_key: str, base_prompt: str) -> str:
+        """Build the composite system instruction for a given persona key."""
         persona = cls.PERSONAS.get(persona_key, cls.PERSONAS["barista"])
         return f"{base_prompt}\n\n## Persona Context: {persona.name}\n{persona.system_prompt_addon}"
 
     @classmethod
     def get_temperature(cls, persona_key: str) -> float:
+        """Return the generation temperature configured for a persona key."""
         return cls.PERSONAS.get(persona_key, cls.PERSONAS["barista"]).temperature
 
 
@@ -123,10 +126,12 @@ class MetricsService(OracleAsyncService):
     """Handles performance metrics and search logging."""
 
     async def record_search(self, metrics: SearchMetricsCreate) -> None:
+        """Persist a search telemetry row into ``search_metric``."""
         await self.driver.execute(sql.insert("search_metric").values(**schema_dump(metrics, wire_format=False)))
         await self.driver.commit()
 
     async def get_performance_stats(self, hours: int = 24) -> PerformanceStats:
+        """Aggregate search latency and similarity statistics over the requested window."""
         since = datetime.now(UTC) - timedelta(hours=hours)
         row = await self.driver.select_one_or_none(
             db_manager.get_sql("get-performance-stats"), since=since, schema_type=PerformanceStats

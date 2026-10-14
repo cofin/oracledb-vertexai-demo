@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Integration test configuration, Oracle container lifecycle, and seed fixtures."""
+
 from __future__ import annotations
 
 import asyncio
@@ -14,6 +16,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 from litestar.testing import AsyncTestClient
+from tools.oracle.container import ContainerRuntime
+from tools.oracle.database import DatabaseConfig, OracleDatabase
+
+from app import config as app_config
+from app.db.utils import COFFEE_SHOP_TABLES, _reset_sequences
+from app.domain.products.services import ProductService
+from app.domain.system.services import CacheService
+from app.lib import settings as app_settings
+from app.server.asgi import create_app
+from app.utils.fixtures import FixtureLoader
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
@@ -21,19 +33,14 @@ if TYPE_CHECKING:
     from litestar import Litestar
     from sqlspec.adapters.oracledb import OracleAsyncDriver
 
-    from app.domain.products.services import ProductService
-    from app.domain.system.services import CacheService
-
 
 _ORACLE_SCHEMA_READY = False
 _ORACLE_SEED_DATA_READY = False
 
 
-# Pin every integration test in this directory to a single xdist worker. The
-# Oracle connection pool + fixture-loaded data are shared mutable state; running
-# them across two workers causes pool-handle errors and TRUNCATE races.
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    del config  # unused
+    """Pin every integration test to a single xdist worker to avoid pool and TRUNCATE races."""
+    del config
     marker = pytest.mark.xdist_group(name="oracle_integration")
     for item in items:
         item.add_marker(marker)
@@ -48,18 +55,8 @@ def find_free_port() -> int:
 
 @pytest.fixture(scope="session")
 def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
-    """Start an ephemeral gvenzl/oracle-free container on a free port for the test session.
-
-    Each run creates a uniquely named container and data volume so tests never share
-    state with the repo-managed dev container (or each other). The gvenzl entrypoint
-    hooks mounted by ``OracleDatabase`` configure the vector-memory pool, so HNSW
-    INMEMORY index migrations succeed. Set ``ORACLE_TEST_REUSE_PORT`` to point at an
-    already-running container and skip the (slow) create/teardown during local iteration.
-    """
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
-    password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
+    """Start an ephemeral gvenzl/oracle-free container on a free port for the test session."""
+    password = "SuperSecret1"
     reuse_port = os.getenv("ORACLE_TEST_REUSE_PORT")
     if reuse_port:
         yield {
@@ -95,14 +92,7 @@ def test_settings(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path_factory: pytest.TempPathFactory,
 ) -> Generator[object, None, None]:
-    """Point the app at the ephemeral gvenzl container in local (non-wallet) mode.
-
-    Overrides the root (mocked-DB) ``test_settings`` for integration tests only, so
-    requests resolve against the per-session ephemeral Oracle rather than a shared one.
-    """
-    from app import config as app_config
-    from app.lib import settings as app_settings
-
+    """Point the app at the ephemeral gvenzl container in local (non-wallet) mode."""
     test_dir = tmp_path_factory.mktemp("integration_env")
     bundle_dir = test_dir / "static"
     asset_dir = bundle_dir / "assets"
@@ -118,7 +108,6 @@ def test_settings(
     )
     test_env = test_dir / ".env.testing"
     test_env.write_text(
-        "# Integration test configuration (ephemeral gvenzl/oracle-free)\n"
         f"DATABASE_USER={oracle_test_container['user']}\n"
         f"DATABASE_PASSWORD={oracle_test_container['password']}\n"
         f"DATABASE_HOST={oracle_test_container['host']}\n"
@@ -154,6 +143,7 @@ def test_settings(
     settings = app_settings.Settings.from_env(str(test_env))
 
     def get_settings(dotenv_filename: str = ".env.testing") -> object:
+        del dotenv_filename
         return settings
 
     monkeypatch.setattr(app_settings, "get_settings", get_settings)
@@ -241,11 +231,7 @@ async def _bootstrap_test_schema(session: OracleAsyncDriver) -> None:
 
 
 async def _seed_marker_product(session: OracleAsyncDriver) -> None:
-    """Insert the deterministic marker product used by integration tests.
-
-    Runs after fixture loading + truncation so the marker survives the reset.
-    Tests reference it via ``WHERE sku = 'SEED-SKU-001'``.
-    """
+    """Insert the deterministic marker product used by integration tests."""
     await session.execute(
         """
         MERGE INTO product p
@@ -291,19 +277,17 @@ async def _ensure_oracle_schema() -> None:
     if _ORACLE_SCHEMA_READY:
         return
 
-    from app.config import db, db_manager
-
-    await db.migrate_up(echo=False)
+    await app_config.db.migrate_up(echo=False)
     with contextlib.suppress(Exception):
-        await db.close_pool()
+        await app_config.db.close_pool()
 
     try:
-        async with db_manager.provide_session(db) as session:
+        async with app_config.db_manager.provide_session(app_config.db) as session:
             await _assert_sqlspec_extension_tables(session)
             await _bootstrap_test_schema(session)
     finally:
         with contextlib.suppress(Exception):
-            await db.close_pool()
+            await app_config.db.close_pool()
     _ORACLE_SCHEMA_READY = True
 
 
@@ -347,18 +331,11 @@ async def htmx_client(app: Litestar, oracle_seed_data: None) -> AsyncGenerator[A
 def app(test_settings: object) -> Litestar:
     """Create test app instance."""
     del test_settings
-    from app.server.asgi import create_app
-
     return create_app()
 
 
 async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
-    """Wipe fixture-managed tables so each test session starts from a known state.
-
-    Schema is durable while data is ephemeral. This purges any zero-vector
-    pollution left by prior ``coffee load-fixtures`` runs against the dev
-    container so vector-search assertions stay deterministic.
-    """
+    """Wipe fixture-managed tables so each test session starts from a known state."""
     for table in ("store_product_inventory", "product", "store"):
         with contextlib.suppress(Exception):
             await session.execute(f"TRUNCATE TABLE {table}")
@@ -366,20 +343,13 @@ async def _truncate_fixture_tables(session: OracleAsyncDriver) -> None:
 
 
 async def _load_app_fixtures(session: OracleAsyncDriver) -> None:
-    """Load the checked-in ``.json.gz`` fixtures into the test database via ``FixtureLoader``."""
-    from app.db.utils import COFFEE_SHOP_TABLES
-    from app.lib.settings import get_settings
-    from app.utils.fixtures import FixtureLoader
-
-    settings = get_settings()
+    """Load the checked-in `.json.gz` fixtures into the test database via `FixtureLoader`."""
+    settings = app_settings.get_settings()
     fixtures_dir = Path(settings.db.FIXTURE_PATH)
     if not await asyncio.to_thread(fixtures_dir.exists):
         return
     loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=session, table_order=COFFEE_SHOP_TABLES)
     await loader.load_all_fixtures()
-
-    from app.db.utils import _reset_sequences
-
     await _reset_sequences(session)
 
 
@@ -391,53 +361,30 @@ def unique_test_id() -> str:
 
 @pytest.fixture
 async def oracle_seed_data(test_settings: object) -> None:
-    """Ensure shared Oracle schema and fixture data are ready for this worker.
-
-    The repo-managed Oracle container and migrations must already be available.
-    This fixture only performs expensive DDL/truncate/fixture loading once per
-    pytest worker; function-scoped driver sessions depend on the prepared data.
-    """
+    """Ensure shared Oracle schema and fixture data are ready for this worker."""
     del test_settings
-    from app.config import db, db_manager
-
     try:
         await _ensure_oracle_schema()
-        async with db_manager.provide_session(db) as session:
+        async with app_config.db_manager.provide_session(app_config.db) as session:
             await _ensure_oracle_seed_data(session)
     finally:
-        # pytest-anyio creates a fresh event loop per test by default.
-        # Closing the shared pool avoids loop-bound pool reuse across tests.
         with contextlib.suppress(Exception):
-            await db.close_pool()
+            await app_config.db.close_pool()
 
 
 @pytest.fixture
 async def driver(oracle_seed_data: None) -> AsyncGenerator[OracleAsyncDriver, None]:
-    """Provide an isolated SQLSpec driver session against shared seeded data.
-
-    The setup pipeline prepares deterministic data once per worker:
-
-        1. Bootstrap schema (idempotent CREATE TABLE)
-        2. Truncate fixture-owned tables once
-        3. Load .json.gz fixtures once
-        4. Insert the SEED-SKU-001 marker once
-
-    Tests that mutate shared app tables should use unique identifiers and
-    explicit cleanup fixtures instead of relying on suite-wide truncation.
-    """
-    from app.config import db, db_manager
-
+    """Provide an isolated SQLSpec driver session against shared seeded data."""
+    del oracle_seed_data
     with contextlib.suppress(Exception):
-        await db.close_pool()
+        await app_config.db.close_pool()
 
     try:
-        async with db_manager.provide_session(db) as session:
+        async with app_config.db_manager.provide_session(app_config.db) as session:
             yield session
     finally:
-        # pytest-anyio creates a fresh event loop per test by default.
-        # Closing the shared pool avoids loop-bound pool reuse across tests.
         with contextlib.suppress(Exception):
-            await db.close_pool()
+            await app_config.db.close_pool()
 
 
 @pytest.fixture
@@ -462,14 +409,10 @@ async def tracked_product_skus(driver: OracleAsyncDriver) -> AsyncGenerator[Call
 @pytest.fixture
 async def product_service(driver: OracleAsyncDriver) -> ProductService:
     """Provide ProductService for testing."""
-    from app.domain.products.services import ProductService
-
     return ProductService(driver)
 
 
 @pytest.fixture
 async def cache_service(driver: OracleAsyncDriver) -> CacheService:
     """Provide CacheService for testing."""
-    from app.domain.system.services import CacheService
-
     return CacheService(driver)

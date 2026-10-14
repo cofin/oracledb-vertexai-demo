@@ -176,7 +176,7 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
   - Native AI Runtime & Orchestration: `src/app/domain/ai/runtime/_tools.py:30-156`, `_spec.py:18-139`, `_stream.py:28-215`, `src/app/domain/ai/services/agent_service.py:22-158` (`f10`–`f12`, `f14`, `f19`)
   - LitestarMCP & A2A Wiring: `src/app/server/plugins.py:35-160`, `src/app/domain/ai/a2a/card.py:8-33` (`f13`, `f20`)
   - Frontend SSE & Telemetry Drawer: `src/resources/chat-stream.js:173-402`, `src/resources/telemetry.js:6-343` (`f14`–`f16`)
-  - CLI & DI Wiring: `src/app/cli/commands.py:25-223`, `src/app/ioc.py:1-151`, `src/app/lib/settings.py:210-486` (`f17`, `f18`)
+  - CLI & DI Wiring: `src/app/cli/commands.py:25-223`, `src/app/ioc/`, `src/app/lib/settings/` (`f17`, `f18`)
 
 ---
 

@@ -7,6 +7,8 @@ from typing import Literal
 
 import msgspec
 
+from app.lib.schema import BaseStruct
+
 __all__ = (
     "HybridProductCandidate",
     "HybridRouteLabel",
@@ -21,7 +23,7 @@ HybridRouteLabel = Literal[
 ]
 
 
-class HybridSearchRow(msgspec.Struct, kw_only=True):
+class HybridSearchRow(BaseStruct, kw_only=True):
     """Single row projected by ``hybrid-search-turn`` across route, product, and store CTEs."""
 
     entity_type: str
@@ -42,14 +44,14 @@ class HybridSearchRow(msgspec.Struct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class TermHitRow(msgspec.Struct, kw_only=True):
+class TermHitRow(BaseStruct, kw_only=True):
     """Per-term Oracle Text lexical hit count returned by ``hybrid-term-hits``."""
 
     term: str
     hit_count: int = 0
 
 
-class HybridProductCandidate(msgspec.Struct, kw_only=True):
+class HybridProductCandidate(BaseStruct, kw_only=True):
     """Fused product candidate with lexical, vector, and RRF rank metadata."""
 
     id: int
@@ -65,7 +67,7 @@ class HybridProductCandidate(msgspec.Struct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class HybridStoreCandidate(msgspec.Struct, kw_only=True):
+class HybridStoreCandidate(BaseStruct, kw_only=True):
     """Fused store candidate matched by Oracle Text multi-column search."""
 
     id: int
@@ -78,7 +80,7 @@ class HybridStoreCandidate(msgspec.Struct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class HybridTurnContext(msgspec.Struct, kw_only=True):
+class HybridTurnContext(BaseStruct, kw_only=True):
     """Complete single-query hybrid retrieval and routing context for one chat turn."""
 
     user_message: str

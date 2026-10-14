@@ -67,7 +67,7 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
 | --- | --- | --- | --- | --- | --- |
 | 1 | [`knowledge-catalog-foundation`](../knowledge-catalog-foundation/spec.md) | Oracle 26ai `USER_ANNOTATIONS_USAGE` Harvester, OKF v0.2 Bundle & `coffee sync-catalog` CLI | None | `1.1`–`1.2` | Add `catalog.sql` dictionary/annotation queries, `CatalogSettings`, typed `msgspec.Struct` schemas, committed `knowledge_catalog_context.json` + OKF v0.2 bundle, and `uv run coffee sync-catalog` (`--push`, `--export-okf`) with `httpx` REST v1 upsert for `dataplex.googleapis.com`. |
 | 2 | [`knowledge-catalog-runtime-and-mcp`](../knowledge-catalog-runtime-and-mcp/spec.md) | Runtime `KnowledgeCatalogService`, `lookupContext` Agent Grounding & MCP Integration | `knowledge-catalog-foundation` | `2.1`–`2.2` | Implement `KnowledgeCatalogService` (`search_entries` + `lookup_context` in live GCP and `<2ms` local snapshot modes), register Dishka provider, bind `lookup_catalog_context` tool on `AgentSpec`, wire `use_knowledge_catalog` turn grounding, expose `GET /api/catalog/context` (`mcp_tool="lookup_knowledge_catalog"`), and add `--prebuilt dataplex` to `tools/lib/utils.py`. |
-| 3 | [`knowledge-catalog-demo-ux-and-docs`](../knowledge-catalog-demo-ux-and-docs/spec.md) | Interactive "Context Ceiling" Demo UI, `K` Telemetry Drawer Badge & Slides/Docs | `knowledge-catalog-runtime-and-mcp` | `3.1`–`3.2` | Add the **Knowledge Catalog Grounding (`ON`/`OFF`)** toggle in `chat.html.j2` + `main.js`, add the **`K` (Knowledge Catalog)** badge and Context X-Ray phase renderer in `telemetry.js`, and update `SLIDES.md`, `AGENTS.md`, `README.md`, and `.agents/bundles/knowledge/guides/knowledge-catalog.md`. |
+| 3 | [`knowledge-catalog-demo-ux-and-docs`](../knowledge-catalog-demo-ux-and-docs/spec.md) | Interactive "Context Ceiling" Demo UI, `K` Telemetry Drawer Badge & Slides/Docs | `knowledge-catalog-runtime-and-mcp` | `3.1`–`3.2` | Add the **Knowledge Catalog Grounding (`ON`/`OFF`)** toggle in `chat.html.j2` + `main.js`, add the **`K` (Knowledge Catalog)** badge and Context X-Ray phase renderer in `telemetry.js`, and update `SLIDES.md`, `AGENTS.md`, `README.md`, and `.agents/bundles/knowledge/architecture/knowledge-catalog.md`. |
 
 ---
 
@@ -80,7 +80,7 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
 | `KC-REQ-03` | Implement `KnowledgeCatalogService` supporting both live `dataplex.googleapis.com/v1` (`searchEntries` + `lookupContext`) and deterministic local snapshot retrieval with Dishka DI registration | `knowledge-catalog-runtime-and-mcp` | `2.1` |
 | `KC-REQ-04` | Bind `lookup_catalog_context` agent tool, wire `use_knowledge_catalog` request toggle into chat orchestration/telemetry, expose `GET /api/catalog/context` (`mcp_tool="lookup_knowledge_catalog"`), and add `dataplex` MCP Toolbox config helper | `knowledge-catalog-runtime-and-mcp` | `2.2` |
 | `KC-REQ-05` | Render interactive Knowledge Catalog Grounding `ON`/`OFF` toggle in chat UI and `K` (Knowledge Catalog) badge + Context X-Ray drawer view in `telemetry.js` | `knowledge-catalog-demo-ux-and-docs` | `3.1` |
-| `KC-REQ-06` | Document the Knowledge Catalog + Oracle 26ai `ANNOTATIONS` + OKF v0.2 architecture and "Breaking the Context Ceiling" demo script in `SLIDES.md`, `AGENTS.md`, `README.md`, and `.agents/bundles/knowledge/guides/knowledge-catalog.md` | `knowledge-catalog-demo-ux-and-docs` | `3.2` |
+| `KC-REQ-06` | Document the Knowledge Catalog + Oracle 26ai `ANNOTATIONS` + OKF v0.2 architecture and "Breaking the Context Ceiling" demo script in `SLIDES.md`, `AGENTS.md`, `README.md`, and `.agents/bundles/knowledge/architecture/knowledge-catalog.md` | `knowledge-catalog-demo-ux-and-docs` | `3.2` |
 
 ---
 
@@ -113,6 +113,6 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
 - **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/knowledge-catalog-grounding-demo/research/research_knowledge_catalog_demo_20261012/research.md`
-  - `.agents/bundles/knowledge/guides/oracle-database.md`
-  - `.agents/bundles/knowledge/guides/agentic-ai-runtime.md`
+  - `.agents/bundles/knowledge/architecture/oracle-26ai-hybrid-rrf.md`
+  - `.agents/bundles/knowledge/domains/ai-runtime-mcp-a2a.md`
   - `.agents/bundles/knowledge/patterns/architecture.md`

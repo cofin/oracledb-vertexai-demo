@@ -133,9 +133,14 @@ class AgentRuntime:
             accumulated_parts: list[Part] = []
             saw_non_partial = False
 
-            async for event in self._model_client.generate_stream(
-                contents, tools=tool_decls, system_instruction=current_spec.static_instruction, model=current_spec.model
-            ):
+            stream_kwargs: dict[str, Any] = {
+                "tools": tool_decls,
+                "system_instruction": current_spec.static_instruction,
+                "model": current_spec.model,
+            }
+            if current_spec.generation.temperature is not None:
+                stream_kwargs["temperature"] = current_spec.generation.temperature
+            async for event in self._model_client.generate_stream(contents, **stream_kwargs):
                 _stamp_event(
                     event=event,
                     session_id=session_id,

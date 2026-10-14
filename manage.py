@@ -29,6 +29,7 @@ from tools.oracle import connect_group as oracle_connect_group
 from tools.oracle import database_group as oracle_container_group
 from tools.oracle import ords_group as oracle_ords_group
 from tools.oracle import wallet_group as oracle_wallet_group
+from tools.slides import slides_group
 
 from app.__metadata__ import __version__
 
@@ -57,6 +58,7 @@ def cli() -> None:
 cli.add_command(init_command, name="init")
 cli.add_command(install_group, name="install")
 cli.add_command(doctor_command, name="doctor")
+cli.add_command(slides_group, name="slides")
 
 
 @cli.group(name="infra", help="Manage development infrastructure (Oracle 26ai container).")

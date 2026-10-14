@@ -117,3 +117,11 @@ Before claiming a task, phase, or flow is complete, verify:
 - Inventory UI selectors must be data-driven from `StoreService`/fixtures, not
   hardcoded store preset arrays. Store selectors must query `StoreService.list_with_count` or
   pass seeded store lists from context.
+- When joining HNSW vector searches to relational tables (`vector-search-products-by-store`),
+  isolate `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST :k ROWS ONLY` inside a CTE
+  before joining or re-sorting by store stock status so Oracle 26ai preserves the HNSW
+  `VECTOR INDEX ACCESS` plan.
+- When archiving a completed Flow spec, verify that no markdown file under
+  `.agents/bundles/knowledge/` or `.agents/skills/` retains a relative link to the
+  contracted `.agents/bundles/specs/<flow_id>/` directory (`test_okf_layout.py` validates
+  all relative markdown links across `product/`, `knowledge/`, `specs/`, and `research/`).

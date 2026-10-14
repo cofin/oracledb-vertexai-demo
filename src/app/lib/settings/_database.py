@@ -139,7 +139,7 @@ class DatabaseSettings:
                 "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
             },
         )
-        configure_queue_migration_extension(config, manage_schema=True)
+        configure_queue_migration_extension(config, manage_schema=_env_bool("QUEUE_MANAGE_SCHEMA", True))
         return config
 
     def get_config(self) -> OracleAsyncConfig:

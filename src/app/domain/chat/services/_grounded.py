@@ -11,7 +11,6 @@ import re
 import time
 from typing import TYPE_CHECKING, Any
 
-import msgspec
 import structlog
 from google.genai import errors as genai_errors
 from google.genai import types
@@ -30,7 +29,8 @@ from app.domain.chat.services._telemetry import (
     safe_location_context,
 )
 from app.domain.system.services import PersonaManager
-from app.lib.settings import get_settings
+from app.lib.schema import BaseStruct
+from app.lib.settings import Settings
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
@@ -76,7 +76,7 @@ _GROUNDED_ANSWER_SCHEMA: dict[str, Any] = {
 }
 
 
-class GroundedTurnResult(msgspec.Struct, kw_only=True):
+class GroundedTurnResult(BaseStruct, kw_only=True):
     """Completed deterministic turn payload ready for caching and SSE emission."""
 
     answer: str
@@ -682,7 +682,7 @@ async def _compose_grounded_answer(
     contents = f"Customer request: {query}\n\nCandidate products (select only these ids):\n{_candidate_block(products)}"
     persona_config = PersonaManager.PERSONAS.get(persona, PersonaManager.PERSONAS["barista"])
     instruction = _GROUNDED_ANSWER_INSTRUCTION_TEMPLATE.format(persona_guidelines=persona_config.system_prompt_addon)
-    settings = get_settings()
+    settings = Settings.from_env()
     try:
         async with asyncio.timeout(settings.chat.grounded_answer_timeout_seconds):
             response = await vertex_ai_service.generate_structured_content(

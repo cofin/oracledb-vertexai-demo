@@ -8,3 +8,5 @@ group) and ``app.cli.commands`` (side-effect registers every subcommand).
 This package intentionally exposes neither — callers should invoke
 ``app.__main__:run_cli`` (the entry point) or ``app.cli.main:main`` directly.
 """
+
+__all__: tuple[str, ...] = ()

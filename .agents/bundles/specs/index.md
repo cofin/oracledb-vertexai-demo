@@ -6,15 +6,6 @@ description: Active and planned Flow specifications for Cymbal Coffee
 
 # Specs Index
 
-## Active Roadmap: Native Agent Stabilization, Hybrid RRF Retrieval & Platform Alignment
-
-- [coffee-agent-stabilization-and-hybrid-search](coffee-agent-stabilization-and-hybrid-search/spec.md) - Master PRD: Native Agent Stabilization, Hybrid RRF Retrieval, and Platform Alignment (done)
-  - [native-ai-runtime-and-protocols](native-ai-runtime-and-protocols/spec.md) - Chapter 1: Native AI Runtime, Persistence, Streaming & Endpoint Stabilization (done)
-  - [oracle-26ai-hybrid-rrf-search](oracle-26ai-hybrid-rrf-search/spec.md) - Chapter 2: Single-Query Hybrid Lexical + Vector RRF Retrieval & Grounded Routing (done)
-  - [chat-grounded-routes-and-tools](chat-grounded-routes-and-tools/spec.md) - Chapter 3: Grounded Route Composers & Closure-Bound Tools (done)
-  - [platform-settings-di-and-queues](platform-settings-di-and-queues/spec.md) - Chapter 4: Settings, DI, Services, LitestarMCP 0.15, Security & Oracle Queues (done)
-  - [docs-slides-and-verification-gates](docs-slides-and-verification-gates/spec.md) - Chapter 5: Slides, Sphinx Documentation, and Knowledge Bundle Refresh (done)
-
 ## Active Roadmap: Google Cloud Knowledge Catalog + Oracle 26ai `ANNOTATIONS` Grounding & Demo
 
 - [knowledge-catalog-grounding-demo](knowledge-catalog-grounding-demo/spec.md) - Master PRD: Google Cloud Knowledge Catalog + Oracle 26ai `ANNOTATIONS` Grounding & Demo (planned)
@@ -24,6 +15,7 @@ description: Active and planned Flow specifications for Cymbal Coffee
 
 ## Other Roadmaps & Specs
 
+- [adb-free-swap](adb-free-swap/spec.md) - Swap the managed dev database to Oracle Autonomous AI Database Free 26ai; pauses the three APEX specs below (planned)
 - [apex-ops-console](apex-ops-console/spec.md) - APEX Operations Console Roadmap (in_progress)
 - [apex-ops-app](apex-ops-app/spec.md) - Cymbal Coffee APEX Operations Console App (in_progress)
 - [apex-demo-verification-docs](apex-demo-verification-docs/spec.md) - APEX Demo Verification and Docs (planned)

@@ -1,13 +1,15 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Provider-neutral msgspec.Struct wire contracts for dynamic agents."""
+"""Provider-neutral BaseStruct wire contracts for dynamic agents."""
 
 from datetime import UTC, datetime
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
 import msgspec
+
+from app.lib.schema import BaseStruct
 
 __all__ = ("AgentEvent", "AgentLimits", "Content", "FunctionCall", "FunctionResponse", "Part", "Usage")
 
@@ -64,7 +66,7 @@ class AgentLimits(msgspec.Struct, kw_only=True, frozen=True):
     max_message_chars: int = 4000
 
 
-class AgentEvent(msgspec.Struct, kw_only=True):
+class AgentEvent(BaseStruct, kw_only=True):
     """Sequenced event in the agent conversation log."""
 
     session_id: str

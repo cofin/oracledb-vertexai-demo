@@ -21,13 +21,21 @@ from litestar.utils.scope.state import ScopeState
 from structlog.contextvars import bind_contextvars
 
 from app.lib.log._security import apply_security_headers
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
 
 if TYPE_CHECKING:
     from litestar.connection import Request
     from litestar.types.asgi_types import ASGIApp, Message, Receive, Scope, Send
 
-    from app.lib.settings import Settings
+__all__ = (
+    "HTTP_RESPONSE_BODY",
+    "HTTP_RESPONSE_START",
+    "LOGGER",
+    "REQUEST_BODY_FIELD",
+    "BeforeSendHandler",
+    "StructlogMiddleware",
+    "after_exception_hook_handler",
+)
 
 LOGGER = structlog.getLogger()
 
@@ -76,7 +84,7 @@ class BeforeSendHandler:
 
     def __init__(self, settings: Settings | None = None) -> None:
         """Configure the handler."""
-        active_settings = settings or get_settings()
+        active_settings = settings or Settings.from_env()
         self.settings = active_settings
         self.exclude_paths = re.compile(active_settings.log.EXCLUDE_PATHS)
         self.do_log_request = bool(active_settings.log.REQUEST_FIELDS)

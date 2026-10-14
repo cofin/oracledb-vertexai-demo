@@ -1,6 +1,23 @@
+---
+type: Log
+title: Project Log
+description: Historical change log and completed milestone record for Cymbal Coffee
+---
+
 # Project Log
 
 Historical change log and completed milestone record for Cymbal Coffee.
+
+## 2026-10-13: "Oracle in the Age of Gemini" Deck Archive & Full-Codebase Review Hardening
+- `oracle-gemini-2026-deck`: Completed and archived the 36-slide DBA presentation plus 17 backup slides, offline Google Slides CLI (`tools/slides/{cli,deck,diff,highlight,qr,validate}.py`), dark-slide palette detection (`#212226` on slides 17, 18, and 22), and verified Oracle 26ai `DBMS_VECTOR.UTL_TO_EMBEDDING` / Select AI documentation and live container checks in `.agents/bundles/knowledge/presentation/`.
+- `full-codebase-review-remediation`: Executed multi-skill review across Python backend, Litestar, Oracle 26ai/SQLSpec, AI Runtime/MCP/A2A, Web/HTMX, Slides, Docs, and OKF v0.2 bundles; rewrote `vector-search-products-by-store` to use an HNSW `candidate_products` CTE (`FETCH APPROX FIRST 50 ROWS ONLY`), added defensive Oracle Text brace-escaping in `ProductService.search_hybrid`, isolated `response_cache` from multi-turn session history, validated `Tool.invoke` arguments and `get_display_history` ownership, hardened `Settings.configure_genai_env()` against placeholder project IDs, and expanded `check_code_hygiene.py`, `test_test_suite_guards.py`, and `test_okf_layout.py`.
+
+## 2026-10-13: Hybrid RRF Search, Oracle Queues, Static Gate Hardening & OKF v0.2 Restructuring
+- `coffee-agent-stabilization-and-hybrid-search`: Completed single-query Oracle 26ai Hybrid RRF (`hybrid-search-turn` at $k=60$ with `MULTI_COLUMN_DATASTORE` `CONTAINS`/`SCORE(1)` + HNSW `VECTOR_DISTANCE ... FETCH APPROX`) and `hybrid-term-hits` (`JSON_TABLE` + `CONTAINS`) for off-menu brand detection.
+- `oracle-queues`: Integrated `litestar-queues[sqlspec]` on Oracle 26ai (`FOR UPDATE SKIP LOCKED`) with a dedicated LOB-isolated `DatabaseSettings.get_queue_config()` pool (`session_key="queue_db_session"`), `@task("products.embed_missing")`, `@task("system.cache_cleanup")`, and `coffee worker run/status`.
+- `platform-alignment`: Modularized settings (`src/app/lib/settings/`) and Dishka providers (`src/app/ioc/`), squashed baseline DDL into `0001_cymball_coffee_products.sql`, separated `sql_loader` (`src/app/lib/sql.py`) from `app.config`, and split Vertex AI `LOCATION` (`us-central1` embeddings) from `CHAT_LOCATION` (`global` for `gemini-3.8-flash`).
+- `test-and-ci-hardening`: Flattened `src/tests/{unit,integration}/`, added AST/tokenize meta-guards (`test_test_suite_guards.py`, `test_okf_layout.py`), added `tools/ci/check_code_hygiene.py` and `tools/ci/check_litestar_security.py`, and configured root `AGENTIC_REVIEW` with 4 domain review skills under `.agents/skills/review-*`.
+- `okf-knowledge-restructuring`: Reorganized `.agents/bundles/knowledge/` into `architecture/`, `domains/`, `testing/`, `patterns/`, and `gotchas/`, and contracted completed stabilization specs.
 
 ## 2026-10-08: Native Agentic Runtime (Gemini 3.8 Flash, A2A & MCP)
 - `native-agentic-runtime`: Decommissioned Google ADK and migrated conversational workflows to native dynamic agentic intelligence platform in `src/app/domain/ai/`.
@@ -12,15 +29,11 @@ Historical change log and completed milestone record for Cymbal Coffee.
 - Hardened Security & Telemetry: `litestar-security` integration with `SecurityHeadersConfig.hardened()` and `PublicController` subclassing; `OpenTelemetryPlugin` enabled by default with SQLSpec database spans.
 
 ## 2026-10-07: Flow Setup & OKF v0.2 Migration
-- Transitioned framework from legacy Beads tracker to beadless OKF v0.2 knowledge bundles under `.agents/bundles/`.
+- Transitioned framework from legacy tracker to OKF v0.2 knowledge bundles under `.agents/bundles/`.
 - Scaffolding: `product/`, `knowledge/`, `specs/`, `research/`, `log.md`, `index.md`.
 - Consolidated legacy `flows.md` and archived milestones into `log.md`.
 - Synthesized `knowledge/workflow.md` from canonical template with project-native commands (`make test`, `make lint`, `make typecheck`).
 - Partitioned legacy `patterns.md` into evidence-backed chapters under `knowledge/patterns/` (`architecture.md`, `code-style.md`, `testing.md`, `operations.md`).
-- Migrated component knowledge guides to `knowledge/guides/`.
-- Reorganized active specs to `.agents/bundles/specs/` (`apex-ops-console`, `apex-ops-app`, `apex-demo-verification-docs`, `vhs-demo-recordings_20260429`).
-- Promoted research `research_apex26_ords_apexlang_schema_bridge` into `apex-ops-console` spec bundle.
-- Removed legacy tracker machinery (`.beads/`, `.agents/beads.json`, `.git/hooks/pre-commit`).
 
 ## 2026-06-26: Explore Search UX Fixes
 - `fix-explore-search-ux`: Resolved explore page search usability issues by aligning query parameter to `query` and handling form submission in HTMX.

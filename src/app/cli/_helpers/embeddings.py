@@ -15,6 +15,22 @@ from rich import get_console
 if TYPE_CHECKING:
     from app.domain.products.services import ProductService, VertexAIService
 
+__all__ = (
+    "BatchProcessor",
+    "chat_route_embedding_input",
+    "embed_in_batches",
+    "fetch_chat_routes_to_embed",
+    "fetch_products_to_embed",
+    "generate_product_embeddings",
+    "print_embedding_results",
+    "process_chat_route_batch",
+    "process_product_batch",
+    "product_embedding_input",
+    "update_chat_route_embedding",
+    "update_product_embedding",
+    "validate_batch_size",
+)
+
 BatchProcessor = Callable[[list[Any], int, int], Awaitable[tuple[int, int]]]
 
 logger = structlog.get_logger()

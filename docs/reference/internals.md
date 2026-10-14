@@ -105,7 +105,7 @@ catalogs.
 Previously, every chat turn executed a separate LLM intent-classification call
 before running product or store retrieval. Today, `HybridRouteResolver.resolve_turn`
 fuses BM25-style lexical ranking (`CONTAINS`/`SCORE`) and HNSW vector distance
-(`FETCH APPROX`) across `chat_route`, `product`, and `coffee_store` in a single
+(`FETCH APPROX`) across `chat_route`, `product`, and `store` in a single
 Oracle 26ai SQL round trip (`hybrid-search-turn`), cutting routing + retrieval
 latency down to ~15–25 ms inside Oracle. Only `GENERAL_CONVERSATION` invokes the
 native `AgentRuntime` (`Gemini 3.8 Flash`).
@@ -119,7 +119,7 @@ across recent searches. The fields map back to specific call sites:
 | --- | --- | --- |
 | `embedding_ms` | Wall time for `VertexAIService.get_text_embedding()`, including a cache check. | `_embedding.py` |
 | `oracle_ms` | Round-trip for the named SQL `hybrid-search-turn` / `vector-search-products` against Oracle 26ai. | `_router.py` / `_products.py` |
-| `ai_ms` | Time spent in `AgentRuntime.run_stream` (0 ms on deterministic grounded routes). | `agent_service.py` |
+| `ai_ms` | Time spent in `AgentRuntime.execute_turn` (0 ms on deterministic grounded routes). | `agent_service.py` |
 | `results_count` | Rows returned by Hybrid RRF or HNSW search. | `hybrid.sql` / `products.sql` |
 | `from_cache` | Response cache hit (model + persona + normalized query). | `CacheService` |
 | `embedding_cache_hit` | Hit on the Oracle-backed `embedding_cache` table. | `VertexAIService` |
@@ -131,7 +131,7 @@ If `oracle_ms` spikes:
 1. Check the EXPLAIN PLAN at `/explore` still mentions `VECTOR`. A full
    table scan means the index is unavailable.
 2. Verify `vector_memory_size` is non-zero — `SELECT name, bytes FROM
-   v$sgainfo WHERE name = 'Vector Memory'`.
+   v$sgainfo WHERE name IN ('Vector Memory Area', 'Vector Memory')`.
 3. Refresh table/index statistics if the catalog has just grown.
 
 If `embedding_ms` spikes, the embedding cache is missing or full. `coffee

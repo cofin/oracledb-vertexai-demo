@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.domain.products.schemas import ProductAvailability, Store
 
+__all__ = ("MIN_LOCATION_HINT_NAME_LENGTH", "haversine_miles", "store_matches_hint")
 
 MIN_LOCATION_HINT_NAME_LENGTH = 3
 

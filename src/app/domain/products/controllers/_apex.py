@@ -24,11 +24,13 @@ from app.domain.products.schemas import (
 )
 from app.domain.products.services import OracleVectorSearchService, ProductService, StoreService
 from app.lib.di import Inject
-from app.lib.settings import get_settings
+from app.lib.settings import PLACEHOLDER_VALUES, Settings
+
+__all__ = ("ApexController",)
 
 logger = structlog.get_logger()
 
-_PLACEHOLDER_PROJECT_IDS = frozenset({"demo-project", "your-project-id", "your-gcp-project-id"})
+_PLACEHOLDER_PROJECT_IDS = PLACEHOLDER_VALUES
 _APEX_TAG = "APEX REST Catalog"
 _OPERATION_IDS = [
     "ApexListProducts",
@@ -172,7 +174,7 @@ class ApexController(PublicController):
     ) -> ApexVectorStatus:
         """Return embedding/provider and Oracle vector readiness status."""
         readiness = await products_service.get_vector_readiness()
-        settings = get_settings()
+        settings = Settings.from_env()
         vertex_ai_service = vector_search_service.vertex_ai_service
         embedding_model = str(getattr(vertex_ai_service, "embedding_model", settings.ai.embedding_model))
         embedding_dimensions = int(getattr(vertex_ai_service, "embedding_dimensions", settings.ai.embedding_dimensions))
@@ -249,9 +251,8 @@ async def _fallback_recommendations(
 
 
 def _provider_configured() -> bool:
-    settings = get_settings()
-    project_id = settings.ai.project_id.strip()
-    return bool(settings.ai.api_key or (project_id and project_id not in _PLACEHOLDER_PROJECT_IDS))
+    settings = Settings.from_env()
+    return settings.ai.has_valid_project_id() or settings.ai.has_valid_api_key()
 
 
 def _blank_to_none(value: str | None) -> str | None:

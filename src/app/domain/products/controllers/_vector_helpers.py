@@ -14,6 +14,14 @@ from app.domain.products.schemas import ExplainPlan, VectorQuery
 if TYPE_CHECKING:
     from litestar_htmx import HTMXRequest
 
+__all__ = (
+    "SERVICE_UNAVAILABLE_MESSAGE",
+    "is_expected_service_unavailable",
+    "payload_value",
+    "unavailable_plan",
+    "vector_query_from_request",
+)
+
 SERVICE_UNAVAILABLE_MESSAGE = "Vector search is unavailable. Check Vertex AI and Oracle configuration, then retry."
 
 

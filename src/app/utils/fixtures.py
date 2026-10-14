@@ -16,6 +16,8 @@ from anyio import Path as AsyncPath
 from sqlspec import sql
 from sqlspec.utils.fixtures import open_fixture_async, write_fixture_async
 
+__all__ = ("DATETIME_FIELDS", "FixtureExporter", "FixtureLoader")
+
 logger = structlog.get_logger(__name__)
 
 DATETIME_FIELDS = frozenset({"created_at", "updated_at", "last_activity", "expires_at", "last_accessed"})

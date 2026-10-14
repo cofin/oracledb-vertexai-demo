@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
 
 if TYPE_CHECKING:
     from litestar.types.asgi_types import Message
@@ -17,7 +17,7 @@ __all__ = ("apply_security_headers", "build_security_headers")
 
 def build_security_headers(maps_settings: Any | None = None) -> dict[str, str]:
     """Build browser security headers for location and optional Maps Embed."""
-    maps = maps_settings or get_settings().maps
+    maps = maps_settings or Settings.from_env().maps
     headers = {"Permissions-Policy": "geolocation=(self)"}
     if maps.embed_enabled:
         headers["Content-Security-Policy"] = "frame-src 'self' https://www.google.com https://www.google.com/maps/;"

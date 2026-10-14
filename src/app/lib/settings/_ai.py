@@ -10,7 +10,16 @@ from dataclasses import dataclass, field
 
 from app.lib.settings._env import _env_float, _env_int
 
-__all__ = ("AISettings", "ChatSettings")
+__all__ = ("PLACEHOLDER_VALUES", "AISettings", "ChatSettings")
+
+PLACEHOLDER_VALUES: frozenset[str] = frozenset({
+    "",
+    "demo-project",
+    "your-project-id",
+    "your-gcp-project-id",
+    "placeholder",
+    "your-api-key",
+})
 
 
 @dataclass(frozen=True)
@@ -53,6 +62,16 @@ class AISettings:
         """Intent-classification model, falling back to the chat model."""
         return self.intent_model_override or self.chat_model
 
+    def has_valid_project_id(self) -> bool:
+        """Return ``True`` when ``project_id`` is non-empty and not a placeholder."""
+        cleaned = (self.project_id or "").strip()
+        return bool(cleaned and cleaned.lower() not in PLACEHOLDER_VALUES)
+
+    def has_valid_api_key(self) -> bool:
+        """Return ``True`` when ``api_key`` is non-empty and not a placeholder."""
+        cleaned = (self.api_key or "").strip()
+        return bool(cleaned and cleaned.lower() not in PLACEHOLDER_VALUES)
+
     def resolve_location(self, gcp_region: str | None = None) -> str:
         """Resolve the effective Vertex AI endpoint location.
 
@@ -79,9 +98,7 @@ class ChatSettings:
     """Response-cache time-to-live in minutes."""
     product_search_limit: int = field(default_factory=lambda: _env_int("CHAT_PRODUCT_SEARCH_LIMIT", 5))
     """Default product vector-search result limit."""
-    product_search_threshold: float = field(
-        default_factory=lambda: float(os.getenv("CHAT_PRODUCT_SEARCH_THRESHOLD", "0.7"))
-    )
+    product_search_threshold: float = field(default_factory=lambda: _env_float("CHAT_PRODUCT_SEARCH_THRESHOLD", 0.7))
     """Default product vector-search similarity threshold."""
     grounded_answer_timeout_seconds: float = field(
         default_factory=lambda: _env_float("CHAT_GROUNDED_ANSWER_TIMEOUT_SECONDS", 2.5)

@@ -10,10 +10,9 @@ from hashlib import sha256
 from math import fsum, sqrt
 from typing import TYPE_CHECKING, Any
 
-import msgspec
-
 from app.config import db_manager
 from app.domain.products.services import build_store_directions_url, build_store_search_url
+from app.lib.schema import BaseStruct
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
@@ -96,7 +95,7 @@ _PRODUCT_QUERY_STOP_WORDS = frozenset({
 })
 
 
-class SQLPhase(msgspec.Struct, kw_only=True):
+class SQLPhase(BaseStruct, kw_only=True):
     """Structured SQL execution phase emitted in the chat SSE final payload."""
 
     label: str
@@ -120,7 +119,7 @@ class SQLPhase(msgspec.Struct, kw_only=True):
         }
 
 
-class SearchMetrics(msgspec.Struct, kw_only=True):
+class SearchMetrics(BaseStruct, kw_only=True):
     """Structured retrieval and grounding metrics emitted in the chat SSE final payload."""
 
     vector_query: str
@@ -129,6 +128,7 @@ class SearchMetrics(msgspec.Struct, kw_only=True):
     oracle_ms: float
     results_count: int
     products_found: int
+    ai_ms: float = 0.0
     similarity_scores: list[float] = []
     avg_similarity: float | None = None
     rrf_scores: list[float] = []
@@ -144,6 +144,7 @@ class SearchMetrics(msgspec.Struct, kw_only=True):
             "total_ms": round(self.total_ms),
             "embedding_ms": round(self.embedding_ms, 2),
             "oracle_ms": round(self.oracle_ms, 2),
+            "ai_ms": round(self.ai_ms or self.grounded_answer_ms or 0.0, 2),
             "results_count": self.results_count,
             "products_found": self.products_found,
             "similarity_scores": [round(score, 4) for score in self.similarity_scores],

@@ -25,10 +25,10 @@ from app.domain.chat.services._telemetry import (
     build_search_metrics,
     safe_location_context,
 )
-from app.domain.products.services import InventoryService, MapsService
+from app.domain.products.services import MapsService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, PersonaManager
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
 
 if TYPE_CHECKING:
     from app.domain.ai.runtime._loop import AgentRuntime
@@ -49,7 +49,7 @@ def get_coffee_spec_tree() -> SpecTree:
     Returns:
         Configured SpecTree with coffee barista root coordinator and 5 grounded tools.
     """
-    settings = get_settings()
+    settings = Settings.from_env()
     coordinator = AgentSpec(
         name="coffee_barista",
         description="Friendly, knowledgeable Cymbal Coffee barista guiding recommendations and recipes.",
@@ -64,7 +64,7 @@ def get_coffee_spec_tree() -> SpecTree:
 def make_response_cache_key(query: str, persona: str, *, model: str = "gemini-3.8-flash") -> str:
     """Build a deterministic SHA-256 response cache key for location-independent queries."""
     normalized = " ".join(query.casefold().split())
-    version = get_settings().chat.response_cache_version
+    version = Settings.from_env().chat.response_cache_version
     digest = sha256(f"{version}:{model}:{persona}:{normalized}".encode()).hexdigest()
     return f"chat:{digest}"
 
@@ -147,7 +147,10 @@ class AgentOrchestrationService:
         )
 
         cache_key, cached_payload, cache_phase = await self._lookup_response_cache(
-            message=message, persona=persona, safe_loc=safe_location_context(location_context)
+            message=message,
+            persona=persona,
+            safe_loc=safe_location_context(location_context),
+            has_session_context=_has_session_context(history, session_state),
         )
         if cached_payload is not None and cache_phase is not None:
             async for frame in self._emit_cached_turn(
@@ -190,6 +193,7 @@ class AgentOrchestrationService:
                     cache_key=cache_key,
                     cache_phase=cache_phase,
                     session_state=session_state,
+                    has_session_context=_has_session_context(history, session_state),
                 ):
                     yield frame
                 return
@@ -213,13 +217,19 @@ class AgentOrchestrationService:
             oracle_ms=oracle_ms,
             cache_key=cache_key,
             cache_phase=cache_phase,
+            has_session_context=_has_session_context(history, session_state),
         ):
             yield frame
 
-    async def get_display_history(self, session_id: str, user_id: str) -> list[ChatMessage]:
+    async def get_display_history(self, session_id: str, user_id: str | None = None) -> list[ChatMessage]:
         """Retrieve recent conversation history formatted for HTML display templates."""
-        del user_id
-        events = await self._event_store.list_events(session_id=session_id)
+        if user_id is not None and self._session_store is not None:
+            session = await self._session_store.get_session(session_id, user_id=user_id)
+            if session is None:
+                return []
+        events = await self._event_store.list_events(
+            session_id=session_id, limit=Settings.from_env().chat.display_history_limit
+        )
         display_messages: list[ChatMessage] = []
         for event in events:
             text = event.text()
@@ -261,9 +271,9 @@ class AgentOrchestrationService:
         return history, turn_num, next_seq + 1, session_state
 
     async def _lookup_response_cache(
-        self, *, message: str, persona: str, safe_loc: dict[str, Any]
+        self, message: str, persona: str, safe_loc: dict[str, Any], *, has_session_context: bool = False
     ) -> tuple[str | None, dict[str, Any] | None, SQLPhase | None]:
-        if self._cache_service is None or safe_loc:
+        if self._cache_service is None or safe_loc or has_session_context:
             return None, None, None
         cache_key = make_response_cache_key(message, persona, model=self._spec_tree.root.model)
         started = time.perf_counter()
@@ -367,6 +377,7 @@ class AgentOrchestrationService:
         cache_key: str | None,
         cache_phase: SQLPhase | None,
         session_state: dict[str, Any],
+        has_session_context: bool = False,
     ) -> AsyncGenerator[dict[str, Any], None]:
         await self._append_assistant_event(
             session_id=session_id, invocation_id=invocation_id, turn_num=turn_num, seq=next_seq, answer=grounded.answer
@@ -382,7 +393,7 @@ class AgentOrchestrationService:
         grounded_phases = [phase.to_dict() for phase in grounded.sql_phases]
         all_phases = ([cache_phase.to_dict()] if cache_phase is not None else []) + grounded_phases
 
-        if cache_key is not None and self._cache_service is not None and grounded.answer:
+        if cache_key is not None and not has_session_context and self._cache_service is not None and grounded.answer:
             await self._cache_service.set_cached_response(
                 cache_key,
                 {
@@ -396,7 +407,7 @@ class AgentOrchestrationService:
                     "map_actions": grounded.map_actions,
                     "last_products": grounded.last_products,
                 },
-                ttl_minutes=get_settings().chat.response_cache_ttl_minutes,
+                ttl_minutes=Settings.from_env().chat.response_cache_ttl_minutes,
             )
 
         yield {"type": "session", "session_id": session_id}
@@ -439,6 +450,7 @@ class AgentOrchestrationService:
         oracle_ms: float,
         cache_key: str | None,
         cache_phase: SQLPhase | None,
+        has_session_context: bool = False,
     ) -> AsyncGenerator[dict[str, Any], None]:
         tool_services = self._build_tool_services(services, turn_context=turn_context)
         safe_loc = safe_location_context(location_context)
@@ -494,6 +506,7 @@ class AgentOrchestrationService:
                     safe_loc=safe_loc,
                     cache_key=cache_key,
                     cache_phase=cache_phase,
+                    has_session_context=has_session_context or bool(history),
                 )
             else:
                 yield frame
@@ -513,6 +526,7 @@ class AgentOrchestrationService:
         safe_loc: dict[str, Any],
         cache_key: str | None,
         cache_phase: SQLPhase | None,
+        has_session_context: bool = False,
     ) -> dict[str, Any]:
         elapsed_ms = round((time.perf_counter() - turn_started) * 1000, 2)
         base_phases = (
@@ -533,18 +547,20 @@ class AgentOrchestrationService:
         tool_phases = list(ctx.state.get("sql_phases") or [])
         all_phases = ([cache_phase.to_dict()] if cache_phase is not None else []) + base_phases + tool_phases
 
+        ai_ms = max(0.0, round(elapsed_ms - embed_ms - oracle_ms, 2))
         merged_metrics: dict[str, Any] = dict(frame.get("search_metrics") or {})
         if turn_context is not None:
-            merged_metrics.update(
-                build_search_metrics(
-                    query=message,
-                    turn_context=turn_context,
-                    total_ms=elapsed_ms,
-                    embedding_ms=embed_ms,
-                    oracle_ms=oracle_ms,
-                ).to_dict()
+            search_metrics = build_search_metrics(
+                query=message,
+                turn_context=turn_context,
+                total_ms=elapsed_ms,
+                embedding_ms=embed_ms,
+                oracle_ms=oracle_ms,
             )
+            search_metrics.ai_ms = ai_ms
+            merged_metrics.update(search_metrics.to_dict())
         merged_metrics.update(dict(ctx.state.get("search_metrics") or {}))
+        merged_metrics["ai_ms"] = ai_ms
         merged_metrics["total_ms"] = round(elapsed_ms)
 
         intent_detected = turn_context.intent_detected if turn_context is not None else "GENERAL_CONVERSATION"
@@ -554,7 +570,7 @@ class AgentOrchestrationService:
         inventory_results = list(ctx.state.get("inventory_results") or [])
         map_actions = list(ctx.state.get("map_actions") or [])
 
-        if cache_key is not None and self._cache_service is not None and answer:
+        if cache_key is not None and not has_session_context and self._cache_service is not None and answer:
             await self._cache_service.set_cached_response(
                 cache_key,
                 {
@@ -567,7 +583,7 @@ class AgentOrchestrationService:
                     "inventory_results": inventory_results,
                     "map_actions": map_actions,
                 },
-                ttl_minutes=get_settings().chat.response_cache_ttl_minutes,
+                ttl_minutes=Settings.from_env().chat.response_cache_ttl_minutes,
             )
 
         return {
@@ -591,7 +607,7 @@ class AgentOrchestrationService:
                 fallback_services.turn_context = turn_context
             return fallback_services
         if any((self._product_service, self._store_service, self._vertex_ai_service, self._metrics_service)):
-            inv_svc = self._store_service if isinstance(self._store_service, InventoryService) else None
+            inv_svc = self._store_service
             return CoffeeToolContext(
                 product_service=self._product_service,
                 store_service=self._store_service,
@@ -661,3 +677,7 @@ def _extract_last_products(session_state: dict[str, Any]) -> list[str] | None:
     if not isinstance(raw, list):
         return None
     return [str(item) for item in raw if str(item).strip()] or None
+
+
+def _has_session_context(history: list[AgentEvent], session_state: dict[str, Any]) -> bool:
+    return bool(history) or bool(_extract_last_products(session_state))

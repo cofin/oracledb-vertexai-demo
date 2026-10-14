@@ -30,7 +30,7 @@ class CoffeeToolContext:
 
     product_service: ProductService | None = None
     store_service: StoreService | None = None
-    inventory_service: InventoryService | None = None
+    inventory_service: InventoryService | StoreService | None = None
     maps_service: MapsService | None = None
     embedding_service: EmbeddingService | None = None
     vertex_ai_service: VertexAIService | None = None

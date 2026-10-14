@@ -8,6 +8,8 @@ from typing import Any
 
 from app.lib.schema import CamelizedBaseStruct
 
+__all__ = ("EmbeddingCache", "ResponseCache")
+
 
 class ResponseCache(CamelizedBaseStruct, omit_defaults=True):
     """Response cache entry."""
@@ -29,6 +31,3 @@ class EmbeddingCache(CamelizedBaseStruct, omit_defaults=True):
     created_at: datetime
     last_accessed: datetime
     hit_count: int = 0
-
-
-__all__ = ("EmbeddingCache", "ResponseCache")

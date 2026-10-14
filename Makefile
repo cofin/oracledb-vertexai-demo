@@ -233,6 +233,21 @@ test: ## Run the tests
 	@set -e; uv run pytest -n 2 --dist=loadgroup src/tests
 	@echo "${OK} Tests complete ✨"
 
+.PHONY: test-unit
+test-unit: ## Run isolated unit tests (no live Oracle DB required)
+	@echo "${INFO} Running unit test suite... 🧪"
+	@set -e; uv run pytest src/tests/unit -p no:cacheprovider
+	@echo "${OK} Unit tests complete ✨"
+
+.PHONY: test-integration
+test-integration: ## Run live Oracle 26ai integration tests
+	@echo "${INFO} Running integration test suite... 🧪"
+	@set -e; uv run pytest -n 2 --dist=loadgroup src/tests/integration
+	@echo "${OK} Integration tests complete ✨"
+
+.PHONY: test-fast
+test-fast: test-unit ## Alias for fast unit test suite
+
 .PHONY: coverage
 coverage: ## Run tests with coverage report
 	@echo "${INFO} Running tests with coverage... 📊"
@@ -241,16 +256,36 @@ coverage: ## Run tests with coverage report
 	@uv run coverage xml >/dev/null 2>&1
 	@echo "${OK} Coverage report generated ✨"
 
+.PHONY: py-lint
+py-lint: ## Run Ruff lint/format and repository CI gates
+	@echo "${INFO} Running Ruff and CI hygiene/security/review gates... 🔎"
+	@uv run ruff check --no-fix src/app src/tests tools manage.py
+	@uv run ruff format --check src/app src/tests tools manage.py
+	@uv run python tools/ci/check_code_hygiene.py
+	@uv run python tools/ci/check_litestar_security.py
+	@uv run python .agents/skills/ghop-review-manager/scripts/validate_agentic_review.py
+	@echo "${OK} Python lint and CI gates passed ✨"
+
+.PHONY: dependency-smoke
+dependency-smoke: ## Verify core runtime and DI imports
+	@echo "${INFO} Running dependency smoke check... 🔍"
+	@uv run python -c "import app.server.asgi; import app.ioc; import app.domain.ai.runtime; import app.domain.chat.services"
+	@echo "${OK} Dependency smoke check complete ✨"
+
+.PHONY: type-check
+type-check: mypy pyright ## Run mypy and pyright type checkers
+	@echo "${OK} Type checking complete ✨"
+
+.PHONY: py-check
+py-check: py-lint type-check slotscheck dependency-smoke ## Run all Python static analysis and CI gates
+	@echo "${OK} All Python checks complete ✨"
+
 .PHONY: lint
 lint: ## Run all linting and type checking (Python + frontend)
 	@echo "${INFO} Running prek (pre-commit) checks... 🔎"
 	@uv run prek run --color=always --all-files
 	@echo "${OK} prek checks passed ✨"
-	@echo "${INFO} Running type checkers... 🔍"
-	@uv run mypy src/app src/tests tools manage.py
-	@uv run pyright src/app src/tests tools manage.py
-	@uv run slotscheck -m app
-	@uv run python tools/ci/check_code_hygiene.py
+	@$(MAKE) py-check
 	@$(MAKE) frontend-typecheck
 	@echo "${OK} All linting and type checks complete ✨"
 

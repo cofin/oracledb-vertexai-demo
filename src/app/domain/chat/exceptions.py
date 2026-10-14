@@ -5,9 +5,8 @@
 
 from litestar.exceptions import ServiceUnavailableException
 
+__all__ = ("AIServiceUnconfigured",)
+
 
 class AIServiceUnconfigured(ServiceUnavailableException):
     """Raised when Vertex AI / google-genai credentials are missing or invalid."""
-
-
-__all__ = ("AIServiceUnconfigured",)

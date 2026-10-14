@@ -12,7 +12,7 @@ operation_targets: []
 last_verified_checkpoint: null
 created_at: 2026-10-12T18:31:00Z
 updated_at: 2026-10-12T18:42:00Z
-description: Add the Knowledge Catalog Grounding (ON/OFF) toggle in chat.html.j2 and main.js, add the K (Knowledge Catalog) telemetry chip and Context X-Ray popover details in telemetry.js, and document the Knowledge Catalog + Oracle 26ai ANNOTATIONS + OKF v0.2 architecture and "Breaking the Context Ceiling" demo script across SLIDES.md, .agents/bundles/knowledge/guides/knowledge-catalog.md, AGENTS.md, README.md, and docs/.
+description: Add the Knowledge Catalog Grounding (ON/OFF) toggle in chat.html.j2 and main.js, add the K (Knowledge Catalog) telemetry chip and Context X-Ray popover details in telemetry.js, and document the Knowledge Catalog + Oracle 26ai ANNOTATIONS + OKF v0.2 architecture and "Breaking the Context Ceiling" demo script across SLIDES.md, .agents/bundles/knowledge/architecture/knowledge-catalog.md, AGENTS.md, README.md, and docs/.
 tags:
   - feature
   - knowledge-catalog
@@ -45,7 +45,7 @@ Files examined:
 ### Relevant Patterns
 
 - [Architecture Patterns](../../knowledge/patterns/architecture.md) — Server-rendered Jinja templates (`chat.html.j2`) paired with modular ES modules in `src/resources/`.
-- [OKF v0.2 Bundles](../../knowledge/index.md) — Durable engineering guides live under `.agents/bundles/knowledge/guides/` with valid OKF v0.2 frontmatter.
+- [OKF v0.2 Bundles](../../knowledge/index.md) — Durable engineering guides live under `.agents/bundles/knowledge/architecture/` with valid OKF v0.2 frontmatter.
 
 ### Requirements
 
@@ -54,7 +54,7 @@ Files examined:
   - Wire `[data-kc-toggle]` click handling in `src/resources/main.js` so toggling between **Grounding ON** and **Grounding OFF** updates `[data-kc-input]` and `[data-kc-status]` (`LookupContext + Oracle 26ai Annotations active` vs `Ungrounded mode (catalog context omitted)`).
   - Extend `renderMetrics` and `renderMessageTelemetry` in `src/resources/telemetry.js` to inspect `phasesFor(payload, "lookup-knowledge-catalog")` and `metrics.catalog_enabled` / `metrics.catalog_ms`, rendering a clickable **`K` (`Knowledge Catalog`)** telemetry chip that opens the telemetry popover showing matched entry URIs (`oracle:cymbal-coffee:product`, `oracle:cymbal-coffee:store`, `oracle:cymbal-coffee:store_product_inventory`), active Oracle 26ai `Privacy` and `Data_Role` rules (`store.latitude/longitude`), steward guidelines, and the `dataplex.googleapis.com/v1:lookupContext` YAML bundle.
 - **KC-REQ-06 (Presentation Slides, OKF Knowledge Guide & Sphinx Documentation)**:
-  - Create `.agents/bundles/knowledge/guides/knowledge-catalog.md` and link it in `.agents/bundles/knowledge/index.md` and `AGENTS.md`.
+  - Create `.agents/bundles/knowledge/architecture/knowledge-catalog.md` and link it in `.agents/bundles/knowledge/index.md` and `AGENTS.md`.
   - Add slides to `SLIDES.md` covering the 3-pillar architecture (**Oracle 26ai `ANNOTATIONS` + Google Cloud Knowledge Catalog `lookupContext` + OKF v0.2**) and the 3-act **"Breaking the Context Ceiling"** presenter walkthrough.
   - Update `README.md`, `docs/concepts/agent-flow.md`, `docs/mcp-antigravity.md`, `docs/reference/cli.md`, and `docs/reference/api.md` to document `uv run coffee sync-catalog`, `GET /api/catalog/context` (`mcp_tool="lookup_knowledge_catalog"`), `GET /api/catalog/entries`, and the Dataplex MCP Toolbox server.
 
@@ -62,8 +62,8 @@ Files examined:
 
 | Requirement | Task | Verification Strategy | Primary Files | Primary Tests |
 | --- | --- | --- | --- | --- |
-| `KC-REQ-05` | `3.1` | `behavior_tdd` | `src/app/domain/web/templates/pages/chat.html.j2`, `src/resources/main.js`, `src/resources/telemetry.js` | `src/tests/unit/app/domain/web/test_chat_catalog_ui.py` |
-| `KC-REQ-06` | `3.2` | `documentation_validation` | `SLIDES.md`, `.agents/bundles/knowledge/guides/knowledge-catalog.md`, `.agents/bundles/knowledge/index.md`, `AGENTS.md`, `README.md`, `docs/concepts/agent-flow.md`, `docs/mcp-antigravity.md`, `docs/reference/cli.md`, `docs/reference/api.md` | `src/tests/unit/app/domain/web/test_chat_catalog_ui.py` |
+| `KC-REQ-05` | `3.1` | `behavior_tdd` | `src/app/domain/web/templates/pages/chat.html.j2`, `src/resources/main.js`, `src/resources/telemetry.js` | `src/tests/unit/domain/web/test_chat_catalog_ui.py` |
+| `KC-REQ-06` | `3.2` | `documentation_validation` | `SLIDES.md`, `.agents/bundles/knowledge/architecture/knowledge-catalog.md`, `.agents/bundles/knowledge/index.md`, `AGENTS.md`, `README.md`, `docs/concepts/agent-flow.md`, `docs/mcp-antigravity.md`, `docs/reference/cli.md`, `docs/reference/api.md` | `src/tests/unit/domain/web/test_chat_catalog_ui.py` |
 
 ---
 
@@ -72,7 +72,7 @@ Files examined:
 ### Phase 1: Interactive Demo UI, Telemetry Chip & Documentation
 
 - [ ] 3.1 Add Knowledge Catalog Grounding (`ON`/`OFF`) toggle in `chat.html.j2` + `main.js` and `K` (`Knowledge Catalog`) telemetry chip in `telemetry.js`
-- [ ] 3.2 Add Knowledge Catalog architecture & "Breaking the Context Ceiling" demo slides to `SLIDES.md`, create `.agents/bundles/knowledge/guides/knowledge-catalog.md`, and update `AGENTS.md`, `README.md`, and `docs/`
+- [ ] 3.2 Add Knowledge Catalog architecture & "Breaking the Context Ceiling" demo slides to `SLIDES.md`, create `.agents/bundles/knowledge/architecture/knowledge-catalog.md`, and update `AGENTS.md`, `README.md`, and `docs/`
 
 ---
 
@@ -91,4 +91,4 @@ Files examined:
 - **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/knowledge-catalog-grounding-demo/research/research_knowledge_catalog_demo_20261012/research.md`
-  - `.agents/bundles/knowledge/guides/architecture.md`
+  - `.agents/bundles/knowledge/architecture/system-architecture.md`

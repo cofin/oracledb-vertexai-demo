@@ -11,6 +11,24 @@ from msgspec import Meta, field
 from app.domain.products.schemas._products import ProductAvailability, StockStatus, Store
 from app.lib.schema import CamelizedBaseStruct
 
+__all__ = (
+    "ApexInventoryList",
+    "ApexInventorySummaryList",
+    "ApexInventorySummaryRow",
+    "ApexOpenAPIStatus",
+    "ApexProduct",
+    "ApexProductList",
+    "ApexRecommendation",
+    "ApexRecommendationRequest",
+    "ApexRecommendationResponse",
+    "ApexStoreList",
+    "ApexVectorReadiness",
+    "ApexVectorStatus",
+    "NonEmptyQuery",
+    "PositiveLimit",
+    "RecommendationMode",
+)
+
 RecommendationMode = Literal["vector", "fallback"]
 
 PositiveLimit = Annotated[int, Meta(ge=1, le=100)]

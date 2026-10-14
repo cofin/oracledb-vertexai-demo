@@ -29,6 +29,22 @@ if TYPE_CHECKING:
     from litestar_vite import VitePlugin
     from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecBase
 
+__all__ = (
+    "a2a",
+    "autowire",
+    "db",
+    "flash",
+    "granian",
+    "htmx",
+    "mcp",
+    "opentelemetry",
+    "problem_details",
+    "queue",
+    "security",
+    "structlog",
+    "vite",
+)
+
 
 def __getattr__(name: str) -> object:
     """Lazily initialize plugins on first attribute access (PEP 562)."""

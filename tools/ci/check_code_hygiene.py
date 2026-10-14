@@ -12,6 +12,8 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 APP_DIR = ROOT_DIR / "src" / "app"
+TOOLS_SLIDES_DIR = ROOT_DIR / "tools" / "slides"
+TOOLS_CI_DIR = ROOT_DIR / "tools" / "ci"
 MANAGE_PY = ROOT_DIR / "manage.py"
 
 ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
@@ -28,6 +30,7 @@ ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
 )
 
 ALLOWED_LAZY_IMPORT_FILES: frozenset[Path] = frozenset({
+    APP_DIR / "cli" / "commands.py",
     APP_DIR / "cli" / "main.py",
     APP_DIR / "config.py",
     APP_DIR / "server" / "plugins.py",
@@ -38,6 +41,8 @@ ALLOWED_CONTROLLER_BASES: frozenset[str] = frozenset({
     "SecureController",
     "SkillController",
     "PromptController",
+    "MCPController",
+    "A2AController",
 })
 
 
@@ -99,10 +104,10 @@ def check_ast_rules(paths: list[Path]) -> list[str]:
 
 
 def main() -> int:
-    """Run all code-hygiene checks across src/app and manage.py."""
-    app_files = sorted(APP_DIR.rglob("*.py"))
-    target_files = [*app_files, MANAGE_PY]
-    violations = [*check_inline_comments(target_files), *check_ast_rules(app_files)]
+    """Run all code-hygiene checks across src/app, tools/slides, tools/ci, and manage.py."""
+    ast_files = sorted([*APP_DIR.rglob("*.py"), *TOOLS_SLIDES_DIR.rglob("*.py"), *TOOLS_CI_DIR.rglob("*.py")])
+    target_files = [*ast_files, MANAGE_PY]
+    violations = [*check_inline_comments(target_files), *check_ast_rules(ast_files)]
     if violations:
         for violation in violations:
             sys.stderr.write(f"{violation}\n")

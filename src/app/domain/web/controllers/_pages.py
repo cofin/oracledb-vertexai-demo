@@ -17,6 +17,8 @@ from app.domain.chat.session import chat_session_identity
 from app.domain.products.services import StoreService
 from app.lib.di import Inject
 
+__all__ = ("PageController",)
+
 logger = structlog.get_logger()
 
 

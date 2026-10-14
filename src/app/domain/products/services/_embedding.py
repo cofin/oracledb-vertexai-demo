@@ -67,7 +67,7 @@ class VertexAIService:
         )
         embedding_list = response.embeddings
         if not embedding_list or not embedding_list[0].values:
-            return None
+            return (None, False) if return_cache_status else None
         embedding = embedding_list[0].values
         await self.cache_service.save_embedding(text, embedding, self.embedding_model)
         return (embedding, False) if return_cache_status else embedding
@@ -91,59 +91,19 @@ class OracleVectorSearchService:
         self, query: str, k: int = 5, threshold: float = 0.5, *, store_id: int | None = None
     ) -> tuple[list[ProductMatch], bool, dict[str, float]]:
         """Embed a query and execute Oracle vector similarity search."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         embedding, cache_hit = await self.vertex_ai_service.get_text_embedding(
             query, embedding_purpose="query", return_cache_status=True
         )
-        embedding_ms = (time.time() - start_time) * 1000
+        embedding_ms = (time.perf_counter() - start_time) * 1000
 
-        oracle_start = time.time()
+        oracle_start = time.perf_counter()
         results = await self.product_service.search_by_vector(
             embedding, similarity_threshold=threshold, limit=k, store_id=store_id
         )
-        oracle_ms = (time.time() - oracle_start) * 1000
+        oracle_ms = (time.perf_counter() - oracle_start) * 1000
 
         return results, cache_hit, {"embedding_ms": embedding_ms, "oracle_ms": oracle_ms}
-
-    @staticmethod
-    def parse_plan_rows(plan_lines: list[str]) -> list[ExplainPlanRow]:
-        """Parse the operation table rows from ``DBMS_XPLAN.DISPLAY`` output."""
-
-        def cell(cells: list[str], index: int) -> str:
-            try:
-                return cells[index]
-            except IndexError:
-                return ""
-
-        rows: list[ExplainPlanRow] = []
-        for line in plan_lines:
-            stripped = line.strip()
-            if not stripped.startswith("|"):
-                continue
-            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-            if cells[0].lower() == "id":
-                continue
-            operation_cell = cell(cells, 1)
-            if not operation_cell:
-                continue
-            plan_id = re.sub(r"[^0-9]", "", cells[0])
-            if not plan_id:
-                continue
-            operation = re.sub(r"\s+", " ", operation_cell).strip()
-            rows.append(
-                ExplainPlanRow(
-                    id=plan_id,
-                    operation=operation,
-                    name=cell(cells, 2),
-                    rows=cell(cells, 3),
-                    bytes=cell(cells, 4),
-                    cost=cell(cells, 5),
-                    time=cell(cells, 6),
-                    raw_line=line,
-                    is_vector="VECTOR" in line.upper(),
-                )
-            )
-        return rows
 
     async def explain_search_plan(self, query: str) -> ExplainPlan:
         """Run EXPLAIN PLAN against the vector-search SQL and pull the plan."""
@@ -161,6 +121,47 @@ class OracleVectorSearchService:
             plan_rows[0].operation if plan_rows else (plan_lines[0].strip() if plan_lines else ""),
         )
         return ExplainPlan(plan_lines=plan_lines, plan_summary=plan_summary, plan_rows=plan_rows)
+
+    @staticmethod
+    def parse_plan_rows(plan_lines: list[str]) -> list[ExplainPlanRow]:
+        """Parse the operation table rows from ``DBMS_XPLAN.DISPLAY`` output."""
+        rows: list[ExplainPlanRow] = []
+        for line in plan_lines:
+            stripped = line.strip()
+            if not stripped.startswith("|"):
+                continue
+            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+            if cells[0].lower() == "id":
+                continue
+            operation_cell = _plan_cell(cells, 1)
+            if not operation_cell:
+                continue
+            plan_id = re.sub(r"[^0-9]", "", cells[0])
+            if not plan_id:
+                continue
+            operation = re.sub(r"\s+", " ", operation_cell).strip()
+            rows.append(
+                ExplainPlanRow(
+                    id=plan_id,
+                    operation=operation,
+                    name=_plan_cell(cells, 2),
+                    rows=_plan_cell(cells, 3),
+                    bytes=_plan_cell(cells, 4),
+                    cost=_plan_cell(cells, 5),
+                    time=_plan_cell(cells, 6),
+                    raw_line=line,
+                    is_vector="VECTOR" in line.upper(),
+                )
+            )
+        return rows
+
+
+def _plan_cell(cells: list[str], index: int) -> str:
+    """Safely extract a table cell by index from a split DBMS_XPLAN line."""
+    try:
+        return cells[index]
+    except IndexError:
+        return ""
 
 
 def _embedding_content(model: str, text: str, embedding_purpose: str) -> str:

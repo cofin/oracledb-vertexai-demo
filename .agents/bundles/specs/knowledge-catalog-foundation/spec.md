@@ -39,7 +39,7 @@ Files examined:
 
 - `src/app/db/migrations/0001_cymball_coffee_products.sql:18-264` — Defines native Oracle 26ai `ANNOTATIONS(...)` on `product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, and `search_metric`, plus column and HNSW index annotations (`Display`, `Description`, `Data_Role`, `Privacy`, `Embedding_Model`, `Embedding_Dimensions`, `Embedding_Purpose`, `Distance`, `Enum_Values`, `Cache_Role`, `Maps_Baseline`, `AI_Surface`).
 - `src/app/config.py:131` — Calls `db_mgr.load_sql_files(BASE_DIR / "db" / "sql")`, which automatically loads every `*.sql` file in `src/app/db/sql/`.
-- `src/app/lib/settings.py:210-486` (and planned `src/app/lib/settings/` package) — Defines frozen `@dataclass(frozen=True, slots=True)` settings classes loaded via `Settings.from_env()`.
+- `src/app/lib/settings/` (`_catalog.py` and `__init__.py`) — Defines frozen `@dataclass(frozen=True, slots=True)` settings classes loaded via `Settings.from_env()`.
 - `src/app/domain/system/schemas/__init__.py:1-40` — Exports system domain `msgspec` schemas (`CamelizedBaseStruct`).
 - `src/app/cli/commands.py:147-223` & `src/app/cli/utils.py:21-54` — Declares `@cli.command(...)` Click commands using `@async_inject`, delegating workflow logic to `src/app/cli/_helpers/`.
 
@@ -53,7 +53,7 @@ Files examined:
 
 - **KC-REQ-01 (Oracle 26ai Annotation SQL, `CatalogSettings` & Typed Schemas)**:
   - Create `src/app/db/sql/catalog.sql` with named queries `select-catalog-table-annotations`, `select-catalog-column-metadata`, and `select-catalog-index-annotations` querying `USER_ANNOTATIONS_USAGE` and `USER_TAB_COLUMNS`.
-  - Add `CatalogSettings` (`enabled`, `mode`, `project_id`, `location`, `entry_group_id`, `glossary_id`, `snapshot_path`, `context_budget`, `timeout_seconds`) in `src/app/lib/settings.py` (and `src/app/lib/settings/_catalog.py` when modularized) exposed as `settings.catalog`.
+  - Add `CatalogSettings` (`enabled`, `mode`, `project_id`, `location`, `entry_group_id`, `glossary_id`, `snapshot_path`, `context_budget`, `timeout_seconds`) in `src/app/lib/settings/_catalog.py` (re-exported via `src/app/lib/settings/__init__.py`) exposed as `settings.catalog`.
   - Create `src/app/domain/system/schemas/_catalog.py` defining `OracleAnnotationRow`, `OracleColumnMetadataRow`, `CatalogColumnMetadata`, `CatalogGoldenQuery`, `CatalogGlossaryTerm`, `CatalogEntrySummary`, `CatalogContextPayload`, `CatalogEntryList`, and `CatalogSyncReport`, re-exported in `src/app/domain/system/schemas/__init__.py`.
 - **KC-REQ-02 (`coffee sync-catalog` CLI, Committed Snapshot & OKF v0.2 Bundle)**:
   - Create `src/app/db/fixtures/knowledge_catalog_context.json` containing the canonical Cymbal Coffee Knowledge Catalog entries (`product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, `search_metric`), their harvested Oracle 26ai annotations, steward-certified `guidelines` (2-Tier Inventory Precedence, Off-Menu Brand Guardrail, Request-Scoped Coordinate Privacy), Golden SQL `queries`, and Business Glossary terms.
@@ -64,8 +64,8 @@ Files examined:
 
 | Requirement | Task | Verification Strategy | Primary Files | Primary Tests |
 | --- | --- | --- | --- | --- |
-| `KC-REQ-01` | `1.1` | `behavior_tdd` | `src/app/db/sql/catalog.sql`, `src/app/lib/settings.py`, `src/app/domain/system/schemas/_catalog.py`, `src/app/domain/system/schemas/__init__.py` | `src/tests/unit/app/domain/system/test_catalog_schemas.py` |
-| `KC-REQ-02` | `1.2` | `behavior_tdd` | `src/app/db/fixtures/knowledge_catalog_context.json`, `src/app/cli/_helpers/catalog.py`, `src/app/cli/commands.py`, `.agents/bundles/knowledge/catalog/index.md` | `src/tests/unit/app/cli/test_sync_catalog.py` |
+| `KC-REQ-01` | `1.1` | `behavior_tdd` | `src/app/db/sql/catalog.sql`, `src/app/lib/settings/_catalog.py`, `src/app/lib/settings/__init__.py`, `src/app/domain/system/schemas/_catalog.py`, `src/app/domain/system/schemas/__init__.py` | `src/tests/unit/domain/system/test_catalog_schemas.py` |
+| `KC-REQ-02` | `1.2` | `behavior_tdd` | `src/app/db/fixtures/knowledge_catalog_context.json`, `src/app/cli/_helpers/catalog.py`, `src/app/cli/commands.py`, `.agents/bundles/knowledge/catalog/index.md` | `src/tests/unit/cli/test_sync_catalog.py` |
 
 ---
 
@@ -94,5 +94,5 @@ Files examined:
 - **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/knowledge-catalog-grounding-demo/research/research_knowledge_catalog_demo_20261012/research.md`
-  - `.agents/bundles/knowledge/guides/oracle-database.md`
+  - `.agents/bundles/knowledge/architecture/oracle-26ai-hybrid-rrf.md`
   - `.agents/bundles/knowledge/patterns/code-style.md`

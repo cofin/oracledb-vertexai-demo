@@ -220,17 +220,18 @@ def _extract_frames_from_event(
         usage_total["total_tokens"] += item.usage.total_tokens
         usage_total["cached_tokens"] += item.usage.cached_tokens
 
-    for call in item.function_calls():
-        call_key = call.id or call.name
-        if call_key not in seen_calls:
-            seen_calls.add(call_key)
-            frames.append({
-                "type": "tool_call",
-                "id": call.id,
-                "name": call.name,
-                "author": item.agent,
-                "args": call.args,
-            })
+    if not item.actions.get("aggregated"):
+        for call in item.function_calls():
+            call_key = call.id or call.name
+            if call_key not in seen_calls:
+                seen_calls.add(call_key)
+                frames.append({
+                    "type": "tool_call",
+                    "id": call.id,
+                    "name": call.name,
+                    "author": item.agent,
+                    "args": call.args,
+                })
 
     for resp in item.function_responses():
         status, preview = build_tool_preview(resp.response)

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, cast
 
 from sqlspec import sql
@@ -125,8 +126,9 @@ class ProductService(OracleAsyncService):
         limit: int = 5,
     ) -> list[ProductMatch]:
         """Run single-query Oracle 26ai Hybrid RRF product search combining CONTAINS/SCORE and VECTOR_DISTANCE."""
-        has_text_query = 1 if text_query is not None else 0
-        bind_text_query = text_query if text_query is not None else "{coffee}"
+        sanitized_query = _sanitize_oracle_text_query(text_query)
+        has_text_query = 1 if sanitized_query is not None else 0
+        bind_text_query = sanitized_query if sanitized_query is not None else "{coffee}"
         return await self.driver.select(
             db_manager.get_sql("hybrid-search-products"),
             has_text_query=has_text_query,
@@ -137,3 +139,18 @@ class ProductService(OracleAsyncService):
             limit=limit,
             schema_type=ProductMatch,
         )
+
+
+def _sanitize_oracle_text_query(text_query: str | None) -> str | None:
+    """Brace-escape raw tokens for Oracle Text ``CONTAINS`` when not already formatted."""
+    if text_query is None:
+        return None
+    stripped = text_query.strip()
+    if not stripped:
+        return None
+    if stripped.startswith("{"):
+        return stripped
+    tokens = list(dict.fromkeys(re.findall(r"[a-z0-9]{2,}", stripped.lower())))[:8]
+    if not tokens:
+        return None
+    return " , ".join(f"{{{token}}}" for token in tokens)

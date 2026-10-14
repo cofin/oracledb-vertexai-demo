@@ -20,6 +20,8 @@ from app.domain.chat.session import chat_session_identity, clear_chat_session_id
 from app.lib.di import Inject
 from app.utils.serialization import to_json
 
+__all__ = ("CoffeeChatController",)
+
 logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 

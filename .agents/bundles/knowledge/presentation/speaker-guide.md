@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Speaker Guide — Oracle in the Age of Gemini (2026)
-description: Audience, story, timing, wording rules, demo approach, and accuracy rules for the Cymbal Coffee DBA talk
+description: Audience, DBA-first story arc, timing, wording rules, demo approach, and accuracy rules for the Oracle DBA talk
 tags:
   - presentation
   - speaker-guide
@@ -16,83 +16,52 @@ tags:
 | Item | Value |
 | :--- | :--- |
 | Title | Oracle in the Age of Gemini |
-| Subtitle | How DBAs use Vertex AI to work smarter and build real apps |
-| Length | 50 minutes assumed (36 shown slides, 17 skipped backups); adjust the timing table if the slot changes |
-| Audience | Senior Oracle DBAs and architects. They know Oracle deeply (`CTXSYS.CONTEXT`, optimizer access paths, SGA sizing, `FOR UPDATE SKIP LOCKED`, privileges and auditing) and are new to embeddings, agents, and MCP |
-| Promise | Leave knowing where Gemini fits in your daily work, which DBA chores to hand to an agent, and how a real app uses Oracle for retrieval while Gemini does the talking |
+| Subtitle | Practical AI Agents, MCP Workflows, and Vector Search for Oracle DBAs |
+| Length | 45–50 minutes (28 DBA-first core slides + 12 hideable Cymbal Coffee app walkthrough slides + Thank You + 16 unskipped Reference slides) |
+| Audience | Senior Oracle DBAs and database engineers (Exadata Database Service and Autonomous AI Database on Oracle Database@Google Cloud). They know Oracle internals (`DBMS_XPLAN`, `GV$TRANSACTION`, `V$SYSSTAT`, `CTXSYS.CONTEXT`, SGA sizing, `FOR UPDATE SKIP LOCKED`) and want concrete MCP configurations, diagnostic SQL, and safe operational patterns |
+| Promise | Leave with working Antigravity + Oracle MCP configurations, copy-pasteable 26ai and Exadata diagnostic SQL, an understanding of Knowledge Catalog and in-database Gemini options, and a reference application architecture |
 | Demo app | Cymbal Coffee, `github.com/cofin/oracledb-vertexai-demo` |
 
 ## The story
 
-The talk follows one arc: start where DBAs already work, move to the DBA work
-agents can take off their plate, and finish with an application.
+The deck is structured **DBA-first** so that the first 28 slides deliver the entire DBA workflow, diagnostic SQL, Knowledge Catalog, in-database Gemini patterns, and Monday action plan, while the 12-slide **Cymbal Coffee** application walkthrough (`dba_s29`–`dba_s40`) sits at the end as a self-contained section that can be presented in full or hidden for pure-DBA sessions.
 
 | Section | Slides | Minutes | Message |
 | :--- | :--- | :--- | :--- |
-| Opening | 1–7 | 7 | Where Oracle runs on Google Cloud, and every place Gemini can touch Oracle data |
-| Part 1: Extend your workflow | 8–14 | 11 | Gemini in the terminal, the IDE, and SQL itself: Antigravity, MCP, Select AI |
-| Part 2: Be a better DBA | 15–22 | 12 | Agents gather and summarize (plans, AWR, audits, schema notes); the DBA approves every change |
-| Part 3: Build real apps | 23–34 | 16 | One Oracle query handles exact words, meaning, routing, and off-menu checks; Gemini only phrases the answer |
-| Close | 35–36 | 4 | One thing to try Monday for each part, then questions |
+| Opening | `dba_s01`–`dba_s04` | 4 | Where Oracle runs on Google Cloud, and the three integration surfaces where Gemini meets Oracle |
+| Antigravity for DBAs | `dba_s05`–`dba_s11` | 10 | MCP in DBA terms, the three Oracle MCP servers, Antigravity (`agy` CLI + IDE), `mcp_config.json`, read-only `tools.yaml`, and `.agents/` rules/skills |
+| DBA Use Cases | `dba_s12`–`dba_s22` | 14 | HNSW plan diagnosis, piping SQLcl into `agy`, detect-to-approve workflows, RAC scalable sequences, long transactions, Exadata Smart Scan offload, access audits, 26ai `ANNOTATIONS`, Knowledge Catalog, and guardrails |
+| Gemini Inside Oracle 26ai | `dba_s23`–`dba_s27` | 8 | Select AI (`DBMS_CLOUD_AI`), `DBMS_VECTOR.UTL_TO_EMBEDDING` to Vertex AI, SGA Vector Pool vs In-Memory Column Store vs `embedding_cache`, and runbook vector search |
+| Where to Start on Monday | `dba_s28` | 2 | Three immediate steps with QR links (MCP Toolbox, Knowledge Catalog MCP, 26ai Demo Repo) |
+| Build Real Apps: Cymbal Coffee | `dba_s29`–`dba_s40` | 10 (optional) | How a production Python + Oracle 26ai app combines HNSW, `CTXSYS.CONTEXT`, plain-SQL RRF, `JSON_TABLE` guards, and `/mcp` + `/a2a` |
+| Thank You & Reference | `dba_s41`–`dba_s57` | Q&A | 16 unskipped deep-dive reference cards for Q&A and leave-behind reading |
 
-Hand-offs between parts (use them as the `BRIDGE:` lines on slides 14, 22,
-and 34):
+## Wording and visual rules
 
-- End of Part 1: "That's the toolbox. Part 2 is about using it to be a better DBA."
-- End of Part 2: "Business users can now get answers without new pipelines. Part 3 is for when you need your own app."
-- End of Part 3: "Before you ship, a few Day-2 rules, and then where to start."
-
-## Wording rules
-
-- Write for DBAs. Explain AI terms in Oracle terms (an embedding is a `VECTOR(3072, FLOAT32)` column; an HNSW index is an in-memory graph in the SGA).
-- Plain, direct sentences. No AI buzzwords, no dramatic trope headings ("The Trap", "The Secret"), and no count-prefixed buzzword labels ("3-Layer …", "5-Point …").
-- Titles stay on one line, 48 characters or fewer. Subtitles say what the slide proves.
-- Label timings as example timings from a local run, never as benchmarks.
-- Every shown slide's speaker notes end with a `BRIDGE:` line that hands off to the next slide. The recap (35) and thank-you (36) slides are the exceptions.
-- Keep the recurring example concrete: Cymbal Coffee's products, stores, and inventory, with the real table and query names from the repo.
+- Write for senior Oracle DBAs. Explain AI concepts in exact Oracle terms (an embedding is a `VECTOR(3072, FLOAT32)` column; an HNSW index is an `INMEMORY NEIGHBOR GRAPH` in the SGA Vector Memory Pool).
+- Keep slide copy concise and scannable; put multi-sentence explanations in speaker notes.
+- No per-slide badges, `"Part N"` labels, or bottom status banners.
+- Never reference internal repository file names (`hybrid.sql`, `migration 0001`, `src/app/...`, `SLIDES.md`) on slides.
+- Titles stay on one line, 48 characters or fewer.
+- Every core slide (`dba_s01`–`dba_s40`) ends its speaker notes with a `BRIDGE:` line that hands off to the next slide.
 
 ## Accuracy rules
 
-The full list, with sources, is in [verified facts](verified-facts.md). The
-rules most likely to come up in Q&A:
+The full list, with sources, is in [verified facts](verified-facts.md). The rules most likely to come up in Q&A:
 
 1. Oracle Text `CONTAINS` / `SCORE` is BM25-style lexical ranking (an inverse-frequency score from 0 to 100), not BM25.
-2. Oracle uses the HNSW index only for `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST n ROWS ONLY`. Ordering by `1 - VECTOR_DISTANCE` or omitting `APPROX` is an exact scan.
+2. Oracle uses the HNSW index only for `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST n ROWS ONLY`. Ordering by `1 - VECTOR_DISTANCE` or omitting `APPROX` forces an exact scan.
 3. `VECTOR_DISTANCE` returns a distance: 0 means identical. Similarity is `1 - distance`.
-4. HNSW indexes live in the SGA vector memory area; size `vector_memory_size` before creating them.
-5. Select AI's `google` provider calls the Gemini API with an API key. Select AI has no Vertex AI provider today. For Vertex AI, use `DBMS_VECTOR`, a Cloud Run function called from SQL, or the application tier.
-6. AWR and ASH data require the Oracle Diagnostics Pack license.
-7. Agents connect as least-privilege application users, never `SYS` or `SYSTEM`.
-8. Standalone Gemini CLI reached end of life in June 2026; Antigravity (`agy` CLI and Antigravity 2.0 IDE) is the successor.
-9. Cymbal Coffee runs its own small agent loop on `google-genai` (Vertex AI mode) rather than ADK. When ADK comes up, describe it as Google's managed agent framework (with Agent Engine) and say the demo shows the same loop without a framework.
+4. HNSW indexes live in the SGA Vector Memory Pool (`vector_memory_size`, tracked in `V$VECTOR_MEMORY_POOL`), which is separate from the Database In-Memory column store (`inmemory_size`, tracked in `V$IM_SEGMENTS`).
+5. Select AI's `google` provider calls the Gemini API (`generativelanguage.googleapis.com`) with an API key. Select AI has no native `vertexai` provider today; for Vertex AI from SQL, use `DBMS_VECTOR.UTL_TO_EMBEDDING` / `UTL_TO_GENERATE_TEXT`, a Cloud Run function via `DBMS_CLOUD_FUNCTION`, or the application tier.
+6. AWR and ASH views require the Oracle Diagnostics Pack license; always note `V$SESSION` / `V$SQL` / `V$SYSSTAT` alternatives.
+7. Agents connect as least-privilege diagnostic or application users (`SELECT_CATALOG_ROLE`), never `SYS` or `SYSTEM`.
+8. Standalone Gemini CLI reached end of life in June 2026; Antigravity (`agy` CLI and Antigravity 2.0 IDE) is the successor and reads `~/.gemini/config/mcp_config.json` and `.agents/mcp_config.json`.
 
 ## Demo approach
 
-Use pre-recorded, muted, trimmed clips and visual walkthroughs, not live
-terminal sessions. Slides 13, 17, 25, 28–31, and Backup B17 carry complete,
-self-contained SQL and prose walkthrough cards so the talk runs cleanly even
-without external video playback; embed or link these muted MP4 clips when
-recorded before the event:
-
-| Clip | Slides | Shows |
-| :--- | :--- | :--- |
-| Plan second opinion | 17, B17 | Antigravity with Oracle MCP finds the full scan and proposes the `FETCH APPROX` rewrite |
-| Select AI | 13, B17 | `SELECT AI showsql` and `narrate` against the demo schema (requires Autonomous AI Database; `DBMS_CLOUD_AI` is not in the 26ai Free container) |
-| Cymbal Coffee chat | 28–31, B17 | A product question, a store question, and "Do you carry Folgers?", with the telemetry drawer showing the SQL phases |
-| Background embedding | 25, B17 (optional) | `uv run coffee bulk-embed` running through the database queue |
-
-## Open decisions
-
-| Decision | Current assumption |
-| :--- | :--- |
-| Event and slot length | 50 minutes |
-| ADK message | Native loop shown; ADK mentioned in one line |
-| Demo database for Select AI and the Oracle AI Database Agent | `DBMS_CLOUD_AI` is not present in the local 26ai Free container, so slides 13 and 22 use doc-based SQL and architecture cards unless an Autonomous AI Database on Oracle Database@Google Cloud is provisioned |
-| Knowledge Catalog demo | The repo's catalog sync is still a planned spec; slide 20 shows architecture only until it ships |
+Slides `dba_s08` and `dba_s14` embed a muted terminal capture (`dba_pipe_demo.gif`) showing a non-interactive SQLcl invalid-object check piped into `agy -p "..." 2>/dev/null`, producing a dependency-ordered recompile plan without executing DDL. Every SQL and configuration slide carries complete, self-contained SQL/YAML/JSON cards so the presentation runs cleanly without live network dependencies.
 
 ## Public-repo rule
 
-This repository is public. Committed files must not contain Drive deck IDs or
-links, internal tool names or paths, internal go links, or facts that only
-appear in internal material. Keep those in `.agents/local/presentation/`
-(git-ignored).
+This repository is public. Committed files must not contain Drive deck IDs or links, customer-internal names or topology details, internal tool names or paths, internal go links, or facts that only appear in internal material. Keep those in `.agents/local/presentation/` (git-ignored).

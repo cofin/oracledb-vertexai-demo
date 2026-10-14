@@ -37,6 +37,11 @@ class Tool:
     param_types: dict[str, Any]
     fn: Callable[..., Any]
 
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        """Tool input JSON schema."""
+        return self.parameters_schema
+
     def declaration(self) -> ToolDeclaration:
         """Return the Gemini-compatible ToolDeclaration.
 
@@ -59,6 +64,8 @@ class Tool:
         """
         coerced: dict[str, Any] = {}
         for key, value in raw_args.items():
+            if key not in self.param_types:
+                return {"error": {"code": "invalid_arguments", "message": f"Unexpected argument '{key}'"}}
             target_type = self.param_types.get(key)
             if target_type is not None and target_type is not Any:
                 try:
@@ -67,6 +74,10 @@ class Tool:
                     return {"error": {"code": "invalid_arguments", "message": f"Invalid '{key}': {exc}"}}
             else:
                 coerced[key] = value
+
+        for req in self.input_schema.get("required", []):
+            if req not in coerced:
+                return {"error": {"code": "invalid_arguments", "message": f"Missing required argument '{req}'"}}
 
         res = self.fn(ctx, **coerced)
         if inspect.isawaitable(res):

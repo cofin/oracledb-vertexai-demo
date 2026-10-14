@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Storyboard — Oracle in the Age of Gemini (2026)
-description: Slide order, target slides in the deck, structural steps, and slide conventions for the 36-slide talk plus backups
+description: Slide order, archetype mapping, and slide conventions for the 57-slide DBA talk (28 DBA-first core slides, 12 hideable Cymbal Coffee walkthrough slides, Thank You, and 16 unskipped Reference slides)
 tags:
   - presentation
   - storyboard
@@ -10,90 +10,83 @@ tags:
 
 # Storyboard — Oracle in the Age of Gemini (2026)
 
-The target deck started as a Drive copy of the Postgres Summit US 2026 deck,
-so its slide and element objectIds match that deck. "Target" names the
-existing slide to rewrite (keeping its objectId), or says which slide to
-duplicate. Source labels (NorCal, Chicago, Webinar, AI World) refer to earlier
-versions of this talk; the slide-by-slide source map is in the local overlay.
+The deck is built from the **Oracle AI World 2026 Consolidated Google Cloud slides** template (Cloudstyle 2.0) and ordered **DBA-first** for senior Oracle DBAs (such as Exadata and Autonomous AI Database teams on Oracle Database@Google Cloud):
+
+1. **Opening (`dba_s01`–`dba_s04`)**: Title, Speaker, Where Gemini Meets Your Oracle Estate, Oracle Database@Google Cloud Services.
+2. **Antigravity for DBAs (`dba_s05`–`dba_s11`)**: Agents and MCP in DBA Terms, Three Oracle MCP Servers Compared, Antigravity (`agy` CLI + IDE), Connect Antigravity to Oracle@GCP (`mcp_config.json`), Curated Read-Only `tools.yaml`, Rules and Skills (`.agents/AGENTS.md` + `.agents/skills/`).
+3. **DBA Use Cases (`dba_s12`–`dba_s22`)**: Vector Query Full-Scan Diagnosis (`DBMS_XPLAN`), Piping a SQLcl Invalid-Object Health Check into `agy -p ... 2>/dev/null`, Detect-to-Approve Workflow, Hot Index Blocks on Insert-Heavy RAC Tables (`SCALE EXTEND`), Long Open Transactions and GoldenGate Lag (`GV$TRANSACTION`), Exadata Smart Scan Offload Health (`V$SYSSTAT`), Access Audits and Dormant Accounts, 26ai Schema `ANNOTATIONS`, Fleet Context with Google Cloud Knowledge Catalog, and Guardrails for Database Agents.
+4. **Gemini Inside Oracle AI Database 26ai (`dba_s23`–`dba_s27`)**: Select AI (`DBMS_CLOUD_AI`) on Autonomous AI DB, Reaching Vertex AI from Oracle (`DBMS_VECTOR.UTL_TO_EMBEDDING`), In-Memory Column Store vs SGA Vector Pool vs `embedding_cache`, and Runbook Memory in a `VECTOR` Column.
+5. **Actionable Close (`dba_s28`)**: Where to Start on Monday (3 QR codes: MCP Toolbox for Oracle, Google Cloud Knowledge Catalog MCP, and the 26ai Demo Repo).
+6. **Build Real Apps — Cymbal Coffee (`dba_s29`–`dba_s40`)**: Self-contained, hideable 12-slide application walkthrough at the end of the talk so DBA-only sessions can skip or condense it without losing the Monday recap.
+7. **Thank You (`dba_s41`) & Reference (`dba_s42`–`dba_s57`)**: 16 unskipped deep-dive reference slides grouped after a dedicated `Reference` section divider.
 
 ## Slide conventions
 
-- **Title:** one line, 48 characters or fewer, existing title box (18 pt bold on content slides).
-- **Subtitle:** one line under the title stating what the slide proves.
-- **Badge:** the small pill at the top right names the part or topic (for example `Part 1 · Tools`).
-- **Cards:** keep the existing card geometry and palette of the target slide. Light cards use dark text; dark code cards use the code palette from the skill.
-- **Code:** dark code card, Roboto Mono, highlighted with `manage.py slides highlight`. Use the exact SQL from the repo where one exists.
-- **Banner:** the full-width strip at the bottom starts with a bold lead-in (`Takeaway:`, `Tip:`, `Why 60?`) and stays under about 118 characters.
-- **Notes:** three to six sentences in the speaker's voice, ending with a `BRIDGE:` line (except slides 35 and 36).
+- **Title:** one line, 48 characters or fewer, 24 pt Google Sans bold.
+- **No per-slide badges, `"Part N"` labels, or bottom status banners:** let the section divider slides (`dba_s05`, `dba_s12`, `dba_s23`, `dba_s29`, `dba_s42`) carry the structure and keep slide copy scannable with detail in speaker notes.
+- **No repository file names or paths on slides:** write SQL and configuration examples for public DBA consumption without referencing internal repo paths (`hybrid.sql`, `migration 0001`, `src/app/...`, `SLIDES.md`).
+- **Cards:** left-aligned (`alignment: START`) rectangle cards with inset text boxes (`8 pt` horizontal padding) and zero raw markdown backticks (`Roboto Mono` styling on inline SQL/CLI identifiers).
+- **Code:** dark code cards (`#161B22`), Roboto Mono (`7.5 pt`–`8.5 pt`), highlighted with `manage.py slides highlight`.
+- **Notes:** three to six sentences in the speaker's voice, ending with a `BRIDGE:` line on slides `1`–`40`.
 
-## Shown slides
+## Slide inventory (`dba_s01`–`dba_s57`)
 
-| # | Title | Target | Action |
+| # | Object ID | Section | Title |
 | :--- | :--- | :--- | :--- |
-| 1 | Oracle in the Age of Gemini | `g3f6b77ebb7f_5_0` | rewrite |
-| 2 | About the Speaker | `slide_about_me_v4` | rewrite |
-| 3 | Today's Path: Extend, Improve, Build | `g3f6b77ebb7f_5_8` | rewrite |
-| 4 | Who Is Querying Oracle Now? | `g3f6b77ebb7f_5_23` | rewrite |
-| 5 | Oracle Database@Google Cloud Today | `g3f6b77ebb7f_5_36` | rewrite |
-| 6 | Why Run Oracle on Google Cloud | `slide_converged_arch_v4` | rewrite |
-| 7 | Where Gemini Meets Your Oracle Data | `h4eca8d59b73cbebf_3_122` | rewrite |
-| 8 | Part 1 · Extend Your Workflow | `slide_1790707646253493082_268` | rewrite, move |
-| 9 | Agents and MCP, for DBAs | `slide_1790707646253180850_170` | rewrite |
-| 10 | Connecting Oracle to Agents with MCP | `slide_1790707646253253250_197` | rewrite |
-| 11 | Antigravity: An Agent in Your Terminal | `slide_1790707646253288048_210` | rewrite, unskip, move |
-| 12 | Set Up Oracle MCP and Give It Context | `slide_1790707646253388335_231` | rewrite |
-| 13 | Select AI: Ask Oracle in Plain English | `slide_1790707646253004939_120` | rewrite, unskip, move |
-| 14 | Gemini and Vertex AI from Inside Oracle | `slide_1790707646252679909_11` | rewrite |
-| 15 | Part 2 · Be a Better DBA | `part2_divider` | new |
-| 16 | DBA Work Worth Handing to an Agent | `slide_sql_quality_v4` | rewrite |
-| 17 | A Second Opinion on a Bad Plan | `slide_agy_walkthrough_27` | rewrite |
-| 18 | AWR Summaries and Access Audits | `slide_1790707646252815842_54` | rewrite |
-| 19 | Teach Agents Your Schema | `slide_1790707646253576389_302` | rewrite |
-| 20 | From Annotations to Knowledge Catalog | `slide_kc_arch_35` | rewrite |
-| 21 | Guardrails for Database Agents | `slide_1790707646253090322_138` | rewrite |
-| 22 | Oracle AI Database Agent in Gemini Enterprise | `slide_1790707646253149569_158` | rewrite |
-| 23 | Part 3 · Build Real Apps | `part3_divider` | new |
-| 24 | Cymbal Coffee: How the App Fits Together | `h3b66c3a7511ce890_1_1` | rewrite, unskip, move |
-| 25 | Embeddings with Vertex AI, in Oracle | `slide_1790707646252788246_44` | rewrite |
-| 26 | Vector Search and the Optimizer Rule | `slide_scann_action_13` | rewrite |
-| 27 | Exact Words Still Matter: Oracle Text | `slide_1790707646252711299_21` | rewrite |
-| 28 | Vectors Can't Tell What the User Wants | `slide_1790707646252896716_80` | rewrite |
-| 29 | Merging Two Rankings with RRF | `slide_1790707646252924686_90` | rewrite |
-| 30 | One SQL Turn: Route, Products, Stores | `slide_hybrid_breakdown_21` | rewrite |
-| 31 | Catching Off-Menu Brands Without an LLM | `slide_1790707646252980978_110` | rewrite |
-| 32 | Grounded Answers vs. Open-Ended Agents | `slide_ai_studio_adk_v4` | rewrite |
-| 33 | Share Your Queries with Other Agents | `slide_adk_indb_tools_v4` | rewrite |
-| 34 | Day-2 Rules for AI Workloads on Oracle | `slide_1790707646253468658_258` | rewrite |
-| 35 | Recap and Where to Start | `slide_1790707646253602272_312` | rewrite |
-| 36 | Thank You | `slide_ux_survey_38` | keep (update the survey link if the event provides one) |
-
-## Backup slides (after slide 36, skipped)
-
-| # | Title | Target | Action |
-| :--- | :--- | :--- | :--- |
-| B1 | AI Search Terms for Oracle DBAs | `slide_1790707646252622210_0` | rewrite, move, skip |
-| B2 | Hybrid Search in Three CTEs | `slide_1790707646252951731_100` | rewrite, move, skip |
-| B3 | Oracle AI Database 26ai: What Matters | `slide_1790707646253525778_280` | rewrite, move, skip |
-| B4 | Why Agents Need Schema Context | `slide_kc_why_34` | rewrite, move, skip |
-| B5 | Knowledge Catalog in Action | `slide_kc_action_36` | rewrite, move, skip |
-| B6 | HNSW vs. IVF and Vector Memory Sizing | `slide_1790707646252745998_31` | rewrite, keep skipped |
-| B7 | Term Hits and Score Cliffs in SQL | `slide_1790707646253117540_148` | rewrite, keep skipped |
-| B8 | SQLSpec and python-oracledb Patterns | `slide_1790707646253357135_220` | rewrite, keep skipped |
-| B9 | Bulk Embedding with SKIP LOCKED Queues | `slide_1790707646253435033_246` | rewrite, keep skipped |
-| B10 | Property Graphs (SQL/PGQ) in Oracle 26ai | `slide_1790707646253553449_292` | rewrite, keep skipped |
-| B11 | Vertex AI from PL/SQL with DBMS_VECTOR | `backup_b11` | new, skip |
-| B12 | Cloud Run Functions as SQL Functions | `backup_b12` | new, skip |
-| B13 | Regions, Purchasing, and Support | `backup_b13` | new, skip |
-| B14 | Vertex AI Platform and Model Garden | `backup_b14` | new, skip |
-| B15 | System Prompts and Personas | `backup_b15` | new, skip |
-| B16 | It's Still All SQL: Vectors + Inventory | `backup_b16` | new, skip |
-| B17 | Demo Clips | `backup_b17` | new, skip |
-
-## Structural steps (task 1.1)
-
-Do these before any text changes, re-dumping the deck after each group:
-
-1. Duplicate slide 8's source (`slide_1790707646253493082_268`) twice for slides 15 and 23, passing an explicit `objectIds` map so later requests can target the copies.
-2. Duplicate the layout slides listed for B11–B17 the same way, after their source slides have been rewritten (so the copies inherit the new layout text), or duplicate now and rewrite later; record the new objectIds in the task notes.
-3. Reorder with one `updateSlidesPosition` request per slide, in final order, using the target column above.
-4. Unskip slides 11, 13, and 24; skip every backup; confirm with `manage.py slides inventory` that slides 1–36 are shown and B1–B17 follow slide 36, skipped.
+| 1 | `dba_s01` | Opening | Oracle in the Age of Gemini |
+| 2 | `dba_s02` | Opening | About the Speaker |
+| 3 | `dba_s03` | Opening | Where Gemini Meets Your Oracle Estate |
+| 4 | `dba_s04` | Opening | Oracle Database@Google Cloud Services |
+| 5 | `dba_s05` | Antigravity for DBAs | Antigravity for DBAs |
+| 6 | `dba_s06` | Antigravity for DBAs | Agents and MCP in DBA Terms |
+| 7 | `dba_s07` | Antigravity for DBAs | Three Oracle MCP Servers Compared |
+| 8 | `dba_s08` | Antigravity for DBAs | Antigravity: What DBAs Use It For |
+| 9 | `dba_s09` | Antigravity for DBAs | Connect Antigravity to Oracle@GCP |
+| 10 | `dba_s10` | Antigravity for DBAs | A Curated, Read-Only DBA tools.yaml |
+| 11 | `dba_s11` | Antigravity for DBAs | Give the Agent Context: Rules and Skills |
+| 12 | `dba_s12` | DBA Use Cases | DBA Use Cases |
+| 13 | `dba_s13` | DBA Use Cases | Why Is This Vector Query Doing a Full Scan? |
+| 14 | `dba_s14` | DBA Use Cases | Pipe a SQLcl Health Check Into Antigravity |
+| 15 | `dba_s15` | DBA Use Cases | Act on the Outcome: Detect to Approve |
+| 16 | `dba_s16` | DBA Use Cases | Hot Index Blocks on Insert-Heavy RAC Tables |
+| 17 | `dba_s17` | DBA Use Cases | Long Open Transactions and Replication Lag |
+| 18 | `dba_s18` | DBA Use Cases | Is Exadata Smart Scan Still Offloading? |
+| 19 | `dba_s19` | DBA Use Cases | Access Audits and Dormant Accounts |
+| 20 | `dba_s20` | DBA Use Cases | Teach Agents Your Schema: 26ai ANNOTATIONS |
+| 21 | `dba_s21` | DBA Use Cases | Fleet Context: Google Cloud Knowledge Catalog |
+| 22 | `dba_s22` | DBA Use Cases | Guardrails for Database Agents |
+| 23 | `dba_s23` | Gemini Inside 26ai | Gemini Inside Oracle AI Database 26ai |
+| 24 | `dba_s24` | Gemini Inside 26ai | Select AI with Gemini on Autonomous AI DB |
+| 25 | `dba_s25` | Gemini Inside 26ai | Reaching Vertex AI From Oracle |
+| 26 | `dba_s26` | Gemini Inside 26ai | In-Memory, Vector Pool, and Embedding Cache |
+| 27 | `dba_s27` | Gemini Inside 26ai | Runbook Memory in a VECTOR Column |
+| 28 | `dba_s28` | Close | Where to Start on Monday |
+| 29 | `dba_s29` | Build Real Apps (Hideable) | Build Real Apps: Cymbal Coffee |
+| 30 | `dba_s30` | Build Real Apps (Hideable) | Cymbal Coffee Reference Architecture |
+| 31 | `dba_s31` | Build Real Apps (Hideable) | Dense Embeddings in Oracle 26ai |
+| 32 | `dba_s32` | Build Real Apps (Hideable) | HNSW Vector Index and Optimizer Rule |
+| 33 | `dba_s33` | Build Real Apps (Hideable) | Lexical Ranking with CTXSYS.CONTEXT |
+| 34 | `dba_s34` | Build Real Apps (Hideable) | Route Intent in SQL, Not a Second LLM Call |
+| 35 | `dba_s35` | Build Real Apps (Hideable) | Reciprocal Rank Fusion (k = 60) in Plain SQL |
+| 36 | `dba_s36` | Build Real Apps (Hideable) | One SQL Turn: Routes, Products, and Stores |
+| 37 | `dba_s37` | Build Real Apps (Hideable) | Catching Off-Menu Brands with JSON_TABLE |
+| 38 | `dba_s38` | Build Real Apps (Hideable) | Grounded SQL Replies vs Open-Ended Turns |
+| 39 | `dba_s39` | Build Real Apps (Hideable) | Expose Validated Queries Over /mcp and /a2a |
+| 40 | `dba_s40` | Build Real Apps (Hideable) | Day-2 Operational Rules for Oracle AI Apps |
+| 41 | `dba_s41` | Thank You | Thank you |
+| 42 | `dba_s42` | Reference | Reference |
+| 43 | `dba_s43` | Reference | Reference: AI Search Terms for Oracle DBAs |
+| 44 | `dba_s44` | Reference | Reference: Sizing vector_memory_size |
+| 45 | `dba_s45` | Reference | Reference: HNSW vs IVF on RAC and Exadata |
+| 46 | `dba_s46` | Reference | Reference: Plain-SQL RRF vs Hybrid Index |
+| 47 | `dba_s47` | Reference | Reference: In-DB Embeddings with DBMS_VECTOR |
+| 48 | `dba_s48` | Reference | Reference: Select AI Profile Attributes |
+| 49 | `dba_s49` | Reference | Reference: Select AI Generation Modes |
+| 50 | `dba_s50` | Reference | Reference: Keyless Google Auth (GCP$PA) |
+| 51 | `dba_s51` | Reference | Reference: Oracle AI DB Agent in Marketplace |
+| 52 | `dba_s52` | Reference | Reference: Exadata Service vs Autonomous DB |
+| 53 | `dba_s53` | Reference | Reference: Pinning Plans with DBMS_SPM |
+| 54 | `dba_s54` | Reference | Reference: Global Index Cleanup (DBMS_PART) |
+| 55 | `dba_s55` | Reference | Reference: Alert Log Triage in SQL |
+| 56 | `dba_s56` | Reference | Reference: Escaping Input for CTXSYS.CONTEXT |
+| 57 | `dba_s57` | Reference | Reference: Queue Polling with SKIP LOCKED |

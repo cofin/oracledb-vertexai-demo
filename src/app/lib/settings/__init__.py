@@ -12,7 +12,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from app.lib.settings._ai import AISettings, ChatSettings
+from app.lib.settings._ai import PLACEHOLDER_VALUES, AISettings, ChatSettings
 from app.lib.settings._app import AppSettings
 from app.lib.settings._database import DatabaseSettings
 from app.lib.settings._env import BASE_DIR, DEFAULT_MODULE_NAME, _env_bool, _env_cors, _env_float, _env_int, _env_str
@@ -25,6 +25,7 @@ from app.lib.settings._server import ServerSettings, ViteSettings
 __all__ = (
     "BASE_DIR",
     "DEFAULT_MODULE_NAME",
+    "PLACEHOLDER_VALUES",
     "AISettings",
     "AppSettings",
     "ChatSettings",
@@ -64,31 +65,6 @@ class Settings:
     otel: OpenTelemetrySettings = field(default_factory=OpenTelemetrySettings)
     queue: QueueSettings = field(default_factory=QueueSettings)
 
-    def setup_litestar_env(self) -> None:
-        """Set Litestar and Granian defaults expected by the app server."""
-        port = os.getenv("LITESTAR_PORT") or str(self.server.PORT)
-        os.environ.setdefault("LITESTAR_PORT", port)
-        app_url = os.getenv("APP_URL") or f"http://localhost:{port}"
-        os.environ.setdefault("APP_URL", app_url)
-        os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
-        os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
-        os.environ.setdefault("OTEL_SERVICE_NAME", self.otel.SERVICE_NAME)
-
-    def configure_genai_env(self) -> None:
-        """Synchronize Google client env vars when project-based Vertex AI is configured.
-
-        Project-based Vertex AI and API keys are mutually exclusive in the genai
-        client, so a configured project clears any API key from the environment.
-        Run at startup rather than during dataclass construction to keep
-        ``AISettings`` immutable.
-        """
-        if self.ai.project_id:
-            os.environ.pop("GOOGLE_API_KEY", None)
-            os.environ.pop("VERTEX_AI_API_KEY", None)
-            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
-            os.environ["GOOGLE_CLOUD_PROJECT"] = self.ai.project_id
-            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.resolve_location(self.ai.gcp_region)
-
     @classmethod
     @lru_cache(maxsize=1, typed=True)
     def from_env(cls, dotenv_filename: str = ".env") -> Settings:
@@ -111,6 +87,35 @@ class Settings:
         settings.setup_litestar_env()
         settings.configure_genai_env()
         return settings
+
+    def setup_litestar_env(self) -> None:
+        """Set Litestar and Granian defaults expected by the app server."""
+        port = os.getenv("LITESTAR_PORT") or str(self.server.PORT)
+        os.environ.setdefault("LITESTAR_PORT", port)
+        app_url = os.getenv("APP_URL") or f"http://localhost:{port}"
+        os.environ.setdefault("APP_URL", app_url)
+        os.environ.setdefault("LITESTAR_APP", "app.server.asgi:create_app")
+        os.environ.setdefault("LITESTAR_APP_NAME", self.app.NAME)
+        os.environ.setdefault("OTEL_SERVICE_NAME", self.otel.SERVICE_NAME)
+
+    def configure_genai_env(self) -> None:
+        """Synchronize Google client env vars when project-based Vertex AI is configured.
+
+        Project-based Vertex AI and API keys are mutually exclusive in the genai
+        client, so a configured project clears any API key from the environment.
+        Run at startup rather than during dataclass construction to keep
+        ``AISettings`` immutable.
+        """
+        if self.ai.has_valid_project_id():
+            os.environ.pop("GOOGLE_API_KEY", None)
+            os.environ.pop("VERTEX_AI_API_KEY", None)
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+            os.environ["GOOGLE_CLOUD_PROJECT"] = self.ai.project_id.strip()
+            os.environ["GOOGLE_CLOUD_LOCATION"] = self.ai.resolve_location(self.ai.gcp_region)
+        elif self.ai.has_valid_api_key():
+            os.environ.pop("GOOGLE_GENAI_USE_VERTEXAI", None)
+            if self.ai.api_key:
+                os.environ.setdefault("GOOGLE_API_KEY", self.ai.api_key.strip())
 
 
 def get_settings() -> Settings:

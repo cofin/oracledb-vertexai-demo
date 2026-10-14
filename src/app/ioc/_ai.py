@@ -22,10 +22,11 @@ from app.domain.ai.runtime import AgentRuntime, GeminiModelClient, OracleEventSt
 from app.domain.ai.services import get_coffee_spec_tree
 from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.system.services import PersonaManager
+from app.lib.settings._ai import PLACEHOLDER_VALUES
 
 __all__ = ("DEFAULT_RETRY", "AIProvider", "IntegrationsProvider")
 
-_PLACEHOLDER_VALUES = frozenset({"", "demo-project", "your-project-id", "placeholder", "your-api-key"})
+_PLACEHOLDER_VALUES = PLACEHOLDER_VALUES
 _CLOUD_PLATFORM_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 DEFAULT_RETRY = types.HttpRetryOptions(

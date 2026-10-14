@@ -78,6 +78,7 @@ async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:
         "store",
         "store_product_inventory",
         "chat_route",
+        "agent_event",
         "response_cache",
         "embedding_cache",
         "search_metric",

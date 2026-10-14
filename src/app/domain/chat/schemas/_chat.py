@@ -7,12 +7,11 @@ from typing import Literal
 
 from app.lib.schema import CamelizedBaseStruct
 
+__all__ = ("ChatMessage",)
+
 
 class ChatMessage(CamelizedBaseStruct, omit_defaults=True):
     """Individual chat message within a session."""
 
     message: str
     source: Literal["human", "ai", "system"]
-
-
-__all__ = ("ChatMessage",)

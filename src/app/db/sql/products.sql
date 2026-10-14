@@ -75,28 +75,38 @@ FETCH APPROX FIRST :limit ROWS ONLY;
 -- docs:end-vector-search-sql
 
 -- name: vector-search-products-by-store
-SELECT p.id,
-       p.name,
-       p.description,
-       p.price,
+WITH candidate_products AS (
+    SELECT p.id,
+           p.name,
+           p.description,
+           p.price,
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score
+    FROM product p
+    WHERE 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
+    ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+    FETCH APPROX FIRST 50 ROWS ONLY
+)
+SELECT cp.id,
+       cp.name,
+       cp.description,
+       cp.price,
        s.id AS store_id,
        s.name AS store_name,
        spi.quantity_available,
        spi.stock_status,
        spi.pickup_available,
-       1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS similarity_score
-FROM product p
-JOIN store_product_inventory spi ON spi.product_id = p.id
+       cp.similarity_score
+FROM candidate_products cp
+JOIN store_product_inventory spi ON spi.product_id = cp.id
 JOIN store s ON s.id = spi.store_id
 WHERE spi.store_id = :store_id
-  AND 1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) > :threshold
 ORDER BY
        CASE spi.stock_status
            WHEN 'IN_STOCK' THEN 1
            WHEN 'LOW_STOCK' THEN 2
            ELSE 3
        END,
-       similarity_score DESC
+       cp.similarity_score DESC
 FETCH FIRST :limit ROWS ONLY;
 
 -- name: explain-plan-vector-search

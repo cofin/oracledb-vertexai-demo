@@ -37,4 +37,4 @@ tags:
 - **Lint/Format:** Ruff, Mypy, Pyright, TypeScript compiler check, Sphinx (`sphinx-build -W`)
 <!-- truth: end -->
 
-For detailed component mappings, see [guides/architecture.md](../knowledge/guides/architecture.md).
+For detailed component mappings, see [architecture/system-architecture.md](../knowledge/architecture/system-architecture.md).

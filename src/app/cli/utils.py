@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
     from dishka import AsyncContainer
 
+__all__ = ("async_inject",)
+
 
 def async_inject[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
     """Wrap an async click command so its annotated dependencies are injected.

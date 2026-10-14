@@ -6,7 +6,7 @@ end to end. Want a production-shaped split (Cloud Run + a private GCE Oracle DB 
 
 Welcome to the **Cymbal Coffee Hands-on Lab**. In this workshop, you will step-by-step setup, configure, ingest data into, and run a premium next-generation AI-powered coffee recommendation application. For complete background concepts and documentation material, please visit the official [Cymbal Coffee Documentation Site](https://cofin.github.io/oracledb-vertexai-demo/index.html).
 
-The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-2`) and large language model orchestration (`gemini-3.1-flash-lite`), and **Google ADK 2.0** as the multi-agent planning engine. The application frontend is built on [**Litestar 2**](https://docs.litestar.dev/), [**HTMX**](https://htmx.org/), and [**Jinja templates**](https://jinja.palletsprojects.com/), managed with [**Dishka Dependency Injection**](https://dishka.readthedocs.io/) and served using the high-performance [**Granian**](https://github.com/emmett-framework/granian) ASGI server via the [`litestar-granian`](https://github.com/cofin/litestar-granian) plugin.
+The application uses **Oracle Database 26ai** for semantic vector search (`VECTOR(3072, FLOAT32)` with HNSW INMEMORY indexes), **Google Cloud Vertex AI** for enterprise-grade text embeddings (`gemini-embedding-2`) and large language model orchestration (`gemini-3.8-flash`), and the native **`AgentRuntime`** (`app.domain.ai`) as the agent execution engine. The application frontend is built on [**Litestar 2**](https://docs.litestar.dev/), [**HTMX**](https://htmx.org/), and [**Jinja templates**](https://jinja.palletsprojects.com/), managed with [**Dishka Dependency Injection**](https://dishka.readthedocs.io/) and served using the high-performance [**Granian**](https://github.com/emmett-framework/granian) ASGI server via the [`litestar-granian`](https://github.com/cofin/litestar-granian) plugin.
 
 ---
 
@@ -312,31 +312,53 @@ uv add google-cloud-bigquery
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Coffee chat controller for streaming agent conversations and session resets."""
+
 import re
+import time
 from collections.abc import AsyncIterator
+from datetime import datetime, timezone
+from typing import Any, ClassVar
 
 import structlog
-from litestar import Controller, Response, post
+from litestar import post
 from litestar.exceptions import ValidationException
-from litestar.plugins.htmx import HTMXRequest
 from litestar.response import ServerSentEvent
+from litestar_htmx import HTMXRequest
+from litestar_security import AuthenticationPolicy, PublicController, exclude
+from sqlspec.adapters.bigquery import BigQueryConfig
+from sqlspec.utils.sync_tools import async_
 
+from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.controllers._helpers import chat_form_from_request, location_context_from_form
-from app.domain.chat.services import ADKRunner, AgentToolsService
-from app.domain.chat.session import adk_session_identity, clear_adk_session_identity
+from app.domain.chat.session import chat_session_identity, clear_chat_session_identity
 from app.lib.di import Inject
 from app.utils.serialization import to_json
+
+__all__ = ("CoffeeChatController",)
 
 logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
 
 
-class CoffeeChatController(Controller):
-    """Coffee chat API controller — streaming SSE for the HTMX browser UI."""
+class CoffeeChatController(PublicController):
+    """Coffee chat API controller — JSON for SPA clients, HTML partials for HTMX."""
+
+    auth: ClassVar[AuthenticationPolicy] = exclude()
 
     @staticmethod
     def validate_message(message: str) -> str:
-        """Validate and sanitize user message input."""
+        """Validate and sanitize user message input.
+
+        Args:
+            message: Raw user input text.
+
+        Returns:
+            The cleaned and bounded message string.
+
+        Raises:
+            ValidationException: If the sanitized message is empty.
+        """
         message = re.sub(r"<[^>]+>", "", message)
         max_length = 500
         if len(message) > max_length:
@@ -350,47 +372,55 @@ class CoffeeChatController(Controller):
 
     @staticmethod
     def validate_persona(persona: str) -> str:
-        """Validate persona input."""
-        if persona not in {"novice", "enthusiast", "expert", "barista"}:
-            return "enthusiast"
+        """Validate persona input.
+
+        Args:
+            persona: Requested barista persona identifier.
+
+        Returns:
+            The validated persona or the default barista persona.
+        """
+        if persona not in {"barista", "snob", "scientist", "wellness"}:
+            return "barista"
         return persona
 
-    @post(path="/api/chat/stream", name="chat.api.stream")
+    @post(path="/api/chat/stream", name="chat.api.stream", opt={"exclude_from_csrf": False})
     async def stream_chat_message(
-        self, adk_runner: Inject[ADKRunner], tools_service: Inject[AgentToolsService], request: HTMXRequest
+        self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
     ) -> ServerSentEvent:
-        """Stream chat response events for the browser chat UI."""
+        """Stream chat response events for the browser chat UI.
+
+        Args:
+            orchestrator: Injected agent orchestration service.
+            request: Active HTMX request with form data and session context.
+
+        Returns:
+            ServerSentEvent instance streaming JSON event frames.
+        """
         data = await chat_form_from_request(request)
         clean_message = self.validate_message(data.message)
         validated_persona = self.validate_persona(data.persona)
         location_context = location_context_from_form(data)
-        user_id, session_id = adk_session_identity(request)
-        adk_runner.ensure_configured()
+        user_id, session_id = chat_session_identity(request)
 
         async def stream_events() -> AsyncIterator[dict[str, str]]:
-            import time
-            from datetime import datetime, timezone
-
-            from sqlspec.adapters.bigquery import BigQueryConfig
-            from sqlspec.utils.sync_tools import async_
-
             start_time = time.time()
-            final_payload = {}
+            final_payload: dict[str, Any] = {}
 
             try:
-                async for event in adk_runner.stream_request(
-                    query=clean_message,
-                    user_id=user_id,
+                async for frame in orchestrator.stream_conversation_turn(
                     session_id=session_id,
+                    user_id=user_id,
+                    message=clean_message,
+                    services=request,
                     persona=validated_persona,
-                    tools_service=tools_service,
                     location_context=location_context,
                 ):
-                    if event.get("type") == "final":
-                        final_payload = event
+                    if frame.get("type") == "final":
+                        final_payload = frame
 
-                    event_type = str(event.get("type", "message"))
-                    yield {"event": event_type, "data": to_json(event, as_bytes=False)}
+                    frame_type = str(frame.get("type", "message"))
+                    yield {"event": frame_type, "data": to_json(frame, as_bytes=False)}
 
                 if final_payload:
                     row = {
@@ -401,17 +431,17 @@ class CoffeeChatController(Controller):
                         "latency_ms": int((time.time() - start_time) * 1000),
                     }
 
-                    def log_to_bigquery():
+                    def log_to_bigquery() -> None:
                         config = BigQueryConfig()
                         with config.provide_session() as driver:
                             driver.load_from_records("coffee_analytics.chat_logs", [row])
 
                     try:
                         await async_(log_to_bigquery)()
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         await logger.awarning("BigQuery logging failed", error=str(exc))
 
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 await logger.aexception(
                     "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
                 )
@@ -422,13 +452,25 @@ class CoffeeChatController(Controller):
 
         return ServerSentEvent(stream_events(), status_code=200)
 
-    @post(path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200)
-    async def clear_chat_session(self, adk_runner: Inject[ADKRunner], request: HTMXRequest) -> Response:
-        """Clear the anonymous browser's ADK chat session."""
-        user_id, session_id = adk_session_identity(request)
-        await adk_runner.clear_session(user_id=user_id, session_id=session_id)
-        clear_adk_session_identity(request)
-        return Response(content={"status": "cleared"})
+    @post(
+        path="/api/chat/session/clear", name="chat.api.clear_session", status_code=200, opt={"exclude_from_csrf": False}
+    )
+    async def clear_chat_session(
+        self, orchestrator: Inject[AgentOrchestrationService], request: HTMXRequest
+    ) -> dict[str, str]:
+        """Clear the anonymous browser's agent chat session.
+
+        Args:
+            orchestrator: Injected agent orchestration service.
+            request: Active HTMX request.
+
+        Returns:
+            JSON confirmation response.
+        """
+        user_id, session_id = chat_session_identity(request)
+        await orchestrator.clear_session(session_id=session_id, user_id=user_id)
+        clear_chat_session_identity(request)
+        return {"status": "cleared"}
 ```
 
 > **Note:** We use SQLSpec's `BigQueryConfig` and `load_from_records` to write logs. The call is synchronous, so we wrap it with SQLSpec's `async_` (`sqlspec.utils.sync_tools`) to run it off the event loop — the chat stream is never blocked by logging, and any errors are surfaced through the app logger instead of being silently dropped.
@@ -467,42 +509,76 @@ GOOGLE_MAPS_EMBED_API_KEY=your_newly_created_restricted_key_here
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Page-level routes for the HTMX frontend.
+"""Page-level routes for the HTMX frontend."""
 
-HTMX-aware partials live alongside the domain controllers that own
-their data (e.g. ``app.domain.chat.controllers``,
-``app.domain.products.controllers``).
-"""
+from typing import Annotated
 
 import structlog
-from litestar import Controller, get
-from litestar.params import FromQuery
-from litestar.plugins.htmx import HTMXRequest, HTMXTemplate
+from litestar import get
+from litestar.params import QueryParameter
+from litestar.response import Template
+from litestar_htmx import HTMXRequest
+from litestar_security import PublicController
 
-from app.domain.chat.services import ADKRunner
-from app.domain.chat.session import adk_session_identity
+from app.domain.ai.services import AgentOrchestrationService
+from app.domain.chat.session import chat_session_identity
+from app.domain.products.services import StoreService
 from app.lib.di import Inject
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
+
+__all__ = ("PageController",)
 
 logger = structlog.get_logger()
 
 
-class PageController(Controller):
+class PageController(PublicController):
     """Server-rendered page routes for chat and explore."""
 
-    @get(path="/", name="pages.chat", exclude_from_auth=True, include_in_schema=False)
-    async def chat_page(self, request: HTMXRequest, adk_runner: Inject[ADKRunner]) -> HTMXTemplate:
-        user_id, session_id = adk_session_identity(request)
-        history_messages = await adk_runner.get_history_or_empty(user_id=user_id, session_id=session_id)
-        return HTMXTemplate(
+    @get(path="/", name="pages.chat", include_in_schema=False)
+    async def chat_page(self, request: HTMXRequest, orchestrator: Inject[AgentOrchestrationService]) -> Template:
+        """Render the primary coffee chat landing page with session history.
+
+        Args:
+            request: Active HTMX request.
+            orchestrator: Injected agent orchestration service.
+
+        Returns:
+            Rendered Jinja template for chat page.
+        """
+        user_id, session_id = chat_session_identity(request)
+        try:
+            history_messages = await orchestrator.get_display_history(session_id=session_id, user_id=user_id)
+        except Exception as exc:
+            await logger.awarning("Chat history retrieval failed", error_type=type(exc).__name__)
+            history_messages = []
+        return Template(
             template_name="pages/chat.html.j2",
-            context={"history_messages": history_messages, "settings": get_settings()},
+            context={"history_messages": history_messages, "settings": Settings.from_env()},
         )
 
-    @get(path="/explore", name="pages.explore", exclude_from_auth=True, include_in_schema=False)
-    async def explore_page(self, q: FromQuery[str | None] = None) -> HTMXTemplate:
-        return HTMXTemplate(
-            template_name="pages/explore.html.j2", context={"query": q or "", "settings": get_settings()}
+    @get(path="/explore", name="pages.explore", include_in_schema=False)
+    async def explore_page(
+        self,
+        stores_service: Inject[StoreService],
+        search_query: Annotated[str | None, QueryParameter(name="query")] = None,
+    ) -> Template:
+        """Render the explore and vector search page.
+
+        Args:
+            stores_service: Injected store service.
+            search_query: Optional search query parameter.
+
+        Returns:
+            Rendered Jinja template for explore page.
+        """
+        try:
+            stores = await stores_service.get_all_stores()
+        except Exception as exc:
+            await logger.awarning("Store inventory selector unavailable", error_type=type(exc).__name__)
+            stores = []
+        return Template(
+            template_name="pages/explore.html.j2",
+            context={"query": search_query or "", "stores": stores, "settings": Settings.from_env()},
         )
 ```
 
@@ -615,10 +691,10 @@ To help you understand the inner workings of this state-of-the-art application, 
 
 Instead of using bulky object-relational mapping wrappers, the project uses **SQLSpec** for blazing fast async database drivers. Named SQL files reside in `src/app/db/sql/`. Vector arrays are handled natively as standard Python `list[float]` types without manual binary conversion wrappers.
 
-### 2. Dishka Dependency Injection (`src/app/ioc.py`)
+### 2. Dishka Dependency Injection (`src/app/ioc/`)
 
 Dependencies like database pools, LLM clients, and services are resolved automatically at the request handler argument boundary using **Dishka**. You do not need manual factory overrides or ad-hoc instantiations.
 
-### 3. Google ADK 2.0 Chat Engine
+### 3. Native AgentRuntime (`app.domain.ai`)
 
-Conversational flow planning, prompt state persistence, and agent node fallbacks are orchestrated dynamically using the **Google ADK 2.0 Workflow/BaseNode** layer. Session history is backed directly by high-performance Oracle database tables.
+Conversational flow planning, prompt state persistence, and tool execution are orchestrated dynamically using the native **`AgentRuntime`** (`app.domain.ai`) powered by Vertex AI **`gemini-3.8-flash`**. Session and event history are backed directly by high-performance Oracle database tables (`agent_session` and `agent_event`).
