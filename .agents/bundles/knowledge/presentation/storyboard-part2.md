@@ -33,59 +33,60 @@ tags:
   BRIDGE: Let's start with a bad plan.
 - **Sources:** NorCal 34; Webinar 25
 
-### 17. A Second Opinion on a Bad Plan
+### 17. Use Case 1: Regressed SQL & Tuning Advisor (`dba_s13`)
 
-- **Target:** `slide_agy_walkthrough_27` (walkthrough layout)
-- **Badge:** Part 2 · Walkthrough
-- **Subtitle:** A real case from this app: a vector query that skipped its index
-- **Left card — What the agent does:**
-  1. You ask Antigravity why product search got slow.
-  2. It pulls the plan through MCP (`get_query_plan`, or `DBMS_XPLAN.DISPLAY_CURSOR` through SQLcl) and sees a full scan of `PRODUCT` with no vector index access.
-  3. It explains that ordering by `1 - VECTOR_DISTANCE(...)` with `FETCH FIRST` cannot use the HNSW index.
-  4. It proposes the rewrite and an `EXPLAIN PLAN` check; you review and apply it.
-- **Right code card:**
+- **Target:** `dba_s13` (`T_SCULPTURE` 3-part visual layout)
+- **Left card — From Alert to Simple Action:**
+  1. **Ask `agy`:** `"Find today's slowest SQL and summarize SQL Tuning Advisor."`
+  2. **Save as a Tool:** Add `find_slow_sql` and `tuning_report` to `tools.yaml`.
+  3. **Fast Assessment:** Turns a 3-page tuning report into a 1-line fix.
+- **Top-right code card:**
 
   ```sql
-  -- Before: exact scan of every row
-  SELECT id, 1 - VECTOR_DISTANCE(embedding, :q, COSINE) AS similarity
-  FROM product
-  ORDER BY similarity DESC
-  FETCH FIRST 5 ROWS ONLY;
+  -- 1. Spot slowest SQL across RAC nodes (saved in tools.yaml)
+  SELECT sql_id, plan_hash_value,
+         ROUND(elapsed_time / executions / 1e3, 1) AS avg_ms
+  FROM gv$sql
+  WHERE parsing_schema_name = 'APP' AND executions > 0
+  ORDER BY avg_ms DESC FETCH FIRST 5 ROWS ONLY;
 
-  -- After: uses the HNSW vector index
-  SELECT id
-  FROM product
-  ORDER BY VECTOR_DISTANCE(embedding, :q, COSINE)
-  FETCH APPROX FIRST 5 ROWS ONLY;
+  -- 2. Pull SQL Tuning Advisor report for the SQL_ID
+  SELECT DBMS_SQLTUNE.REPORT_TUNING_TASK(:task_name) FROM dual;
   ```
 
-- **Banner:** **Check it yourself:** `EXPLAIN PLAN` + `DBMS_XPLAN.DISPLAY` should show a vector index scan, not a full table scan.
-- **Notes:** This exact bug existed in an earlier version of Cymbal Coffee. Play the recorded clip if available. The lesson for DBAs: an agent with plan access catches the same mistakes you would, and explains them in your terms.
-  BRIDGE: The same pattern works for routine health checks.
-- **Sources:** NorCal 34; repo history (`vector-search-products` rewrite)
+- **Bottom-right dark summary card (`agy Assessment -> Simple Action for DBA Review`):**
+  - **Finding:** Stale stats on `ORDERS_2026_Q3` (est 1 row vs 1.4M actual)
+  - **Benefit:** `94%` faster elapsed time (`420 ms -> 9 ms`)
+  - **Action to Review:** `EXEC DBMS_STATS.GATHER_TABLE_STATS('APP', 'ORDERS');`
+- **Notes:** In Use Case 1, checkout latency spikes and you ask Antigravity to check the top SQL and summarize SQL Tuning Advisor. Instead of reading three pages of `DBMS_SQLTUNE` text output, `agy` highlights the exact root cause—stale partition statistics—and gives you a single `DBMS_STATS` command to review and run. You save those two `SELECT` statements into `tools.yaml` so the whole team can run the check anytime.
+  BRIDGE: Let's look at Use Case 2: RMAN backup and patch readiness analysis.
 
-### 18. AWR Summaries and Access Audits
+### 18. Use Case 2: RMAN Backup & Readiness Analyzer (`dba_s19`)
 
-- **Target:** `slide_1790707646252815842_54` (two columns with a code card)
-- **Badge:** Part 2 · Health checks
-- **Subtitle:** Scheduled checks that land as a short summary
-- **Left card — AWR-lite:** on a schedule, the agent runs top-SQL, session, and tablespace checks (`list_top_sql_by_resource`, `list_active_sessions`, `list_tablespace_usage`), and Gemini writes a five-line summary to a team channel. Anything unusual becomes a ticket for a person. AWR and ASH data need the Diagnostics Pack license.
-- **Right code card:**
+- **Target:** `dba_s19` (`T_FLAME` 3-part visual layout)
+- **Left card — Turn Questions Into Queries:**
+  1. **Ask in Plain English:** `"Check RMAN backups for the last 7 days and flag warnings."`
+  2. **Convert to SQL:** `agy` writes the `V$RMAN_BACKUP_JOB_DETAILS` query for `tools.yaml`.
+  3. **Instant Triage:** Pinpoints the one job that hit a recovery area warning.
+- **Top-right code card:**
 
   ```sql
-  -- Accounts nobody has used in 90 days
-  SELECT username, account_status, last_login
-  FROM dba_users
-  WHERE oracle_maintained = 'N'
-    AND (last_login IS NULL
-         OR last_login < SYSTIMESTAMP - INTERVAL '90' DAY)
-  ORDER BY last_login NULLS FIRST;
+  -- Check RMAN backup jobs over the last 7 days (saved in tools.yaml)
+  SELECT session_key, input_type, status,
+         TO_CHAR(start_time, 'MM-DD HH24:MI') AS started,
+         time_taken_display AS duration,
+         output_bytes_display AS backup_size
+  FROM v$rman_backup_job_details
+  WHERE start_time > SYSDATE - 7
+  ORDER BY start_time DESC;
   ```
 
-- **Banner:** **Takeaway:** the agent drafts the lock or revoke script; a DBA reads it and runs it.
-- **Notes:** Mention that the agent's own account needs `SELECT` on the views it reads and nothing more. A good prompt for the audit: "List dormant accounts and the roles they still hold; draft a lock script; do not run it."
-  BRIDGE: Agents do better work when your schema explains itself.
-- **Sources:** NorCal 34
+- **Bottom-right dark summary card (`agy Summary -> Simple Action for DBA Review`):**
+  - **Status:** 13/14 `ARCHIVELOG` & `DB INCR` jobs `COMPLETED` (avg 18m)
+  - **Warning:** `10-13 02:15` job hit `ORA-19809` (FRA reached `88%`)
+  - **Action to Review:** `SELECT * FROM v$recovery_file_dest;`
+- **Notes:** In Use Case 2, you ask Antigravity a plain-English operational question: check our RMAN backups from the last seven days before a patch window. Antigravity writes a clean query against `V$RMAN_BACKUP_JOB_DETAILS` that you can save as a SQLcl script or MCP tool, summarizes the 14 jobs in three lines, and flags that last night's archivelog job warned on Fast Recovery Area space.
+  BRIDGE: Once you have a saved SQL check, you can also pipe it straight into the agy CLI.
 
 ### 19. Teach Agents Your Schema
 

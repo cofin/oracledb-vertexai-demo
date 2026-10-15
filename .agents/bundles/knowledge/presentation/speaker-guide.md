@@ -30,7 +30,7 @@ The deck is structured **DBA-first** so that the first 28 slides deliver the ent
 | :--- | :--- | :--- | :--- |
 | Opening | `dba_s01`–`dba_s04` | 4 | Where Oracle runs on Google Cloud, and the three integration surfaces where Gemini meets Oracle |
 | Antigravity for DBAs | `dba_s05`–`dba_s11` | 10 | MCP in DBA terms, the three Oracle MCP servers, Antigravity (`agy` CLI + IDE), `mcp_config.json`, read-only `tools.yaml`, and `.agents/` rules/skills |
-| DBA Use Cases | `dba_s12`–`dba_s22` | 14 | HNSW plan diagnosis, piping SQLcl into `agy`, detect-to-approve workflows, RAC scalable sequences, long transactions, Exadata Smart Scan offload, access audits, 26ai `ANNOTATIONS`, Knowledge Catalog, and guardrails |
+| DBA Use Cases | `dba_s12`–`dba_s22` | 12 | Two visual, everyday DBA use cases (`GV$SQL` + `DBMS_SQLTUNE` SQL Tuning Advisor assessment and `V$RMAN_BACKUP_JOB_DETAILS` RMAN backup analyzer), piping SQLcl into `agy`, operationalizing ad-hoc checks into `tools.yaml`, 26ai `ANNOTATIONS`, Knowledge Catalog, and guardrails |
 | Gemini Inside Oracle 26ai | `dba_s23`–`dba_s27` | 8 | Select AI (`DBMS_CLOUD_AI`), `DBMS_VECTOR.UTL_TO_EMBEDDING` to Vertex AI, SGA Vector Pool vs In-Memory Column Store vs `embedding_cache`, and runbook vector search |
 | Where to Start on Monday | `dba_s28` | 2 | Three immediate steps with QR links (MCP Toolbox, Knowledge Catalog MCP, 26ai Demo Repo) |
 | Build Real Apps: Cymbal Coffee | `dba_s29`–`dba_s40` | 10 (optional) | How a production Python + Oracle 26ai app combines HNSW, `CTXSYS.CONTEXT`, plain-SQL RRF, `JSON_TABLE` guards, and `/mcp` + `/a2a` |

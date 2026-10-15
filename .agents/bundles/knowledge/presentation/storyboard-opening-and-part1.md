@@ -109,79 +109,102 @@ Facts and sources are in [verified facts](verified-facts.md).
   BRIDGE: First, what an agent is, in DBA terms.
 - **Sources:** NorCal 26
 
-### 9. Agents and MCP, for DBAs
+### 6. AI Terms for DBAs: LLMs, MCP, and A2A (`dba_s06`)
 
-- **Target:** `slide_1790707646253180850_170` (layered stack layout)
-- **Badge:** Part 1 · Tools
-- **Subtitle:** A model, a set of tools, and the right context
-- **Layers (top to bottom):**
-  - **Model:** Gemini on Vertex AI decides the next step.
-  - **Tools:** MCP servers are the only things the agent can actually run.
-  - **Context:** rules, skills, and schema notes tell it how your shop works.
-  - **Database:** the same users, roles, and auditing you already enforce.
-- **Side note:** why specialized agents: gated data access, a clear role, curated context, and less to read on every turn. MCP is one standard way to connect tools: write the server once and use it from any client.
-- **Banner:** **Takeaway:** an agent can only do what its tools and its database user allow.
-- **Notes:** MCP is like a driver standard for AI tools. You don't build a connector per model; you run one server per data source and every compatible client can use it.
-  BRIDGE: Here are the MCP servers for Oracle.
-- **Sources:** NorCal 17–20
+- **Target:** `dba_s06` (`T_TOOLBOX`)
+- **Title:** AI Terms for DBAs: LLMs, MCP, and A2A
+- **Left card (`Familiar Protocol Analogies`):**
+  - **LLM (`Gemini`):** The reasoning engine—summarizes tuning & RMAN reports, plans, and wait events.
+  - **MCP (Agent-to-Tool ≈ `WSDL` / `JDBC`):** Publishes typed, read-only SQL tool schemas so agents call vetted queries.
+  - **A2A (Agent-to-Agent ≈ `REST` / `gRPC`):** Lets an app or peer agent delegate database tasks to an Oracle specialist agent.
+  - **Two-Way Partnership:** Agent speeds up `GV$` synthesis; you supply RAC rules, context & approval.
+- **Notes:** Ground the three AI terms in protocols every DBA already knows: LLM (`Gemini`), MCP (`WSDL`/`JDBC` contract for tools), and A2A (`REST`/`gRPC` between specialist agents).
+  BRIDGE: Now let's look at the client that drives both your IDE and CLI: Antigravity.
 
-### 10. Connecting Oracle to Agents with MCP
+### 7. Antigravity: IDE + CLI Together (`dba_s08`)
 
-- **Target:** `slide_1790707646253253250_197`
-- **Badge:** Part 1 · MCP
-- **Subtitle:** Local SQL, prebuilt DBA tools, and managed database operations
+- **Target:** `dba_s08` (`T_LAPTOP` with composite IDE + CLI image on `dba_s08_e06`)
+- **Title:** Antigravity: IDE + CLI Together
+- **Left card (`One Agent Across Both Surfaces`):**
+  - **Antigravity IDE:** Edit SQL & PL/SQL, review inline diffs, inspect `DBMS_XPLAN`, and approve MCP calls visually.
+  - **Antigravity CLI (`agy`):** Pipe `sql -s` output into `agy -p` from SSH bastions, cron jobs, and shell scripts.
+  - **Shared Config:** Both read `~/.gemini/config/mcp_config.json` and `.agents/` rules.
+  - **Docs:** `antigravity.google/docs/mcp`
+- **Notes:** Antigravity gives DBAs both a full agentic IDE and the `agy` terminal CLI backed by the same MCP config and team rules.
+  BRIDGE: Where can you leverage these MCP tools against your Oracle estate today?
+
+### 8. Where You Can Leverage These Tools Today (`dba_s07`)
+
+- **Target:** `dba_s07` (`T_ICONS_3`)
+- **Title:** Where You Can Leverage These Tools Today
+- **Subtitle:** Three Oracle MCP Options Across Local, Team, and Cloud Workflows
 - **Cards:**
-  - **SQLcl MCP:** `sql -mcp`. Oracle's own server; runs SQL as the connected user over local stdio.
-  - **MCP Toolbox for Databases:** `toolbox --prebuilt oracledb --stdio`. Prebuilt tools such as `execute_sql`, `list_tables`, `get_query_plan`, `list_active_sessions`, `list_top_sql_by_resource`, `list_tablespace_usage`, and `list_invalid_objects`.
-  - **Oracle Database@Google Cloud remote MCP:** `https://oracledatabase.googleapis.com/mcp`. Authenticates with IAM (`roles/mcp.toolUser`); manages Autonomous databases rather than running SQL.
-- **Banner:** **Tip:** give every server an app-scoped database user; never `SYS` or `SYSTEM`.
-- **QR:** MCP Toolbox repository
-- **Notes:** Confirm the Toolbox tool names and the remote server's tool list against current docs before the event (task 1.6). The point for DBAs: you choose the tool surface, and a curated tool list is safer than raw `execute_sql`.
-  BRIDGE: The client that ties these together is Antigravity.
-- **Sources:** NorCal 21; Chicago 16; `docs/mcp-antigravity.md`
+  - **1. Interactive SQLcl (`sql -mcp`):** Run `sql -mcp` (SQLcl 25.2+) with saved wallets for ad-hoc IDE/CLI triage; logs every query in `DBTOOLS$MCP_LOG`.
+  - **2. Team Allowlist (`MCP Toolbox`):** Run `toolbox --stdio` with 7 prebuilt Oracle checks (`--prebuilt oracledb`) or a shared `tools.yaml` allowlist of read-only SQL.
+  - **3. Managed Cloud MCP (`Preview`):** `oracledatabase.googleapis.com/mcp` (`Preview`: Exadata, Exascale, ADB, BaseDB & GoldenGate) + `dataplex.googleapis.com/mcp` (`Preview`).
+- **Notes:** Walk through the three Oracle MCP options and clarify both what `tools.yaml` is and that `oracledatabase.googleapis.com/mcp` (in Preview) covers Exadata, Exascale, BaseDB, Autonomous DB, ODB Networks, and GoldenGate.
+  BRIDGE: Let's look at the two toolkit files you configure: first `mcp_config.json`, then `tools.yaml`.
 
-### 11. Antigravity: An Agent in Your Terminal
+### 9. Connect Antigravity to Oracle@GCP (`dba_s09`)
 
-- **Target:** `slide_1790707646253288048_210` (unskip, move to position 11)
-- **Badge:** Part 1 · Tools
-- **Subtitle:** The `agy` CLI and the Antigravity 2.0 IDE
-- **Left card — What DBAs use it for:** coding and scripting, research, task automation, debugging, database analysis, custom workflows.
-- **Right card — How you shape it:** rules, skills, and workflows checked into the repo; MCP servers in `mcp_config.json`; packaged extensions such as an Oracle Database extension (confirm the install path under Antigravity).
-- **Banner:** **2026 update:** standalone Gemini CLI reached end of life in June 2026; Antigravity is the successor.
-- **Notes:** Earlier versions of this talk demoed Gemini CLI. Everything shown there works in Antigravity, and the configuration lives in the same home-directory files.
-  BRIDGE: Setting it up for Oracle takes a few minutes.
-- **Sources:** NorCal 27–28, 32–33; AI World 11–14
-
-### 12. Set Up Oracle MCP and Give It Context
-
-- **Target:** `slide_1790707646253388335_231`
-- **Badge:** Part 1 · Setup
-- **Subtitle:** One config file and a few habits
-- **Left code card (JSON):**
+- **Target:** `dba_s09` (`T_SCULPTURE`)
+- **Title:** Connect Antigravity to Oracle@GCP
+- **Left card (`Wallet + 26ai Read-Only User`):**
+  - Config file: `~/.gemini/config/mcp_config.json`
+  - Connect over TCPS with `ORACLE_WALLET`
+  - Use a 26ai `READ ONLY` user (`CREATE USER mcp_diag_ro ... READ ONLY`)—ignores higher grants and only allows reads
+  - Never connect as `SYSDBA`
+- **Right code card (JSON):**
 
   ```json
   {
     "mcpServers": {
-      "sqlcl": { "command": "/opt/sqlcl/bin/sql", "args": ["-mcp"] },
+      "sqlcl-exadata": {
+        "command": "/opt/sqlcl/bin/sql",
+        "args": ["-mcp"]
+      },
       "oracle-toolbox": {
         "command": "/usr/local/bin/toolbox",
-        "args": ["--prebuilt", "oracledb", "--stdio"],
+        "args": ["--tools-file", "dba-tools.yaml", "--stdio"],
         "env": {
-          "ORACLE_CONNECTION_STRING": "localhost:1521/FREEPDB1",
-          "ORACLE_USERNAME": "app",
-          "ORACLE_PASSWORD": "<set locally>"
+          "ORACLE_CONNECTION_STRING": "exadb-scan:2484/prd_tp",
+          "ORACLE_WALLET": "/etc/oracle/wallets/exadb_prd",
+          "ORACLE_USERNAME": "MCP_DIAG_RO",
+          "ORACLE_PASSWORD": "${ORACLE_DIAG_PASSWORD}"
         }
       }
     }
   }
   ```
 
-- **Right card — Give it context:** be specific; point at files and links; say what done looks like; keep rules and skills in the repo; iterate.
-- **Banner:** **Tip:** the file lives in `~/.gemini/antigravity/mcp_config.json`; keep passwords out of the repo.
-- **QR:** `docs/mcp-antigravity.md` in the repository
-- **Notes:** Use absolute executable paths, because desktop apps start without your shell's `PATH`. The repo's `manage.py install mcp-toolbox` command installs the Toolbox binary.
-  BRIDGE: Now, Gemini inside SQL itself.
-- **Sources:** NorCal 29; `docs/mcp-antigravity.md`
+- **Notes:** Highlight Oracle 26ai `READ ONLY` user accounts (`CREATE USER mcp_diag_ro ... READ ONLY` / `ALTER USER mcp_diag_ro READ ONLY`), which enforce read-only access at the account level (`ORA-28194`) even if higher grants exist.
+  BRIDGE: Next, let's look at what goes inside `dba-tools.yaml`.
+
+### 10. A Curated, Read-Only DBA tools.yaml (`dba_s10`)
+
+- **Target:** `dba_s10` (`T_CORAL`)
+- **Title:** A Curated, Read-Only DBA tools.yaml
+- **Left card (`Why Custom Tools Beat Raw SQL`):**
+  - Open `execute_sql` allows arbitrary queries
+  - `tools.yaml` is a YAML allowlist of DBA-vetted `SELECT` statements
+  - Bakes in RAC-aware `GV$` views and `:1` binds
+  - Shared in Git across the entire DBA team
+- **Right code card (YAML + embedded Oracle SQL):**
+  - Highlighted with composite YAML + Oracle SQL syntax highlighting via `tools/slides/highlight.py`.
+- **Notes:** Every tool in `tools.yaml` is a parameterized, read-only `SELECT` statement that DBAs have already tested and tuned.
+  BRIDGE: Connectivity and tools are only half the story—why is Context Management critical for DBAs?
+
+### 11. Why Context Management Is Critical for DBAs (`dba_s11`)
+
+- **Target:** `dba_s11` (`T_GRADIENT_3`)
+- **Title:** Why Context Management Is Critical for DBAs
+- **Subtitle:** Tools give database access—context prevents `V$` mistakes on RAC, license issues, and bad joins
+- **Cards:**
+  - **1. Guardrail Rules (`AGENTS.md`):** Always-on team standards: read-only access, query `GV$` instead of `V$` on RAC, respect pack licenses, and never run DDL/DML.
+  - **2. Runbook Skills (`SKILL.md`):** On-demand playbooks loaded only when needed: SQL Tuning Advisor triage, RMAN backup checks, and patch pre-checks.
+  - **3. Schema & Fleet Metadata:** In-database 26ai `ANNOTATIONS` and Knowledge Catalog so the agent knows table business rules and join keys first.
+- **Notes:** Explain why connectivity + tools alone aren't enough and how layering `AGENTS.md`, `SKILL.md`, and 26ai `ANNOTATIONS` + Knowledge Catalog prevents `V$` mistakes on RAC, license issues, and bad joins.
+  BRIDGE: Let's walk through two visual DBA use cases to see these tools and playbooks in action.
 
 ### 13. Select AI: Ask Oracle in Plain English
 

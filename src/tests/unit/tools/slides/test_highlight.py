@@ -69,3 +69,42 @@ def test_unsupported_language_is_rejected() -> None:
     """Only the documented languages are accepted."""
     with pytest.raises(ValueError, match="unsupported language"):
         highlight_code_requests("code_box", "print(1)", language="cobol")
+
+
+def test_yaml_highlights_keys_env_vars_and_embedded_oracle_sql() -> None:
+    """YAML keys, types, ${ENV} vars, and embedded statement: | SQL blocks get distinct styles."""
+    code = (
+        "kind: tool\n"
+        "type: oracle-sql\n"
+        "connectionString: ${ORACLE_CONNECTION_STRING}\n"
+        "statement: |\n"
+        "  SELECT ROUND(used_percent, 1) AS used_pct\n"
+        "  FROM dba_tablespace_usage_metrics\n"
+        "  WHERE used_percent >= :1"
+    )
+
+    requests = highlight_code_requests("code_box", code, language="yaml")
+
+    assert _color_at(requests, code.index("kind")) == hex_to_rgb(CODE_COLORS["keyword"])
+    assert _style_at(requests, code.index("kind"))["bold"] is True
+    assert _color_at(requests, code.index("oracle-sql")) == hex_to_rgb(CODE_COLORS["function"])
+    assert _color_at(requests, code.index("${ORACLE_CONNECTION_STRING}")) == hex_to_rgb(CODE_COLORS["number"])
+    assert _color_at(requests, code.index("SELECT")) == hex_to_rgb(CODE_COLORS["keyword"])
+    assert _color_at(requests, code.index("ROUND")) == hex_to_rgb(CODE_COLORS["function"])
+    assert _color_at(requests, code.index("dba_tablespace_usage_metrics")) == hex_to_rgb(CODE_COLORS["function"])
+    assert _color_at(requests, code.index(":1")) == hex_to_rgb(CODE_COLORS["number"])
+
+
+def test_json_keys_and_oracle_views_are_highlighted() -> None:
+    """JSON property keys use keyword styling and Oracle GV$/V$ views use function styling."""
+    json_code = '{\n  "mcpServers": {\n    "command": "/opt/sqlcl/bin/sql"\n  }\n}'
+    json_reqs = highlight_code_requests("json_box", json_code, language="json")
+
+    assert _color_at(json_reqs, json_code.index('"mcpServers"')) == hex_to_rgb(CODE_COLORS["keyword"])
+    assert _color_at(json_reqs, json_code.index('"/opt/sqlcl/bin/sql"')) == hex_to_rgb(CODE_COLORS["string"])
+
+    sql_code = "SELECT sql_id FROM gv$sql WHERE executions > :min_exec"
+    sql_reqs = highlight_code_requests("sql_box", sql_code, language="oracle")
+
+    assert _color_at(sql_reqs, sql_code.index("gv$sql")) == hex_to_rgb(CODE_COLORS["function"])
+    assert _color_at(sql_reqs, sql_code.index(":min_exec")) == hex_to_rgb(CODE_COLORS["number"])

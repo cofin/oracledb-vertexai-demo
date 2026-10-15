@@ -15,13 +15,14 @@ from typing import Any
 
 from pygments import lex  # type: ignore[import-untyped]
 from pygments.lexers import BashLexer, JsonLexer, PlPgsqlLexer, PythonLexer, SqlLexer, YamlLexer  # type: ignore[import-untyped]
-from pygments.token import Comment, Keyword, Name, Number, String  # type: ignore[import-untyped]
+from pygments.token import Comment, Keyword, Literal, Name, Number, String  # type: ignore[import-untyped]
 
 from tools.slides.deck import utf16_len
 
 __all__ = [
     "CODE_COLORS",
     "LANGUAGES",
+    "ORACLE_BIND_PATTERN",
     "ORACLE_FUNCTIONS",
     "ORACLE_FUNCTION_PATTERN",
     "ORACLE_KEYWORD_PATTERN",
@@ -43,20 +44,57 @@ ORACLE_FUNCTIONS = frozenset({
     "ANNOTATIONS",
     "COALESCE",
     "CONTAINS",
+    "COUNT",
+    "DECODE",
     "GRAPH_TABLE",
+    "GREATEST",
+    "JSON",
     "JSON_TABLE",
+    "LISTAGG",
+    "MAX",
+    "MIN",
     "NVL",
+    "ROUND",
     "ROW_NUMBER",
     "SCORE",
+    "SYSDATE",
+    "SYSTIMESTAMP",
+    "TO_CHAR",
+    "TRIM",
     "VECTOR",
     "VECTOR_DISTANCE",
 })
 ORACLE_FUNCTION_PATTERN = re.compile(
-    r"\bDBMS_[A-Z_]+(?:\.[A-Z_]+)?\b|\bCTX_DDL\.[A-Z_]+\b|\bCTXSYS\.[A-Z_]+\b|(?<=SELECT\s)AI\b", re.IGNORECASE
+    r"\bDBMS_[A-Z_]+(?:\.[A-Z_]+)?\b"
+    r"|\bCTX_DDL\.[A-Z_]+\b"
+    r"|\bCTXSYS\.[A-Z_]+\b"
+    r"|(?<=SELECT\s)AI\b"
+    r"|\b(?:GV|V)\$[A-Z0-9_]+\b"
+    r"|\b(?:DBA|USER)_[A-Z0-9_]+\b"
+    r"|\bDBTOOLS\$[A-Z0-9_]+\b",
+    re.IGNORECASE,
 )
 ORACLE_KEYWORD_PATTERN = re.compile(
-    r"\b(?:APPROX|INMEMORY|NEIGHBOR|GRAPH|ORGANIZATION|ACCUM|INDEXTYPE|ACCURACY|SKIP\s+LOCKED)\b", re.IGNORECASE
+    r"\b(?:APPROX|INMEMORY|NEIGHBOR|GRAPH|ORGANIZATION|ACCUM|INDEXTYPE|ACCURACY|SKIP\s+LOCKED"
+    r"|EXEC|FETCH|FIRST|ROWS|ONLY|PARTITIONS|PARAMETERS|DISTANCE|COSINE|TARGET|NEIGHBORS"
+    r"|EFCONSTRUCTION|PRIORITY|HIGH|SCALE|EXTEND)\b",
+    re.IGNORECASE,
 )
+ORACLE_BIND_PATTERN = re.compile(r"(?<![:\w]):[A-Za-z0-9_]+\b")
+_YAML_ENV_PATTERN = re.compile(r"\$\{[A-Za-z0-9_]+\}")
+_YAML_TYPES = frozenset({
+    "boolean",
+    "exadata_ro",
+    "false",
+    "float",
+    "integer",
+    "oracle",
+    "oracle-sql",
+    "source",
+    "string",
+    "tool",
+    "true",
+})
 HEX_COLOR_LENGTH = 6
 CHANNEL_MAX = 255
 
@@ -73,8 +111,10 @@ _TOKEN_STYLES: tuple[tuple[Any, str, bool, bool], ...] = (
     (Number, "number", False, False),
     (Keyword.Type, "function", False, False),
     (Keyword, "keyword", True, False),
+    (Name.Tag, "keyword", True, False),
     (Name.Function, "function", False, False),
     (Name.Builtin, "function", False, False),
+    (Name.Variable, "number", False, False),
 )
 _SQL_LANGUAGES = frozenset({"oracle", "sql"})
 
@@ -124,10 +164,13 @@ def highlight_code_requests(
         ValueError: If ``language`` is not supported.
     """
     functions = frozenset(name.upper() for name in ORACLE_FUNCTIONS | extra_functions)
-    spans, comments = _token_spans(code, language, functions)
+    spans, masked_ranges = _token_spans(code, language, functions)
     if language in _SQL_LANGUAGES:
-        spans.extend(_pattern_spans(code, ORACLE_KEYWORD_PATTERN, "keyword", comments))
-        spans.extend(_pattern_spans(code, ORACLE_FUNCTION_PATTERN, "function", comments))
+        spans.extend(_pattern_spans(code, ORACLE_KEYWORD_PATTERN, "keyword", masked_ranges))
+        spans.extend(_pattern_spans(code, ORACLE_FUNCTION_PATTERN, "function", masked_ranges))
+        spans.extend(_pattern_spans(code, ORACLE_BIND_PATTERN, "number", masked_ranges))
+    elif language == "yaml":
+        spans.extend(_pattern_spans(code, _YAML_ENV_PATTERN, "number", masked_ranges))
     total = utf16_len(code)
     requests = [_base_request(object_id)] if include_base else []
     requests.extend(
@@ -148,12 +191,17 @@ def _lexer_for(language: str) -> Any:
     return lexer_class(stripnl=False)
 
 
-def _classify(token_type: Any, value: str, functions: frozenset[str]) -> tuple[str, bool, bool]:
+def _classify(token_type: Any, value: str, functions: frozenset[str], language: str) -> tuple[str, bool, bool]:
     """Map a Pygments token to a ``(color key, bold, italic)`` style."""
     if token_type in Comment:
         return ("comment", False, True)
-    if value.strip().upper() in functions:
+    stripped = value.strip()
+    if stripped.upper() in functions:
         return ("function", True, False)
+    if language == "yaml" and token_type in Literal.Scalar.Plain:
+        if stripped in _YAML_TYPES:
+            return ("function", True, False)
+        return ("string", False, False)
     for parent, color, bold, italic in _TOKEN_STYLES:
         if token_type in parent:
             return (color, bold, italic)
@@ -161,20 +209,39 @@ def _classify(token_type: Any, value: str, functions: frozenset[str]) -> tuple[s
 
 
 def _token_spans(code: str, language: str, functions: frozenset[str]) -> tuple[list[_Span], list[tuple[int, int]]]:
-    """Lex ``code`` into styled spans plus the ranges covered by comments."""
+    """Lex ``code`` into styled spans plus the ranges covered by comments and string literals."""
     spans: list[_Span] = []
-    comments: list[tuple[int, int]] = []
+    masked_ranges: list[tuple[int, int]] = []
     position = 0
     for token_type, value in lex(code, _lexer_for(language)):
         width = utf16_len(value)
         if value.strip():
-            color, bold, italic = _classify(token_type, value, functions)
-            if color == "comment":
-                comments.append((position, position + width))
-            if color != "default":
-                _append_span(spans, (position, position + width, color, bold, italic))
+            if language == "yaml" and token_type in Name.Constant:
+                sub_spans, sub_masked = _token_spans(value, "oracle", functions)
+                for s_start, s_end, s_color, s_bold, s_italic in sub_spans:
+                    _append_span(spans, (position + s_start, position + s_end, s_color, s_bold, s_italic))
+                shifted_masked = [(position + m_s, position + m_e) for m_s, m_e in sub_masked]
+                for s_start, s_end, s_color, s_bold, s_italic in _pattern_spans(
+                    value, ORACLE_KEYWORD_PATTERN, "keyword", sub_masked
+                ):
+                    spans.append((position + s_start, position + s_end, s_color, s_bold, s_italic))
+                for s_start, s_end, s_color, s_bold, s_italic in _pattern_spans(
+                    value, ORACLE_FUNCTION_PATTERN, "function", sub_masked
+                ):
+                    spans.append((position + s_start, position + s_end, s_color, s_bold, s_italic))
+                for s_start, s_end, s_color, s_bold, s_italic in _pattern_spans(
+                    value, ORACLE_BIND_PATTERN, "number", sub_masked
+                ):
+                    spans.append((position + s_start, position + s_end, s_color, s_bold, s_italic))
+                masked_ranges.extend(shifted_masked)
+            else:
+                color, bold, italic = _classify(token_type, value, functions, language)
+                if color in {"comment", "string"} and not (language == "yaml" and token_type in Literal.Scalar.Plain):
+                    masked_ranges.append((position, position + width))
+                if color != "default":
+                    _append_span(spans, (position, position + width, color, bold, italic))
         position += width
-    return spans, comments
+    return spans, masked_ranges
 
 
 def _append_span(spans: list[_Span], span: _Span) -> None:
