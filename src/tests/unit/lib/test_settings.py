@@ -90,11 +90,11 @@ def test_ai_settings_falls_back_to_google_project_id(monkeypatch: MonkeyPatch) -
     """Verify `AISettings.project_id` falls back to `GOOGLE_PROJECT_ID` when `GOOGLE_CLOUD_PROJECT` is unset."""
     monkeypatch.delenv("VERTEX_AI_PROJECT_ID", raising=False)
     monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
-    monkeypatch.setenv("GOOGLE_PROJECT_ID", "db-black-belts-playground-01")
+    monkeypatch.setenv("GOOGLE_PROJECT_ID", "cymbal-coffee-test")
 
     settings = AISettings()
 
-    assert settings.project_id == "db-black-belts-playground-01"
+    assert settings.project_id == "cymbal-coffee-test"
 
 
 def test_intent_model_override_wins(monkeypatch: MonkeyPatch) -> None:

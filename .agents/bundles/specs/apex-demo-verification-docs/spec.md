@@ -1,10 +1,20 @@
 ---
 type: Spec
-id: apex-demo-verification-docs
+flow_id: apex-demo-verification-docs
 title: APEX Demo Verification and Docs
 description: Sphinx docs, MCP configuration in Antigravity, and repeatable smoke verification
 state: planned
+plan_revision: 1
+plan_commit: 9119533
+state_revision: 0
+current_task: null
+last_operation: null
+operation_targets: []
+last_verified_checkpoint: null
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-10-13T19:15:00Z
 parent_prd: apex-ops-console
+research: []
 tags:
   - spec
   - docs

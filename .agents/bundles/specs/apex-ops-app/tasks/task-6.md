@@ -1,14 +1,16 @@
 ---
 type: Task
-id: task-6
+id: apex-ops-app:task-6
 flow_id: apex-ops-app
 state: closed
 title: Re-export stable APEXlang source
 description: Re-export verified APEXlang source to src/apex/cymbal-coffee-ops.
 verification_strategy: static_validation
 depends_on:
-  - task-5
-commit: null
+  - apex-ops-app:task-5
+commit: 9119533
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-06-23T00:00:00Z
 tags:
   - task
   - apex

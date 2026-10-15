@@ -1,13 +1,15 @@
 ---
 type: Task
-id: task-1
+id: apex-ops-app:task-1
 flow_id: apex-ops-app
 state: closed
 title: Generate initial APEXlang app source using Oracle APEX skill workflow
 description: Generate initial APEXlang source files for Cymbal Coffee operations console.
 verification_strategy: characterization
 depends_on: []
-commit: null
+commit: 9119533
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-06-23T00:00:00Z
 tags:
   - task
   - apex

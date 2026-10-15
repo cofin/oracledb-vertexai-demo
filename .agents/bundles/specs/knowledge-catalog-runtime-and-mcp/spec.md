@@ -99,4 +99,4 @@ Files examined:
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/knowledge-catalog-grounding-demo/research/research_knowledge_catalog_demo_20261012/research.md`
   - `.agents/bundles/knowledge/domains/core-lib-ioc-server-cli.md`
-  - `.agents/bundles/knowledge/domains/ai-runtime-mcp-a2a.md`
+  - `.agents/bundles/knowledge/domains/ai-and-protocols.md`

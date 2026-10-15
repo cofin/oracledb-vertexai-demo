@@ -17,24 +17,23 @@ tags:
 | :--- | :--- |
 | Title | Oracle in the Age of Gemini |
 | Subtitle | Practical AI Agents, MCP Workflows, and Vector Search for Oracle DBAs |
-| Length | 45–50 minutes (28 DBA-first core slides + 12 hideable Cymbal Coffee app walkthrough slides + Thank You + 16 unskipped Reference slides) |
+| Length | 45–50 minutes (34 active slides: 25 DBA-first core slides + 7 Cymbal Coffee reference app slides + Monday Recap + Thank You) |
 | Audience | Senior Oracle DBAs and database engineers (Exadata Database Service and Autonomous AI Database on Oracle Database@Google Cloud). They know Oracle internals (`DBMS_XPLAN`, `GV$TRANSACTION`, `V$SYSSTAT`, `CTXSYS.CONTEXT`, SGA sizing, `FOR UPDATE SKIP LOCKED`) and want concrete MCP configurations, diagnostic SQL, and safe operational patterns |
 | Promise | Leave with working Antigravity + Oracle MCP configurations, copy-pasteable 26ai and Exadata diagnostic SQL, an understanding of Knowledge Catalog and in-database Gemini options, and a reference application architecture |
 | Demo app | Cymbal Coffee, `github.com/cofin/oracledb-vertexai-demo` |
 
 ## The story
 
-The deck is structured **DBA-first** so that the first 28 slides deliver the entire DBA workflow, diagnostic SQL, Knowledge Catalog, in-database Gemini patterns, and Monday action plan, while the 12-slide **Cymbal Coffee** application walkthrough (`dba_s29`–`dba_s40`) sits at the end as a self-contained section that can be presented in full or hidden for pure-DBA sessions.
+The deck is structured **DBA-first** across **34 active slides** (`storyboard.md`) so that Slides 1–25 deliver the entire DBA workflow, Antigravity + MCP configurations, diagnostic SQL, Knowledge Catalog, and in-database Gemini patterns, followed by the 7-slide **Cymbal Coffee** application walkthrough (Slides 26–32), Monday Recap (Slide 33), and Thank You (Slide 34).
 
 | Section | Slides | Minutes | Message |
 | :--- | :--- | :--- | :--- |
-| Opening | `dba_s01`–`dba_s04` | 4 | Where Oracle runs on Google Cloud, and the three integration surfaces where Gemini meets Oracle |
-| Antigravity for DBAs | `dba_s05`–`dba_s11` | 10 | MCP in DBA terms, the three Oracle MCP servers, Antigravity (`agy` CLI + IDE), `mcp_config.json`, read-only `tools.yaml`, and `.agents/` rules/skills |
-| DBA Use Cases | `dba_s12`–`dba_s22` | 12 | Two visual, everyday DBA use cases (`GV$SQL` + `DBMS_SQLTUNE` SQL Tuning Advisor assessment and `V$RMAN_BACKUP_JOB_DETAILS` RMAN backup analyzer), piping SQLcl into `agy`, operationalizing ad-hoc checks into `tools.yaml`, 26ai `ANNOTATIONS`, Knowledge Catalog, and guardrails |
-| Gemini Inside Oracle 26ai | `dba_s23`–`dba_s27` | 8 | Select AI (`DBMS_CLOUD_AI`), `DBMS_VECTOR.UTL_TO_EMBEDDING` to Vertex AI, SGA Vector Pool vs In-Memory Column Store vs `embedding_cache`, and runbook vector search |
-| Where to Start on Monday | `dba_s28` | 2 | Three immediate steps with QR links (MCP Toolbox, Knowledge Catalog MCP, 26ai Demo Repo) |
-| Build Real Apps: Cymbal Coffee | `dba_s29`–`dba_s40` | 10 (optional) | How a production Python + Oracle 26ai app combines HNSW, `CTXSYS.CONTEXT`, plain-SQL RRF, `JSON_TABLE` guards, and `/mcp` + `/a2a` |
-| Thank You & Reference | `dba_s41`–`dba_s57` | Q&A | 16 unskipped deep-dive reference cards for Q&A and leave-behind reading |
+| Opening | `1`–`4` (`dba_s01`–`dba_s04`) | 4 | Where Oracle runs on Google Cloud, and the three integration surfaces where Gemini meets Oracle |
+| Antigravity & Context for DBAs | `5`–`13` (`dba_s05`–`dba_s21`) | 10 | Core AI terms, Antigravity (`agy` CLI + IDE) DBA ideas, SQLcl MCP / MCP Toolbox / Cloud MCP, curated read-only `tools.yaml`, `AGENTS.md` / `SKILL.md`, 26ai `ANNOTATIONS`, and Knowledge Catalog |
+| The Art of the Possible: DBA Use Cases | `14`–`20` (`dba_s12`–`dba_s22`) | 12 | Regressed SQL & SQL Tuning Advisor (`GV$SQL` + `DBMS_SQLTUNE`), RMAN Backup & Readiness Analyzer (`V$RMAN_BACKUP_JOB_DETAILS`), piping SQLcl into `agy`, interactive MCP data analysis & CSV extracts, and agent guardrails |
+| Gemini Inside Oracle AI Database 26ai | `21`–`25` (`dba_s23`–`dba_s27`) | 8 | Embeddings & vector distance in Oracle terms, Select AI (`DBMS_CLOUD_AI`) on Autonomous AI DB, SGA Vector Pool vs In-Memory Column Store vs `embedding_cache`, and runbook memory in a `VECTOR` column |
+| Build Real Apps: Cymbal Coffee | `26`–`32` (`dba_s29`–`dba_s35`) | 10 | How a production Python + Oracle 26ai app combines `VECTOR(3072, FLOAT32)`, HNSW (`vector_memory_size`), `CTXSYS.CONTEXT`, and single-query Hybrid RRF (`k = 60`) |
+| Close & Thank You | `33`–`34` (`dba_s28`, `dba_s41`) | 2 + Q&A | Three immediate Monday steps with QR links (MCP Toolbox, Knowledge Catalog MCP, 26ai Demo Repo) and Q&A |
 
 ## Wording and visual rules
 

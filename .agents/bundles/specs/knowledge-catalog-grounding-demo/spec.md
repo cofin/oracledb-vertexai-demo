@@ -53,7 +53,7 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
    - The Managed Oracle Connector (`bigquerydatatransfer.googleapis.com`, Preview) requires PSC Network Attachments, `SYS.COL$` / `SELECT_CATALOG_ROLE` / `ALTER ANY TRIGGER ON SCHEMA` grants, runs as a batch job, and ignores Oracle 26ai `USER_ANNOTATIONS_USAGE`.
    - `coffee sync-catalog` instead queries `USER_ANNOTATIONS_USAGE` directly over the existing SQLSpec connection pool and upserts `EntryGroup` (`cymbal-coffee-oracle`), `Entry` records (`entrySource.system = "ORACLE"`), and global system aspects (`projects/655216118709/locations/global/aspectTypes/{schema,overview,guidelines,queries}`) via `dataplex.googleapis.com/v1` REST using `httpx` and `google.auth` (already installed via `google-genai`).
 2. **Global System Aspects (`schema`, `overview`, `guidelines`, `queries`) for `lookupContext` Compatibility**:
-   - Public Knowledge Catalog docs (`enrich-entries-metadata`) and `go/kc-retrieval-overview` confirm that `lookupContext` (`POST /v1/projects/{p}/locations/{l}:lookupContext`) automatically assembles the global system aspects (`schema`, `overview`, `guidelines`, `queries`) and linked Business Glossary terms into a single LLM-ready YAML string, whereas user-defined custom aspect types are omitted by `lookupContext`. Encoding Oracle 26ai annotations and steward rules into `overview`, `guidelines`, `schema`, and `queries` guarantees single-call `lookupContext` assembly.
+   - Public Knowledge Catalog docs (`enrich-entries-metadata`, `retrieve-data-context`) confirm that `lookupContext` (`POST /v1/projects/{p}/locations/{l}:lookupContext`) automatically assembles the global system aspects (`schema`, `overview`, `guidelines`, `queries`) and linked Business Glossary terms into a single LLM-ready YAML string, whereas user-defined custom aspect types are omitted by `lookupContext`. Encoding Oracle 26ai annotations and steward rules into `overview`, `guidelines`, `schema`, and `queries` guarantees single-call `lookupContext` assembly.
 3. **Dual-Mode Execution (`local` Snapshot vs `gcp` Live API)**:
    - `CatalogSettings.mode` defaults to `"auto"` (uses live `dataplex.googleapis.com/v1` when `KNOWLEDGE_CATALOG_ENABLED=true` and `GOOGLE_CLOUD_PROJECT` is a real project, and seamlessly falls back to the committed `src/app/db/fixtures/knowledge_catalog_context.json` snapshot built from `0001_cymball_coffee_products.sql` annotations when running locally/offline or in CI).
 4. **Composable Alignment with `coffee-agent-stabilization-and-hybrid-search`**:
@@ -114,5 +114,5 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/knowledge-catalog-grounding-demo/research/research_knowledge_catalog_demo_20261012/research.md`
   - `.agents/bundles/knowledge/architecture/oracle-26ai-hybrid-rrf.md`
-  - `.agents/bundles/knowledge/domains/ai-runtime-mcp-a2a.md`
+  - `.agents/bundles/knowledge/domains/ai-and-protocols.md`
   - `.agents/bundles/knowledge/patterns/architecture.md`

@@ -1,10 +1,20 @@
 ---
 type: Spec
-id: apex-ops-app
+flow_id: apex-ops-app
 title: Cymbal Coffee APEX Operations Console App
 description: Build the Cymbal Coffee APEX Operations Console app from APEXlang source
-state: in_progress
+state: planned
+plan_revision: 1
+plan_commit: 9119533
+state_revision: 1
+current_task: null
+last_operation: pause
+operation_targets: []
+last_verified_checkpoint: 9119533
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-10-13T19:15:00Z
 parent_prd: apex-ops-console
+research: []
 tags:
   - spec
   - apex

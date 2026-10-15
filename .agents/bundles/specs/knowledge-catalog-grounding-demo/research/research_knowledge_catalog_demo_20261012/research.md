@@ -26,13 +26,13 @@ updated_at: 2026-10-12T18:24:00Z
 
 1. **Product Identity & Underlying APIs**: **Google Cloud Knowledge Catalog** is the rebranded evolution of **Dataplex Universal Catalog** (`https://docs.cloud.google.com/knowledge-catalog/docs/introduction`). Its underlying Google Cloud service endpoint, IAM roles, CLI command group, and Python SDK remain `dataplex.googleapis.com` (`v1`), `roles/dataplex.*`, `gcloud dataplex`, and `google-cloud-dataplex` (`google.cloud.dataplex_v1`). Enabling `dataplex.googleapis.com` activates both the Knowledge Catalog APIs and Google Cloud's managed remote Dataplex MCP server.
 2. **Direct Bridge to Cymbal Coffee's Existing Architecture**:
-   - **OKF v0.2 Native Alignment**: Cymbal Coffee already uses the **Open Knowledge Format (`OKF v0.2`)** in `.agents/bundles/`. OKF v0.2 is authored and maintained in `GoogleCloudPlatform/knowledge-catalog/okf/SPEC.md` (`//third_party/knowledge_catalog/okf/`) as the official open-source authoring and exchange format for Google Cloud Knowledge Catalog (`go/okf-pitch`). The official `kcmd` CLI (`npx -y kcmd push <project> <location> <entry-group> --path <bundle> --format okf`) syncs OKF bundles directly into a Knowledge Catalog `EntryGroup`.
+   - **OKF v0.2 Native Alignment**: Cymbal Coffee already uses the **Open Knowledge Format (`OKF v0.2`)** in `.agents/bundles/`. OKF v0.2 is authored and maintained in `GoogleCloudPlatform/knowledge-catalog/okf/SPEC.md` as the official open-source authoring and exchange format for Google Cloud Knowledge Catalog. The official `kcmd` CLI (`npx -y kcmd push <project> <location> <entry-group> --path <bundle> --format okf`) syncs OKF bundles directly into a Knowledge Catalog `EntryGroup`.
    - **Oracle 26ai Native `ANNOTATIONS(...)` Already Exist**: Migration `src/app/db/migrations/0001_cymball_coffee_products.sql:18-246,256,264` already defines rich Oracle 26ai schema annotations (`USER_ANNOTATIONS_USAGE`) across `product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, and `search_metric` (`Display`, `Description`, `Data_Role`, `Privacy`, `Embedding_Model`, `Embedding_Dimensions`, `Enum_Values`, `AI_Surface`, `Maps_Baseline`).
 3. **Why Custom Entries / `kcmd` Beats the Managed Oracle Connector for a Fast Demo**:
    - The **Managed Oracle Metadata Connector** (`bigquerydatatransfer.googleapis.com` with `dataSourceId: 'oracle'`, Preview) runs as a batch BigQuery Data Transfer Service job requiring Private Service Connect (PSC) Network Attachments (or public IP + TLS CA), `SYS.COL$` / `SELECT_CATALOG_ROLE` / `ALTER ANY TRIGGER ON SCHEMA` grants, and harvests only raw technical table/column schemas — it ignores Oracle 26ai `USER_ANNOTATIONS_USAGE` and business rules.
    - **Custom Entries + Global System Aspects (`dataplex.googleapis.com/v1`)** or **`kcmd push --format okf`** runs in **<10 seconds** from any laptop or Cloud Run service with zero VPC/PSC or `SYS.COL$` setup, and populates reusable global system aspects (`projects/655216118709/locations/global/aspectTypes/{schema,overview,guidelines,queries}`) plus Business Glossaries (`Glossary`, `GlossaryTerm`, `EntryLink`).
 4. **High-Impact Demo Pattern ("Breaking the Context Ceiling")**:
-   - Google Cloud's flagship Knowledge Catalog + Oracle demo (*The Supply Chain War Room*, `drive.google.com/open?id=1yHEqmF1zPB1UMU58IYfhBRc5-ojcetP7VYP7mDnFsWs`) and pitch decks (`go/knowledge-catalog-pitch`, `go/okf-pitch`) center on a live **Knowledge Catalog Grounding OFF vs. ON** comparison and **Context X-Ray** telemetry drawer.
+   - Google Cloud's Knowledge Catalog + Oracle reference patterns center on a live **Knowledge Catalog Grounding OFF vs. ON** comparison and **Context X-Ray** telemetry drawer.
    - In Cymbal Coffee, a single CLI command (`uv run coffee sync-catalog`) can harvest Oracle 26ai `USER_ANNOTATIONS_USAGE` + OKF business rules into Knowledge Catalog (and generate a local offline/instant snapshot + Cytoscape.js graph). At runtime, `searchEntries` + `lookupContext` grounds the barista agent on **2-tier inventory precedence**, **coordinate privacy guardrails**, **steward-certified Golden SQL (`hybrid-search-turn`)**, and **off-menu brand rules (`Folgers`/`Starbucks`)**, surfaced in the right-hand telemetry drawer via a dedicated `K` (**Knowledge Catalog**) chip.
 
 ---
@@ -68,7 +68,7 @@ When ingesting Oracle 26ai metadata via Custom Entries (`F4`, `F5`, `F6`), Knowl
 5. **Business Glossary (`Glossary`, `GlossaryTerm`, `EntryLink`)**:
    - Captures canonical domain definitions (e.g., *Available-to-Pickup Stock*, *Request-Scoped Browser Coordinates*, *Off-Menu Brand Guardrail*, *Reciprocal Rank Fusion (RRF)*) linked to table entries via `definition` `EntryLink`s.
 
-> **Important Nuance (`F8` vs `F9`)**: Public Knowledge Catalog documentation (`enrich-entries-metadata`) and internal retrieval guides (`go/kc-retrieval-overview`) specify that `lookupContext` **automatically assembles global system aspects** (`schema`, `overview`, `guidelines`, `queries`, `data-profile`, `data-quality-scorecard`) and linked Business Glossary terms into a single LLM-ready YAML/Markdown payload. User-defined custom aspect types are **not** automatically formatted by `lookupContext` and require an explicit `lookupEntry` / `getEntry` (`EntryView.FULL`) call if used. Therefore, putting agent instructions in `655216118709.global.guidelines` and golden SQL in `655216118709.global.queries` gives full native `lookupContext` support without custom aspect overhead.
+> **Important Nuance (`F8` vs `F9`)**: Public Knowledge Catalog documentation (`enrich-entries-metadata`, `retrieve-data-context`) specifies that `lookupContext` **automatically assembles global system aspects** (`schema`, `overview`, `guidelines`, `queries`, `data-profile`, `data-quality-scorecard`) and linked Business Glossary terms into a single LLM-ready YAML/Markdown payload. User-defined custom aspect types are **not** automatically formatted by `lookupContext` and require an explicit `lookupEntry` / `getEntry` (`EntryView.FULL`) call if used. Therefore, putting agent instructions in `655216118709.global.guidelines` and golden SQL in `655216118709.global.queries` gives full native `lookupContext` support without custom aspect overhead.
 
 ---
 
@@ -108,7 +108,7 @@ Knowledge Catalog provides two primary runtime consumption patterns for AI agent
 
 ## 4. What Makes a Meaningful Demo? ("Breaking the Context Ceiling")
 
-Across Google Cloud's official Knowledge Catalog pitch (`go/knowledge-catalog-pitch`), the Open Knowledge Format pitch (`go/okf-pitch`), and the internal Oracle Database@Google Cloud + Knowledge Catalog demo (*The Supply Chain War Room*, `drive.google.com/open?id=1yHEqmF1zPB1UMU58IYfhBRc5-ojcetP7VYP7mDnFsWs`), the highest-converting demo narrative is **"Breaking the Context Ceiling"** via a live **Knowledge Catalog Grounding OFF vs. ON** comparison across three concrete enterprise failure modes:
+Across Google Cloud Knowledge Catalog reference architectures and the Open Knowledge Format specification (`GoogleCloudPlatform/knowledge-catalog`), the clearest demo narrative is **"Breaking the Context Ceiling"** via a live **Knowledge Catalog Grounding OFF vs. ON** comparison across three concrete enterprise failure modes:
 
 | Enterprise Failure Barrier | What Happens in Cymbal Coffee with Knowledge Catalog **OFF** (Ungrounded) | What Happens in Cymbal Coffee with Knowledge Catalog **ON** (`lookupContext` Grounded) |
 | --- | --- | --- |
@@ -160,16 +160,9 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
   - Managed Oracle Metadata Connector (Preview): `https://docs.cloud.google.com/knowledge-catalog/docs/oracle-transfer` (`F1`, `F2`, `F3`)
   - Retrieve Data Context (`lookupContext`): `https://docs.cloud.google.com/knowledge-catalog/docs/retrieve-data-context` and `https://docs.cloud.google.com/knowledge-catalog/docs/reference/rest/v1/projects.locations/lookupContext` (`F1`, `F8`, `F9`)
   - Use Remote MCP Server: `https://docs.cloud.google.com/knowledge-catalog/docs/use-remote-mcp` (`F1`, `F10`)
-- **GitHub & Internal Code Repositories**:
-  - `GoogleCloudPlatform/knowledge-catalog` (`//third_party/knowledge_catalog/`): `okf/SPEC.md` (`f1`, `f2`, `f9`), `toolbox/mdcode/` (`kcmd` CLI & MCP server, `f3`, `f10`, `f14`), `samples/discovery/tools.py` (`f4`, `f14`)
+- **GitHub Repositories**:
+  - `GoogleCloudPlatform/knowledge-catalog`: `okf/SPEC.md` (`f1`, `f2`, `f9`), `toolbox/mdcode/` (`kcmd` CLI & MCP server, `f3`, `f10`, `f14`), `samples/discovery/tools.py` (`f4`, `f14`)
   - `googleapis/mcp-toolbox` (formerly `googleapis/genai-toolbox`): `docs/en/integrations/knowledge-catalog/prebuilt-configs/knowledge-catalog.md` (`f6`, `f7`, `f14`), `docs/en/integrations/oracle/prebuilt-configs/oracle.md` (`f6`, `f14`)
-  - `//experimental/tinykc`: Local SQLite-backed gRPC emulator for `google.cloud.dataplex.v1.CatalogService` (`f14`)
-- **Internal Moma Decks & Demo Scripts**:
-  - Knowledge Catalog Hub: `https://sites.google.com/google.com/godataanalytics/products/knowledge-catalog` (`f5`, `f11`, `f13`)
-  - Knowledge Catalog Pitch (2026) (`go/knowledge-catalog-pitch`): `https://drive.google.com/open?id=13KWjJ4_XBVcoYgp3WVULljgB74Ii3h1rZIwxDurkeVA` (`f8`, `f11`)
-  - Open Knowledge Format (OKF) Pitch (`go/okf-pitch`): `https://drive.google.com/open?id=18upOHR-PsAwee1i430YsRorBJIJ407SPTLILYV428h8` (`f9`, `f10`, `f11`)
-  - Knowledge Catalog Search & Retrieval Overview (`go/kc-retrieval-overview`): `https://drive.google.com/open?id=1lELDOiLoqL_5sQLgkS2Ir1hpOVTxJLJsX77vdSlqiEg` (`F8`, `F9`, `f7`, `f8`)
-  - Oracle & Knowledge Catalog Demo Script (*The Supply Chain War Room*): `https://drive.google.com/open?id=1yHEqmF1zPB1UMU58IYfhBRc5-ojcetP7VYP7mDnFsWs` (`F4`, `F5`, `F8`, `F9`, `f11`, `f12`, `f14`)
 - **Local Cymbal Coffee Codebase**:
   - Oracle 26ai DDL & Native `ANNOTATIONS`: `src/app/db/migrations/0001_cymball_coffee_products.sql:11-335` (`f1`–`f7`)
   - Named SQL Queries: `src/app/db/sql/products.sql`, `stores.sql`, `inventory.sql`, `system.sql`, `ai-runtime.sql` (`f1`–`f7`, `f12`)
@@ -183,7 +176,7 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
 ## 7. Limitations & Resolved Contradictions
 
 ### Limitations
-- The Managed Oracle Metadata Connector (`oracle-transfer`) and `lookupContext` API (`projects.locations/lookupContext`) are currently in Public Preview (with `lookupContext` targeting GA in Q4 2026 per `go/kc-retrieval-overview`), and `lookupContext` requires all (up to 10) entry resources in a single request to reside in the same location.
+- The Managed Oracle Metadata Connector (`oracle-transfer`) and `lookupContext` API (`projects.locations/lookupContext`) are currently in Public Preview, and `lookupContext` requires all (up to 10) entry resources in a single request to reside in the same location.
 - Data Products (`DataProduct`, `DataAsset`) in Knowledge Catalog currently support 1P analytical assets (BigQuery, Iceberg REST, Cloud Storage) rather than custom 3rd-party Oracle entries, so Oracle assets should be organized via `EntryGroup`, `Glossary`, and `EntryLink`.
 - `pyproject.toml` does not currently include `google-cloud-dataplex`; however, `httpx` and `google-auth` (via `google-genai`) are already installed, so calling the REST v1 endpoints (`entries`, `searchEntries`, `lookupContext`) directly via `httpx` avoids adding a new SDK dependency unless preferred.
 

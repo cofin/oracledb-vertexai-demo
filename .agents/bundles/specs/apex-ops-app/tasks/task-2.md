@@ -1,14 +1,16 @@
 ---
 type: Task
-id: task-2
+id: apex-ops-app:task-2
 flow_id: apex-ops-app
 state: closed
 title: Validate generated source with SQLcl before import
 description: Validate generated APEXlang using SQLcl validator.
 verification_strategy: static_validation
 depends_on:
-  - task-1
-commit: null
+  - apex-ops-app:task-1
+commit: 9119533
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-06-23T00:00:00Z
 tags:
   - task
   - apex

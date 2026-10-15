@@ -1,7 +1,14 @@
 ---
 type: Research
+research_id: research_apex26_ords_apexlang_schema_bridge
 title: APEX 26.1, ORDS, and APEXlang Schema Bridge Research
 description: Research notes on APEX 26.1 runtime, ORDS, APEXlang, and schema bridge
+scope: integration
+status: stable
+state: promoted
+promoted_to: apex-ops-console
+created_at: 2026-06-22T00:00:00Z
+updated_at: 2026-06-22T00:00:00Z
 tags:
   - research
   - apex

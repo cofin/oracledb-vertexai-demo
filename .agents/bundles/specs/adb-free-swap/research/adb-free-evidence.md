@@ -2,6 +2,7 @@
 type: Research
 research_id: adb-free-evidence
 title: ADB-Free 26ai container evidence for adb-free-swap
+description: Primary-source and repository-history evidence on the Oracle Autonomous AI Database Free 26ai container image, mTLS wallet setup, elastic vector memory, and Select AI.
 scope: integration
 tags: [migration, oracle-26ai, infrastructure]
 status: stable

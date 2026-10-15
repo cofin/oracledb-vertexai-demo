@@ -16,7 +16,7 @@ description: Active and planned Flow specifications for Cymbal Coffee
 ## Other Roadmaps & Specs
 
 - [adb-free-swap](adb-free-swap/spec.md) - Swap the managed dev database to Oracle Autonomous AI Database Free 26ai; pauses the three APEX specs below (planned)
-- [apex-ops-console](apex-ops-console/spec.md) - APEX Operations Console Roadmap (in_progress)
-- [apex-ops-app](apex-ops-app/spec.md) - Cymbal Coffee APEX Operations Console App (in_progress)
-- [apex-demo-verification-docs](apex-demo-verification-docs/spec.md) - APEX Demo Verification and Docs (planned)
+- [apex-ops-console](apex-ops-console/spec.md) - APEX Operations Console Roadmap (planned / paused by `adb-free-swap`)
+- [apex-ops-app](apex-ops-app/spec.md) - Cymbal Coffee APEX Operations Console App (planned / paused by `adb-free-swap`)
+- [apex-demo-verification-docs](apex-demo-verification-docs/spec.md) - APEX Demo Verification and Docs (planned / paused by `adb-free-swap`)
 - [vhs-demo-recordings_20260429](vhs-demo-recordings_20260429/spec.md) - VHS Demo Recordings (planned)

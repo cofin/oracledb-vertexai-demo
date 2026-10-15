@@ -1,14 +1,16 @@
 ---
 type: Task
-id: task-3
+id: apex-ops-app:task-3
 flow_id: apex-ops-app
 state: closed
 title: Import into local APEX and verify pages render
 description: Import APEX application into local Oracle APEX 26.1 instance and verify pages.
 verification_strategy: integration_acceptance
 depends_on:
-  - task-2
-commit: null
+  - apex-ops-app:task-2
+commit: 9119533
+created_at: 2026-06-23T00:00:00Z
+updated_at: 2026-06-23T00:00:00Z
 tags:
   - task
   - apex

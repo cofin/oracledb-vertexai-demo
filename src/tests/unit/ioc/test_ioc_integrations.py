@@ -79,7 +79,7 @@ def test_domain_service_provider_builds_grounded_route_service() -> None:
 def test_vertex_fallback_credentials_prefers_standard_google_auth() -> None:
     """Verify _VertexFallbackCredentials uses wrapped google-auth credentials when refresh succeeds."""
     wrapped = MagicMock()
-    wrapped.quota_project_id = "db-black-belts-playground-01"
+    wrapped.quota_project_id = "cymbal-coffee-test"
     wrapped.token = "initial-access-value"
     wrapped.expiry = None
 
@@ -87,18 +87,18 @@ def test_vertex_fallback_credentials_prefers_standard_google_auth() -> None:
         wrapped.token = "refreshed-via-google-auth"
 
     wrapped.refresh.side_effect = _refresh
-    creds = _VertexFallbackCredentials(wrapped, quota_project_id="db-black-belts-playground-01")
+    creds = _VertexFallbackCredentials(wrapped, quota_project_id="cymbal-coffee-test")
     creds.refresh(object())
 
     assert creds.token == "refreshed-via-google-auth"
-    assert creds.quota_project_id == "db-black-belts-playground-01"
+    assert creds.quota_project_id == "cymbal-coffee-test"
     assert creds._prefer_gcloud is False
 
 
 def test_vertex_fallback_credentials_falls_back_to_gcloud_on_refresh_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify _VertexFallbackCredentials falls back to gcloud ADC token minting when google-auth refresh fails."""
     wrapped = MagicMock()
-    wrapped.quota_project_id = "db-black-belts-playground-01"
+    wrapped.quota_project_id = "cymbal-coffee-test"
     wrapped.token = None
     wrapped.expiry = None
     wrapped.refresh.side_effect = RefreshError("access_denied: Account restricted")  # type: ignore[no-untyped-call]
@@ -108,7 +108,7 @@ def test_vertex_fallback_credentials_falls_back_to_gcloud_on_refresh_error(monke
         "app.ioc._ai.subprocess.run", lambda *_args, **_kwargs: SimpleNamespace(stdout="gcloud-minted-value\n")
     )
 
-    creds = _VertexFallbackCredentials(wrapped, quota_project_id="db-black-belts-playground-01")
+    creds = _VertexFallbackCredentials(wrapped, quota_project_id="cymbal-coffee-test")
     creds.refresh(object())
 
     assert creds.token == "gcloud-minted-value"

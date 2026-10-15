@@ -1,10 +1,20 @@
 ---
 type: Spec
-id: vhs-demo-recordings_20260429
+flow_id: vhs-demo-recordings_20260429
 title: VHS Demo Recordings
 description: Automated terminal recording and VHS demo tape generation
 state: planned
+plan_revision: 1
+plan_commit: null
+state_revision: 0
+current_task: null
+last_operation: null
+operation_targets: []
+last_verified_checkpoint: null
+created_at: 2026-04-29T00:00:00Z
+updated_at: 2026-10-07T00:00:00Z
 parent_prd: null
+research: []
 tags:
   - spec
   - demo

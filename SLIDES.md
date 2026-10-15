@@ -5,11 +5,10 @@
 > HNSW indexes) and Vertex AI (`gemini-embedding-2` and `Gemini 3.8 Flash`).
 > Code paths below are relative to `src/app/`.
 >
-> **Presentation guide:** For the full 36-slide "Oracle in the Age of Gemini"
+> **Presentation guide:** For the full 34-slide "Oracle in the Age of Gemini"
 > deck storyboard, speaker guide, and verified facts, see
 > [`.agents/bundles/knowledge/presentation/index.md`](.agents/bundles/knowledge/presentation/index.md).
-> The sections below correspond to **Part 3: Build Real Apps (Slides 23–34)**
-> and **Backups B1–B17**.
+> The sections below correspond to **Build Real Apps: Cymbal Coffee (Slides 26–32)**.
 
 ---
 
@@ -124,17 +123,22 @@ WITH prod_lex AS (
     FROM product p
     WHERE :has_text_query = 1
       AND CONTAINS(p.description, :text_query, 2) > 0
-    FETCH FIRST 15 ROWS ONLY
+    FETCH FIRST :limit ROWS ONLY
 ),
-prod_vec AS (
+prod_vec_top AS (
     SELECT p.id, p.name, p.description, p.category, p.price,
            CASE WHEN p.in_stock THEN 1 ELSE 0 END AS in_stock,
-           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vector_similarity,
-           ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE), p.id) AS vector_rank
+           1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vector_similarity
     FROM product p
     WHERE p.embedding IS NOT NULL
     ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
-    FETCH APPROX FIRST 15 ROWS ONLY
+    FETCH APPROX FIRST :limit ROWS ONLY
+),
+prod_vec AS (
+    SELECT pv.id, pv.name, pv.description, pv.category, pv.price,
+           pv.in_stock, pv.vector_similarity,
+           ROWNUM AS vector_rank
+    FROM prod_vec_top pv
 )
 SELECT COALESCE(l.id, v.id) AS entity_id,
        (CASE WHEN l.lexical_rank IS NOT NULL THEN 1.0 / (:rrf_k + l.lexical_rank) ELSE 0 END) +
@@ -144,6 +148,8 @@ FULL OUTER JOIN prod_vec v ON l.id = v.id
 ORDER BY rrf_score DESC
 FETCH FIRST :limit ROWS ONLY;
 ```
+
+- **Why `prod_vec_top` is isolated in its own subquery:** In Oracle AI Database 26ai (`23.26.0.0.0`), putting `ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(...))` inside the same query block as `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST :limit ROWS ONLY` causes the Cost-Based Optimizer to fall back to `TABLE ACCESS FULL`. Isolating the approximate vector top-K inside `prod_vec_top` and numbering rows with `ROWNUM AS vector_rank` in `prod_vec` preserves `VECTOR INDEX HNSW SCAN IN-FILTER` (`PRODUCT_EMBEDDING_IDX`) alongside `DOMAIN INDEX` (`PRODUCT_HYBRID_CTX_IDX`).
 
 - **Escaping user input for `CONTAINS`:** Oracle Text has its own query grammar (`AND`, `OR`, `NOT`, `NEAR`, `FUZZY`, `SYN`, `%`). Passing raw user input to `CONTAINS` can raise `DRG-50901` syntax errors. `build_oracle_text_query()` strips punctuation and reserved words, wraps each token in literal braces `{token}`, and joins them with `ACCUM` (e.g., `{decaf} ACCUM {espresso}`).
 
