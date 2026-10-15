@@ -386,7 +386,7 @@ These checks prove two things at once: the app works end-to-end, and the Oracle 
    curl -sN "$RUN_URL/api/chat/stream" \
      -H "Content-Type: application/x-www-form-urlencoded" \
      --data-urlencode "message=Recommend a smooth cold brew" \
-     --data-urlencode "persona=enthusiast" \
+     --data-urlencode "persona=barista" \
      | head -40
    ```
 

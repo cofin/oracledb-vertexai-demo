@@ -3,9 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Cymbal Coffee Infrastructure and Database Lifecycle Management.
 
-Unified DevOps CLI for the Oracle 26ai + Vertex AI demo. Mirrors the
-``dma/accelerator`` layout: six top-level groups (``init``, ``install``,
-``doctor``, ``infra``, ``database``, ``assets``).
+Unified DevOps CLI for the Oracle 26ai + Vertex AI demo with six top-level
+groups (``init``, ``install``, ``doctor``, ``infra``, ``database``, ``assets``).
 
 Examples::
 
@@ -30,10 +29,10 @@ from tools.oracle import connect_group as oracle_connect_group
 from tools.oracle import database_group as oracle_container_group
 from tools.oracle import ords_group as oracle_ords_group
 from tools.oracle import wallet_group as oracle_wallet_group
+from tools.slides import slides_group
 
 from app.__metadata__ import __version__
 
-# rich-click config
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
@@ -56,20 +55,15 @@ def cli() -> None:
     """Top-level entry point."""
 
 
-# Project lifecycle
 cli.add_command(init_command, name="init")
 cli.add_command(install_group, name="install")
 cli.add_command(doctor_command, name="doctor")
-
-
-# =============================================================================
-# Infrastructure (flat — start/stop/restart/status/logs/wipe)
-# =============================================================================
+cli.add_command(slides_group, name="slides")
 
 
 @cli.group(name="infra", help="Manage development infrastructure (Oracle 26ai container).")
 def infra_group() -> None:
-    """Oracle 26ai container lifecycle — flat namespace, accelerator-style."""
+    """Oracle 26ai container lifecycle commands."""
 
 
 _INFRA_RENAME = {
@@ -85,21 +79,15 @@ for src_name, dst_name in _INFRA_RENAME.items():
     if cmd is not None:
         infra_group.add_command(cmd, name=dst_name)
 
-# APEX install/upgrade/status as a nested subgroup: `manage.py infra apex …`
 infra_group.add_command(oracle_apex_group, name="apex")
 infra_group.add_command(oracle_ords_group, name="ords")
-
-
-# =============================================================================
-# Database (sqlspec migrations + wallet + connect)
-# =============================================================================
 
 
 @cli.group(name="database", help="Database management — migrations, wallet, and connection tests.")
 @click.pass_context
 def database_group(ctx: click.Context) -> None:
     """Database administration. Migration commands work against ``app.config.db``."""
-    import app.config as app_config  # mypy needs explicit submodule import (not `from app import config`).
+    import app.config as app_config
 
     ctx.ensure_object(dict)
     ctx.obj["configs"] = [app_config.db]
@@ -107,11 +95,6 @@ def database_group(ctx: click.Context) -> None:
 
 database_group.add_command(oracle_wallet_group, name="wallet")
 database_group.add_command(oracle_connect_group, name="connect")
-
-
-# =============================================================================
-# Assets (litestar-vite passthrough)
-# =============================================================================
 
 
 @cli.group(name="assets", help="Frontend asset pipeline (Vite via litestar-vite).")
@@ -124,11 +107,6 @@ def assets_group(ctx: click.Context) -> None:
         return LitestarEnv.from_env("app.server.asgi:create_app")
 
     ctx.obj = _get_env
-
-
-# =============================================================================
-# Main
-# =============================================================================
 
 
 def main() -> None:

@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""Shared repository path constants for unit and integration tests."""
+
 from __future__ import annotations
 
 from pathlib import Path

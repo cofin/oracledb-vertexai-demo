@@ -1,0 +1,63 @@
+# Unit Test Catalog (`src/tests/unit/`)
+
+Pure in-memory unit tests (`make test-unit`) with zero Docker/Podman container dependencies.
+
+## Canonical Module Map
+
+- `cli/`
+  - `test_commands.py` — `coffee run` port resolution (`--port` -> `PORT` -> `LITESTAR_PORT` -> `8000`) and `configure-apex-cdn`.
+  - `test_fixtures_and_embeddings.py` — `coffee upgrade`, `bulk-embed` queue dispatch (`execution_backend="immediate"`), and fixture export/load helpers.
+  - `test_surface.py` — public `coffee` Click group command surface and `_helpers` boundary.
+- `db/`
+  - `test_named_sql.py` — named SQL query discovery, `db_manager.get_sql()` call-site parity, and inline SQL ban across domain services.
+  - `test_store_data_foundation.py` — squashed `0001_cymball_coffee_products.sql` baseline DDL, Oracle 26ai `ANNOTATIONS`, and `.json.gz` fixture integrity.
+- `domain/ai/`
+  - `a2a/test_a2a.py` — `CoffeeAgentExecutor`, owner context propagation, and `build_agent_card`.
+  - `mcp/test_mcp.py` — `CoffeeMCPController`, `CoffeeSkillController`, and `CoffeePromptController` contracts.
+  - `runtime/test_loop_stream.py` — `AgentRuntime` tool loop, `TurnBudget`, and `AgentStreamService` SSE keep-alive/event framing.
+  - `runtime/test_model_store.py` — `GeminiModelClient` event aggregation, `thought_signature` preservation, and `OracleSessionStore`/`OracleEventStore` serialization and commits.
+  - `runtime/test_tools.py` — `declare()` tool schema generation (lowercase JSON Schema types), `CallContext`, and `execute_parallel()`.
+  - `test_agent_orchestration.py` — `AgentOrchestrationService` hybrid routing, grounded fast paths, agent tool turns, response caching, and telemetry.
+  - `test_mcp_controllers.py` — MCP route registration and `mcp_tool=` exposure.
+- `domain/chat/`
+  - `controllers/test_chat_controller.py` — `CoffeeChatController` SSE streaming, session ID bridging, and `AIServiceUnconfigured` 503 handling.
+  - `services/test_grounded_routes.py` — grounded composers (`PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, `ORDER_STATUS`), off-menu brand guard (`hybrid-term-hits`), and closure-bound agent tools.
+  - `services/test_hybrid_router.py` — `HybridRouteResolver` single-query Oracle 26ai RRF fusion and `build_oracle_text_query` token sanitization.
+  - `test_exceptions.py` — `AIServiceUnconfigured` placeholder project detection and HTTP 503 handler.
+- `domain/products/`
+  - `controllers/test_apex.py` — `/api/apex/*` catalog, store inventory, recommendations fallback, and vector readiness endpoints.
+  - `controllers/test_explain_plan.py` — `/api/explain-plan` validation and `DBMS_XPLAN` table row parser.
+  - `controllers/test_filters.py` — `create_filter_dependencies` and `list_with_count` pagination contracts.
+  - `controllers/test_store_inventory.py` — `/api/stores/*` HTMX partials and store inventory routes.
+  - `controllers/test_vector.py` — `vector-search-products` `FETCH APPROX` SQL contract, `OracleVectorSearchService`, and `VectorController` HTMX/JSON responses.
+  - `services/test_maps.py` — keyless Google Maps search and directions URL builders.
+  - `services/test_store_service.py` — `StoreService` location search, haversine distance sorting, store hours, and inventory lookup.
+  - `services/test_vertex_ai_service.py` — `VertexAIService` `gemini-embedding-2` task instruction formatting.
+- `domain/system/`
+  - `controllers/test_metrics_charts.py` — `/api/metrics/*` chart endpoints.
+  - `controllers/test_metrics_summary_cards.py` — metrics summary card HTMX endpoints.
+  - `services/test_cache.py` — `CacheService` response and embedding cache expiration and cleanup.
+  - `services/test_metrics.py` — `MetricsService` search metrics persistence.
+- `domain/web/`
+  - `controllers/test_pages.py` — `WebController` template context and page routes.
+- `domain/test_background_jobs.py` — `products.embed_missing` and `system.cache_cleanup` `@task` jobs.
+- `ioc/`
+  - `test_ioc_and_services.py` — Dishka provider scopes and service base contracts.
+  - `test_ioc_integrations.py` — `IntegrationsProvider`, `DomainServiceProvider`, and Vertex AI mTLS/gcloud ADC fallback credentials.
+- `lib/`
+  - `test_log.py` — structlog TTY processors and Granian/ADK warning filters.
+  - `test_log_middleware.py` — correlation ID and structlog request middleware.
+  - `test_queue_settings.py` — `QueueSettings` and `DatabaseSettings.get_queue_config()` LOB pool isolation.
+  - `test_settings.py` — `Settings`, `DatabaseSettings`, `AISettings`, `AppSettings`, `ChatSettings`, and `OpenTelemetrySettings`.
+  - `test_settings_vite.py` — `ViteSettings` template mode configuration.
+- `server/`
+  - `test_security_and_mcp.py` — `litestar-security` `PublicController`, CSRF enforcement, `/health`, and optional `MCP_API_KEY` protection.
+  - `test_security_headers.py` — `Permissions-Policy` and `Content-Security-Policy` headers.
+- `tools/slides/`
+  - `test_cli.py` — `slides` Click command group (`summary`, `diff`, `validate`, `highlight`, `qr`) contracts.
+  - `test_deck.py` — presentation JSON loading, slide summarization, UTF-16 length calculation, and deck diffing.
+  - `test_highlight.py` — code-card SQL/Python syntax highlighting `updateTextStyle` request generation.
+  - `test_validate.py` — offline `batchUpdate` payload structural and range validation rules.
+- `utils/test_fixtures.py` — `FixtureLoader` and `FixtureExporter` serialization and sequence reset tests.
+- `test_okf_layout.py` — OKF v0.2 knowledge bundle layout and `AGENTIC_REVIEW` validation gate.
+- `test_test_suite_guards.py` — AST and `tokenize` meta-guards enforcing `src/tests/AGENTS.md` and `src/app/` code hygiene.

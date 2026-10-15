@@ -22,7 +22,7 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.17.0
     hooks:
       # Run the linter.
       - id: ruff-check
@@ -31,14 +31,14 @@ repos:
       # Run the formatter (also formats Python in Markdown fences via preview mode).
       - id: ruff-format
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.2
+    rev: v2.4.3
     hooks:
       - id: codespell
         additional_dependencies:
           - tomli
-        exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/)
+        exclude: ^(\.agents/|docs/_static/|docs/_build/|node_modules/|tools/oracle/downloads/|src/app/db/fixtures/|src/resources/package-lock\.json)
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.23.0
+    rev: v0.23.3
     hooks:
       - id: markdownlint-cli2
         exclude: ^(\.agents/|docs/_build/|node_modules/|tools/oracle/downloads/)

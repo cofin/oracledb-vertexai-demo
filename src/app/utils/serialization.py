@@ -1,19 +1,17 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
+"""JSON and msgspec serialization helpers for Oracle Decimal, Struct, and NumPy types."""
+
 from decimal import Decimal
 from typing import Any
 
 import msgspec
-from sqlspec.typing import NUMPY_INSTALLED
-from sqlspec.utils.serializers import (
-    from_json,
-    numpy_array_dec_hook,
-    numpy_array_enc_hook,
-    numpy_array_predicate,
-    schema_dump,
-    to_json,
-)
+import numpy as np
+from msgspec import structs
+from sqlspec.typing import NUMPY_INSTALLED, UNSET
+from sqlspec.utils.serializers import from_json, numpy_array_dec_hook, numpy_array_enc_hook, schema_dump, to_json
+from sqlspec.utils.serializers._numpy import numpy_array_predicate
 
 __all__ = (
     "from_json",
@@ -39,18 +37,10 @@ def sanitize_for_json(obj: Any) -> Any:
     - ``numpy.ndarray`` -> ``list``
     - ``numpy.generic`` -> Python scalar
     """
-    # 1. Handle NumPy types
-    if NUMPY_INSTALLED:
-        import numpy as np
+    if NUMPY_INSTALLED and isinstance(obj, np.ndarray | np.generic):
+        return [sanitize_for_json(v) for v in obj.tolist()] if isinstance(obj, np.ndarray) else obj.item()
 
-        if isinstance(obj, np.ndarray | np.generic):
-            return [sanitize_for_json(v) for v in obj.tolist()] if isinstance(obj, np.ndarray) else obj.item()
-
-    # 2. Handle msgspec Structs
     if isinstance(obj, msgspec.Struct):
-        from msgspec import structs
-        from sqlspec.typing import UNSET
-
         fields = structs.fields(obj)
         res = {}
         for field in fields:
@@ -59,11 +49,9 @@ def sanitize_for_json(obj: Any) -> Any:
                 res[field.encode_name] = sanitize_for_json(val)
         return res
 
-    # 3. Handle Decimal (Oracle NUMBER)
     if isinstance(obj, Decimal):
         return int(obj) if obj == obj.to_integral_value() else float(obj)
 
-    # 4. Recursive collections
     if isinstance(obj, dict):
         return {k: sanitize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, list):

@@ -27,7 +27,7 @@ MIN_RECOMMENDED_MEM_BYTES = 8500000000
 )
 @click.option("--json", "json_output", is_flag=True, help="Output results as JSON")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed diagnostic information")
-def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None:  # noqa: C901, PLR0914
+def doctor_command(mode: str | None, json_output: bool, verbose: bool) -> None:  # ruff: ignore[complex-structure, too-many-locals]
     """Verify all prerequisites and configuration.
 
     Checks:

@@ -100,36 +100,15 @@ the demo's 130 committed product vectors plus query embeddings saved in
 `rows × dimensions × 4 bytes × 1.4 (HNSW overhead) × 2 (safety)` for larger
 catalogs.
 
-## Deterministic vs ADK latency
+## Single-Query Hybrid RRF vs Multi-Step Classifier Latency
 
-Product, store, availability, and unsupported order turns are routed before the
-ADK workflow is built, so they avoid speculative LLM deltas entirely. Product
-RAG can include one bounded Gemini structured-output call for candidate
-selection, but final product text is still rendered from Oracle rows. The ADK
-workflow still matters for `GENERAL_CONVERSATION`: inside that fallback path,
-the classifier and the LLM share `START` with `max_concurrency=2`. The timings
-below are illustrative; the important shape is overlap, not the exact numbers.
-
-```{mermaid}
-gantt
-    dateFormat  X
-    axisFormat  %s ms
-    title Sequential vs parallel
-    section Sequential
-    Classifier   :a1, 0, 180
-    LLM + tool   :a2, 180, 1100
-    section Parallel
-    Classifier   :b1, 0, 180
-    LLM + tool   :b2, 0, 1100
-```
-
-The "LLM + tool" bar dominates because it covers the fallback agent's reasoning,
-any closure-bound tool call, and final-event packaging. The classifier's
-latency overlaps with that fallback path instead of adding to it.
-
-The grounded `PRODUCT_RAG` route is stricter: it classifies first, runs the
-vector search directly, validates any structured selection against the returned
-product ids, and formats the final answer from product rows.
+Previously, every chat turn executed a separate LLM intent-classification call
+before running product or store retrieval. Today, `HybridRouteResolver.resolve_turn`
+fuses BM25-style lexical ranking (`CONTAINS`/`SCORE`) and HNSW vector distance
+(`FETCH APPROX`) across `chat_route`, `product`, and `store` in a single
+Oracle 26ai SQL round trip (`hybrid-search-turn`), cutting routing + retrieval
+latency down to ~15–25 ms inside Oracle. Only `GENERAL_CONVERSATION` invokes the
+native `AgentRuntime` (`Gemini 3.8 Flash`).
 
 ## What the live dashboard measures
 
@@ -138,23 +117,21 @@ across recent searches. The fields map back to specific call sites:
 
 | Badge / metric | What it measures | Source |
 | --- | --- | --- |
-| `embedding_ms` | Wall time for `VertexAIService.get_text_embedding()`, including a cache check. | `services.py` |
-| `oracle_ms` | Round-trip for the named SQL `vector-search-products` against the HNSW index. | `services.py` |
-| `tool_ms` | Total time inside `search_products_by_vector` — embedding + Oracle + result shaping. | `adk.py` |
-| `results_count` | Rows returned by HNSW after threshold + `FETCH FIRST :limit`. | `products.sql` |
+| `embedding_ms` | Wall time for `VertexAIService.get_text_embedding()`, including a cache check. | `_embedding.py` |
+| `oracle_ms` | Round-trip for the named SQL `hybrid-search-turn` / `vector-search-products` against Oracle 26ai. | `_router.py` / `_products.py` |
+| `ai_ms` | Time spent in `AgentRuntime.execute_turn` (0 ms on deterministic grounded routes). | `agent_service.py` |
+| `results_count` | Rows returned by Hybrid RRF or HNSW search. | `hybrid.sql` / `products.sql` |
 | `from_cache` | Response cache hit (model + persona + normalized query). | `CacheService` |
 | `embedding_cache_hit` | Hit on the Oracle-backed `embedding_cache` table. | `VertexAIService` |
-| `grounded_answer_mode` | Product RAG answer path: structured selection, template fallback, timeout, rejected output, or model error. | `_adk_grounding.py` |
-| `grounded_answer_ms` | Time spent in the Product RAG structured-selection step or its fallback. | `_adk_grounding.py` |
-| `intent_detected` | Output of the Flash-Lite classifier, with product lookup fallback normalized to `PRODUCT_RAG`. | `FlashLiteIntentClassifier` / `_adk_telemetry.py` |
-| `sql_phases` | Per-phase timing collected during retrieval, used for the colored badges in the chat bubble. | `_adk_telemetry.py` |
+| `intent_detected` | Route resolved by `HybridRouteResolver.resolve_turn` (`PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, `ORDER_STATUS`, or `GENERAL_CONVERSATION`). | `_router.py` |
+| `sql_phases` | Per-phase timing collected during retrieval, used for the colored badges in the chat bubble. | `_telemetry.py` |
 
 If `oracle_ms` spikes:
 
 1. Check the EXPLAIN PLAN at `/explore` still mentions `VECTOR`. A full
    table scan means the index is unavailable.
 2. Verify `vector_memory_size` is non-zero — `SELECT name, bytes FROM
-   v$sgainfo WHERE name = 'Vector Memory'`.
+   v$sgainfo WHERE name IN ('Vector Memory Area', 'Vector Memory')`.
 3. Refresh table/index statistics if the catalog has just grown.
 
 If `embedding_ms` spikes, the embedding cache is missing or full. `coffee

@@ -1,0 +1,143 @@
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Unit tests validating the OKF v0.2 `.agents/bundles/` knowledge layout and `AGENTIC_REVIEW` configuration."""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+AGENTS_DIR = REPO_ROOT / ".agents"
+BUNDLES_DIR = AGENTS_DIR / "bundles"
+PRODUCT_DIR = BUNDLES_DIR / "product"
+KNOWLEDGE_DIR = BUNDLES_DIR / "knowledge"
+SPECS_DIR = BUNDLES_DIR / "specs"
+RESEARCH_DIR = BUNDLES_DIR / "research"
+OKF_BUNDLE_DIRS = (PRODUCT_DIR, KNOWLEDGE_DIR, SPECS_DIR, RESEARCH_DIR)
+
+REQUIRED_OKF_KNOWLEDGE_PATHS = (
+    "AGENTS.md",
+    ".agents/AGENTS.md",
+    "src/tests/AGENTS.md",
+    "src/tests/unit/AGENTS.md",
+    "src/tests/integration/AGENTS.md",
+    ".agents/bundles/index.md",
+    ".agents/bundles/knowledge/index.md",
+    ".agents/bundles/knowledge/workflow.md",
+    ".agents/bundles/knowledge/architecture/index.md",
+    ".agents/bundles/knowledge/architecture/system-architecture.md",
+    ".agents/bundles/knowledge/architecture/native-ai-runtime.md",
+    ".agents/bundles/knowledge/architecture/oracle-26ai-hybrid-rrf.md",
+    ".agents/bundles/knowledge/domains/index.md",
+    ".agents/bundles/knowledge/domains/core-lib-ioc-server-cli.md",
+    ".agents/bundles/knowledge/domains/ai-and-protocols.md",
+    ".agents/bundles/knowledge/domains/chat-products-stores-system.md",
+    ".agents/bundles/knowledge/testing/index.md",
+    ".agents/bundles/knowledge/testing/unit-and-integration-catalog.md",
+    ".agents/bundles/knowledge/patterns/index.md",
+    ".agents/bundles/knowledge/gotchas/index.md",
+    ".agents/bundles/knowledge/gotchas/oracle-sqlspec-and-queues.md",
+    ".agents/bundles/knowledge/gotchas/litestar-security-and-vertex.md",
+)
+
+RETIRED_KNOWLEDGE_DIRS = (".agents/bundles/knowledge/guides", ".agents/bundles/knowledge/plans")
+
+REQUIRED_REVIEW_SKILLS = (
+    ".agents/skills/review-python-backend/SKILL.md",
+    ".agents/skills/review-python-backend/references/false-positive-suppressions.md",
+    ".agents/skills/review-oracle-sqlspec/SKILL.md",
+    ".agents/skills/review-oracle-sqlspec/references/false-positive-suppressions.md",
+    ".agents/skills/review-ai-and-mcp/SKILL.md",
+    ".agents/skills/review-ai-and-mcp/references/false-positive-suppressions.md",
+    ".agents/skills/review-web-htmx/SKILL.md",
+    ".agents/skills/review-web-htmx/references/false-positive-suppressions.md",
+    ".agents/skills/ghop-review-manager/SKILL.md",
+    ".agents/skills/ghop-review-manager/scripts/validate_agentic_review.py",
+)
+
+LEGACY_BEADS_RE = re.compile(r"\bbd\s+(?:ready|create|close|update|list|show|sync)\b", re.IGNORECASE)
+FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
+INLINE_CODE_RE = re.compile(r"`[^`]+`")
+MARKDOWN_LINK_RE = re.compile(r"(?<!\!)\[[^\]]+\]\(([^)]+)\)")
+
+
+def _strip_code_spans(markdown_text: str) -> str:
+    """Remove fenced code blocks and inline code spans before scanning markdown links."""
+    without_fences = FENCED_CODE_RE.sub("", markdown_text)
+    return INLINE_CODE_RE.sub("", without_fences)
+
+
+def test_required_okf_knowledge_files_exist() -> None:
+    """Verify all required OKF v0.2 knowledge bundle and `AGENTS.md` files exist."""
+    missing = [rel for rel in REQUIRED_OKF_KNOWLEDGE_PATHS if not (REPO_ROOT / rel).is_file()]
+    assert missing == []
+
+
+def test_retired_knowledge_directories_are_removed() -> None:
+    """Verify legacy `guides/` and `plans/` directories under `.agents/bundles/knowledge/` are removed."""
+    present = [rel for rel in RETIRED_KNOWLEDGE_DIRS if (REPO_ROOT / rel).exists()]
+    assert present == []
+
+
+def test_knowledge_markdown_files_have_yaml_frontmatter() -> None:
+    """Verify every markdown file under `.agents/bundles/knowledge/` starts with YAML frontmatter."""
+    missing_frontmatter: list[str] = []
+    for md_file in sorted(KNOWLEDGE_DIR.rglob("*.md")):
+        rel = md_file.relative_to(REPO_ROOT).as_posix()
+        text = md_file.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            missing_frontmatter.append(rel)
+    assert missing_frontmatter == []
+
+
+def test_no_legacy_beads_commands_in_agents_docs() -> None:
+    """Verify active `AGENTS.md` and `.agents/bundles/knowledge/` files contain no legacy `bd` CLI invocations."""
+    violations: list[str] = []
+    targets = [REPO_ROOT / "AGENTS.md", AGENTS_DIR / "AGENTS.md", *sorted(KNOWLEDGE_DIR.rglob("*.md"))]
+    for path in targets:
+        if not path.is_file():
+            continue
+        rel = path.relative_to(REPO_ROOT).as_posix()
+        if LEGACY_BEADS_RE.search(path.read_text(encoding="utf-8")):
+            violations.append(rel)
+    assert violations == []
+
+
+def test_agentic_review_and_skills_exist_and_validate() -> None:
+    """Verify root `AGENTIC_REVIEW` and all GHOP review skills exist and pass structural validation."""
+    agentic_review = REPO_ROOT / "AGENTIC_REVIEW"
+    assert agentic_review.is_file()
+
+    missing = [rel for rel in REQUIRED_REVIEW_SKILLS if not (REPO_ROOT / rel).is_file()]
+    assert missing == []
+
+    lines = agentic_review.read_text(encoding="utf-8").splitlines()
+    skill_lines = [line.strip() for line in lines if "review_capability_skills" in line]
+    assert len(skill_lines) == 4
+    for line in skill_lines:
+        assert not line.startswith("#"), "Comment lines must never contain review_capability_skills"
+        assert line.startswith('review_capability_skills: "')
+
+
+def test_knowledge_and_spec_relative_markdown_links_resolve() -> None:
+    """Verify relative markdown links across PRODUCT_DIR, KNOWLEDGE_DIR, SPECS_DIR, and RESEARCH_DIR resolve."""
+    broken_links: list[str] = []
+    markdown_files = [
+        md_file for bundle_dir in OKF_BUNDLE_DIRS if bundle_dir.exists() for md_file in sorted(bundle_dir.rglob("*.md"))
+    ]
+    for md_file in markdown_files:
+        rel_source = md_file.relative_to(REPO_ROOT).as_posix()
+        cleaned = _strip_code_spans(md_file.read_text(encoding="utf-8"))
+        for match in MARKDOWN_LINK_RE.finditer(cleaned):
+            raw_target = match.group(1).strip()
+            if not raw_target:
+                continue
+            target_part = raw_target.split()[0].split("#", 1)[0].strip()
+            if not target_part or "://" in target_part or target_part.startswith(("mailto:", "/")):
+                continue
+            resolved = (md_file.parent / target_part).resolve()
+            if not resolved.exists():
+                broken_links.append(f"{rel_source} -> {raw_target}")
+    assert broken_links == []

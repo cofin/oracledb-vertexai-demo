@@ -5,6 +5,31 @@
 
 {# Result list returned by POST /api/vector-demo when HX-Request is set. #}
 <div id="search-results" class="mt-3 min-h-28 space-y-2">
+  {% if hybrid_detail_json is defined and hybrid_detail_json %}
+    <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-strong/55 px-3 py-2 text-xs">
+      <div class="flex flex-wrap items-center gap-2 text-muted">
+        <span class="font-semibold text-strong">Hybrid RRF</span>
+        <code class="rounded bg-surface px-1.5 py-0.5 font-mono text-[11px] text-accent-strong">1/(60 + r_lex) + 1/(60 + r_vec)</code>
+        {% if oracle_text_query %}
+          <span class="font-mono text-[11px] text-muted">CONTAINS: {{ oracle_text_query }}</span>
+        {% endif %}
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" class="telemetry-chip border-accent/30 bg-accent-soft text-accent-strong"
+          data-telemetry-chip data-telemetry-detail="{{ hybrid_detail_json | e }}"
+          aria-label="Inspect Hybrid RRF SQL query and score breakdown">
+          Hybrid RRF SQL &amp; scores
+        </button>
+        {% if vector_detail_json is defined and vector_detail_json %}
+          <button type="button" class="telemetry-chip border-border bg-surface text-strong"
+            data-telemetry-chip data-telemetry-detail="{{ vector_detail_json | e }}"
+            aria-label="Inspect pure HNSW Vector Search SQL query">
+            Vector HNSW SQL
+          </button>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
   {% if error %}
     <p class="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger" role="alert">
       {{ error }}

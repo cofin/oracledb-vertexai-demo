@@ -12,10 +12,10 @@ from rich.console import Console
 
 from app.__metadata__ import __version__
 
+__all__ = ("cli", "console", "main")
+
 console = Console()
 
-
-# rich-click presentation knobs.
 click.rich_click.USE_RICH_MARKUP = True
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.GROUP_ARGUMENTS_OPTIONS = True
@@ -25,18 +25,6 @@ click.rich_click.STYLE_COMMANDS_PANEL_BOX = "BLANK"
 click.rich_click.STYLE_OPTIONS_PANEL_BOX = "BLANK"
 click.rich_click.STYLE_COMMANDS_PANEL_BORDER = "none"
 click.rich_click.STYLE_OPTIONS_PANEL_BORDER = "none"
-
-
-def _setup_environment() -> None:
-    """Configure environment variables shared by every ``coffee`` invocation."""
-    from app import config
-    from app.lib.log import set_cli_mode
-    from app.lib.settings import get_settings
-
-    config.setup_logging()
-    set_cli_mode(True)
-    settings = get_settings()
-    settings.setup_litestar_env()
 
 
 @click.group(
@@ -73,14 +61,25 @@ def main() -> None:
     """
     _setup_environment()
 
-    # Side-effect: importing app.cli.commands registers every command on `cli`.
-    from app.cli import commands as _commands  # noqa: F401
+    from app.cli import commands as _commands  # ruff: ignore[unused-import]
 
     try:
         cli()
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
+
+
+def _setup_environment() -> None:
+    """Configure environment variables shared by every ``coffee`` invocation."""
+    from app import config
+    from app.lib.log import set_cli_mode
+    from app.lib.settings import get_settings
+
+    config.setup_logging()
+    set_cli_mode(True)
+    settings = get_settings()
+    settings.setup_litestar_env()
 
 
 if __name__ == "__main__":

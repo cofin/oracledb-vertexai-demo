@@ -74,7 +74,7 @@ editions, raise `vector_memory_size` to a 4G target on the SPFILE.
 Verify the pool with:
 
 ```sql
-SELECT name, bytes FROM v$sgainfo WHERE name = 'Vector Memory';
+SELECT name, bytes FROM v$sgainfo WHERE name IN ('Vector Memory Area', 'Vector Memory');
 ```
 
 ## The query shape
@@ -97,11 +97,10 @@ enough; `:limit` caps the top-k.
 runs the query above and maps each row to a typed `ProductMatch` — Python
 hands Oracle a plain `list[float]`, no manual packing required.
 
-```{literalinclude} ../../src/app/domain/products/services/services.py
+```{literalinclude} ../../src/app/domain/products/services/_products.py
 :language: python
-:start-after: docs:start-search-by-vector
-:end-before: docs:end-search-by-vector
-:caption: src/app/domain/products/services/services.py
+:pyobject: ProductService.search_by_vector
+:caption: src/app/domain/products/services/_products.py
 ```
 
 SQLSpec and the Oracle adapter handle the vector binding. Don't reach for
@@ -144,4 +143,4 @@ If `oracle_ms` spikes, check that `vector_memory_size` is non-zero, that
 - **RAG** uses the `ProductMatch` rows returned here as grounding context:
   see [RAG](rag.md).
 - **Chat routing** decides *whether* to fire this search at all: see
-  [Chat routing and Google ADK](agent-flow.md).
+  [Chat routing and Native Agent Runtime](agent-flow.md).

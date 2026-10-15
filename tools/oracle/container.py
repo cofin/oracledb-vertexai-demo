@@ -46,7 +46,7 @@ class ContainerRuntime:
         if shutil.which("docker"):
             try:
                 result = subprocess.run(
-                    ["docker", "--version"],  # noqa: S607
+                    ["docker", "--version"],  # ruff: ignore[start-process-with-partial-path]
                     capture_output=True,
                     timeout=5,
                     check=False,
@@ -60,7 +60,7 @@ class ContainerRuntime:
         if shutil.which("podman"):
             try:
                 result = subprocess.run(
-                    ["podman", "--version"],  # noqa: S607
+                    ["podman", "--version"],  # ruff: ignore[start-process-with-partial-path]
                     capture_output=True,
                     timeout=5,
                     check=False,

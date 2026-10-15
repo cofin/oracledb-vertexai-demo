@@ -1,18 +1,24 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from litestar import Controller, get
-from litestar.di import NamedDependency
-from litestar.params import FromPath, SkipValidation
-from litestar.plugins.htmx import HTMXTemplate
+"""Coffee products and store location controllers exposing REST and MCP tools."""
 
-from app.domain.products.schemas import Product, Store
+from litestar import get
+from litestar.di import NamedDependency
+from litestar.exceptions import NotFoundException
+from litestar.params import FromPath, SkipValidation
+from litestar_htmx import HTMXTemplate
+from litestar_security import PublicController
+
+from app.domain.products.schemas import Product, ProductAvailability, Store
 from app.domain.products.services import ProductService, StoreService
 from app.lib.di import Inject
 from app.lib.service import FilterTypes, OffsetPagination, create_filter_dependencies
 
+__all__ = ("ProductController", "StoreController")
 
-class ProductController(Controller):
+
+class ProductController(PublicController):
     """Coffee product catalogue endpoints."""
 
     path = "/api/products"
@@ -35,8 +41,22 @@ class ProductController(Controller):
         """List products with pagination, search, and filtering."""
         return await products_service.list_with_count(*filters)
 
+    @get(
+        "/{product_id:int}",
+        operation_id="GetProduct",
+        name="products:get",
+        summary="Get Product",
+        mcp_tool="get_product",
+    )
+    async def get_product(self, product_id: FromPath[int], products_service: Inject[ProductService]) -> Product:
+        """Fetch product details by ID."""
+        product = await products_service.get_by_id(product_id)
+        if product is None:
+            raise NotFoundException(detail=f"Product {product_id} not found")
+        return product
 
-class StoreController(Controller):
+
+class StoreController(PublicController):
     """Cymbal Coffee store-location endpoints."""
 
     path = "/api/stores"
@@ -66,3 +86,16 @@ class StoreController(Controller):
         return HTMXTemplate(
             template_name="partials/_inventory_list.html.j2", context={"inventory": inventory, "store_id": store_id}
         )
+
+    @get(
+        "/{store_id:int}/inventory/raw",
+        operation_id="StoreInventoryData",
+        name="stores:inventory:raw",
+        summary="Store Inventory Data",
+        mcp_tool="get_store_inventory",
+    )
+    async def store_inventory_data(
+        self, stores_service: Inject[StoreService], store_id: FromPath[int]
+    ) -> list[ProductAvailability]:
+        """Fetch current product inventory for one store."""
+        return await stores_service.list_store_inventory(store_id)

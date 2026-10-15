@@ -279,7 +279,7 @@ class ConnectionTester:
 
         try:
             return self._run_connection_probe(config, start_time=start_time)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             error_msg = str(e)
             suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
 

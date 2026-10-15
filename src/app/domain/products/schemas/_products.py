@@ -1,14 +1,30 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""Product, store, inventory, and vector search schemas."""
 
-from datetime import datetime  # noqa: TC003 — used in handler-visible schema; Litestar OpenAPI needs runtime ref
+from datetime import datetime
 from typing import Any, Literal
 
 from msgspec import field
 
 from app.lib.schema import CamelizedBaseStruct
+
+__all__ = (
+    "ExplainPlan",
+    "ExplainPlanRow",
+    "Product",
+    "ProductAvailability",
+    "ProductMatch",
+    "StockStatus",
+    "Store",
+    "StoreDistance",
+    "StoreHours",
+    "StoreProductInventory",
+    "VectorDemo",
+    "VectorDemoMatch",
+    "VectorQuery",
+)
 
 StockStatus = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
 
@@ -104,10 +120,11 @@ class VectorQuery(CamelizedBaseStruct, omit_defaults=True):
 
 
 class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
-    """A product row returned by vector similarity search.
+    """A product row returned by vector or hybrid RRF search.
 
     Slim projection of `product` (no embedding, no metadata) plus the
-    `similarity_score` derived in SQL via `1 - VECTOR_DISTANCE(...)`.
+    `similarity_score` derived in SQL via `1 - VECTOR_DISTANCE(...)` and
+    optional hybrid Reciprocal Rank Fusion scores and ranks.
     """
 
     id: int
@@ -115,6 +132,10 @@ class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
     description: str
     price: float
     similarity_score: float
+    lexical_score: float = 0.0
+    lexical_rank: int | None = None
+    vector_rank: int | None = None
+    rrf_score: float = 0.0
     store_id: int | None = None
     store_name: str | None = None
     quantity_available: int | None = None
@@ -123,12 +144,17 @@ class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
 
 
 class VectorDemoMatch(CamelizedBaseStruct, omit_defaults=True):
-    """A vector-search hit shaped for the explore-page Panel 1 partial."""
+    """A vector or hybrid RRF search hit shaped for the explore-page Panel 1 partial."""
 
     name: str
     description: str
     price: float
     similarity: float
+    lexical_score: float = 0.0
+    lexical_rank: int | None = None
+    vector_rank: int | None = None
+    rrf_score: float = 0.0
+    rrf_k: int = 60
 
 
 class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
@@ -141,6 +167,10 @@ class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
     cache_hit: bool
     performance_level: str
     debug_timings: dict[str, float]
+    search_mode: str = "hybrid"
+    rrf_k: int = 60
+    oracle_text_query: str | None = None
+    sql_phases: list[dict[str, Any]] = field(default_factory=list)
 
 
 class ExplainPlanRow(CamelizedBaseStruct, omit_defaults=True):

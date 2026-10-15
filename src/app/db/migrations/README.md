@@ -61,11 +61,14 @@ out-of-order migrations gracefully (e.g., from late-merging branches).
 
 The initial Oracle 26ai schema in this project includes:
 
-- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2-preview`.
+- `product` table (`INMEMORY PRIORITY HIGH`) with `BOOLEAN` stock flag, `JSON` metadata, and `VECTOR(3072, FLOAT32)` embeddings produced by `gemini-embedding-2`.
 - `store` table for location data with `JSON`-encoded business hours.
 - `store_product_inventory` table for curated store-level product availability.
 - `response_cache`, `embedding_cache`, and `search_metric` support tables.
-- HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product` and `embedding_cache`.
+- `agent_session` and `agent_event` tables for the native AI runtime.
+- `chat_route` (`INMEMORY PRIORITY HIGH`) table with `VECTOR(3072, FLOAT32)` route exemplar embeddings.
+- HNSW vector indexes (`ORGANIZATION INMEMORY NEIGHBOR GRAPH`, `NEIGHBORS=40`, `EFCONSTRUCTION=500`, `TARGET ACCURACY=95`, `DISTANCE COSINE`) on `product`, `embedding_cache`, and `chat_route`.
+- Oracle Text `MULTI_COLUMN_DATASTORE` preferences (`product_search_ds`, `store_search_ds`, `route_search_ds`) and `CTXSYS.CONTEXT` indexes (`product_hybrid_ctx_idx`, `store_hybrid_ctx_idx`, `chat_route_ctx_idx`) with `SYNC (ON COMMIT)`.
 
 ## Schema Annotations
 

@@ -364,7 +364,7 @@ class HealthChecker:
                 suggestions=result.suggestions,
             )
 
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             return ComponentHealth(
                 name="Database Connectivity",
                 status=HealthStatus.UNHEALTHY,
@@ -522,7 +522,7 @@ class HealthChecker:
         return mapping.get(status, "?")
 
 
-def get_troubleshooting_suggestions(  # noqa: PLR0911
+def get_troubleshooting_suggestions(  # ruff: ignore[too-many-return-statements]
     component: ComponentHealth,
 ) -> list[str]:
     """Get troubleshooting suggestions for component.

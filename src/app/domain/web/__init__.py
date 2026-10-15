@@ -12,3 +12,5 @@ The package marker turns ``domain/web`` into a peer-domain alongside
   build`` writes ``manifest.json`` + hashed bundles here.
 * ``controllers/`` — page-level route handlers that render those templates.
 """
+
+__all__: tuple[str, ...] = ()

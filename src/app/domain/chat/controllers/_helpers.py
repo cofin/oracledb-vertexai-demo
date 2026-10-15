@@ -11,7 +11,18 @@ from typing import TYPE_CHECKING, Any
 from litestar.exceptions import ValidationException
 
 if TYPE_CHECKING:
-    from litestar.plugins.htmx import HTMXRequest
+    from litestar_htmx import HTMXRequest
+
+__all__ = (
+    "CoffeeChatForm",
+    "chat_form_from_request",
+    "location_context_from_form",
+    "location_text",
+    "payload_bool",
+    "payload_float",
+    "payload_raw",
+    "payload_value",
+)
 
 _MIN_LATITUDE = -90.0
 _MAX_LATITUDE = 90.0
@@ -23,7 +34,7 @@ _MISSING = object()
 @dataclass
 class CoffeeChatForm:
     message: str
-    persona: str = "enthusiast"
+    persona: str = "barista"
     location_consent: bool = False
     latitude: float | None = None
     longitude: float | None = None
@@ -114,7 +125,7 @@ async def chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
         payload = await request.form()
     return CoffeeChatForm(
         message=payload_value(payload, "message"),
-        persona=payload_value(payload, "persona", default="enthusiast"),
+        persona=payload_value(payload, "persona", default="barista"),
         location_consent=payload_bool(payload, "locationConsent", "location_consent"),
         latitude=payload_float(payload, "latitude", "lat"),
         longitude=payload_float(payload, "longitude", "lng", "lon"),

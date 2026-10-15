@@ -56,10 +56,10 @@ class ApexInstallConfig:
     pdb: str = "FREEPDB1"
     # Staging path *inside* the ephemeral container (docker cp target read by SYSDBA),
     # not a host temp file — the S108 heuristic does not apply here.
-    container_apex_dir: str = "/tmp/apex"  # noqa: S108
+    container_apex_dir: str = "/tmp/apex"  # ruff: ignore[hardcoded-temp-file]
     images_url_path: str = "/i/"
     admin_user: str = "ADMIN"
-    admin_password: str = "SuperSecret1"  # noqa: S105
+    admin_password: str = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
     workspace: str = "COFFEE"
     primary_schema: str = "app"
 
@@ -180,9 +180,9 @@ class ApexInstaller:
         password = self.config.admin_password
         privs = "ADMIN:CREATE:DATA_LOADER:EDIT:RUN:CONVERT"
         # Identifiers/passwords are config-controlled demo values, not external input (S608 N/A).
-        ws_query = f"SELECT COUNT(*) INTO v_ws FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
-        id_query = f"SELECT workspace_id INTO v_sgid FROM apex_workspaces WHERE workspace = '{workspace}'"  # noqa: S608
-        user_query = f"SELECT COUNT(*) INTO v_user FROM apex_workspace_apex_users WHERE workspace_name = '{workspace}' AND user_name = '{admin}'"  # noqa: S608
+        ws_query = f"SELECT COUNT(*) INTO v_ws FROM apex_workspaces WHERE workspace = '{workspace}'"  # ruff: ignore[hardcoded-sql-expression]
+        id_query = f"SELECT workspace_id INTO v_sgid FROM apex_workspaces WHERE workspace = '{workspace}'"  # ruff: ignore[hardcoded-sql-expression]
+        user_query = f"SELECT COUNT(*) INTO v_user FROM apex_workspace_apex_users WHERE workspace_name = '{workspace}' AND user_name = '{admin}'"  # ruff: ignore[hardcoded-sql-expression]
         plsql = (
             "DECLARE\n"
             "  v_ws NUMBER; v_user NUMBER; v_sgid NUMBER;\n"

@@ -34,17 +34,36 @@ if TYPE_CHECKING:
     from litestar.stores.base import Store
     from litestar.stores.registry import StoreRegistry
     from litestar.template import TemplateConfig
+    from litestar_queues import QueueConfig
     from litestar_vite import ViteConfig
     from sqlspec.adapters.oracledb import OracleAsyncConfig
     from sqlspec.base import SQLSpec
 
     from app.lib.settings import Settings
 
+__all__ = (
+    "cors",
+    "csrf",
+    "db",
+    "db_manager",
+    "log",
+    "problem_details",
+    "queue",
+    "queue_db",
+    "session_config",
+    "setup_logging",
+    "stores",
+    "template",
+    "vite",
+)
+
 _initialized: bool = False
 
 _settings: Settings
 db_manager: SQLSpec
 db: OracleAsyncConfig
+queue_db: OracleAsyncConfig
+queue: QueueConfig
 stores: StoreRegistry
 session_config: ServerSideSessionConfig
 csrf: CSRFConfig
@@ -104,7 +123,7 @@ def setup_logging() -> None:
 
 def _initialize() -> None:
     """Materialize every public attribute from the current environment."""
-    global _initialized  # noqa: PLW0603
+    global _initialized
 
     from litestar.config.cors import CORSConfig as _CORSConfig
     from litestar.config.csrf import CSRFConfig as _CSRFConfig
@@ -126,11 +145,11 @@ def _initialize() -> None:
     settings = get_settings()
     log_as_json = not log_conf.is_tty()
     db_cfg = settings.db.create_config()
-    db_mgr = _SQLSpec()
+    queue_db_cfg = settings.db.get_queue_config()
+    queue_cfg = settings.queue.get_config(queue_db_cfg)
+    db_mgr = _SQLSpec(observability_config=db_cfg.observability_config)
     db_mgr.add_config(db_cfg)
     db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
-
-    from typing import cast
 
     store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
 
@@ -213,6 +232,8 @@ def _initialize() -> None:
     g["_settings"] = settings
     g["db_manager"] = db_mgr
     g["db"] = db_cfg
+    g["queue_db"] = queue_db_cfg
+    g["queue"] = queue_cfg
     g["stores"] = store_registry
     g["session_config"] = _SessionConfig(store="sessions")
     g["csrf"] = _CSRFConfig(
@@ -231,7 +252,7 @@ def _initialize() -> None:
 
 def _reset() -> None:
     """Discard cached configuration so the next access re-initializes from env."""
-    global _initialized  # noqa: PLW0603
+    global _initialized
 
     from app.lib.settings import Settings
 
@@ -239,6 +260,8 @@ def _reset() -> None:
         "_settings",
         "db_manager",
         "db",
+        "queue_db",
+        "queue",
         "stores",
         "session_config",
         "csrf",
@@ -257,7 +280,7 @@ def _reset() -> None:
 
     from app.server import plugins
 
-    plugins._reset()  # noqa: SLF001
+    plugins._reset()
 
 
 def _install_warning_filters() -> None:

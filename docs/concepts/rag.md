@@ -1,94 +1,54 @@
-# RAG
+# RAG with Hybrid RRF & Lexical Term Hits
 
 Gemini is good at writing fluid, persuasive sentences about coffee. It is
 not, on its own, a source of truth for *this* coffee shop's menu. Cymbal
-Coffee solves that with a stricter RAG path: retrieve real menu rows from
-Oracle, format the answer from those rows, and refuse to invent products that
-aren't on the list.
+Coffee solves that with a single-query Oracle 26ai Hybrid RRF RAG path:
+retrieve real menu rows by fusing BM25-style lexical ranking (`CONTAINS`/`SCORE`)
+and HNSW vector similarity (`VECTOR_DISTANCE ... FETCH APPROX`), verify exact
+catalog token hits via `hybrid-term-hits`, and format the answer deterministically
+from those rows.
 
 ```{mermaid}
 flowchart TD
-    Q[user question] --> E[embed]
-    E --> R[(Oracle 26ai<br/>vector match)]
-    R --> G[candidate rows<br/>list&lt;ProductMatch&gt;]
-    G --> S[structured selector]
-    S --> V[Python validator]
-    V --> A[row-rendered<br/>grounded answer]
+    Q[user question] --> E[embed with gemini-embedding-2]
+    E --> R[(Oracle 26ai Hybrid RRF<br/>hybrid-search-turn)]
+    R --> T[(Oracle Text JSON_TABLE<br/>hybrid-term-hits)]
+    T --> G[grounded composer<br/>GroundedRouteService.handle_product_rag]
+    G --> A[row-rendered<br/>grounded answer]
 ```
 
 ## The three steps
 
-**Retrieve.** The user question is embedded once, then the
-`vector-search-products` SQL returns up to *k* `ProductMatch` rows above a
-similarity threshold. See [Vector search in Oracle
-26ai](vector-search.md) for the HNSW shape and the embedding contract.
+**1. Fuse Lexical & Vector Retrieval (`hybrid-search-turn`).** The user question
+is embedded once, and a single SQL query combines Oracle Text `CONTAINS`/`SCORE`
+(over `MULTI_COLUMN_DATASTORE` indexing `name`, `description`, `category`, `sku`) with
+HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` via Reciprocal Rank Fusion
+($k = 60$).
 
-**Ground.** The returned rows are formatted into a structured grounding
-context — name, description, price, in-stock flag, similarity score —
-*not* free-form prose. Product RAG may ask Gemini to return structured selected
-product ids, but the app validates those ids and renders the final answer from
-that context; the ADK fallback exposes the same list as tool output.
+**2. Verify Off-Menu Tokens (`hybrid-term-hits`).** Content tokens from the
+user's message are checked in one `JSON_TABLE(:terms_json)` + `CONTAINS` query
+against the catalog. If a user asks *"Do you carry Folgers?"*, dense embeddings
+match dark roasts at ~0.68 similarity, but `term_hits["folgers"] == 0` proves
+`"Folgers"` is not on the menu—allowing the composer to explicitly pivot to
+closest in-stock alternatives without a second LLM call.
 
-**Generate.** For `PRODUCT_RAG` turns, the runner takes a grounded shortcut:
-it may use a bounded structured-output call for selection, then formats the
-final answer from the returned products and yields a single grounded SSE final
-event. The model never gets to draft a speculative product reply that the
-browser would have to overwrite.
-
-For `GENERAL_CONVERSATION` turns there's nothing to retrieve — the agent
-streams Gemini's reply normally.
-
-## Why intent-routed grounding, not prompt-stuffing
-
-The naive RAG pattern bakes retrieved rows into the prompt and lets the
-model decide what to do with them. Cymbal Coffee inverts that: a small,
-fast classifier reads the user's turn first and routes product, store, and
-availability questions to grounded handlers. For `PRODUCT_RAG`, the handler
-runs the vector search itself, validates any structured selection against the
-returned rows, and formats the answer from those rows — the LLM never gets to
-draft a speculative product reply. That has three consequences:
-
-1. Retrieval is gated by intent, not by the LLM's tool reasoning, so
-   grounded turns can't silently degrade into ungrounded prose;
-2. The classifier's labels (`PRODUCT_RAG`, `STORE_LOCATION`,
-   `PRODUCT_AVAILABILITY`, `GENERAL_CONVERSATION`) are the routing
-   contract, so changing retrieval behavior is a code change, not prompt
-   tweaking;
-3. `search_products_by_vector` is *also* registered as a tool on the
-   fallback `GENERAL_CONVERSATION` agent for cases the classifier missed
-   — and even then, if that fallback path performs a product lookup, the
-   runner re-grounds the final answer from the real vector-search rows.
+**3. Render Grounded Answer (`GroundedRouteService.handle_product_rag`).** The final answer
+is rendered directly from the returned Oracle product rows (names, prices,
+descriptions) and yielded as a grounded SSE `final` event.
 
 ## Caches
 
 Two caches sit on this path:
 
-- **Embedding cache** — Oracle table keyed on `(text, model)`. Repeat
-  queries (or product re-embeddings) skip the Vertex AI call. Vectors are
-  stored as `VECTOR(3072, FLOAT32)` so the cache uses the same vector
-  memory pool as the product index.
-- **Response cache** — keyed on model + persona + normalized query. A hit
-  yields the exact final event without re-running retrieval or the LLM.
-
-The chat result payload reports both — `embedding_cache_hit` and
-`from_cache` — so it's visible in the UI which path served the answer.
-
-## Failure modes the demo surfaces
-
-- **The fallback model skips the tool**: the runner's grounding fallback
-  re-runs product search and formats the answer from the returned rows rather
-  than trusting the model's tool-less draft.
-- **The selector returns malformed JSON, an unknown product id, or takes too
-  long**: the runner falls back to the deterministic row-rendered answer.
-- **The fallback model emits a tool-schema artifact instead of an answer**:
-  same fallback. Better an honest grounded answer than a confused one.
-- **No products match**: the threshold filters out weak matches; the
-  agent says it doesn't have one and offers to substitute. It does not
-  invent a product.
+- **Embedding cache** — Oracle table keyed on `(text_hash, model)`. Repeat
+  queries skip the Vertex AI call. Vectors are stored as `VECTOR(3072, FLOAT32)`.
+- **Response cache** — keyed on version + model + persona + normalized query.
+  A hit yields the cached final event without re-running retrieval or the LLM
+  (automatically bypassed when browser geolocation coordinates are shared).
 
 ## Where this is used
 
 - **The walkthrough** walks through one full RAG turn: see [the
   walkthrough](../tour.md).
-- **Chat routing** explains how the classifier, deterministic routes, and ADK
-  fallback fit together: see [Chat routing and Google ADK](agent-flow.md).
+- **Hybrid routing** explains how `hybrid-search-turn` and `AgentRuntime`
+  fit together: see [Hybrid RRF Routing and Native AI Runtime](agent-flow.md).

@@ -1,12 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""Cache schema models for response and embedding caches."""
 
-from datetime import datetime  # noqa: TC003
+from datetime import datetime
 from typing import Any
 
 from app.lib.schema import CamelizedBaseStruct
+
+__all__ = ("EmbeddingCache", "ResponseCache")
 
 
 class ResponseCache(CamelizedBaseStruct, omit_defaults=True):

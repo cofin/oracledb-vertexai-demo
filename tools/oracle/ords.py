@@ -59,7 +59,7 @@ class OrdsConfig:
     # SYS password the ORDS image uses for its first-run `ords install`. gvenzl sets
     # SYS/SYSTEM from ORACLE_PASSWORD, so this must mirror that, not DATABASE_PASSWORD
     # (the app user). Without it the container exits: "ORACLE_PWD ... must be declared".
-    oracle_pwd: str = "super-secret"  # noqa: S105
+    oracle_pwd: str = "super-secret"  # ruff: ignore[hardcoded-password-string]
     http_probe_timeout: float = 5.0
 
     @classmethod
@@ -180,7 +180,7 @@ class OrdsSidecar:
         for cmd in (["exec", name, "ords", "--version"], ["logs", "--tail", "200", name]):
             try:
                 _returncode, stdout, stderr = self.runtime.run_command(cmd, check=False, timeout=20)
-            except Exception:  # noqa: BLE001 - runtime failures make the probe inconclusive.
+            except Exception:
                 stdout = ""
                 stderr = ""
             version = self._parse_ords_version(f"{stdout}\n{stderr}")
@@ -212,9 +212,9 @@ class OrdsSidecar:
 
     def _http_status(self, path: str) -> int | None:
         """Return HTTP status for a readiness path, or None when unreachable."""
-        request = Request(self._http_url(path), method="GET")  # noqa: S310
+        request = Request(self._http_url(path), method="GET")  # ruff: ignore[suspicious-url-open-usage]
         try:
-            with urlopen(request, timeout=self.config.http_probe_timeout) as response:  # noqa: S310
+            with urlopen(request, timeout=self.config.http_probe_timeout) as response:  # ruff: ignore[suspicious-url-open-usage]
                 return cast("int", response.status)
         except HTTPError as exc:
             return exc.code

@@ -1,23 +1,28 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Dependency injection re-exports and request-scoped query context."""
+"""Dependency injection re-exports and active container context variables."""
+
+from __future__ import annotations
 
 from contextvars import ContextVar
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from dishka.integrations.litestar import DishkaRouter as LitestarRouter
 from dishka.integrations.litestar import FromDishka as Inject
 from dishka.integrations.litestar import LitestarProvider, setup_dishka
 
-query_id_var: ContextVar[str | None] = ContextVar("query_id", default=None)
+if TYPE_CHECKING:
+    from dishka import AsyncContainer
 
+__all__ = (
+    "Inject",
+    "LitestarProvider",
+    "LitestarRouter",
+    "request_container_var",
+    "setup_dishka",
+    "worker_container_var",
+)
 
-@dataclass
-class QueryContext:
-    """Request-scoped query identifier."""
-
-    query_id: str
-
-
-__all__ = ("Inject", "LitestarProvider", "LitestarRouter", "QueryContext", "query_id_var", "setup_dishka")
+request_container_var: ContextVar[AsyncContainer | None] = ContextVar("request_container", default=None)
+worker_container_var: ContextVar[AsyncContainer | None] = ContextVar("worker_container", default=None)

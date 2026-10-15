@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+from app.cli.main import main
+
+__all__ = ("run_cli",)
+
 
 def run_cli() -> None:
     """Entry point for the ``coffee`` CLI."""
-    from app.cli.main import main
-
     main()
 
 

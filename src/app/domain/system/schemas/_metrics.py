@@ -1,9 +1,25 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""System performance and cache telemetry schemas."""
 
 from app.lib.schema import CamelizedBaseStruct
+
+__all__ = (
+    "CacheStats",
+    "CacheStatsRow",
+    "MetricCard",
+    "MetricsBreakdown",
+    "MetricsBreakdownRow",
+    "MetricsCharts",
+    "MetricsScatterPoint",
+    "MetricsSummary",
+    "MetricsTimeSeries",
+    "MetricsTimeSeriesPoints",
+    "MetricsTimeSeriesRow",
+    "PerformanceStats",
+    "SearchMetricsCreate",
+)
 
 
 class SearchMetricsCreate(CamelizedBaseStruct, omit_defaults=True, kw_only=True):

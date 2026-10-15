@@ -67,6 +67,6 @@ by side.
 ## Where to go next
 
 - [CLI reference](cli.md) — end-user lifecycle commands.
-- [For the curious](internals.md) — HNSW, deterministic routing vs ADK
-  fallback latency, and the live performance dashboard.
-- [API reference](api.md) — autodoc on `ADKRunner` and core services.
+- [For the curious](internals.md) — HNSW, single-query Hybrid RRF routing,
+  and the live performance dashboard.
+- [API reference](api.md) — autodoc on `AgentOrchestrationService`, `HybridRouteResolver`, and core services.

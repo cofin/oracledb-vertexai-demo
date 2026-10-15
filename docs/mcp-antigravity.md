@@ -36,22 +36,19 @@ secrets outside tracked files.
 
 ## Config Location
 
-Antigravity reads MCP server entries from a user-level `mcp_config.json`. The
-IDE owns a per-app file:
+Antigravity CLI (`agy`) and Antigravity IDE read MCP server entries from a
+global user-level file or a workspace-scoped file:
 
 ```text
-~/.gemini/antigravity/mcp_config.json
+~/.gemini/config/mcp_config.json
+.agents/mcp_config.json
 ```
 
-On Windows this is `%USERPROFILE%\.gemini\antigravity\mcp_config.json`. To edit
-it without touching the filesystem, open the Agent panel "..." menu, choose
-**MCP Servers > Manage MCP Servers > View raw config**. A shared
-`~/.gemini/config/mcp_config.json` is also read and lets the same entries apply
-across Antigravity tools (IDE and CLI); use it when servers should be shared.
-
-Antigravity uses this home-directory model rather than a project-local
-`.gemini/` config. Keep secret-free examples under `.agents/` or `docs/`, but
-the live MCP file belongs in the user's home directory.
+On Windows the global file is `%USERPROFILE%\.gemini\config\mcp_config.json`.
+To manage servers in the IDE UI, open **Settings > Customizations > Installed
+MCP Servers**. Keep secret-free workspace templates under `.agents/` or `docs/`,
+and store credentials in environment variables or Secret Manager rather than
+tracked files.
 
 ## SQLcl MCP
 

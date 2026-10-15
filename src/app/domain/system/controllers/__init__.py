@@ -3,11 +3,11 @@
 
 """System domain controllers."""
 
-from litestar import Controller
+from litestar_security import PublicController
 
 from app.domain.system.controllers._metrics import MetricsController
 from app.domain.system.controllers._system import SystemController
 
-controllers: list[type[Controller]] = [MetricsController, SystemController]
+controllers: list[type[PublicController]] = [MetricsController, SystemController]
 
 __all__ = ("MetricsController", "SystemController", "controllers")

@@ -13,77 +13,66 @@ user types it until the grounded reply renders in the browser.
 </div>
 
 The phrase isn't an obvious coffee question. The router has to recognize that
-"bold" is an idiom for a dark roast or strong espresso, then use the
-vector-search route against the menu — that's the whole point of the demo.
+"bold" is an idiom for a dark roast or strong espresso, retrieve matching
+products from the menu, and verify whether any off-menu brand was requested —
+all in a single Oracle 26ai Hybrid RRF round trip.
 
 The path of this message:
 
 1. The browser opens an SSE stream to `/api/chat/stream`.
-2. Flash-Lite classifies it as `PRODUCT_RAG`.
-3. Vertex AI embeds the question (with an Oracle-backed cache in front).
-4. Oracle 26ai's HNSW index returns the closest products.
-5. Gemini may select among candidate product ids, and the runner renders one
-   grounded final SSE event from the selected Oracle rows.
+2. Vertex AI embeds the question with `gemini-embedding-2` (with an Oracle-backed `embedding_cache` in front).
+3. Oracle 26ai executes `hybrid-search-turn`, fusing BM25-style `CONTAINS`/`SCORE` lexical ranking with HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` across `chat_route`, `product`, and `store` via Reciprocal Rank Fusion ($k=60$).
+4. `HybridRouteResolver` resolves the `PRODUCT_RAG` route and product candidates from that single query, checks `hybrid-term-hits` for off-menu nouns, and renders a grounded `final` SSE event.
 
 ```{mermaid}
 flowchart LR
     B([Browser]) -->|POST /api/chat/stream| C[Litestar controller]
-    C --> R[ADKRunner]
-    R --> I[Flash-Lite<br/>intent]
-    I --> V[Vertex AI<br/>embedding]
-    V --> O[(Oracle 26ai<br/>HNSW search)]
-    O --> S[Structured selector]
-    S --> F[Grounded renderer]
-    F -->|SSE final| B
+    C --> R[AgentOrchestrationService]
+    R --> V[Vertex AI<br/>embedding]
+    V --> O[(Oracle 26ai Hybrid RRF<br/>hybrid-search-turn)]
+    O --> G[Grounded composer<br/>+ term_hits check]
+    G -->|SSE final| B
 ```
 
-*The whole product-RAG turn in one picture: SSE in, SSE out, with routing,
-retrieval, and answer formatting inside the runner.*
+*The whole product-RAG turn in one picture: SSE in, SSE out, with single-query
+Hybrid RRF routing, retrieval, and grounded formatting inside the orchestrator.*
 
 ## 1. The browser opens an SSE stream
 
-The chat form posts to `/api/chat/stream`. The controller validates the
-message, derives the ADK session identity from the Litestar session, and
-hands control to `ADKRunner.stream_request()`. Each event the runner yields
-becomes one SSE block on the wire.
+The chat form posts to `/api/chat/stream`. `CoffeeChatController` validates the
+message, derives the `(user_id, session_id)` identity from the Litestar session,
+and delegates the turn to `AgentOrchestrationService.stream_conversation_turn()`.
+Each frame the orchestrator yields becomes one SSE block on the wire.
 
 ```{mermaid}
 flowchart TD
     F[Chat form] -->|fetch POST| H[stream_chat_message]
     H --> I[validate message]
-    H --> S[adk_session_identity]
-    H --> R[ADKRunner.stream_request]
-    R -. delta / final / error .-> H
+    H --> S[chat_session_identity]
+    H --> R[AgentOrchestrationService.stream_conversation_turn]
+    R -. session / delta / final / error .-> H
     H -->|ServerSentEvent| F
 ```
 
-The chat routes live on a Litestar controller. `stream_chat_message` is the
-SSE endpoint the form posts to — it validates input, bridges the Litestar
-session to an ADK session, then delegates the streaming work to `ADKRunner`.
-
 ```{literalinclude} ../src/app/domain/chat/controllers/_chat.py
 :language: python
-:start-after: docs:start-stream-handler
-:end-before: docs:end-stream-handler
+:pyobject: CoffeeChatController.stream_chat_message
 :caption: src/app/domain/chat/controllers/_chat.py
 ```
 
 :::{tour-stop}
-The chat controller is intentionally thin. Validation, session bridging, and
-error sanitization happen here; everything else is delegated to `ADKRunner`
-and the Dishka-injected `AgentToolsService`.
+The chat controller is intentionally thin. Input validation, CSRF enforcement,
+session bridging, and error sanitization happen here; orchestration and
+grounding live in `AgentOrchestrationService` and `HybridRouteResolver`.
 :::
 
 ## 2. Vertex AI embeds the question
 
-When the runner classifies the turn as `PRODUCT_RAG`, the question is sent
-to Vertex AI's `gemini-embedding-2` model with a query-purpose instruction
-prepended to the text. The general-conversation fallback can call the same
-vector-search tool, but this menu turn uses the deterministic route. Document
-embeddings (the products themselves) are produced separately with a
-document-purpose instruction so query and document vectors share the same
-metric geometry. Repeat queries are short-circuited by the Oracle-backed
-embedding cache.
+The question is sent to Vertex AI's `gemini-embedding-2` model with a
+query-purpose instruction prepended to the text. Document embeddings (products
+and `chat_route` exemplars) are produced with a document-purpose instruction so
+query and document vectors share compatible retrieval geometry. Repeat queries
+are short-circuited by the Oracle-backed `embedding_cache`.
 
 ```{mermaid}
 flowchart TD
@@ -94,42 +83,23 @@ flowchart TD
     EV --> NX[next stop]
 ```
 
-`VertexAIService.get_text_embedding` is the wrapper around the Vertex AI
-`gemini-embedding-2` call, with the Oracle-backed embedding cache check
-in front of it. Gemini Embedding 2 does not use the old embedding `task_type`
-API parameter; this app encodes query-vs-document intent in the text sent to the
-embedding model.
-
-```{literalinclude} ../src/app/domain/products/services/services.py
+```{literalinclude} ../src/app/domain/products/services/_embedding.py
 :language: python
-:start-after: docs:start-vertex-embedding
-:end-before: docs:end-vertex-embedding
-:caption: src/app/domain/products/services/services.py
+:pyobject: VertexAIService.get_text_embedding
+:caption: src/app/domain/products/services/_embedding.py
 ```
 
 :::{agent-detail}
-Query/document purpose is not cosmetic. The user question and product fixture
+Query/document purpose is not cosmetic. The user question and catalog fixture
 text are embedded with different instructions so Oracle compares vectors
 generated for compatible retrieval roles.
 :::
 
-## 3. Oracle 26ai finds matching products
+## 3. Oracle 26ai runs Hybrid RRF routing & retrieval
 
-The 3072-dimension query vector is bound straight into a named SQL query.
-Oracle's HNSW index over `product.embedding` returns the top matches in a
-single round trip; `1 - VECTOR_DISTANCE(..., COSINE)` is reshaped into a
-similarity score so a higher number means "more like the query."
-
-```{mermaid}
-flowchart LR
-    QV["list[float] · 3072"] --> P[ProductService.search_by_vector]
-    P --> S[(named SQL<br/>vector-search-products)]
-    S --> X[(Oracle HNSW index<br/>NEIGHBOR GRAPH)]
-    X --> M["list[ProductMatch]<br/>id · name · price · score"]
-```
-
-Every query lives as a named SQL file under `src/app/db/sql/`; SQLSpec loads
-them by key. Here is the vector search the product service runs:
+The 3072-dimension query vector and sanitized Oracle Text query are bound into
+named SQL statements under `src/app/db/sql/`. For direct vector search,
+Oracle's HNSW index (`INMEMORY NEIGHBOR GRAPH`) uses `ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX`:
 
 ```{literalinclude} ../src/app/db/sql/products.sql
 :language: sql
@@ -138,14 +108,13 @@ them by key. Here is the vector search the product service runs:
 :caption: src/app/db/sql/products.sql
 ```
 
-The matching `ProductService` method calls that named SQL and lets SQLSpec
-map each row straight into a `ProductMatch` msgspec struct.
+`ProductService.search_by_vector` and `ProductService.search_hybrid` map each
+returned row directly into a typed `ProductMatch` `msgspec.Struct`:
 
-```{literalinclude} ../src/app/domain/products/services/services.py
+```{literalinclude} ../src/app/domain/products/services/_products.py
 :language: python
-:start-after: docs:start-search-by-vector
-:end-before: docs:end-search-by-vector
-:caption: src/app/domain/products/services/services.py
+:pyobject: ProductService.search_by_vector
+:caption: src/app/domain/products/services/_products.py
 ```
 
 :::{oracle-internals}
@@ -153,43 +122,23 @@ See [Oracle 26ai vector search](concepts/vector-search.md) for the HNSW
 index shape and the `vector_memory_size` knob.
 :::
 
-## 4. The runner emits a grounded final event
+## 4. The orchestrator emits a grounded final event
 
-For `PRODUCT_RAG`, the runner does not stream speculative model deltas. It
-may use Gemini structured output to select among returned product ids, validates
-that selection, then renders one grounded `final` event from Oracle product
-rows. Store location and product availability turns follow the same
-deterministic shape: classify first, query named SQL through request-scoped
-services, then emit a single grounded event with optional map actions.
+`HybridRouteResolver.resolve_turn` fuses lexical (`CONTAINS`/`SCORE`) and
+vector (`VECTOR_DISTANCE`) rankings across `chat_route`, `product`, and
+`store` in one query (`hybrid-search-turn`), eliminating a separate LLM
+intent-classification round trip:
 
-```{mermaid}
-flowchart TD
-    I{intent} -->|PRODUCT_RAG| P[Product RAG]
-    I -->|STORE_LOCATION| S[Store lookup]
-    I -->|PRODUCT_AVAILABILITY| A[Inventory lookup]
-    P --> O[(Oracle 26ai)]
-    S --> O
-    A --> O
-    O --> R[Grounded final event]
-```
-
-For `GENERAL_CONVERSATION`, the runner falls through to the Google ADK 2.0
-workflow. That path uses an `LlmAgent` with the same closure-bound tools and a
-parallel `FunctionNode` classifier before the workflow output is packaged.
-
-```{literalinclude} ../src/app/domain/chat/services/workflow.py
+```{literalinclude} ../src/app/domain/chat/services/_router.py
 :language: python
-:start-after: docs:start-workflow-fanout
-:end-before: docs:end-workflow-fanout
-:caption: src/app/domain/chat/services/workflow.py
+:pyobject: HybridRouteResolver.resolve_turn
+:caption: src/app/domain/chat/services/_router.py
 ```
 
-:::{agent-detail}
-The ADK workflow is still useful for general conversation and model-driven
-fallbacks, but grounded product, store, availability, and unsupported order
-routes are handled before the workflow is built. That is why menu turns never
-show an ungrounded draft that later gets overwritten.
-:::
+For `PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, and `ORDER_STATUS`,
+the orchestrator formats a deterministic grounded answer from the Oracle rows
+and emits the `final` SSE frame. For `GENERAL_CONVERSATION`, execution streams
+through the native `AgentRuntime` (`Gemini 3.8 Flash`) with closure-bound tools.
 
 ## What's next
 
@@ -200,14 +149,14 @@ show an ungrounded draft that later gets overwritten.
 :link: concepts/vector-search
 :link-type: doc
 
-Short pages on vectors in Oracle, RAG, Google ADK, and store/map grounding.
+Short pages on vectors in Oracle, Hybrid RRF RAG, native AI runtime routing, and store/map grounding.
 :::
 
 :::{grid-item-card} Reference
 :link: reference/quickstart
 :link-type: doc
 
-Quickstart, the `coffee` CLI, autodoc on `ADKRunner` and the core services,
+Quickstart, the `coffee` CLI, autodoc on `AgentOrchestrationService` and core services,
 and a "for the curious" appendix.
 :::
 

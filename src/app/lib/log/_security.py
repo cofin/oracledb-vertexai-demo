@@ -7,19 +7,36 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
 
 if TYPE_CHECKING:
     from litestar.types.asgi_types import Message
 
+__all__ = ("apply_security_headers", "build_security_headers")
+
 
 def build_security_headers(maps_settings: Any | None = None) -> dict[str, str]:
     """Build browser security headers for location and optional Maps Embed."""
-    maps = maps_settings or get_settings().maps
+    maps = maps_settings or Settings.from_env().maps
     headers = {"Permissions-Policy": "geolocation=(self)"}
     if maps.embed_enabled:
         headers["Content-Security-Policy"] = "frame-src 'self' https://www.google.com https://www.google.com/maps/;"
     return headers
+
+
+def apply_security_headers(message: Message) -> None:
+    """Mutate an ASGI response-start message with app security headers."""
+    existing_custom_csp = False
+    message_dict = cast("dict[str, Any]", message)
+    headers = cast("list[tuple[bytes, bytes]]", message_dict.get("headers", []))
+    for header_name, header_value in headers:
+        if header_name.lower() == b"content-security-policy":
+            existing_custom_csp = b"https://www.google.com" in header_value
+            break
+    for name, value in build_security_headers().items():
+        if name == "Content-Security-Policy" and existing_custom_csp:
+            continue
+        _set_response_header(message, name, value)
 
 
 def _set_response_header(message: Message, name: str, value: str) -> None:
@@ -35,18 +52,3 @@ def _set_response_header(message: Message, name: str, value: str) -> None:
             headers[index] = (header_name, encoded_value)
             return
     headers.append((encoded_name, encoded_value))
-
-
-def apply_security_headers(message: Message) -> None:
-    """Mutate an ASGI response-start message with app security headers."""
-    existing_csp = False
-    message_dict = cast("dict[str, Any]", message)
-    headers = cast("list[tuple[bytes, bytes]]", message_dict.get("headers", []))
-    for header_name, _header_value in headers:
-        if header_name.lower() == b"content-security-policy":
-            existing_csp = True
-            break
-    for name, value in build_security_headers().items():
-        if name == "Content-Security-Policy" and existing_csp:
-            continue
-        _set_response_header(message, name, value)

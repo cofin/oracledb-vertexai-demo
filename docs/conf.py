@@ -11,7 +11,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "sphinx.ext.intersphinx",
     "sphinx_autodoc_typehints",
     "sphinx_copybutton",
     "sphinx_design",
@@ -106,7 +105,7 @@ sphinx_immaterial_custom_admonitions = [
     },
     {
         "name": "agent-detail",
-        "title": "ADK 2.0 detail",
+        "title": "Native AI runtime detail",
         "icon": "material/robot-outline",
         "color": (66, 133, 244),
         "classes": ["info"],
@@ -114,8 +113,3 @@ sphinx_immaterial_custom_admonitions = [
 ]
 
 mermaid_version = "11.4.1"
-
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "litestar": ("https://docs.litestar.dev/2/", None),
-}

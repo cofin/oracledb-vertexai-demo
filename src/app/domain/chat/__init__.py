@@ -2,3 +2,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Chat domain package."""
+
+__all__: tuple[str, ...] = ()

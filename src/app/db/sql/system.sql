@@ -71,3 +71,7 @@ WHERE created_at > :since;
 -- name: explain-plan-display
 SELECT plan_table_output
 FROM TABLE(DBMS_XPLAN.DISPLAY(NULL, NULL, 'TYPICAL +PREDICATE +NOTE'));
+
+-- name: delete-stale-agent-sessions
+DELETE FROM agent_session
+WHERE updated_at < CURRENT_TIMESTAMP - NUMTODSINTERVAL(:retention_days, 'DAY');

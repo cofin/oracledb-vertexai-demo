@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-from __future__ import annotations
+"""Base msgspec Struct classes for application schemas."""
 
 import msgspec
+
+__all__ = ("BaseStruct", "CamelizedBaseStruct")
 
 
 class BaseStruct(msgspec.Struct):

@@ -1,0 +1,6 @@
+# GHOP AI Code Review configuration for Cymbal Coffee (Oracle 26ai + Vertex AI).
+# Each skill is declared on its own line for AutoRater line-parser compatibility.
+review_capability_skills: ".agents/skills/review-python-backend/SKILL.md"
+review_capability_skills: ".agents/skills/review-oracle-sqlspec/SKILL.md"
+review_capability_skills: ".agents/skills/review-ai-and-mcp/SKILL.md"
+review_capability_skills: ".agents/skills/review-web-htmx/SKILL.md"

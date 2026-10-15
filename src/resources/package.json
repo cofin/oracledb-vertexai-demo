@@ -9,14 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "apexcharts": "^5.15.2",
-    "htmx.org": "2.0.10"
+    "apexcharts": "^8.0.0",
+    "htmx.org": "2.0.11"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.2",
-    "litestar-vite-plugin": "0.25.0",
-    "tailwindcss": "4.3.2",
-    "typescript": "6.0.3",
-    "vite": "8.1.3"
+    "@tailwindcss/vite": "4.3.3",
+    "litestar-vite-plugin": "0.32.0",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.4"
   }
 }

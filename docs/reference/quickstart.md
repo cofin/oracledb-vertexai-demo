@@ -59,7 +59,7 @@ rather than a stack trace.
 
 - [The walkthrough](../tour.md) — what one chat message actually does.
 - [CLI reference](cli.md) — every demo lifecycle command.
-- [For the curious](internals.md) — HNSW, deterministic routing vs ADK
-  fallback latency, and the live performance dashboard.
+- [For the curious](internals.md) — HNSW, single-query Hybrid RRF routing,
+  and the live performance dashboard.
 - [Developers](developers.md) — raw migration commands, fixture
   regeneration, and verification.

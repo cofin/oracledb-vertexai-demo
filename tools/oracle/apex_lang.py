@@ -34,7 +34,7 @@ class ApexLangConfig:
     port: int = 1521
     service_name: str = PDB_SERVICE_NAME
     user: str = "app"
-    password: str = "SuperSecret1"  # noqa: S105
+    password: str = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
     minimum_sqlcl: str = MINIMUM_APEXLANG_SQLCL
 
     @classmethod

@@ -4,10 +4,35 @@
 #}
 
 {# Single ProductMatch row for the explore-page Panel 1 list. #}
-<article class="flex items-start justify-between gap-4 rounded-lg border border-border bg-surface px-3 py-2">
-  <div class="min-w-0">
+<article data-search-result-card class="flex items-start justify-between gap-4 rounded-lg border border-border bg-surface px-3 py-2.5">
+  <div class="min-w-0 flex-1">
     <h4 class="truncate text-sm font-semibold text-strong">{{ match.name }}</h4>
     <p class="truncate text-xs text-muted">{{ match.description }}</p>
+    <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+      {% set rrf_k_val = match.rrf_k | default(60) %}
+      <span class="rounded bg-accent-soft px-1.5 py-0.5 font-mono font-semibold text-accent-strong"
+        title="Reciprocal Rank Fusion score (k={{ rrf_k_val }})">
+        RRF {{ '%.4f' % (match.rrf_score | default(0.0)) }}
+      </span>
+      <span class="rounded border border-border bg-surface-strong/60 px-1.5 py-0.5 font-mono text-strong"
+        title="HNSW cosine vector rank and similarity">
+        Vec #{{ match.vector_rank or '—' }} · {{ '%.1f' % match.similarity }}%
+      </span>
+      {% if match.lexical_rank %}
+        <span class="rounded border border-border bg-surface-strong/60 px-1.5 py-0.5 font-mono text-strong"
+          title="Oracle Text CONTAINS/SCORE(1) rank and score">
+          Text #{{ match.lexical_rank }} · SCORE {{ '%.0f' % (match.lexical_score | default(0.0)) }}
+        </span>
+      {% else %}
+        <span class="rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-muted"
+          title="Matched via HNSW vector similarity only">
+          Text — (semantic)
+        </span>
+      {% endif %}
+      <span class="font-mono text-muted">
+        {{ ('1/(' ~ rrf_k_val ~ '+' ~ match.lexical_rank ~ ')') if match.lexical_rank else '0' }} + {{ ('1/(' ~ rrf_k_val ~ '+' ~ match.vector_rank ~ ')') if match.vector_rank else '0' }}
+      </span>
+    </div>
   </div>
   <div class="flex shrink-0 flex-col items-end gap-1 text-xs">
     <span class="font-mono text-strong">${{ '%.2f' % match.price }}</span>
