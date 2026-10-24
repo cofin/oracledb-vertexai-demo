@@ -2,16 +2,17 @@
 type: Spec
 flow_id: platform-alignment-apex-vertex-prd
 title: SQLSpec 0.69.0 Platform Alignment, Codebase Simplification, Autonomous AI Database Free APEX 26.1 + Vertex AI, and Automated Demo Recordings
-state: planned
+state: active
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 1
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: checkpoint
+operation_targets:
+  - sqlspec-069-and-core-foundation
+last_verified_checkpoint: "d19c3e2"
 created_at: 2026-10-24T19:25:00Z
-updated_at: 2026-10-24T19:25:00Z
+updated_at: 2026-10-24T20:51:30Z
 description: Master PRD roadmap delivering SQLSpec 0.69.0 adoption, frozen msgspec/service/DI standardization and codebase debloating, Oracle Autonomous AI Database Free 26ai (APEX 26.1.5 + ORDS 26.3) migration, Direct Vertex AI + Litestar gateway APEX 26.1 Generative AI integration with a cohesive Cymbal Coffee APEX 26.1 app, and automated VHS + Playwright + FFmpeg shell/browser demo recordings across five stacked PRs.
 tags:
   - refactor
@@ -126,9 +127,9 @@ Each chapter corresponds to **one self-contained, green-CI pull request** in a l
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `platform-alignment-apex-vertex-prd` (`planned`)
+- **Active Flow / Lifecycle**: `platform-alignment-apex-vertex-prd` (`active`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `d19c3e2`
 - **Key Decisions**:
   - Adopt SQLSpec `0.69.0` (`enable_session_tracing`, wire `sqlcommenter`, `queue_db` `manage_lifespan`, `wallet_zip`, `OracleLoaderService`) and `FrozenBaseStruct` (`frozen=True, gc=False`) in PR 1, followed by domain-wide standardization and dead-code removal in PR 2.
   - Switch local managed infrastructure to `container-registry.oracle.com/database/adb-free:latest-26ai` (APEX 26.1.5 + ORDS 26.3) and retire legacy `gvenzl` SYSDBA APEX/ORDS installers in PR 3 while keeping `gvenzl/oracle-free` for ephemeral `make test-integration`.
@@ -140,9 +141,9 @@ Each chapter corresponds to **one self-contained, green-CI pull request** in a l
   3. Ordering PR 2 tasks as `system` (`2.1`) $\rightarrow$ `chat` (`2.2`) $\rightarrow$ `ai` (`2.3`) $\rightarrow$ `products`/`web` (`2.4`) allows every legacy alias and dead service (`InventoryService`, `MapsService`, `EmbeddingService`, `RunContextRegistry`, `CoffeeToolServices`) to be removed cleanly with zero cross-task file overlap and green tests at every commit.
   4. Packaging `configure-apex-cdn.sql` under `src/app/db/sql/deploy/` fixes a broken path lookup (`BASE_DIR.parents[1] / "tools"`) inside distroless Cloud Run PyApp builds.
 - **Blockers & Unblock Conditions**: None
-- **Next Exact Step**: Approve plan and run `/flow:implement sqlspec-069-and-core-foundation` starting with Task `sqlspec-069-and-core-foundation:1.1`.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+- **Next Exact Step**: Branch `refactor/domain-standardization` from `refactor/sqlspec-069-core` and execute `domain-standardization-and-debloat` Tasks `2.1`–`2.4`.
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 1`, `last_operation: checkpoint`, `operation_targets: ["sqlspec-069-and-core-foundation"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/architecture/system-architecture.md`

@@ -2,16 +2,20 @@
 type: Spec
 flow_id: sqlspec-069-and-core-foundation
 title: SQLSpec 0.69.0 Adoption, Frozen Wire Structs, OracleLoaderService, and Decoupled Dishka IoC
-state: planned
+state: completed
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 4
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: complete
+operation_targets:
+  - "1.1"
+  - "1.2"
+  - "1.3"
+  - "1.4"
+last_verified_checkpoint: "d19c3e2"
 created_at: 2026-10-24T19:26:00Z
-updated_at: 2026-10-24T19:26:00Z
+updated_at: 2026-10-24T20:51:30Z
 description: First stacked PR upgrading to SQLSpec 0.69.0 (enable_session_tracing, wire-level sqlcommenter, queue_db manage_lifespan, native wallet_zip), adding FrozenBaseStruct/CamelizedFrozenStruct, centralized msgspec serialization, app.lib.exceptions, and OracleLoaderService, decoupling app.config and app.ioc from app.server, and tightening nested-import CI gates.
 tags:
   - refactor
@@ -85,28 +89,28 @@ Files examined:
 
 ### Phase 1: SQLSpec `0.69.0` Settings, Schemas, Loader Services & Decoupled IoC
 
-- [ ] 1.1 Upgrade `pyproject.toml` to SQLSpec `0.69.0`, adopt `enable_session_tracing` + wire `sqlcommenter` + `wallet_zip` + `queue_db` `manage_lifespan`, and slot/clean all settings dataclasses
-- [ ] 1.2 Add `FrozenBaseStruct`, centralized `msgspec` serialization helpers, `app.lib.exceptions`, frozen `security.py` dataclasses, and `OracleLoaderService`
-- [ ] 1.3 Delete `log/_security.py` and ADK log filters, decouple `app.config` via `register_reset_hook` and top-level imports, and tighten nested-import CI gates
-- [ ] 1.4 Decouple `src/app/ioc/` from `app.config` and `app.server`, scope `AgentStreamService` to `Scope.APP`, and standardize `create_container` across ASGI, CLI, and jobs
+- [x] 1.1 Upgrade `pyproject.toml` to SQLSpec `0.69.0`, adopt `enable_session_tracing` + wire `sqlcommenter` + `wallet_zip` + `queue_db` `manage_lifespan`, and slot/clean all settings dataclasses [`9b64b7c`]
+- [x] 1.2 Add `FrozenBaseStruct`, centralized `msgspec` serialization helpers, `app.lib.exceptions`, frozen `security.py` dataclasses, and `OracleLoaderService` [`ee2b3d3`]
+- [x] 1.3 Delete `log/_security.py` and ADK log filters, decouple `app.config` via `register_reset_hook` and top-level imports, and tighten nested-import CI gates [`8af3e6e`]
+- [x] 1.4 Decouple `src/app/ioc/` from `app.config` and `app.server`, scope `AgentStreamService` to `Scope.APP`, and standardize `create_container` across ASGI, CLI, and jobs [`d19c3e2`]
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `sqlspec-069-and-core-foundation` (`planned`)
+- **Active Flow / Lifecycle**: `sqlspec-069-and-core-foundation` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `d19c3e2`
 - **Key Decisions**:
   - Retain `BaseStruct` and `CamelizedBaseStruct` in `src/app/lib/schema.py` during PR 1 so existing domain schemas continue to pass `make test-unit` until PR 2 (`domain-standardization-and-debloat`) completes the migration and removes them.
   - Scope `test_queue_settings.py` to `DatabaseSettings.get_queue_config()`, `QueueSettings`, and `plugins.queue` in Task `1.1`, and assert `await container.get(QueueService)` via `create_container()` in `test_ioc_and_services.py` in Task `1.4` so `files:` and `tests:` remain strictly disjoint.
 - **Newest Discoveries**:
-  1. `sqlspec.config` / `sqlspec.core` statement configuration supports wire-level `enable_sqlcommenter=True` alongside `driver_features={"enable_session_tracing": True}` on `OracleAsyncConfig`.
-  2. `test_ioc_and_services.py:39-60` previously asserted legacy `EmbeddingService`, `ResponseCacheService`, and `SystemService` aliases; focusing `test_ioc_and_services.py` on Dishka container/provider behavior in Task `1.4` decouples IoC tests from PR 2's domain alias cleanup.
+  1. Bare `OracleAsyncConfig` in `sqlspec==0.69.0` defaults `driver_features["fetch_lobs"]` to `False`; explicitly setting `driver_features={"fetch_lobs": True, "enable_session_tracing": True}` on `DatabaseSettings.create_config()` preserves automatic CLOB materialization while keeping `fetch_lobs: False` isolated on `DatabaseSettings.get_queue_config()`.
+  2. Dishka's `provide(ServiceCls)` inspects every `__init__` parameter annotation and rejects union types, so `OracleLoaderService.__init__(self, driver: OracleAsyncDriver, loader: SQLFileLoader = cast("SQLFileLoader", None))` is used for request services and `_init_from_config(config, loader)` for app-scoped pool stores.
 - **Blockers & Unblock Conditions**: None
-- **Next Exact Step**: Claim and execute Task `1.1` (`tasks/1.1.md`).
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+- **Next Exact Step**: Proceed to PR 2 (`domain-standardization-and-debloat`) on branch `refactor/domain-standardization`.
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 4`, `last_operation: complete`, `operation_targets: ["1.1", "1.2", "1.3", "1.4"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/domains/core-lib-ioc-server-cli.md`

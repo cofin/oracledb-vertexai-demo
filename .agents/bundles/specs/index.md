@@ -8,8 +8,8 @@ description: Active and planned Flow specifications for Cymbal Coffee
 
 ## Active Roadmap: Platform Alignment, ADB-Free 26ai, APEX 26.1 Vertex AI & Automated Demo Recordings
 
-- [platform-alignment-apex-vertex-prd](platform-alignment-apex-vertex-prd/spec.md) - Master PRD: Platform Alignment, ADB-Free 26ai, APEX 26.1 Vertex AI & Automated Demo Recordings (planned)
-  - [sqlspec-069-and-core-foundation](sqlspec-069-and-core-foundation/spec.md) - Chapter 1 (PR 1): SQLSpec 0.69.0 Tracing, Wallet Config, Core Loader Services & Frozen Schemas (planned)
+- [platform-alignment-apex-vertex-prd](platform-alignment-apex-vertex-prd/spec.md) - Master PRD: Platform Alignment, ADB-Free 26ai, APEX 26.1 Vertex AI & Automated Demo Recordings (active)
+  - [sqlspec-069-and-core-foundation](sqlspec-069-and-core-foundation/spec.md) - Chapter 1 (PR 1): SQLSpec 0.69.0 Tracing, Wallet Config, Core Loader Services & Frozen Schemas (completed)
   - [domain-standardization-and-debloat](domain-standardization-and-debloat/spec.md) - Chapter 2 (PR 2): Domain Loader Services, Frozen Schemas & Module Boundary Standardization (planned)
   - [adb-free-26ai-and-tools-hygiene](adb-free-26ai-and-tools-hygiene/spec.md) - Chapter 3 (PR 3): Oracle Autonomous AI Database Free 26ai Runtime, Legacy APEX Retirement & Tools Hygiene (planned)
   - [apex-26-vertex-ai-and-app](apex-26-vertex-ai-and-app/spec.md) - Chapter 4 (PR 4): APEX 26.1 Direct Vertex AI Endpoint, Litestar OpenAI-Compatible Gateway & Cymbal Coffee APEX App (planned)
