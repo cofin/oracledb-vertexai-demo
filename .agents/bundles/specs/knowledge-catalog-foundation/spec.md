@@ -38,25 +38,25 @@ research: []
 Files examined:
 
 - `src/app/db/migrations/0001_cymball_coffee_products.sql:18-264` — Defines native Oracle 26ai `ANNOTATIONS(...)` on `product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, and `search_metric`, plus column and HNSW index annotations (`Display`, `Description`, `Data_Role`, `Privacy`, `Embedding_Model`, `Embedding_Dimensions`, `Embedding_Purpose`, `Distance`, `Enum_Values`, `Cache_Role`, `Maps_Baseline`, `AI_Surface`).
-- `src/app/config.py:131` — Calls `db_mgr.load_sql_files(BASE_DIR / "db" / "sql")`, which automatically loads every `*.sql` file in `src/app/db/sql/`.
-- `src/app/lib/settings/` (`_catalog.py` and `__init__.py`) — Defines frozen `@dataclass(frozen=True, slots=True)` settings classes loaded via `Settings.from_env()`.
-- `src/app/domain/system/schemas/__init__.py:1-40` — Exports system domain `msgspec` schemas (`CamelizedBaseStruct`).
+- `src/app/lib/service.py` — `default_sql_loader()` automatically loads every `*.sql` file in `src/app/db/sql/` for `OracleLoaderService` subclasses and Dishka `SQLFileLoader` consumers.
+- `src/app/lib/settings/` (`_catalog.py` and `__init__.py`) — Defines frozen `msgspec.Struct` / `@dataclass(frozen=True, slots=True)` settings classes loaded via `Settings.from_env()`.
+- `src/app/domain/system/schemas/__init__.py:1-40` — Exports system domain `msgspec` schemas (`FrozenBaseStruct`, `CamelizedFrozenStruct`).
 - `src/app/cli/commands.py:147-223` & `src/app/cli/utils.py:21-54` — Declares `@cli.command(...)` Click commands using `@async_inject`, delegating workflow logic to `src/app/cli/_helpers/`.
 
 ### Relevant Patterns
 
 - [Architecture Patterns](../../knowledge/patterns/architecture.md) — Named SQL in `src/app/db/sql/*.sql`; thin CLI declarations in `src/app/cli/commands.py` with workflow helpers in `src/app/cli/_helpers/`.
-- [Code Style Patterns](../../knowledge/patterns/code-style.md) — SPDX headers (`Apache-2.0`), PEP 604 unions, zero inline `#` comments, `from_json` / `to_json` from `app.utils.serialization`.
+- [Code Style Patterns](../../knowledge/patterns/code-style.md) — SPDX headers (`Apache-2.0`), PEP 604 unions, zero inline `#` comments, `decode_json` / `encode_json` from `app.utils.serialization`.
 - [Testing Patterns](../../knowledge/patterns/testing.md) — `@pytest.mark.anyio` unit tests under `src/tests/unit/<module_path>/test_*.py`.
 
 ### Requirements
 
 - **KC-REQ-01 (Oracle 26ai Annotation SQL, `CatalogSettings` & Typed Schemas)**:
   - Create `src/app/db/sql/catalog.sql` with named queries `select-catalog-table-annotations`, `select-catalog-column-metadata`, and `select-catalog-index-annotations` querying `USER_ANNOTATIONS_USAGE` and `USER_TAB_COLUMNS`.
-  - Add `CatalogSettings` (`enabled`, `mode`, `project_id`, `location`, `entry_group_id`, `glossary_id`, `snapshot_path`, `context_budget`, `timeout_seconds`) in `src/app/lib/settings/_catalog.py` (re-exported via `src/app/lib/settings/__init__.py`) exposed as `settings.catalog`.
-  - Create `src/app/domain/system/schemas/_catalog.py` defining `OracleAnnotationRow`, `OracleColumnMetadataRow`, `CatalogColumnMetadata`, `CatalogGoldenQuery`, `CatalogGlossaryTerm`, `CatalogEntrySummary`, `CatalogContextPayload`, `CatalogEntryList`, and `CatalogSyncReport`, re-exported in `src/app/domain/system/schemas/__init__.py`.
+  - Add `CatalogSettings` (`enabled`, `mode`, `project_id`, `location`, `entry_group_id`, `glossary_id`, `snapshot_path`, `context_budget`, `timeout_seconds`) in `src/app/lib/settings/_catalog.py` (re-exported via `src/app/lib/settings/__init__.py`) exposed as `Settings.from_env().catalog`.
+  - Create `src/app/domain/system/schemas/_catalog.py` defining `OracleAnnotationRow`, `OracleColumnMetadataRow`, `CatalogColumnMetadata`, `CatalogGoldenQuery`, `CatalogGlossaryTerm`, `CatalogEntrySummary`, `CatalogContextPayload`, `CatalogEntryList`, and `CatalogSyncReport` inheriting from `FrozenBaseStruct` / `CamelizedFrozenStruct`, re-exported in `src/app/domain/system/schemas/__init__.py`.
 - **KC-REQ-02 (`coffee sync-catalog` CLI, Committed Snapshot & OKF v0.2 Bundle)**:
-  - Create `src/app/db/fixtures/knowledge_catalog_context.json` containing the canonical Cymbal Coffee Knowledge Catalog entries (`product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, `search_metric`), their harvested Oracle 26ai annotations, steward-certified `guidelines` (2-Tier Inventory Precedence, Off-Menu Brand Guardrail, Request-Scoped Coordinate Privacy), Golden SQL `queries`, and Business Glossary terms.
+  - Create `src/app/db/fixtures/knowledge_catalog_context.json` containing the canonical Cymbal Coffee Knowledge Catalog entries (`product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, `search_metric`), their harvested Oracle 26ai annotations, steward-certified `guidelines` (Store-Level Inventory Precedence, Off-Menu Brand Guardrail, Request-Scoped Coordinate Privacy), Golden SQL `queries`, and Business Glossary terms.
   - Create `src/app/cli/_helpers/catalog.py` implementing `DATAPLEX_V1_BASE_URL`, `build_default_catalog_snapshot`, `write_catalog_snapshot`, `load_catalog_snapshot`, `render_lookup_context_yaml`, `harvest_oracle_catalog_entries`, `export_okf_catalog_bundle`, `push_entries_to_knowledge_catalog`, and `run_sync_catalog_workflow`.
   - Register `@cli.command(name="sync-catalog")` in `src/app/cli/commands.py` supporting `--push`, `--export-okf`, `--from-fixture`, and `--dry-run`.
 
@@ -87,7 +87,7 @@ Files examined:
   - Populate global system aspects (`655216118709.global.{schema,overview,guidelines,queries}`) on `Entry` payloads so `lookupContext` assembles them natively without custom aspect types.
   - Use `httpx` + `google.auth` ADC for `dataplex.googleapis.com/v1` REST calls instead of adding a new `google-cloud-dataplex` dependency.
 - **Newest Discoveries**:
-  1. `src/app/config.py:131` auto-loads all `*.sql` files in `src/app/db/sql/`, so adding `src/app/db/sql/catalog.sql` registers the queries automatically.
+  1. `default_sql_loader()` in `src/app/lib/service.py` auto-loads all `*.sql` files in `src/app/db/sql/`, so adding `src/app/db/sql/catalog.sql` registers the queries automatically for `OracleLoaderService`.
 - **Blockers & Unblock Conditions**: None
 - **Next Exact Step**: Claim and execute Task `1.1` (`tasks/1.1.md`).
 - **Plan Identity**: `plan_revision: 1`, `plan_commit: null`

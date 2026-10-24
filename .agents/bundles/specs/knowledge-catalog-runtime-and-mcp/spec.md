@@ -38,17 +38,17 @@ research: []
 Files examined:
 
 - `src/app/domain/system/services/__init__.py:1-7` — Exports `BASE_SYSTEM_INSTRUCTION`, `CacheService`, `MetricsService`, and `PersonaManager`.
-- `src/app/ioc/_domain.py` — Defines `DomainServiceProvider(Provider)` with `scope = Scope.REQUEST`, injecting `OracleAsyncDriver` (`src/app/ioc/_database.py`) and calling `Settings.from_env()`.
+- `src/app/ioc/_domain.py` — Defines `DomainServiceProvider(Provider)` with `scope = Scope.REQUEST`, injecting `OracleAsyncDriver` and `SQLFileLoader` (`src/app/ioc/_database.py`) and calling `Settings.from_env()`.
 - `src/app/domain/system/controllers/__init__.py:1-14` & `_system.py:1-24` — Exports `MetricsController`, `SystemController`, and `controllers: list[type[Controller]] = [MetricsController, SystemController]` auto-registered by `AutowirePlugin` (`src/app/server/plugins.py:114`).
-- `src/app/domain/ai/services/agent_service.py:22-165` & `src/app/domain/ai/runtime/_stream.py:50-294` — `AgentOrchestrationService.stream_conversation_turn` executes turns over `SpecTree` and forwards `final_metadata` to `AgentStreamService.adapt(..., final_metadata=...)`.
-- `src/app/domain/chat/controllers/_helpers.py:23-131` & `_chat.py:67-113` — Parses `CoffeeChatForm` and streams `POST /api/chat/stream`.
-- `src/app/domain/ai/a2a/card.py:1-40` — Defines `COFFEE_AGENT_CARD` and `build_agent_card`.
+- `src/app/domain/ai/services/_agent.py:22-165` & `src/app/domain/ai/runtime/_stream.py:50-294` — `AgentOrchestrationService.stream_conversation_turn` executes turns over `SpecTree` and forwards `final_metadata` to `AgentStreamService.adapt(..., final_metadata=...)`.
+- `src/app/domain/chat/schemas/_forms.py`, `src/app/domain/chat/controllers/_helpers.py:23-131` & `_chat.py:67-113` — Parses `CoffeeChatForm` and streams `POST /api/chat/stream`.
+- `src/app/domain/ai/a2a/_card.py:1-40` — Defines `COFFEE_AGENT_CARD` and `build_agent_card`.
 - `tools/lib/utils.py:241-264` — Defines `build_mcp_toolbox_oracle_server_config()` and `build_antigravity_mcp_config(*, include_sqlcl: bool = True, include_mcp_toolbox: bool = True)`.
 
 ### Relevant Patterns
 
 - [Core Platform (`lib/`, `ioc/`, `server/`, `cli/`)](../../knowledge/domains/core-lib-ioc-server-cli.md) — `src/app/ioc/` modules must never use `from __future__ import annotations`; controller routes use `Inject[T]`.
-- [Architecture Patterns](../../knowledge/patterns/architecture.md) — Named SQL queries (`select-catalog-column-metadata`) via `db_manager.get_sql(...)`.
+- [Architecture Patterns](../../knowledge/patterns/architecture.md) — Named SQL queries (`select-catalog-column-metadata`) resolved via `SQLFileLoader` (`sql_loader.get_sql(...)`) without importing `app.config`.
 - [Code Style Patterns](../../knowledge/patterns/code-style.md) — Zero inline `#` comments in Python files, PEP 585/604 typing, Google-style docstrings.
 
 ### Requirements
@@ -62,14 +62,14 @@ Files examined:
 - **KC-REQ-04 (`CatalogController`, `LitestarMCP` Tool, Agent Grounding, A2A Skill & Dataplex Toolbox Config)**:
   - Create `CatalogController(PublicController)` in `src/app/domain/system/controllers/_catalog.py` exposing `GET /api/catalog/context` (`mcp_tool="lookup_knowledge_catalog"`) returning `CatalogContextPayload` and `GET /api/catalog/entries` returning `CatalogEntryList`, and register `CatalogController` in `src/app/domain/system/controllers/__init__.py` (`controllers` list).
   - Bind a closure-bound `lookup_catalog_context` tool on `get_coffee_spec_tree()`, inject `catalog_service: KnowledgeCatalogService | None = None` into `AgentOrchestrationService`, parse `use_knowledge_catalog: bool = True` in `CoffeeChatForm`, and populate `sql_phases` (`sql_key="lookup-knowledge-catalog"`) and `search_metrics` (`catalog_enabled`, `catalog_mode`, `catalog_ms`, `catalog_entries`) via `AgentStreamService.adapt(..., final_metadata=final_metadata)`.
-  - Add `knowledge_catalog_grounding` skill to `src/app/domain/ai/a2a/card.py` and add `MCP_TOOLBOX_DATAPLEX_SERVER_NAME = "dataplex-toolbox"` and `build_mcp_toolbox_dataplex_server_config()` to `tools/lib/utils.py`.
+  - Add `knowledge_catalog_grounding` skill to `src/app/domain/ai/a2a/_card.py` and add `MCP_TOOLBOX_DATAPLEX_SERVER_NAME = "dataplex-toolbox"` and `build_mcp_toolbox_dataplex_server_config()` to `tools/lib/utils.py`.
 
 ### Requirement-to-Task Traceability
 
 | Requirement | Task | Verification Strategy | Primary Files | Primary Tests |
 | --- | --- | --- | --- | --- |
 | `KC-REQ-03` | `2.1` | `behavior_tdd` | `src/app/domain/system/services/_catalog.py`, `src/app/domain/system/services/__init__.py`, `src/app/ioc/_domain.py` | `src/tests/unit/domain/system/test_catalog_service.py` |
-| `KC-REQ-04` | `2.2` | `behavior_tdd` | `src/app/domain/system/controllers/_catalog.py`, `src/app/domain/system/controllers/__init__.py`, `src/app/domain/ai/services/agent_service.py`, `src/app/domain/chat/controllers/_helpers.py`, `src/app/domain/chat/controllers/_chat.py`, `src/app/domain/ai/a2a/card.py`, `tools/lib/utils.py` | `src/tests/unit/domain/system/controllers/test_catalog.py`, `src/tests/unit/domain/ai/a2a/test_a2a.py` |
+| `KC-REQ-04` | `2.2` | `behavior_tdd` | `src/app/domain/system/controllers/_catalog.py`, `src/app/domain/system/controllers/__init__.py`, `src/app/domain/ai/services/_agent.py`, `src/app/domain/chat/schemas/_forms.py`, `src/app/domain/chat/controllers/_helpers.py`, `src/app/domain/chat/controllers/_chat.py`, `src/app/domain/ai/a2a/_card.py`, `tools/lib/utils.py` | `src/tests/unit/domain/system/controllers/test_catalog.py`, `src/tests/unit/domain/ai/a2a/test_a2a.py` |
 
 ---
 

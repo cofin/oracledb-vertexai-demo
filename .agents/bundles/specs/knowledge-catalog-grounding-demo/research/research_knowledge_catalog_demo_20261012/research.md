@@ -33,7 +33,7 @@ updated_at: 2026-10-12T18:24:00Z
    - **Custom Entries + Global System Aspects (`dataplex.googleapis.com/v1`)** or **`kcmd push --format okf`** runs in **<10 seconds** from any laptop or Cloud Run service with zero VPC/PSC or `SYS.COL$` setup, and populates reusable global system aspects (`projects/655216118709/locations/global/aspectTypes/{schema,overview,guidelines,queries}`) plus Business Glossaries (`Glossary`, `GlossaryTerm`, `EntryLink`).
 4. **High-Impact Demo Pattern ("Breaking the Context Ceiling")**:
    - Google Cloud's Knowledge Catalog + Oracle reference patterns center on a live **Knowledge Catalog Grounding OFF vs. ON** comparison and **Context X-Ray** telemetry drawer.
-   - In Cymbal Coffee, a single CLI command (`uv run coffee sync-catalog`) can harvest Oracle 26ai `USER_ANNOTATIONS_USAGE` + OKF business rules into Knowledge Catalog (and generate a local offline/instant snapshot + Cytoscape.js graph). At runtime, `searchEntries` + `lookupContext` grounds the barista agent on **2-tier inventory precedence**, **coordinate privacy guardrails**, **steward-certified Golden SQL (`hybrid-search-turn`)**, and **off-menu brand rules (`Folgers`/`Starbucks`)**, surfaced in the right-hand telemetry drawer via a dedicated `K` (**Knowledge Catalog**) chip.
+   - In Cymbal Coffee, a single CLI command (`uv run coffee sync-catalog`) can harvest Oracle 26ai `USER_ANNOTATIONS_USAGE` + OKF business rules into Knowledge Catalog (and generate a local offline/instant snapshot + Cytoscape.js graph). At runtime, `searchEntries` + `lookupContext` grounds the barista agent on **store-level inventory precedence**, **coordinate privacy guardrails**, **steward-certified Golden SQL (`hybrid-search-turn`)**, and **off-menu brand rules (`Folgers`/`Starbucks`)**, surfaced in the right-hand telemetry drawer via a dedicated `K` (**Knowledge Catalog**) chip.
 
 ---
 
@@ -63,7 +63,7 @@ When ingesting Oracle 26ai metadata via Custom Entries (`F4`, `F5`, `F6`), Knowl
    - **`655216118709.global.schema`**: Column names, data types (`VECTOR(3072, FLOAT32)`, `JSON`, `BOOLEAN`, `NUMBER`), and column descriptions harvested directly from `USER_TAB_COLUMNS` + `USER_ANNOTATIONS_USAGE`.
    - **`655216118709.global.overview`**: Rich Markdown business summary of the asset and its role in Cymbal Coffee.
    - **`655216118709.global.guidelines`**: Explicit steward-certified rules and guardrails that AI agents must obey when querying or reasoning over the asset.
-   - **`655216118709.global.queries`**: Steward-verified Golden SQL queries (e.g., `hybrid-search-turn` RRF fusion, `resolve-products-by-query` 3-tier resolution, Haversine nearest-store lookup).
+   - **`655216118709.global.queries`**: Steward-verified Golden SQL queries (e.g., `hybrid-search-turn` RRF fusion, `resolve-products-by-query` multi-step product resolution, Haversine nearest-store lookup).
    - **`655216118709.global.contacts`**: Data Steward and Context Engineer attribution.
 5. **Business Glossary (`Glossary`, `GlossaryTerm`, `EntryLink`)**:
    - Captures canonical domain definitions (e.g., *Available-to-Pickup Stock*, *Request-Scoped Browser Coordinates*, *Off-Menu Brand Guardrail*, *Reciprocal Rank Fusion (RRF)*) linked to table entries via `definition` `EntryLink`s.
@@ -112,7 +112,7 @@ Across Google Cloud Knowledge Catalog reference architectures and the Open Knowl
 
 | Enterprise Failure Barrier | What Happens in Cymbal Coffee with Knowledge Catalog **OFF** (Ungrounded) | What Happens in Cymbal Coffee with Knowledge Catalog **ON** (`lookupContext` Grounded) |
 | --- | --- | --- |
-| **1. Technical Shorthand & Multi-Table Semantics** (*"Can I pick up Ethiopian Yirgacheffe in Dallas right now?"*) | An ungrounded agent looks only at `product.in_stock = TRUE` (ignoring store-level `store_product_inventory.stock_status = 'OUT_OF_STOCK'` or `pickup_available = FALSE`) and gives a false availability promise. | `lookupContext` returns the steward-certified **2-Tier Inventory Contract** (`655216118709.global.guidelines` + `queries` aspect on `store_product_inventory`), enforcing `store_product_inventory` precedence (`IN_STOCK` > `LOW_STOCK` > `OUT_OF_STOCK` + `pickup_available`) over global `product.in_stock`. |
+| **1. Technical Shorthand & Multi-Table Semantics** (*"Can I pick up Ethiopian Yirgacheffe in Dallas right now?"*) | An ungrounded agent looks only at `product.in_stock = TRUE` (ignoring store-level `store_product_inventory.stock_status = 'OUT_OF_STOCK'` or `pickup_available = FALSE`) and gives a false availability promise. | `lookupContext` returns the steward-certified **Store-Level Inventory Precedence Contract** (`655216118709.global.guidelines` + `queries` aspect on `store_product_inventory`), enforcing `store_product_inventory` precedence (`IN_STOCK` > `LOW_STOCK` > `OUT_OF_STOCK` + `pickup_available`) over global `product.in_stock`. |
 | **2. Tribal Rules & Hallucination Guardrails** (*"Do you have Folgers or Starbucks Pike Place in stock?"*) | Dense 3072-dim vector similarity matches `"Folgers"` to in-catalog medium/dark roasts (`similarity ~0.68`); an ungrounded LLM blurs the boundary or fabricates availability. | `lookupContext` injects the **Steward-Certified Off-Menu Brand Policy** (`guidelines` aspect on `product` + Golden RRF per-term lexical hit query): when lexical hit count is `0`, the agent explicitly states Cymbal Coffee does not carry the third-party brand before offering verified in-catalog alternatives. |
 | **3. Governance & Privacy Contracts** (*"Find the closest store to my current GPS coordinates and log my search"*) | An ungrounded agent or developer pipeline risks caching or logging raw `latitude`/`longitude` in `response_cache`, `search_metric`, or `agent_event`. | `lookupContext` surfaces the **Oracle 26ai Privacy Annotations** (`Privacy = 'No browser coordinates'` harvested from `USER_ANNOTATIONS_USAGE` on `store`, `response_cache`, and `search_metric`), proving in the **Telemetry Drawer (`K` chip)** that browser coordinates remained strictly request-scoped and cache was bypassed. |
 
@@ -120,12 +120,12 @@ Across Google Cloud Knowledge Catalog reference architectures and the Open Knowl
 
 ## 5. Fastest End-to-End Configuration & Demo Blueprint for Cymbal Coffee
 
-We can deliver a **two-mode (Instant Local OKF + Live Cloud Knowledge Catalog)** integration that configures and runs in **under 2 minutes**:
+We can deliver a **dual-mode (Instant Local OKF + Live Cloud Knowledge Catalog)** integration that configures and runs in **under 2 minutes**:
 
 ### Step 1: One-Command CLI Seeder (`uv run coffee sync-catalog`)
 Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.py`:
 - Queries live Oracle 26ai `USER_ANNOTATIONS_USAGE` and `USER_TAB_COLUMNS` via SQLSpec (`src/app/db/sql/catalog.sql`) to extract all table, column, and vector index annotations (`product`, `store`, `store_product_inventory`, `response_cache`, `embedding_cache`, `search_metric`).
-- Merges them with Cymbal Coffee's steward-certified `guidelines` (2-tier inventory contract, off-menu brand rule, coordinate privacy invariant) and `queries` (Golden SQL from `src/app/db/sql/`).
+- Merges them with Cymbal Coffee's steward-certified `guidelines` (store-level inventory precedence contract, off-menu brand rule, coordinate privacy invariant) and `queries` (Golden SQL from `src/app/db/sql/`).
 - **Outputs two targets simultaneously**:
   1. **Local OKF v0.2 Bundle + Snapshot** (`.agents/bundles/knowledge/catalog/` + `src/app/db/fixtures/knowledge_catalog_context.json`): Works **instantly with zero GCP setup** for offline/CI demos.
   2. **Live Google Cloud Knowledge Catalog Push** (when `GOOGLE_CLOUD_PROJECT` and `--push` or `KNOWLEDGE_CATALOG_ENABLED=true` are set): Uses `httpx` with `google.auth` ADC (already in `pyproject.toml` via `google-genai`, requiring **zero new heavy dependencies**) to idempotently upsert `EntryGroup` (`cymbal-coffee-oracle`), `Entry` records (`system="ORACLE"`), and global system aspects (`655216118709.global.{schema,overview,guidelines,queries}`) via `dataplex.googleapis.com/v1`.
@@ -134,7 +134,7 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
 - **`KnowledgeCatalogService`** (`src/app/domain/system/services/_catalog.py`, registered in `src/app/ioc`):
   - In **Live GCP Mode**, calls `dataplex.googleapis.com/v1` `searchEntries` + `lookupContext` (`format="yaml"`, `all_schema_fields="true"`).
   - In **Local OKF Mode** (default fallback when offline or `KNOWLEDGE_CATALOG_MODE=local`), serves the exact same YAML context bundle assembled from Oracle 26ai `USER_ANNOTATIONS_USAGE` / committed OKF snapshot in `<2ms`.
-- **Closure-Bound Agent Tool (`lookup_catalog_context`)** (`src/app/domain/ai/services/agent_service.py`):
+- **Closure-Bound Agent Tool (`lookup_catalog_context`)** (`src/app/domain/ai/services/_agent.py`):
   - Declared with `declare()` on `AgentSpec.tools` so `Gemini 3.8 Flash` can retrieve steward-certified table semantics, privacy rules, and Golden SQL.
 - **LitestarMCP Tool (`GET /api/catalog/context`, `mcp_tool="lookup_knowledge_catalog"`)**:
   - Automatically exposed at `POST /mcp` for external MCP clients (Gemini CLI, Antigravity, Cloud Run agents).
@@ -166,8 +166,8 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
 - **Local Cymbal Coffee Codebase**:
   - Oracle 26ai DDL & Native `ANNOTATIONS`: `src/app/db/migrations/0001_cymball_coffee_products.sql:11-335` (`f1`–`f7`)
   - Named SQL Queries: `src/app/db/sql/products.sql`, `stores.sql`, `inventory.sql`, `system.sql`, `ai-runtime.sql` (`f1`–`f7`, `f12`)
-  - Native AI Runtime & Orchestration: `src/app/domain/ai/runtime/_tools.py:30-156`, `_spec.py:18-139`, `_stream.py:28-215`, `src/app/domain/ai/services/agent_service.py:22-158` (`f10`–`f12`, `f14`, `f19`)
-  - LitestarMCP & A2A Wiring: `src/app/server/plugins.py:35-160`, `src/app/domain/ai/a2a/card.py:8-33` (`f13`, `f20`)
+  - Native AI Runtime & Orchestration: `src/app/domain/ai/runtime/_tools.py:30-156`, `_spec.py:18-139`, `_stream.py:28-215`, `src/app/domain/ai/services/_agent.py:22-158` (`f10`–`f12`, `f14`, `f19`)
+  - LitestarMCP & A2A Wiring: `src/app/server/plugins.py:35-160`, `src/app/domain/ai/a2a/_card.py:8-33` (`f13`, `f20`)
   - Frontend SSE & Telemetry Drawer: `src/resources/chat-stream.js:173-402`, `src/resources/telemetry.js:6-343` (`f14`–`f16`)
   - CLI & DI Wiring: `src/app/cli/commands.py:25-223`, `src/app/ioc/`, `src/app/lib/settings/` (`f17`, `f18`)
 
@@ -183,4 +183,4 @@ Add `sync-catalog` to `src/app/cli/commands.py` + `src/app/cli/_helpers/catalog.
 ### Resolved Contradictions
 - **`lookupContext` vs. User-Defined Custom Aspect Types (`F8` vs `F9`)**: Public docs (`enrich-entries-metadata`) note that user-defined custom aspect types are not automatically assembled by Gemini context tools, whereas `lookupContext` natively formats reusable global system aspects (`655216118709.global.{schema,overview,guidelines,queries}`) and linked Business Glossary terms. **Resolution**: Store Cymbal Coffee's Oracle 26ai annotations, agent guardrails, and golden queries inside the global system aspects (`schema`, `overview`, `guidelines`, `queries`) so `lookupContext` returns them in a single call.
 - **Repository & Tool Naming (`f6` vs `f7`)**: Earlier documentation refers to `googleapis/genai-toolbox` and `dataplex-search-entries` / `dataplex-lookup-context`, whereas the repository has been renamed to `googleapis/mcp-toolbox` (`@toolbox-sdk/server`) with docs under `docs/en/integrations/knowledge-catalog/` while preserving `--prebuilt dataplex` and `dataplex-*` aliases for backward compatibility.
-- **Local Table Naming in Planned Specs (`f2`, `f4`, `f12`)**: Some draft spec prose references `coffee_store` and `search_metrics`, whereas the authoritative migration `0001_cymball_coffee_products.sql:49,198` and all named SQL files use `store` and `search_metric` (and `runtime-stabilization` adds `0002` for `agent_session`/`agent_event`). Always target `store` and `search_metric`.
+- **Local Table Naming (`f2`, `f4`, `f12`)**: The authoritative migration `0001_cymball_coffee_products.sql:49,198` and all named SQL files use `store` and `search_metric` (alongside `agent_session` and `agent_event`). Always target `store` and `search_metric`.
