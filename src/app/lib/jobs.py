@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from dishka import AsyncContainer, Scope
 
-from app.ioc import make_container
+from app.ioc import create_container
 from app.lib.di import request_container_var, worker_container_var
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ async def task_container_scope() -> AsyncGenerator[AsyncContainer, None]:
     Reuses ``request_container_var`` when already active (e.g. inline tests or
     HTTP request context), opens a ``Scope.REQUEST`` child from
     ``worker_container_var`` when running inside a shared worker container, or
-    creates and closes a managed root ``make_container()`` instance otherwise.
+    creates and closes a managed root ``create_container()`` instance otherwise.
 
     Yields:
         A request-scoped ``AsyncContainer`` instance.
@@ -59,7 +59,7 @@ async def task_container_scope() -> AsyncGenerator[AsyncContainer, None]:
                 request_container_var.reset(token)
         return
 
-    root_container = make_container()
+    root_container = create_container()
     try:
         async with root_container(scope=Scope.REQUEST) as scoped_container:
             token = request_container_var.set(scoped_container)

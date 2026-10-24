@@ -10,9 +10,11 @@ from typing import TYPE_CHECKING
 
 from litestar import Litestar
 
-from app.ioc import make_container
+from app import config
+from app.ioc import create_container
+from app.lib import settings as app_settings
 from app.lib.di import LitestarProvider, setup_dishka
-from app.lib.settings import get_settings
+from app.server import plugins
 from app.server.core import ApplicationCore
 
 if TYPE_CHECKING:
@@ -25,8 +27,10 @@ app: Litestar
 
 def create_app() -> Litestar:
     """Create and configure the Litestar ASGI application."""
-    settings = get_settings()
-    container = make_container(LitestarProvider())
+    settings = app_settings.get_settings()
+    container = create_container(
+        LitestarProvider(), db_config=config.db, queue_config=config.queue_db, queue_plugin=plugins.queue
+    )
 
     @asynccontextmanager
     async def dishka_lifespan(litestar_app: Litestar) -> AsyncGenerator[None, None]:

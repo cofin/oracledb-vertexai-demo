@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for modular domain services, Dishka IOC package, and DI helpers."""
+"""Unit tests for Dishka IoC providers, container construction, and OracleAsyncService contracts."""
 
 from __future__ import annotations
 
@@ -9,59 +9,28 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from litestar_queues import QueueService
+from sqlspec.adapters.oracledb import OracleAsyncConfig
+from sqlspec.loader import SQLFileLoader
 
-from app.domain.products.services import (
-    EmbeddingService,
-    InventoryService,
-    MapsService,
-    OracleVectorSearchService,
-    ProductService,
-    StoreService,
-    VertexAIService,
-)
-from app.domain.system.services import CacheService, MetricsService, PersonaManager, ResponseCacheService, SystemService
+import app.ioc as ioc_module
+from app.domain.ai.runtime import AgentStreamService
 from app.ioc import (
     PROVIDERS,
     AIProvider,
     ConfigProvider,
     DBProvider,
     DomainServiceProvider,
-    IntegrationsProvider,
-    LitestarPersistenceProvider,
     create_container,
     get_providers,
-    make_container,
 )
-from app.lib.di import Inject, request_container_var, worker_container_var
+from app.lib.di import Inject, LitestarProvider, request_container_var, worker_container_var
 from app.lib.service import OracleAsyncService
+from app.lib.settings import ChatSettings, QueueSettings, Settings
 
 
-def test_products_services_resolve_from_private_modules() -> None:
-    """Verify products domain services originate from focused private _*.py modules."""
-    assert ProductService.__module__ == "app.domain.products.services._products"
-    assert EmbeddingService.__module__ == "app.domain.products.services._embedding"
-    assert VertexAIService is EmbeddingService
-    assert OracleVectorSearchService.__module__ == "app.domain.products.services._embedding"
-    assert StoreService.__module__ == "app.domain.products.services._stores"
-    assert InventoryService.__module__ == "app.domain.products.services._inventory"
-    assert issubclass(InventoryService, StoreService)
-    assert MapsService.__module__ == "app.domain.products.services._maps"
-    assert "google.com/maps/search/" in MapsService.search_url(
-        name="Cymbal Coffee", address="100 Main St", city="Dallas", state="TX", zip_code="75201"
-    )
-
-
-def test_system_services_resolve_from_private_modules() -> None:
-    """Verify system domain services originate from focused private _*.py modules."""
-    assert SystemService.__module__ == "app.domain.system.services._health"
-    assert MetricsService is SystemService
-    assert PersonaManager.__module__ == "app.domain.system.services._health"
-    assert ResponseCacheService.__module__ == "app.domain.system.services._cache"
-    assert CacheService is ResponseCacheService
-
-
-def test_ioc_package_modules_exclude_future_annotations() -> None:
-    """Verify no file under src/app/ioc/ uses from __future__ import annotations."""
+def test_ioc_package_modules_exclude_future_annotations_and_config_coupling() -> None:
+    """Verify no file under src/app/ioc/ uses future annotations or imports app.config/app.server/get_settings."""
     ioc_dir = Path(__file__).resolve().parents[3] / "app" / "ioc"
     assert ioc_dir.is_dir()
     py_files = sorted(ioc_dir.glob("*.py"))
@@ -69,19 +38,57 @@ def test_ioc_package_modules_exclude_future_annotations() -> None:
     for py_file in py_files:
         content = py_file.read_text(encoding="utf-8")
         assert "from __future__ import annotations" not in content, f"{py_file.name} contains future annotations"
+        assert "app.config" not in content, f"{py_file.name} imports app.config"
+        assert "from app import config" not in content, f"{py_file.name} imports app.config"
+        assert "app.server" not in content, f"{py_file.name} imports app.server"
+        assert "get_settings" not in content, f"{py_file.name} references get_settings"
+
+
+def test_ioc_public_exports_exclude_legacy_aliases() -> None:
+    """Verify app.ioc exports only canonical providers and create_container without legacy aliases."""
+    assert set(ioc_module.__all__) == {
+        "AIProvider",
+        "ConfigProvider",
+        "DBProvider",
+        "DomainServiceProvider",
+        "PROVIDERS",
+        "create_container",
+        "get_providers",
+    }
+    assert not hasattr(ioc_module, "IntegrationsProvider")
+    assert not hasattr(ioc_module, "LitestarPersistenceProvider")
+    assert not hasattr(ioc_module, "make_container")
 
 
 @pytest.mark.anyio
-async def test_ioc_create_container_and_provider_aliases() -> None:
-    """Verify create_container builds an AsyncContainer with all four providers."""
-    assert AIProvider is IntegrationsProvider
-    assert DBProvider is LitestarPersistenceProvider
+async def test_ioc_create_container_resolves_app_scoped_singletons(test_settings: Settings) -> None:
+    """Verify create_container resolves Settings, SQLFileLoader, OracleAsyncConfig, QueueService, and APP-scoped AgentStreamService."""
+    del test_settings
     assert (ConfigProvider, DBProvider, AIProvider, DomainServiceProvider) == PROVIDERS
     providers = get_providers()
     assert len(providers) == 4
-    container = create_container()
-    assert make_container is create_container
-    await container.close()
+
+    container = create_container(LitestarProvider())
+    try:
+        resolved_settings = await container.get(Settings)
+        resolved_chat = await container.get(ChatSettings)
+        resolved_queue = await container.get(QueueSettings)
+        resolved_loader = await container.get(SQLFileLoader)
+        resolved_db_cfg = await container.get(OracleAsyncConfig)
+        stream_first = await container.get(AgentStreamService)
+        stream_second = await container.get(AgentStreamService)
+        queue_service = await container.get(QueueService)
+
+        assert isinstance(resolved_settings, Settings)
+        assert isinstance(resolved_chat, ChatSettings)
+        assert isinstance(resolved_queue, QueueSettings)
+        assert isinstance(resolved_loader, SQLFileLoader)
+        assert isinstance(resolved_db_cfg, OracleAsyncConfig)
+        assert isinstance(stream_first, AgentStreamService)
+        assert stream_first is stream_second
+        assert isinstance(queue_service, QueueService)
+    finally:
+        await container.close()
 
 
 def test_di_exports_container_contextvars() -> None:
