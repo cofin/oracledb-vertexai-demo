@@ -14,7 +14,7 @@ from app.lib.settings._env import _env_bool, _env_cors
 __all__ = ("AppSettings",)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AppSettings:
     """Application configuration."""
 

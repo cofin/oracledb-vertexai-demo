@@ -13,7 +13,7 @@ from app.lib.settings._env import _env_bool
 __all__ = ("MapsSettings",)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MapsSettings:
     """Google Maps integration settings."""
 

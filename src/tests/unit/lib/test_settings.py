@@ -16,8 +16,13 @@ from app.lib.settings import (
     AppSettings,
     ChatSettings,
     DatabaseSettings,
+    LogSettings,
+    MapsSettings,
     OpenTelemetrySettings,
+    QueueSettings,
+    ServerSettings,
     Settings,
+    ViteSettings,
     get_settings,
     reload_settings,
 )
@@ -120,19 +125,30 @@ def test_chat_settings_defaults() -> None:
     assert settings.grounded_answer_timeout_seconds == 2.5
 
 
-def test_wallet_location_resolves_to_absolute_path(monkeypatch: MonkeyPatch) -> None:
-    """Verify Autonomous wallet paths resolve to absolute filesystem paths."""
+def test_wallet_location_resolves_to_absolute_path(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    """Verify Autonomous wallet paths resolve via SQLSpec wallet_zip without mutating TNS_ADMIN."""
+    wallet_dir = tmp_path / "tns"
+    wallet_dir.mkdir()
+    (wallet_dir / "ewallet.pem").write_text("dummy")
+
     monkeypatch.setenv("DATABASE_URL", "oracle+oracledb://app:password@myatp_low")
-    monkeypatch.setenv("WALLET_PASSWORD", "SuperSecret1")
-    monkeypatch.setenv("TNS_ADMIN", "./.envs/tns")
+    monkeypatch.setenv("WALLET_PASSWORD", "WalletSecret1")
+    monkeypatch.setenv("WALLET_LOCATION", str(wallet_dir))
+    monkeypatch.delenv("TNS_ADMIN", raising=False)
 
     settings = DatabaseSettings()
-    assert settings.WALLET_LOCATION == "./.envs/tns"
+    assert settings.WALLET_LOCATION is not None
+    assert Path(settings.WALLET_LOCATION) == wallet_dir
+
+    expected_path = str(wallet_dir.resolve())
+    pool_cfg = settings._build_pool_config(min_sessions=1, max_sessions=4)
+    assert pool_cfg["wallet_zip"] == expected_path
+    assert pool_cfg["wallet_password"] == "WalletSecret1"
+    assert "ssl_context" not in pool_cfg
+    assert "TNS_ADMIN" not in os.environ
 
     config = settings.create_config()
-
-    expected_path = str(Path("./.envs/tns").resolve())
-    assert os.environ["TNS_ADMIN"] == expected_path
+    assert "TNS_ADMIN" not in os.environ
     assert config.connection_config["wallet_location"] == expected_path
     assert config.connection_config["config_dir"] == expected_path
 
@@ -174,11 +190,22 @@ def test_database_settings_local_contract(monkeypatch: MonkeyPatch) -> None:
     assert settings.POOL_MAX_SIZE == 20
 
 
-def test_wallet_mode_contract(monkeypatch: MonkeyPatch) -> None:
-    """Verify Autonomous Database wallet mode connection configuration."""
-    monkeypatch.setenv("DATABASE_URL", "oracle+oracledb://app:SuperSecret1@myatp_low")
-    monkeypatch.setenv("WALLET_PASSWORD", "SuperSecret1")
-    monkeypatch.setenv("TNS_ADMIN", "./.envs/tns")
+@pytest.mark.parametrize(
+    "database_url",
+    ["oracle+oracledb://app:SuperSecret1@myatp_low", "myatp_low"],
+    ids=["sqlalchemy-url", "bare-tns-alias"],
+)
+def test_wallet_mode_contract(tmp_path: Path, monkeypatch: MonkeyPatch, database_url: str) -> None:
+    """Verify Autonomous Database wallet mode supports URL and bare TNS alias connection formats."""
+    wallet_dir = tmp_path / "wallet"
+    wallet_dir.mkdir()
+    (wallet_dir / "ewallet.pem").write_text("dummy")
+
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("DATABASE_USER", "app")
+    monkeypatch.setenv("DATABASE_PASSWORD", "SuperSecret1")
+    monkeypatch.setenv("WALLET_PASSWORD", "WalletSecret1")
+    monkeypatch.setenv("TNS_ADMIN", str(wallet_dir))
 
     settings = DatabaseSettings()
 
@@ -189,9 +216,9 @@ def test_wallet_mode_contract(monkeypatch: MonkeyPatch) -> None:
 
     assert conn["user"] == "app"
     assert conn["dsn"] == "myatp_low"
-    assert conn["wallet_password"] == "SuperSecret1"
-    assert conn["wallet_location"] == str(Path("./.envs/tns").resolve())
-    assert conn["config_dir"] == str(Path("./.envs/tns").resolve())
+    assert conn["wallet_password"] == "WalletSecret1"
+    assert conn["wallet_location"] == str(wallet_dir.resolve())
+    assert conn["config_dir"] == str(wallet_dir.resolve())
 
 
 def test_shell_env_wins_over_dotenv(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
@@ -368,18 +395,56 @@ def test_database_observability_echo_and_telemetry_toggles(monkeypatch: MonkeyPa
     assert config.observability_config.telemetry.enable_spans is False
 
 
-def test_agent_in_memory_prefers_primary_env_with_legacy_fallback(monkeypatch: MonkeyPatch) -> None:
-    """Verify `ORACLE_AGENT_IN_MEMORY` takes precedence with fallback to `ORACLE_ADK_IN_MEMORY`."""
+def test_agent_in_memory_removes_legacy_adk_fields(monkeypatch: MonkeyPatch) -> None:
+    """Verify `DatabaseSettings` exposes `AGENT_IN_MEMORY` without legacy `ADK_*` fields."""
     monkeypatch.delenv("ORACLE_AGENT_IN_MEMORY", raising=False)
     monkeypatch.setenv("ORACLE_ADK_IN_MEMORY", "false")
-    legacy_db = DatabaseSettings()
-    assert legacy_db.AGENT_IN_MEMORY is False
-    assert legacy_db.ADK_IN_MEMORY is False
+    default_db = DatabaseSettings()
+    assert default_db.AGENT_IN_MEMORY is True
+    assert not hasattr(default_db, "ADK_IN_MEMORY")
+    assert not hasattr(default_db, "ADK_ENABLE_MEMORY")
 
-    monkeypatch.setenv("ORACLE_AGENT_IN_MEMORY", "true")
-    primary_db = DatabaseSettings()
-    assert primary_db.AGENT_IN_MEMORY is True
-    assert primary_db.ADK_IN_MEMORY is True
+    monkeypatch.setenv("ORACLE_AGENT_IN_MEMORY", "false")
+    disabled_db = DatabaseSettings()
+    assert disabled_db.AGENT_IN_MEMORY is False
+
+
+@pytest.mark.parametrize(
+    "settings_cls",
+    [
+        Settings,
+        AppSettings,
+        ServerSettings,
+        ViteSettings,
+        LogSettings,
+        DatabaseSettings,
+        AISettings,
+        ChatSettings,
+        MapsSettings,
+        OpenTelemetrySettings,
+        QueueSettings,
+    ],
+)
+def test_all_settings_dataclasses_define_slots(settings_cls: type[object]) -> None:
+    """Verify every settings dataclass uses `slots=True` and omits per-instance `__dict__`."""
+    instance = settings_cls()
+    assert hasattr(settings_cls, "__slots__")
+    assert not hasattr(instance, "__dict__")
+
+
+def test_database_settings_enables_session_tracing_and_wire_sqlcommenter(monkeypatch: MonkeyPatch) -> None:
+    """Verify `DatabaseSettings.get_config()` enables SQLSpec 0.69.0 session tracing and wire sqlcommenter."""
+    for key in ("DATABASE_URL", "WALLET_PASSWORD", "WALLET_LOCATION", "TNS_ADMIN"):
+        monkeypatch.delenv(key, raising=False)
+
+    config = DatabaseSettings().get_config()
+
+    assert config.driver_features["enable_session_tracing"] is True
+    assert config.driver_features["fetch_lobs"] is True
+    assert "enable_AutoLob" not in config.driver_features
+    assert config.statement_config.enable_sqlcommenter is True
+    assert config.statement_config.sqlcommenter_enable_context is True
+    assert config.statement_config.sqlcommenter_enable_traceparent is True
 
 
 def test_app_settings_mcp_api_key_and_reload(monkeypatch: MonkeyPatch) -> None:

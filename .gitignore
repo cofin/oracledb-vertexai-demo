@@ -146,8 +146,8 @@ app/domain/web/public
 log/*
 *.csv
 tmp/*
-node_modules/
-src/resources/node_modules/
+node_modules
+src/resources/node_modules
 src/resources/.vite/
 src/resources/tsconfig.tsbuildinfo
 .astro

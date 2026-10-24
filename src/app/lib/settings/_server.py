@@ -16,7 +16,7 @@ from app.lib.settings._env import BASE_DIR, _env_bool, _env_int
 __all__ = ("ServerSettings", "ViteSettings")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ServerSettings:
     """Granian HTTP server configuration settings."""
 
@@ -30,7 +30,7 @@ class ServerSettings:
     """Number of Granian worker processes."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ViteSettings:
     """Vite configuration settings."""
 

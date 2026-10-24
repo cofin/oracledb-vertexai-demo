@@ -50,7 +50,7 @@ __all__ = (
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Settings:
     """Root application settings container."""
 

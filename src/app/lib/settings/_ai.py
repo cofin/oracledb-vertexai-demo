@@ -22,7 +22,7 @@ PLACEHOLDER_VALUES: frozenset[str] = frozenset({
 })
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class AISettings:
     """Vertex AI / Google GenAI configuration settings."""
 
@@ -84,7 +84,7 @@ class AISettings:
         return "global"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ChatSettings:
     """Chat-workflow runtime constants."""
 

@@ -13,7 +13,7 @@ from app.lib.settings._env import _env_bool
 __all__ = ("OpenTelemetrySettings",)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OpenTelemetrySettings:
     """OpenTelemetry configuration settings."""
 
