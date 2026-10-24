@@ -123,7 +123,7 @@ class _ApiKeyVerifier:
         return InvalidCredentials()
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class _ApiKeyResolver:
     """IdentityResolver mapping verified API key claims into an authenticated Principal."""
 

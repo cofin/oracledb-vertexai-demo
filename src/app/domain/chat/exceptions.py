@@ -1,12 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Typed exceptions raised by the chat domain."""
+"""Compatibility re-export for AIServiceUnconfigured during domain standardization."""
 
-from litestar.exceptions import ServiceUnavailableException
+from app.lib.exceptions import AIServiceUnconfigured
 
 __all__ = ("AIServiceUnconfigured",)
-
-
-class AIServiceUnconfigured(ServiceUnavailableException):
-    """Raised when Vertex AI / google-genai credentials are missing or invalid."""
