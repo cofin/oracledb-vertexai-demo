@@ -20,7 +20,6 @@ from litestar.utils.empty import value_or_default
 from litestar.utils.scope.state import ScopeState
 from structlog.contextvars import bind_contextvars
 
-from app.lib.log._security import apply_security_headers
 from app.lib.settings import Settings
 
 if TYPE_CHECKING:
@@ -116,10 +115,6 @@ class BeforeSendHandler:
 
     async def __call__(self, message: Message, scope: Scope) -> None:
         """Receive ASGI response messages and log per configuration."""
-        if message["type"] == HTTP_RESPONSE_START:
-            message["headers"] = list(message.get("headers", []))
-            apply_security_headers(message)
-
         if scope["type"] == ScopeType.HTTP and self.exclude_paths.findall(scope["path"]):
             return
 

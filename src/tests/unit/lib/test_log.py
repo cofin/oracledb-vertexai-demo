@@ -13,7 +13,13 @@ import pytest
 
 from app import config
 from app.lib import log as log_conf
-from app.lib.log import EventFilter, SuppressADKWarningsFilter, SuppressGranianExcInfoFilter, is_cli_mode, set_cli_mode
+from app.lib.log import (
+    EventFilter,
+    SuppressAsyncioTaskExceptionFilter,
+    SuppressGranianExcInfoFilter,
+    is_cli_mode,
+    set_cli_mode,
+)
 from app.lib.settings import LogSettings, Settings
 
 
@@ -40,19 +46,26 @@ def test_cli_mode() -> None:
     assert not is_cli_mode()
 
 
-@pytest.mark.parametrize(
-    ("message", "expected"),
-    [
-        ("[EXPERIMENTAL] feature FeatureName.PLUGGABLE_AUTH is enabled.", False),
-        ("[EXPERIMENTAL] feature FeatureName.PROGRESSIVE_SSE_STREAMING is enabled.", False),
-        ("AuthlibDeprecationWarning: authlib.jose module is deprecated, please use joserfc instead.", False),
-        ("Warning: returning concatenated text result from text parts.", False),
-        ("Application callable raised an exception", True),
-    ],
-)
-def test_suppress_adk_warnings_filter_hides_noise_but_keeps_real_signals(message: str, expected: bool) -> None:
-    """Known ADK/Authlib noise is hidden; real runtime warnings stay visible."""
-    assert SuppressADKWarningsFilter().filter(_log_record("py.warnings", message)) is expected
+def test_suppress_asyncio_task_exception_filter_hides_duplicate_task_warning() -> None:
+    """Duplicate asyncio task-exception warnings are suppressed while runtime errors pass."""
+    log_filter = SuppressAsyncioTaskExceptionFilter()
+    assert not log_filter.filter(_log_record("asyncio", "Task exception was never retrieved"))
+    assert log_filter.filter(_log_record("asyncio", "Application callable raised an exception"))
+
+
+def test_config_register_reset_hook_invoked_on_reset() -> None:
+    """Registered reset hooks fire whenever config._reset() clears cached configuration."""
+    calls: list[str] = []
+
+    def _on_reset() -> None:
+        calls.append("reset")
+
+    config.register_reset_hook(_on_reset)
+    try:
+        config._reset()
+        assert calls == ["reset"]
+    finally:
+        config._reset_hooks.remove(_on_reset)
 
 
 def test_log_settings_excludes_static_assets_by_default() -> None:

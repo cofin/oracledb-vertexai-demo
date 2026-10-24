@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from litestar.middleware import ASGIMiddleware
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import ScalarRenderPlugin
-from litestar.plugins import InitPluginProtocol
+from litestar.plugins import CLIPluginProtocol, InitPluginProtocol
 from sqlspec.adapters.oracledb import OracleAsyncDriver
 
 from app import config
@@ -19,23 +19,33 @@ from app.domain.ai.services import AgentOrchestrationService
 from app.domain.products.services import OracleVectorSearchService, ProductService
 from app.domain.system.services import CacheService, MetricsService
 from app.lib import log
+from app.lib import settings as app_settings
 from app.lib.di import request_container_var
-from app.lib.settings import get_settings
+from app.lib.exceptions import AIServiceUnconfigured, ai_service_unconfigured_handler
 from app.server import plugins
 
 if TYPE_CHECKING:
+    from click import Group
     from litestar.config.app import AppConfig
     from litestar.types import ASGIApp, Receive, Scope, Send
 
 __all__ = ("ApplicationCore",)
 
 
-class ApplicationCore(InitPluginProtocol):
+class ApplicationCore(InitPluginProtocol, CLIPluginProtocol):
     """Wires routes, middleware, and plugins onto the Litestar app."""
+
+    def on_cli_init(self, cli: Group) -> None:
+        """Configure structured logging and warning filters for CLI invocations."""
+        del cli
+        config.setup_logging()
 
     def on_app_init(self, app_config: AppConfig) -> AppConfig:
         """Initialize application middleware, plugins, and OpenAPI config."""
-        settings = get_settings()
+        settings = app_settings.get_settings()
+
+        app_config.on_startup.append(config.setup_logging)
+        app_config.exception_handlers[AIServiceUnconfigured] = ai_service_unconfigured_handler
 
         app_config.middleware.insert(0, log.StructlogMiddleware)
         app_config.middleware.insert(1, _RequestContainerMiddleware())
