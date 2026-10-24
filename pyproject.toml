@@ -311,7 +311,6 @@ split-on-trailing-comma = false
 "src/app/domain/products/services/_stores.py" = ["banned-api"]
 "src/app/domain/system/services/_cache.py" = ["banned-api"]
 "src/app/domain/system/services/_health.py" = ["banned-api"]
-"src/app/ioc/**/*.py" = ["banned-api"]
 "src/app/server/**/*.py" = ["banned-api"]
 "src/tests/*.py" = [
     "ANN",

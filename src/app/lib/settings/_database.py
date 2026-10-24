@@ -9,7 +9,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 from litestar_queues.backends.sqlspec.extension import configure_queue_migration_extension
 from sqlspec.adapters.oracledb import OracleAsyncConfig
@@ -98,12 +98,15 @@ class DatabaseSettings:
             raw_url = self.URL.strip()
             if "://" in raw_url:
                 parsed = urlparse(raw_url)
-                return {
-                    "user": parsed.username or self.USER,
-                    "password": parsed.password or self.PASSWORD,
-                    "dsn": parsed.hostname or parsed.path.lstrip("/") or self.DSN,
-                    "wallet_password": self.WALLET_PASSWORD or "",
-                }
+                user = unquote(parsed.username) if parsed.username else self.USER
+                password = unquote(parsed.password) if parsed.password else self.PASSWORD
+                service_path = parsed.path.lstrip("/")
+                if parsed.hostname:
+                    host_port = f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
+                    dsn = f"{host_port}/{service_path}" if service_path else host_port
+                else:
+                    dsn = service_path or self.DSN
+                return {"user": user, "password": password, "dsn": dsn, "wallet_password": self.WALLET_PASSWORD or ""}
             return {
                 "user": self.USER,
                 "password": self.PASSWORD,
@@ -114,6 +117,10 @@ class DatabaseSettings:
 
     def create_config(self) -> OracleAsyncConfig:
         """Create Oracle database configuration based on connection mode (autonomous vs local).
+
+        SQLSpec ``0.69.0`` defaults ``fetch_lobs`` to ``False``, returning LOB
+        columns under 1 GB directly as inline ``str`` / ``bytes`` values across
+        both ``select`` and ``select_stream`` without extra locator round-trips.
 
         Returns:
             SQLSpec Oracle async configuration for the app.
@@ -126,7 +133,7 @@ class DatabaseSettings:
             connection_config=pool_config,
             statement_config=self._build_statement_config(),
             observability_config=self._build_observability_config(),
-            driver_features={"fetch_lobs": True, "enable_session_tracing": True},
+            driver_features={"enable_session_tracing": True},
             migration_config={
                 "version_table_name": "migrations",
                 "script_location": self.MIGRATION_PATH,
@@ -153,8 +160,10 @@ class DatabaseSettings:
     def get_queue_config(self) -> OracleAsyncConfig:
         """Create a dedicated OracleAsyncConfig for ``litestar-queues`` SQLSpec storage.
 
-        Isolates ``OracledbAsyncQueueStore``'s ``driver_features["fetch_lobs"] = False``
-        mutation from the primary application ``OracleAsyncConfig``.
+        ``QueuePlugin`` and ``SQLSpecQueueBackend`` own the ``queue_db`` pool
+        lifespan (``min=1, max=4``, ``session_key="queue_db_session"``),
+        isolating ``OracledbAsyncQueueStore``'s in-place ``driver_features`` and
+        ``extension_config`` mutations from the primary application pool.
 
         Returns:
             Dedicated ``OracleAsyncConfig`` for background queue persistence.

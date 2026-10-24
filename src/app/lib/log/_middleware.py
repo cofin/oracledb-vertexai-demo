@@ -75,7 +75,6 @@ class BeforeSendHandler:
         "do_log_response",
         "exclude_paths",
         "include_compressed_body",
-        "logger",
         "request_extractor",
         "response_extractor",
         "settings",

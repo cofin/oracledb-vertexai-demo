@@ -30,7 +30,7 @@ def test_get_queue_config_isolates_oracle_lob_features_from_main_db_config(monke
 
     assert main_config is not queue_config
     assert main_config.driver_features.get("enable_session_tracing") is True
-    assert main_config.driver_features.get("fetch_lobs") is True
+    assert main_config.driver_features.get("fetch_lobs", False) is False
     assert "enable_AutoLob" not in main_config.driver_features
     assert queue_config.connection_config["min"] == 1
     assert queue_config.connection_config["max"] == 4
@@ -46,7 +46,7 @@ def test_get_queue_config_isolates_oracle_lob_features_from_main_db_config(monke
 
     assert queue_config.driver_features.get("fetch_lobs") is False
     assert queue_config.driver_features.get("enable_session_tracing") is True
-    assert main_config.driver_features.get("fetch_lobs") is True
+    assert "fetch_lobs" not in main_config.driver_features or main_config.driver_features["fetch_lobs"] is False
     assert main_config.driver_features.get("enable_session_tracing") is True
 
 

@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from google.auth.exceptions import DefaultCredentialsError
+import httpx
+from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
 from google.genai import errors as genai_errors
 from litestar.exceptions import ServiceUnavailableException
 from litestar.response import Response
@@ -66,9 +67,9 @@ def is_credential_error(exc: BaseException) -> bool:
     """Return True when an exception indicates missing or invalid Google Cloud/GenAI credentials."""
     if isinstance(exc, AIServiceUnconfigured | DefaultCredentialsError):
         return True
+    if not isinstance(exc, GoogleAuthError | genai_errors.APIError | httpx.HTTPError | RuntimeError | OSError):
+        return False
     text = str(exc).lower()
-    if isinstance(exc, genai_errors.ClientError):
-        return any(marker in text for marker in _CREDENTIAL_MARKERS)
     return any(marker in text for marker in _CREDENTIAL_MARKERS)
 
 
@@ -76,6 +77,8 @@ def is_expected_service_unavailable(exc: BaseException) -> bool:
     """Return True when an exception represents an expected external AI/credential unavailability."""
     if is_credential_error(exc):
         return True
+    if not isinstance(exc, GoogleAuthError | genai_errors.APIError | httpx.HTTPError | RuntimeError | OSError):
+        return False
     text = str(exc).lower()
     if isinstance(exc, genai_errors.ClientError):
         return any(marker in text for marker in _SERVICE_UNAVAILABLE_MARKERS)

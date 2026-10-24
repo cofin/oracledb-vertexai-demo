@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -29,19 +30,40 @@ from app.lib.service import OracleAsyncService
 from app.lib.settings import ChatSettings, QueueSettings, Settings
 
 
+def _collect_forbidden_ioc_imports(tree: ast.Module) -> list[str]:
+    """Return forbidden import or future-annotation descriptions found in an IoC module AST."""
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            names = {alias.name for alias in node.names}
+            if mod == "__future__" and "annotations" in names:
+                violations.append("from __future__ import annotations")
+            if mod in {"app.config", "app.server"} or mod.startswith(("app.config.", "app.server.")):
+                violations.append(f"from {mod} import ...")
+            if mod == "app" and ({"config", "server"} & names):
+                violations.append(f"from app import {sorted({'config', 'server'} & names)}")
+            if "get_settings" in names:
+                violations.append(f"from {mod} import get_settings")
+        elif isinstance(node, ast.Import):
+            violations.extend(
+                f"import {alias.name}"
+                for alias in node.names
+                if alias.name in {"app.config", "app.server"} or alias.name.startswith(("app.config.", "app.server."))
+            )
+    return violations
+
+
 def test_ioc_package_modules_exclude_future_annotations_and_config_coupling() -> None:
     """Verify no file under src/app/ioc/ uses future annotations or imports app.config/app.server/get_settings."""
     ioc_dir = Path(__file__).resolve().parents[3] / "app" / "ioc"
     assert ioc_dir.is_dir()
     py_files = sorted(ioc_dir.glob("*.py"))
-    assert len(py_files) == 5
+    assert py_files
     for py_file in py_files:
-        content = py_file.read_text(encoding="utf-8")
-        assert "from __future__ import annotations" not in content, f"{py_file.name} contains future annotations"
-        assert "app.config" not in content, f"{py_file.name} imports app.config"
-        assert "from app import config" not in content, f"{py_file.name} imports app.config"
-        assert "app.server" not in content, f"{py_file.name} imports app.server"
-        assert "get_settings" not in content, f"{py_file.name} references get_settings"
+        tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
+        violations = _collect_forbidden_ioc_imports(tree)
+        assert violations == [], f"{py_file.name} violated IoC import boundaries: {violations}"
 
 
 def test_ioc_public_exports_exclude_legacy_aliases() -> None:

@@ -17,6 +17,7 @@ from uuid import UUID, uuid4
 import numpy as np
 import pytest
 from google.auth.exceptions import DefaultCredentialsError
+from google.genai import errors as genai_errors
 from litestar.exceptions import ServiceUnavailableException
 
 from app.domain.chat.exceptions import AIServiceUnconfigured as ChatAIServiceUnconfigured
@@ -142,7 +143,16 @@ def test_exceptions_classify_credentials_and_render_503_handler() -> None:
     assert is_expected_service_unavailable(adc_exc) is True
 
     assert is_credential_error(KeyError("missing_column")) is False
+    assert is_credential_error(KeyError("credentials")) is False
+    assert is_credential_error(ValueError("invalid api key")) is False
     assert is_expected_service_unavailable(ValueError("bad_argument")) is False
+    assert is_expected_service_unavailable(ValueError("invalid api key")) is False
+
+    forbidden_client_err = genai_errors.ClientError(403, {"error": {"message": "403 Forbidden"}})
+    assert is_credential_error(forbidden_client_err) is False
+    assert is_expected_service_unavailable(forbidden_client_err) is True
+    assert is_expected_service_unavailable(RuntimeError("403 Forbidden")) is False
+    assert is_expected_service_unavailable(RuntimeError("SERVICE_DISABLED for Vertex AI")) is True
 
     response = ai_service_unconfigured_handler(MagicMock(), exc)
     assert response.status_code == 503

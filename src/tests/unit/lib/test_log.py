@@ -68,6 +68,17 @@ def test_config_register_reset_hook_invoked_on_reset() -> None:
         config._reset_hooks.remove(_on_reset)
 
 
+def test_setup_logging_does_not_force_config_initialization() -> None:
+    """Verify config.setup_logging() configures logging without materializing database pools via _initialize()."""
+    config._reset()
+    try:
+        assert config._initialized is False
+        config.setup_logging()
+        assert config._initialized is False
+    finally:
+        config._reset()
+
+
 def test_log_settings_excludes_static_assets_by_default() -> None:
     """Static asset requests should not drown out chat/API logs."""
     exclude_paths = re.compile(LogSettings().EXCLUDE_PATHS)

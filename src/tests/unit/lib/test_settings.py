@@ -191,12 +191,28 @@ def test_database_settings_local_contract(monkeypatch: MonkeyPatch) -> None:
 
 
 @pytest.mark.parametrize(
-    "database_url",
-    ["oracle+oracledb://app:SuperSecret1@myatp_low", "myatp_low"],
-    ids=["sqlalchemy-url", "bare-tns-alias"],
+    ("database_url", "expected_user", "expected_password", "expected_dsn"),
+    [
+        ("oracle+oracledb://app:SuperSecret1@myatp_low", "app", "SuperSecret1", "myatp_low"),
+        ("myatp_low", "app", "SuperSecret1", "myatp_low"),
+        (
+            "oracle+oracledb://admin:Sec%40ret%231@adb.us-ashburn-1.oraclecloud.com:1522/gd123_myatp_high.adb.oraclecloud.com",
+            "admin",
+            "Sec@ret#1",
+            "adb.us-ashburn-1.oraclecloud.com:1522/gd123_myatp_high.adb.oraclecloud.com",
+        ),
+    ],
+    ids=["sqlalchemy-tns-url", "bare-tns-alias", "easy-connect-percent-encoded"],
 )
-def test_wallet_mode_contract(tmp_path: Path, monkeypatch: MonkeyPatch, database_url: str) -> None:
-    """Verify Autonomous Database wallet mode supports URL and bare TNS alias connection formats."""
+def test_wallet_mode_contract(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    database_url: str,
+    expected_user: str,
+    expected_password: str,
+    expected_dsn: str,
+) -> None:
+    """Verify Autonomous Database wallet mode supports TNS alias and Easy Connect URLs with percent-encoded credentials."""
     wallet_dir = tmp_path / "wallet"
     wallet_dir.mkdir()
     (wallet_dir / "ewallet.pem").write_text("dummy")
@@ -214,8 +230,9 @@ def test_wallet_mode_contract(tmp_path: Path, monkeypatch: MonkeyPatch, database
     config = settings.create_config()
     conn = config.connection_config
 
-    assert conn["user"] == "app"
-    assert conn["dsn"] == "myatp_low"
+    assert conn["user"] == expected_user
+    assert conn["password"] == expected_password
+    assert conn["dsn"] == expected_dsn
     assert conn["wallet_password"] == "WalletSecret1"
     assert conn["wallet_location"] == str(wallet_dir.resolve())
     assert conn["config_dir"] == str(wallet_dir.resolve())
@@ -440,7 +457,7 @@ def test_database_settings_enables_session_tracing_and_wire_sqlcommenter(monkeyp
     config = DatabaseSettings().get_config()
 
     assert config.driver_features["enable_session_tracing"] is True
-    assert config.driver_features["fetch_lobs"] is True
+    assert config.driver_features.get("fetch_lobs", False) is False
     assert "enable_AutoLob" not in config.driver_features
     assert config.statement_config.enable_sqlcommenter is True
     assert config.statement_config.sqlcommenter_enable_context is True

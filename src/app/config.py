@@ -106,14 +106,15 @@ def register_reset_hook(hook: Callable[[], None]) -> None:
 
 
 def setup_logging() -> None:
-    """Configure structlog and stdlib logging plus noise-suppression filters."""
+    """Configure structlog and stdlib logging plus noise-suppression filters without forcing DB pool init."""
     _install_warning_filters()
 
-    if not _initialized:
-        _initialize()
-
-    structlog_config = cast("StructlogConfig", globals()["log"])
-    settings = cast("Settings", globals()["_settings"])
+    if _initialized:
+        settings = cast("Settings", globals()["_settings"])
+        structlog_config = cast("StructlogConfig", globals()["log"])
+    else:
+        settings = app_settings.get_settings()
+        structlog_config = _build_structlog_config(settings)
 
     if structlog_config.structlog_logging_config.standard_lib_logging_config:
         structlog_config.structlog_logging_config.standard_lib_logging_config.configure()
@@ -130,22 +131,10 @@ def setup_logging() -> None:
     logging.getLogger("_granian").addFilter(log_conf.SuppressGranianExcInfoFilter())
 
 
-def _initialize() -> None:
-    """Materialize every public attribute from the current environment."""
-    global _initialized
-
-    settings = app_settings.get_settings()
+def _build_structlog_config(settings: Settings) -> StructlogConfig:
+    """Construct the Litestar ``StructlogConfig`` from active settings without database side effects."""
     log_as_json = not log_conf.is_tty()
-    db_cfg = settings.db.create_config()
-    queue_db_cfg = settings.db.get_queue_config()
-    queue_cfg = settings.queue.get_config(queue_db_cfg)
-    db_mgr = SQLSpec(observability_config=db_cfg.observability_config)
-    db_mgr.add_config(db_cfg)
-    db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
-
-    store_registry = StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
-
-    structlog_config = StructlogConfig(
+    return StructlogConfig(
         enable_middleware_logging=False,
         structlog_logging_config=StructLoggingConfig(
             disable_stack_trace={
@@ -218,6 +207,22 @@ def _initialize() -> None:
             request_log_fields=["method", "path", "path_params", "query"], response_log_fields=["status_code"]
         ),
     )
+
+
+def _initialize() -> None:
+    """Materialize every public attribute from the current environment."""
+    global _initialized
+
+    settings = app_settings.get_settings()
+    db_cfg = settings.db.create_config()
+    queue_db_cfg = settings.db.get_queue_config()
+    queue_cfg = settings.queue.get_config(queue_db_cfg)
+    db_mgr = SQLSpec(observability_config=db_cfg.observability_config)
+    db_mgr.add_config(db_cfg)
+    db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
+
+    store_registry = StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
+    structlog_config = _build_structlog_config(settings)
 
     g = globals()
     g["_settings"] = settings
