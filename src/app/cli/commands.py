@@ -46,7 +46,7 @@ from app.domain.products.jobs import embed_missing_records
 from app.domain.products.services import VertexAIService
 from app.domain.system.jobs import cleanup_expired_cache_and_sessions
 from app.domain.system.services import CacheService
-from app.lib.settings import Settings, get_settings
+from app.lib.settings import Settings
 from app.server.asgi import create_app
 
 __all__ = (
@@ -126,15 +126,18 @@ async def export_fixtures_cmd(tables: str | None, output_dir: str | None, no_com
     await export_fixture_data(tables, output_dir, no_compress)
 
 
-@cli.command(name="configure-apex-cdn", help="Run APEX CDN configuration against the database as SYSDBA.")
+@cli.command(
+    name="configure-apex-cdn", help="Run APEX CDN configuration against the database as ADMIN (wallet) or SYSDBA."
+)
 def configure_apex_cmd() -> None:
-    """Run APEX CDN configuration against the database as SYSDBA."""
-    system_password = os.getenv("DATABASE_SYSTEM_PASSWORD")
-    if not system_password:
-        msg = "DATABASE_SYSTEM_PASSWORD environment variable is not set"
-        raise click.ClickException(msg)
-
-    configure_apex_cdn_helper(system_password)
+    """Run APEX CDN configuration against the database as ADMIN (wallet) or SYSDBA."""
+    cache_clear = getattr(Settings.from_env, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+    try:
+        configure_apex_cdn_helper()
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
 
 @cli.group(name="worker", help="Run and inspect Oracle 26ai background queue workers.")
@@ -264,7 +267,7 @@ async def _upgrade_database(revision: str, no_fixtures: bool, dry_run: bool) -> 
 
 def _show_model_info(vertex_ai_service: VertexAIService) -> None:
     """Show information about currently configured AI models."""
-    settings = get_settings()
+    settings = Settings.from_env()
     console = get_console()
     console.rule("[bold blue]AI Model Configuration", style="blue", align="left")
     console.print()

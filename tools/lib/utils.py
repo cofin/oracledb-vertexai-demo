@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-import json
 import os
+import secrets
 import shutil
 import subprocess
 from pathlib import Path
@@ -15,207 +15,115 @@ from typing import Any, Literal
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
+from app.utils.serialization import decode_json, format_json
+
+__all__ = (
+    "MCP_TOOLBOX_ORACLE_SERVER_NAME",
+    "SQLCL_MCP_SERVER_NAME",
+    "AntigravityMCPConfigTarget",
+    "build_antigravity_mcp_config",
+    "build_mcp_toolbox_oracle_server_config",
+    "build_sqlcl_mcp_server_config",
+    "check_env_file",
+    "console",
+    "create_env_interactive",
+    "detect_deployment_mode",
+    "generate_secret_key",
+    "get_antigravity_mcp_config_path",
+    "is_tool_installed",
+    "run_command",
+    "write_antigravity_mcp_config",
+)
+
 console = Console()
 
 AntigravityMCPConfigTarget = Literal["workspace", "ide", "cli-global"]
 SQLCL_MCP_SERVER_NAME = "sqlcl"
 MCP_TOOLBOX_ORACLE_SERVER_NAME = "oracle-toolbox"
 
+_DEFAULT_MANAGED_PASSWORD = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
+_DEFAULT_EXTERNAL_PASSWORD = "your-password"  # ruff: ignore[hardcoded-password-string]
+_SECRET_KEY_BYTES = 32
+
 
 def detect_deployment_mode() -> str:
-    """Detect deployment mode from environment.
+    """Detect deployment mode from environment variables.
 
-    Returns:
-        str: "managed" or "external"
-
-    Detection logic:
-        - If DATABASE_HOST or DATABASE_URL is set -> external
-        - Otherwise -> managed (Docker container we control)
-
-    Wallet detection is automatic - if TNS_ADMIN/WALLET_LOCATION is set,
-    wallet-based connection will be used regardless of mode.
+    Honors explicit ``DATABASE_DEPLOYMENT_MODE`` (``"managed"`` or ``"external"``)
+    before checking ``DATABASE_HOST`` or ``DATABASE_URL``.
     """
+    explicit = os.getenv("DATABASE_DEPLOYMENT_MODE", "").strip().lower()
+    if explicit in {"managed", "external"}:
+        return explicit
     if os.getenv("DATABASE_HOST") or os.getenv("DATABASE_URL"):
         return "external"
     return "managed"
 
 
 def check_env_file() -> bool:
-    """Check if .env file exists."""
+    """Return True when a ``.env`` file exists in the current working directory."""
     return Path(".env").exists()
 
 
 def generate_secret_key() -> str:
-    """Generate a secure random secret key."""
-    import secrets
-
-    return secrets.token_hex(32)
+    """Generate a cryptographically random 32-byte hex secret key."""
+    return secrets.token_hex(_SECRET_KEY_BYTES)
 
 
-def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:  # ruff: ignore[complex-structure, too-many-locals]
-    """Create .env file interactively based on deployment mode.
-
-    Args:
-        mode: Deployment mode ("managed" or "external")
-        non_interactive: If True, use defaults without prompting
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
+def create_env_interactive(mode: str, non_interactive: bool = False) -> bool:
+    """Create a ``.env`` file interactively or using defaults for the chosen mode."""
     env_path = Path(".env")
-
     if env_path.exists():
         console.print("[yellow]⚠ .env already exists[/yellow]")
-        if not non_interactive:
-            overwrite = Confirm.ask("Overwrite existing .env?", default=False)
-            if not overwrite:
-                console.print("[cyan]Keeping existing .env[/cyan]")
-                return True
+        if not non_interactive and not Confirm.ask("Overwrite existing .env?", default=False):
+            console.print("[cyan]Keeping existing .env[/cyan]")
+            return True
 
     console.print(f"[bold]Creating .env for [cyan]{mode}[/cyan] mode...[/bold]")
     console.print()
 
-    # Core application settings (always required)
-    default_secret = generate_secret_key()
-    if non_interactive:
-        secret_key = default_secret
-        google_project = "demo-project"
-        google_api_key = ""
-        google_creds = ""
-    else:
-        console.print("[bold]Core Application Settings:[/bold]")
-        secret_key = Prompt.ask("SECRET_KEY (press Enter to auto-generate)", default=default_secret, show_default=False)
-        console.print()
-
-        console.print("[bold]Google Cloud / Vertex AI Settings:[/bold]")
-        google_project = Prompt.ask("GOOGLE_PROJECT_ID", default="demo-project")
-        google_api_key = Prompt.ask("GOOGLE_API_KEY (optional)", default="")
-        google_creds = Prompt.ask("GOOGLE_APPLICATION_CREDENTIALS (optional)", default="")
-
-    env_content = "# App\n"
-
-    if mode == "managed":
-        if non_interactive:
-            db_user = "app"
-            db_password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
-            db_host = "localhost"
-            db_port = "1521"
-            db_service = "freepdb1"
-        else:
-            console.print("[bold]Database Settings (Managed Container):[/bold]")
-            db_user = Prompt.ask("DATABASE_USER", default="app")
-            db_password = Prompt.ask("DATABASE_PASSWORD", default="SuperSecret1", password=True)
-            db_host = Prompt.ask("DATABASE_HOST", default="localhost")
-            db_port = Prompt.ask("DATABASE_PORT", default="1521")
-            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="freepdb1")
-
-        env_content += "# Database (Managed Container)\n"
-        env_content += f"DATABASE_USER={db_user}\n"
-        env_content += f"DATABASE_PASSWORD={db_password}\n"
-        env_content += f"DATABASE_HOST={db_host}\n"
-        env_content += f"DATABASE_PORT={db_port}\n"
-        env_content += f"DATABASE_SERVICE_NAME={db_service}\n\n"
-
-    elif non_interactive:
-        use_wallet = False
-        db_user = "app"
-        db_password = "your-password"  # ruff: ignore[hardcoded-password-string]
-        db_host = "your-oracle-host"
-        db_port = "1521"
-        db_service = "your-service-name"
-    else:
-        console.print("[bold]External Database Connection:[/bold]")
-        use_wallet = Confirm.ask("Use wallet-based connection (Autonomous DB, mTLS)?", default=False)
-
-        if use_wallet:
-            console.print("[dim]Using DATABASE_URL format for wallet connections[/dim]")
-            db_url = Prompt.ask("DATABASE_URL", default="oracle+oracledb://ADMIN:password@service_high")
-            wallet_password = Prompt.ask("WALLET_PASSWORD", default="")
-            wallet_location = Prompt.ask("WALLET_LOCATION/TNS_ADMIN", default="./.envs/tns")
-
-            env_content += "# Database (External - Wallet/Autonomous)\n"
-            env_content += f"DATABASE_URL={db_url}\n"
-            if wallet_password:
-                env_content += f"WALLET_PASSWORD={wallet_password}\n"
-            env_content += f"TNS_ADMIN={wallet_location}\n\n"
-        else:
-            console.print("[dim]Using standard connection parameters[/dim]")
-            db_user = Prompt.ask("DATABASE_USER", default="app")
-            db_password = Prompt.ask("DATABASE_PASSWORD", default="your-password")
-            db_host = Prompt.ask("DATABASE_HOST", default="your-oracle-host")
-            db_port = Prompt.ask("DATABASE_PORT", default="1521")
-            db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="your-service-name")
-
-            env_content += "# Database (External - Standard)\n"
-            env_content += f"DATABASE_USER={db_user}\n"
-            env_content += f"DATABASE_PASSWORD={db_password}\n"
-            env_content += f"DATABASE_HOST={db_host}\n"
-            env_content += f"DATABASE_PORT={db_port}\n"
-            env_content += f"DATABASE_SERVICE_NAME={db_service}\n\n"
-
-    # Google Cloud / Vertex AI settings
-    env_content += "# APIs\n"
-    if google_creds:
-        env_content += f"GOOGLE_APPLICATION_CREDENTIALS={google_creds}\n"
-    env_content += f"GOOGLE_PROJECT_ID={google_project}\n"
-    if google_api_key:
-        env_content += f"GOOGLE_API_KEY={google_api_key}\n"
-    env_content += "VERTEX_AI_PROJECT_ID=${GOOGLE_PROJECT_ID}\n"
-    env_content += "VERTEX_AI_LOCATION=global\n\n"
-
-    # Server settings
-    env_content += "# server\n"
-    env_content += "LITESTAR_DEBUG=true\n"
-    env_content += "LITESTAR_HOST=0.0.0.0\n"
-    env_content += "LITESTAR_PORT=5006\n"
-    env_content += f"SECRET_KEY={secret_key}\n\n"
-
-    # Development settings
-    env_content += "# only in development\n"
-    env_content += "VITE_DEV_MODE=False\n"
+    secret_key, google_project, google_api_key, google_creds = _prompt_core_settings(non_interactive=non_interactive)
+    db_section = (
+        _build_managed_db_section(non_interactive=non_interactive)
+        if mode == "managed"
+        else _build_external_db_section(non_interactive=non_interactive)
+    )
+    env_content = _render_env_document(
+        db_section=db_section,
+        secret_key=secret_key,
+        google_project=google_project,
+        google_api_key=google_api_key,
+        google_creds=google_creds,
+    )
 
     try:
         env_path.write_text(env_content, encoding="utf-8")
         console.print("[green]✓ Created .env file[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ Failed to create .env: {e}[/red]")
+    except Exception as exc:
+        console.print(f"[red]✗ Failed to create .env: {exc}[/red]")
         return False
-    else:
-        return True
+    return True
 
 
 def run_command(cmd: list[str], check: bool = True) -> tuple[int, str, str]:
-    """Run shell command and return exit code, stdout, stderr."""
+    """Run a command and return ``(returncode, stdout, stderr)``."""
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=check)
-    except subprocess.CalledProcessError as e:
-        return e.returncode, e.stdout, e.stderr
-    except Exception as e:
-        return 1, "", str(e)
-    else:
-        return result.returncode, result.stdout, result.stderr
+    except subprocess.CalledProcessError as exc:
+        return exc.returncode, exc.stdout, exc.stderr
+    except Exception as exc:
+        return 1, "", str(exc)
+    return result.returncode, result.stdout, result.stderr
 
 
 def is_tool_installed(tool_name: str, version_flag: str = "--version") -> tuple[bool, str]:
-    """Check if a tool is installed and available in PATH.
-
-    Args:
-        tool_name: Name of the executable to check (e.g., 'uv', 'sql')
-        version_flag: Flag to get version (default: '--version')
-
-    Returns:
-        tuple[bool, str]: (is_installed, version_string)
-    """
+    """Check whether an executable is available in ``PATH`` and responds to ``version_flag``."""
     if not shutil.which(tool_name):
         return False, ""
 
-    try:
-        returncode, stdout, _ = run_command([tool_name, version_flag], check=False)
-        if returncode == 0:
-            return True, stdout.strip()
-    except Exception:  # ruff: ignore[try-except-pass]
-        pass
-
+    returncode, stdout, _ = run_command([tool_name, version_flag], check=False)
+    if returncode == 0:
+        return True, stdout.strip()
     return False, ""
 
 
@@ -276,8 +184,7 @@ def write_antigravity_mcp_config(
 
     existing: dict[str, Any] = {}
     if config_path.exists():
-        with config_path.open(encoding="utf-8") as f:
-            loaded = json.load(f)
+        loaded = decode_json(config_path.read_text(encoding="utf-8"))
         if isinstance(loaded, dict):
             existing = loaded
 
@@ -288,133 +195,127 @@ def write_antigravity_mcp_config(
     existing_mcp_servers.update(generated["mcpServers"])
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(json.dumps(existing, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    config_path.write_text(f"{format_json(existing, indent=2)}\n", encoding="utf-8")
     return config_path
 
 
-def is_antigravity_mcp_server_configured(
-    server_name: str,
-    target: AntigravityMCPConfigTarget = "workspace",
-    *,
-    workspace_root: Path | None = None,
-    home: Path | None = None,
-) -> bool:
-    """Check whether an Antigravity MCP config target includes a server."""
-    config_path = get_antigravity_mcp_config_path(target, workspace_root=workspace_root, home=home)
-    if not config_path.exists():
-        return False
+def _prompt_core_settings(*, non_interactive: bool) -> tuple[str, str, str, str]:
+    """Return ``(secret_key, google_project, google_api_key, google_creds)``."""
+    default_secret = generate_secret_key()
+    if non_interactive:
+        return default_secret, "demo-project", "", ""
 
-    try:
-        with config_path.open(encoding="utf-8") as f:
-            settings = json.load(f)
-    except Exception:
-        return False
+    console.print("[bold]Core Application Settings:[/bold]")
+    secret_key = Prompt.ask("SECRET_KEY (press Enter to auto-generate)", default=default_secret, show_default=False)
+    console.print()
 
-    mcp_servers = settings.get("mcpServers", {})
-    return isinstance(mcp_servers, dict) and server_name in mcp_servers and mcp_servers[server_name] is not None
+    console.print("[bold]Google Cloud / Vertex AI Settings:[/bold]")
+    google_project = Prompt.ask("GOOGLE_PROJECT_ID", default="demo-project")
+    google_api_key = Prompt.ask("GOOGLE_API_KEY (optional)", default="")
+    google_creds = Prompt.ask("GOOGLE_APPLICATION_CREDENTIALS (optional)", default="")
+    return secret_key, google_project, google_api_key, google_creds
 
 
-def is_sqlcl_connection_saved(connection_name: str = "cymbal_coffee") -> bool:
-    """Check if a SQLcl saved connection exists.
-
-    Args:
-        connection_name: Name of the saved connection
-
-    Returns:
-        bool: True if connection is saved
-    """
-    if not shutil.which("sql"):
-        return False
-
-    try:
-        # Use sql -L to list saved connections
-        result = subprocess.run(
-            ["sql", "-L"],  # ruff: ignore[start-process-with-partial-path]
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except Exception:
-        return False
+def _build_managed_db_section(*, non_interactive: bool) -> str:
+    """Render ``.env`` lines for the managed ``adb-free:latest-26ai`` container."""
+    if non_interactive:
+        db_user = "app"
+        db_password = _DEFAULT_MANAGED_PASSWORD
+        db_url = "myatp_low"
+        wallet_location = "./.envs/tns"
+        wallet_password = _DEFAULT_MANAGED_PASSWORD
     else:
-        # Check if connection_name appears in the output
-        return connection_name in result.stdout
+        console.print("[bold]Database Settings (Managed ADB-Free 26ai Container):[/bold]")
+        db_user = Prompt.ask("DATABASE_USER", default="app")
+        db_password = Prompt.ask("DATABASE_PASSWORD", default=_DEFAULT_MANAGED_PASSWORD, password=True)
+        db_url = Prompt.ask("DATABASE_URL", default="myatp_low")
+        wallet_location = Prompt.ask("WALLET_LOCATION", default="./.envs/tns")
+        wallet_password = Prompt.ask("WALLET_PASSWORD", default=_DEFAULT_MANAGED_PASSWORD, password=True)
+
+    return (
+        "# Database (Managed ADB-Free 26ai Container)\n"
+        "DATABASE_DEPLOYMENT_MODE=managed\n"
+        f"DATABASE_USER={db_user}\n"
+        f"DATABASE_PASSWORD={db_password}\n"
+        f"DATABASE_URL={db_url}\n"
+        f"WALLET_LOCATION={wallet_location}\n"
+        f"WALLET_PASSWORD={wallet_password}\n\n"
+    )
 
 
-def configure_sqlcl_connection_with_password(connection_name: str = "cymbal_coffee") -> tuple[bool, str]:  # ruff: ignore[too-many-return-statements]
-    """Configure SQLcl saved connection with password from .env.
-
-    Args:
-        connection_name: Name for the saved connection (default: cymbal_coffee)
-
-    Returns:
-        tuple[bool, str]: Success status and message
-
-    SQLcl MCP requires a saved connection with password using the -savepwd flag.
-    This function creates a saved connection using credentials from .env.
-
-    Command format:
-        conn -save <name> -savepwd username/password@//host:port/service
-    """
-    from dotenv import dotenv_values
-
-    # Check if connection already exists
-    if is_sqlcl_connection_saved(connection_name):
-        return True, f"Connection '{connection_name}' already configured"
-
-    # Load .env values
-    env_path = Path(".env")
-    if not env_path.exists():
-        return False, ".env file not found - run 'python manage.py init' first"
-
-    env_vars = dotenv_values(env_path)
-
-    # Get connection parameters
-    user = env_vars.get("DATABASE_USER")
-    password = env_vars.get("DATABASE_PASSWORD")
-    host = env_vars.get("DATABASE_HOST")
-    port = env_vars.get("DATABASE_PORT", "1521")
-    service_name = env_vars.get("DATABASE_SERVICE_NAME")
-
-    # Validate required parameters
-    if not user:
-        return False, "DATABASE_USER not configured in .env"
-    if not password:
-        return False, "DATABASE_PASSWORD not configured in .env"
-    if not host:
-        return False, "DATABASE_HOST not configured in .env"
-    if not service_name:
-        return False, "DATABASE_SERVICE_NAME not configured in .env"
-
-    # Check if SQLcl is installed
-    if not shutil.which("sql"):
-        return False, "SQLcl not found in PATH - run 'python manage.py install sqlcl' first"
-
-    # Build connection string (Oracle format with //)
-    conn_string = f"{user}/{password}@//{host}:{port}/{service_name}"
-
-    # Use echo to pipe the connection command
-    conn_cmd = f"conn -save {connection_name} -savepwd {conn_string}\nexit"
-
-    try:
-        result = subprocess.run(
-            ["sql", "/nolog"],  # ruff: ignore[start-process-with-partial-path]
-            check=False,
-            input=conn_cmd,
-            capture_output=True,
-            text=True,
-            timeout=10,
+def _build_external_db_section(*, non_interactive: bool) -> str:
+    """Render ``.env`` lines for an external standard or wallet-backed Oracle 26ai database."""
+    if non_interactive:
+        return (
+            "# Database (External - Standard)\n"
+            "DATABASE_DEPLOYMENT_MODE=external\n"
+            "DATABASE_USER=app\n"
+            f"DATABASE_PASSWORD={_DEFAULT_EXTERNAL_PASSWORD}\n"
+            "DATABASE_HOST=your-oracle-host\n"
+            "DATABASE_PORT=1521\n"
+            "DATABASE_SERVICE_NAME=your-service-name\n\n"
         )
 
-        # Check if successful
-        if result.returncode == 0:
-            return True, f"Saved connection '{connection_name}' configured for {user}@//{host}:{port}/{service_name}"
-        error_msg = result.stderr or result.stdout
+    console.print("[bold]External Database Connection:[/bold]")
+    use_wallet = Confirm.ask("Use wallet-based connection (Autonomous DB, mTLS)?", default=False)
+    if use_wallet:
+        console.print("[dim]Using DATABASE_URL and WALLET_LOCATION for wallet connections[/dim]")
+        db_url = Prompt.ask("DATABASE_URL", default="myatp_low")
+        db_user = Prompt.ask("DATABASE_USER", default="app")
+        db_password = Prompt.ask("DATABASE_PASSWORD", default=_DEFAULT_EXTERNAL_PASSWORD, password=True)
+        wallet_location = Prompt.ask("WALLET_LOCATION", default="./.envs/tns")
+        wallet_password = Prompt.ask("WALLET_PASSWORD", default="")
+        lines = [
+            "# Database (External - Wallet/Autonomous)",
+            "DATABASE_DEPLOYMENT_MODE=external",
+            f"DATABASE_USER={db_user}",
+            f"DATABASE_PASSWORD={db_password}",
+            f"DATABASE_URL={db_url}",
+            f"WALLET_LOCATION={wallet_location}",
+        ]
+        if wallet_password:
+            lines.append(f"WALLET_PASSWORD={wallet_password}")
+        return "\n".join(lines) + "\n\n"
 
-    except subprocess.TimeoutExpired:
-        return False, "SQLcl command timed out"
-    except Exception as e:
-        return False, f"Error running SQLcl: {e}"
-    else:
-        return False, f"Failed to save connection: {error_msg}"
+    console.print("[dim]Using standard connection parameters[/dim]")
+    db_user = Prompt.ask("DATABASE_USER", default="app")
+    db_password = Prompt.ask("DATABASE_PASSWORD", default=_DEFAULT_EXTERNAL_PASSWORD)
+    db_host = Prompt.ask("DATABASE_HOST", default="your-oracle-host")
+    db_port = Prompt.ask("DATABASE_PORT", default="1521")
+    db_service = Prompt.ask("DATABASE_SERVICE_NAME", default="your-service-name")
+    return (
+        "# Database (External - Standard)\n"
+        "DATABASE_DEPLOYMENT_MODE=external\n"
+        f"DATABASE_USER={db_user}\n"
+        f"DATABASE_PASSWORD={db_password}\n"
+        f"DATABASE_HOST={db_host}\n"
+        f"DATABASE_PORT={db_port}\n"
+        f"DATABASE_SERVICE_NAME={db_service}\n\n"
+    )
+
+
+def _render_env_document(
+    *, db_section: str, secret_key: str, google_project: str, google_api_key: str, google_creds: str
+) -> str:
+    """Assemble the complete ``.env`` file payload."""
+    api_lines = ["# APIs"]
+    if google_creds:
+        api_lines.append(f"GOOGLE_APPLICATION_CREDENTIALS={google_creds}")
+    api_lines.append(f"GOOGLE_PROJECT_ID={google_project}")
+    if google_api_key:
+        api_lines.append(f"GOOGLE_API_KEY={google_api_key}")
+    api_lines.extend([
+        "VERTEX_AI_PROJECT_ID=${GOOGLE_PROJECT_ID}",
+        "VERTEX_AI_LOCATION=global",
+        "",
+        "# server",
+        "LITESTAR_DEBUG=true",
+        "LITESTAR_HOST=0.0.0.0",
+        "LITESTAR_PORT=8000",
+        f"SECRET_KEY={secret_key}",
+        "",
+        "# only in development",
+        "VITE_DEV_MODE=False",
+        "",
+    ])
+    return "# App\n" + db_section + "\n".join(api_lines)

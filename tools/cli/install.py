@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import rich_click as click
 from rich.console import Console
@@ -23,9 +22,18 @@ from tools.lib.utils import (
     run_command,
     write_antigravity_mcp_config,
 )
+from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
 
-if TYPE_CHECKING:
-    from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
+__all__ = (
+    "console",
+    "install_all_command",
+    "install_group",
+    "install_list_command",
+    "install_mcp_toolbox_command",
+    "install_sqlcl_command",
+    "install_sqlcl_with_config",
+    "print_antigravity_mcp_next_step",
+)
 
 console = Console()
 
@@ -36,6 +44,7 @@ def install_group() -> None:
 
     Manages installation of:
     - SQLcl: Oracle's SQL command-line tool
+    - Antigravity MCP config for SQLcl and MCP Toolbox Oracle
     """
 
 
@@ -48,33 +57,21 @@ def install_group() -> None:
 @click.option("--force", is_flag=True, help="Force reinstall even if already installed")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompts")
 def install_all_command(mode: str | None, force: bool, yes: bool) -> None:
-    """Install all prerequisites for deployment mode.
+    """Install all prerequisites for the selected deployment mode."""
+    resolved_mode = mode if mode is not None else detect_deployment_mode()
 
-    Idempotent: Safe to run multiple times. Skips if already installed unless --force is used.
-
-    Prerequisites:
-    - SQLcl: Oracle's SQL command-line tool
-    - Docker/Podman: (checked, not auto-installed)
-
-    Note: Base tools like 'uv' and 'bun' should be installed via the Makefile.
-    """
-    if mode is None:
-        mode = detect_deployment_mode()
-
-    console.rule(f"[bold blue]Installing Prerequisites for '{mode}' Mode", style="blue")
+    console.rule(f"[bold blue]Installing Prerequisites for '{resolved_mode}' Mode", style="blue")
     console.print()
 
     if not yes and not Confirm.ask("Proceed with installation?", default=True):
         console.print("[yellow]Installation cancelled[/yellow]")
         return
 
-    # Install SQLcl
     ctx = click.get_current_context()
     if ctx:
         ctx.invoke(install_sqlcl_command, force=force)
 
-    # For managed mode, check Docker/Podman
-    if mode == "managed":
+    if resolved_mode == "managed":
         console.print()
         console.print("[yellow]🐋 Checking for Docker/Podman...[/yellow]")
 
@@ -132,16 +129,7 @@ def install_list_command() -> None:
     help="Retained for compatibility; Antigravity MCP config does not save credentials.",
 )
 def install_sqlcl_command(install_dir: str | None, force: bool, connection_name: str) -> None:
-    """Install Oracle SQLcl command-line tool.
-
-    Idempotent: Safe to run multiple times. Skips installation if SQLcl is already
-    installed unless --force flag is used.
-
-    Optional tool for advanced Oracle database operations.
-    Requires Java 11 or higher to be installed.
-
-    IMPORTANT: SQLcl requires Java 11+. Check with 'java -version'.
-    """
+    """Install Oracle SQLcl command-line tool."""
     console.print("[yellow]📦 Checking SQLcl installation...[/yellow]")
     console.print()
     if connection_name != "cymbal_coffee":
@@ -150,40 +138,15 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         )
         console.print()
 
-    # Check for Java before proceeding
-    java_path = shutil.which("java")
-    if not java_path:
-        console.print("[red]✗ Java not found![/red]")
-        console.print()
-        console.print("[bold]SQLcl requires Java 11 or higher.[/bold]")
-        console.print()
-        console.print("[yellow]Install Java on Ubuntu/Debian:[/yellow]")
-        console.print("  [cyan]sudo apt update && sudo apt install -y default-jre[/cyan]")
-        console.print()
-        console.print("[yellow]Or install a specific version (Ubuntu/Debian):[/yellow]")
-        console.print("  [cyan]sudo apt install openjdk-17-jre-headless[/cyan]  # Java 17 (recommended)")
-        console.print("  [cyan]sudo apt install openjdk-21-jre-headless[/cyan]  # Java 21 (latest LTS)")
-        console.print("  [cyan]sudo apt install openjdk-11-jre-headless[/cyan]  # Java 11 (minimum)")
-        console.print()
-        console.print("[yellow]RHEL/CentOS/Fedora (yum/dnf):[/yellow]")
-        console.print("  [cyan]sudo yum install java-17-openjdk[/cyan]           # RHEL/CentOS 7-8")
-        console.print("  [cyan]sudo dnf install java-17-openjdk[/cyan]           # RHEL/CentOS 9+, Fedora")
-        console.print("  [cyan]sudo dnf install java-21-openjdk[/cyan]           # Latest LTS")
-        console.print()
-        console.print("[yellow]Other platforms:[/yellow]")
-        console.print("  • macOS: [cyan]brew install openjdk@17[/cyan]")
-        console.print("  • Download from: [dim]https://adoptium.net/[/dim]")
-        console.print()
-        console.print("[dim]After installing Java, run this command again.[/dim]")
+    if not shutil.which("java"):
+        _print_missing_java_guidance()
         raise click.Abort
 
-    # Check Java version
     returncode, _stdout, _ = run_command(["java", "-version"], check=False)
     if returncode == 0:
         console.print("[green]✓ Java found[/green]")
         console.print()
 
-    # Check if already installed
     is_installed, version_str = is_tool_installed("sql", "-V")
     if is_installed and not force:
         console.print(f"[green]✓ SQLcl already installed: {version_str.split(chr(10))[0]}[/green]")
@@ -193,7 +156,6 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
         print_antigravity_mcp_next_step()
         return
 
-    # If force flag, show warning
     if is_installed and force:
         console.print("[yellow]⚠ Reinstalling SQLcl (--force flag used)[/yellow]")
         console.print()
@@ -201,19 +163,15 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     console.print("[yellow]📦 Installing Oracle SQLcl...[/yellow]")
     console.print()
 
-    # Use SQLcl installer directly
-    from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
-
     try:
         config = SQLclConfig()
         if install_dir:
             config.install_dir = Path(install_dir)
         install_sqlcl_with_config(config, SQLclInstaller, force=force)
-    except Exception as e:
-        console.print(f"[red]✗ Installation failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ Installation failed: {exc}[/red]")
+        raise click.Abort from exc
 
-    # Post-installation instructions
     console.print()
     console.print("[bold]Test SQLcl:[/bold]")
     console.print("  [cyan]sql -V[/cyan]")
@@ -238,11 +196,7 @@ def install_sqlcl_command(install_dir: str | None, force: bool, connection_name:
     help="Write explicit Antigravity CLI global config to ~/.gemini/antigravity-cli/mcp_config.json.",
 )
 def install_mcp_toolbox_command(*, dry_run: bool, workspace: bool, ide: bool, cli_global: bool) -> None:
-    """Prepare Antigravity MCP config for MCP Toolbox Oracle.
-
-    This command prints install guidance by default. Use --workspace, --ide, or
-    --cli-global to write the selected Antigravity MCP config.
-    """
+    """Prepare Antigravity MCP config for MCP Toolbox Oracle."""
     selected_count = int(workspace) + int(ide) + int(cli_global)
     if selected_count > 1:
         msg = "Choose only one of --workspace, --ide, or --cli-global."
@@ -295,9 +249,9 @@ def install_mcp_toolbox_command(*, dry_run: bool, workspace: bool, ide: bool, cl
 
     try:
         written_path = write_antigravity_mcp_config(target)
-    except Exception as e:
-        msg = f"Failed to write Antigravity MCP config: {e}"
-        raise click.ClickException(msg) from e
+    except Exception as exc:
+        msg = f"Failed to write Antigravity MCP config: {exc}"
+        raise click.ClickException(msg) from exc
 
     console.print()
     console.print(f"[green]✓ Wrote Antigravity MCP config:[/green] [cyan]{written_path}[/cyan]")
@@ -311,8 +265,10 @@ def install_sqlcl_with_config(config: SQLclConfig, installer_type: type[SQLclIns
     if installer.is_in_path():
         return
     console.print("\n[yellow]⚠ SQLcl is not in your PATH[/yellow]")
-    for instruction in installer.get_path_instructions():
-        console.print(f"  {instruction}")
+    for line in installer.get_path_instructions().splitlines():
+        stripped = line.strip()
+        if stripped:
+            console.print(f"  {stripped}")
 
 
 def print_antigravity_mcp_next_step() -> None:
@@ -320,3 +276,29 @@ def print_antigravity_mcp_next_step() -> None:
     console.print()
     console.print("[bold]Antigravity MCP config:[/bold]")
     console.print("  [cyan]python manage.py install mcp-toolbox --workspace[/cyan]")
+
+
+def _print_missing_java_guidance() -> None:
+    """Display platform installation instructions when Java 11+ is missing."""
+    console.print("[red]✗ Java not found![/red]")
+    console.print()
+    console.print("[bold]SQLcl requires Java 11 or higher.[/bold]")
+    console.print()
+    console.print("[yellow]Install Java on Ubuntu/Debian:[/yellow]")
+    console.print("  [cyan]sudo apt update && sudo apt install -y default-jre[/cyan]")
+    console.print()
+    console.print("[yellow]Or install a specific version (Ubuntu/Debian):[/yellow]")
+    console.print("  [cyan]sudo apt install openjdk-17-jre-headless[/cyan]")
+    console.print("  [cyan]sudo apt install openjdk-21-jre-headless[/cyan]")
+    console.print("  [cyan]sudo apt install openjdk-11-jre-headless[/cyan]")
+    console.print()
+    console.print("[yellow]RHEL/CentOS/Fedora (yum/dnf):[/yellow]")
+    console.print("  [cyan]sudo yum install java-17-openjdk[/cyan]")
+    console.print("  [cyan]sudo dnf install java-17-openjdk[/cyan]")
+    console.print("  [cyan]sudo dnf install java-21-openjdk[/cyan]")
+    console.print()
+    console.print("[yellow]Other platforms:[/yellow]")
+    console.print("  • macOS: [cyan]brew install openjdk@17[/cyan]")
+    console.print("  • Download from: [dim]https://adoptium.net/[/dim]")
+    console.print()
+    console.print("[dim]After installing Java, run this command again.[/dim]")
