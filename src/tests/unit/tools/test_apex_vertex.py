@@ -460,7 +460,7 @@ def test_configurator_gateway_mode_optional_api_key_and_error_redaction(monkeypa
 def test_manage_infra_apex_configure_vertex_cli_direct_and_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify `manage.py infra apex configure-vertex` dispatches direct/gateway flags and never prints tokens."""
     _StubConfigurator.recorded_calls = []
-    monkeypatch.setattr("tools.oracle.cli.apex._build_apex_vertex_configurator", _StubConfigurator)
+    monkeypatch.setattr("tools.oracle.cli.apex.ApexVertexConfigurator", _StubConfigurator)
     runner = CliRunner()
 
     direct_cli = runner.invoke(
@@ -490,7 +490,7 @@ def test_manage_infra_apex_configure_vertex_cli_direct_and_gateway(monkeypatch: 
     def fail_builder(_config: ApexVertexConfig) -> Any:
         raise ApexVertexError("Simulated missing project ID")
 
-    monkeypatch.setattr("tools.oracle.cli.apex._build_apex_vertex_configurator", fail_builder)
+    monkeypatch.setattr("tools.oracle.cli.apex.ApexVertexConfigurator", fail_builder)
     failed_cli = runner.invoke(manage.cli, ["infra", "apex", "configure-vertex"])
     assert failed_cli.exit_code != 0
     assert "Simulated missing project ID" in failed_cli.output

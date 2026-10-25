@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import gc
+import inspect
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
@@ -39,6 +40,7 @@ from app.domain.products.schemas import (
     OpenAITextContentPart,
     OpenAIUsage,
 )
+from app.ioc._ai import AIProvider
 from app.lib.di import LitestarProvider, LitestarRouter, setup_dishka
 from app.lib.exceptions import AIServiceUnconfigured, ai_service_unconfigured_handler
 from app.lib.schema import FrozenBaseStruct
@@ -58,12 +60,13 @@ TEST_CSRF_SECRET = "cymbal-coffee-csrf-test-secret-32b"
 class _FakeGeminiModelClient:
     """Deterministic GeminiModelClient double recording generate_stream invocations."""
 
-    __slots__ = ("_error", "_events", "calls")
+    __slots__ = ("_error", "_events", "calls", "closed_streams")
 
     def __init__(self, events: Sequence[AgentEvent] = (), *, error: Exception | None = None) -> None:
         self._events = tuple(events)
         self._error = error
         self.calls: list[dict[str, Any]] = []
+        self.closed_streams = 0
 
     async def generate_stream(
         self,
@@ -82,10 +85,13 @@ class _FakeGeminiModelClient:
             "model": model,
             "temperature": temperature,
         })
-        if self._error is not None:
-            raise self._error
-        for event in self._events:
-            yield event
+        try:
+            if self._error is not None:
+                raise self._error
+            for event in self._events:
+                yield event
+        finally:
+            self.closed_streams += 1
 
 
 def _event(text: str, *, usage: Usage | None = None) -> AgentEvent:
@@ -132,6 +138,39 @@ async def _gateway_client(
         csrf_config=csrf_cfg,
         exception_handlers={AIServiceUnconfigured: ai_service_unconfigured_handler},
         openapi_config=OpenAPIConfig(title="Gateway Test API", version="0.3.1"),
+        plugins=[
+            ProblemDetailsPlugin(config=ProblemDetailsConfig(enable_for_all_http_exceptions=True)),
+            SecurityPlugin(config=replace(build_security_config(settings), exclude=None)),
+        ],
+    )
+    setup_dishka(container, app)
+    try:
+        async with AsyncTestClient(app=app) as client:
+            yield client
+    finally:
+        await container.close()
+
+
+@asynccontextmanager
+async def _unconfigured_ai_provider_client(
+    *, gateway_api_key: str | None = TEST_GATEWAY_TOKEN
+) -> AsyncGenerator[AsyncTestClient[Litestar], None]:
+    """Yield an AsyncTestClient wired with AIProvider's GenAI factories and unconfigured AISettings."""
+    base = _settings(gateway_api_key=gateway_api_key)
+    settings = replace(base, ai=replace(base.ai, project_id="", api_key=None))
+    ai_provider = AIProvider()
+    provider = Provider(scope=Scope.APP)
+    provider.provide(lambda: settings, provides=Settings)
+    provider.provide(lambda: settings.app, provides=AppSettings)
+    provider.provide(lambda: settings.ai, provides=AISettings)
+    provider.provide(ai_provider.provide_genai_client)
+    provider.provide(ai_provider.provide_model_client)
+    container = make_async_container(LitestarProvider(), provider)
+
+    app = Litestar(
+        route_handlers=[LitestarRouter(path="", route_handlers=[ApexAIController])],
+        exception_handlers={AIServiceUnconfigured: ai_service_unconfigured_handler},
+        openapi_config=OpenAPIConfig(title="Gateway Unconfigured Test API", version="0.3.1"),
         plugins=[
             ProblemDetailsPlugin(config=ProblemDetailsConfig(enable_for_all_http_exceptions=True)),
             SecurityPlugin(config=replace(build_security_config(settings), exclude=None)),
@@ -421,3 +460,48 @@ def test_apex_catalog_excludes_ai_gateway_while_main_openapi_tags_gateway() -> N
     assert "/api/apex/products" in catalog["paths"]
     assert "/api/apex/ai/v1/models" not in catalog["paths"]
     assert "/api/apex/ai/v1/chat/completions" not in catalog["paths"]
+
+
+async def test_chat_completions_enforces_401_and_400_before_503_with_real_ai_provider() -> None:
+    """Verify Bearer 401 and message 400 checks run before Dishka resolves unconfigured GeminiModelClient (503)."""
+    auth_headers = {"Authorization": f"Bearer {TEST_GATEWAY_TOKEN}"}
+    async with _unconfigured_ai_provider_client(gateway_api_key=TEST_GATEWAY_TOKEN) as client:
+        unauth_resp = await client.post(
+            "/api/apex/ai/v1/chat/completions", json={"messages": [{"role": "user", "content": "Hello"}]}
+        )
+        invalid_resp = await client.post(
+            "/api/apex/ai/v1/chat/completions", headers=auth_headers, json={"messages": []}
+        )
+        valid_resp = await client.post(
+            "/api/apex/ai/v1/chat/completions",
+            headers=auth_headers,
+            json={"messages": [{"role": "user", "content": "Hello"}]},
+        )
+
+    assert unauth_resp.status_code == 401
+    assert invalid_resp.status_code == 400
+    assert valid_resp.status_code == 503
+
+
+async def test_sse_iterator_closes_underlying_model_stream_on_early_disconnect() -> None:
+    """Verify _build_sse_iterator closes the pre-fetched model stream iterator when closed mid-stream."""
+    fake_client = _FakeGeminiModelClient(events=(_event("First "), _event("Second "), _event("Third")))
+    stream_iter = aiter(fake_client.generate_stream([Content(role="user", parts=[Part(text="Hi")])]))
+    first_event = await anext(stream_iter)
+    sse_iter = aiter(
+        ApexAIController._build_sse_iterator(
+            first_event=first_event,
+            stream_iter=stream_iter,
+            completion_id="chatcmpl-close",
+            created_ts=1767225600,
+            requested_model="gemini-3.8-flash",
+        )
+    )
+    first_frame = await anext(sse_iter)
+    assert '"role":"assistant"' in first_frame
+    aclose = getattr(sse_iter, "aclose", None)
+    assert callable(aclose)
+    maybe_coro = aclose()
+    assert inspect.isawaitable(maybe_coro)
+    await maybe_coro
+    assert fake_client.closed_streams == 1

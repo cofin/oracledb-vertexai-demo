@@ -3,12 +3,14 @@
 
 """OpenAI-compatible Vertex AI gateway controller for Oracle APEX 26.1 Generative AI Services."""
 
+import inspect
 import secrets
 import time
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 from uuid import uuid4
 
+from dishka import AsyncContainer
 from google.auth.exceptions import GoogleAuthError
 from litestar import Request, get, post
 from litestar.exceptions import NotAuthorizedException, ValidationException
@@ -69,12 +71,18 @@ class ApexAIController(PublicController):
         self,
         request: Request[Any, Any, Any],
         data: OpenAIChatCompletionRequest,
-        model_client: Inject[GeminiModelClient],
+        container: Inject[AsyncContainer],
         settings: Inject[Settings],
     ) -> OpenAIChatCompletionResponse | Stream:
         """Translate OpenAI Chat Completions requests to ``GeminiModelClient`` in JSON or SSE mode."""
         self._verify_bearer_auth(request, settings)
         system_instruction, contents = self._translate_messages(data.messages)
+
+        try:
+            model_client = await container.get(GeminiModelClient)
+        except Exception as exc:
+            self._raise_if_service_unavailable(exc)
+            raise
 
         configured_default = (settings.ai.chat_model or "").strip() or _DEFAULT_CHAT_MODEL
         requested_model = (data.model or configured_default).strip() or configured_default
@@ -224,6 +232,7 @@ class ApexAIController(PublicController):
         except StopAsyncIteration:
             first_event = None
         except Exception as exc:
+            await cls._aclose_iterator(stream_iter)
             cls._raise_if_service_unavailable(exc)
             raise
 
@@ -243,8 +252,9 @@ class ApexAIController(PublicController):
             },
         )
 
-    @staticmethod
+    @classmethod
     async def _build_sse_iterator(
+        cls,
         *,
         first_event: AgentEvent | None,
         stream_iter: AsyncIterator[AgentEvent],
@@ -253,54 +263,66 @@ class ApexAIController(PublicController):
         requested_model: str,
     ) -> AsyncIterator[str]:
         """Yield OpenAI Chat Completions SSE chunk frames terminated by ``data: [DONE]``."""
-        role_chunk = OpenAIChatCompletionChunk(
-            id=completion_id,
-            created=created_ts,
-            model=requested_model,
-            choices=[
-                OpenAIChatStreamChoice(index=0, delta=OpenAIChatStreamDelta(role="assistant"), finish_reason=None)
-            ],
-        )
-        yield f"data: {encode_json(role_chunk)}\n\n"
+        try:
+            role_chunk = OpenAIChatCompletionChunk(
+                id=completion_id,
+                created=created_ts,
+                model=requested_model,
+                choices=[
+                    OpenAIChatStreamChoice(index=0, delta=OpenAIChatStreamDelta(role="assistant"), finish_reason=None)
+                ],
+            )
+            yield f"data: {encode_json(role_chunk)}\n\n"
 
-        if first_event is not None:
-            first_text = first_event.text()
-            if first_text:
-                first_chunk = OpenAIChatCompletionChunk(
-                    id=completion_id,
-                    created=created_ts,
-                    model=requested_model,
-                    choices=[
-                        OpenAIChatStreamChoice(
-                            index=0, delta=OpenAIChatStreamDelta(content=first_text), finish_reason=None
-                        )
-                    ],
-                )
-                yield f"data: {encode_json(first_chunk)}\n\n"
-
-            async for event in stream_iter:
-                piece = event.text()
-                if piece:
-                    content_chunk = OpenAIChatCompletionChunk(
+            if first_event is not None:
+                first_text = first_event.text()
+                if first_text:
+                    first_chunk = OpenAIChatCompletionChunk(
                         id=completion_id,
                         created=created_ts,
                         model=requested_model,
                         choices=[
                             OpenAIChatStreamChoice(
-                                index=0, delta=OpenAIChatStreamDelta(content=piece), finish_reason=None
+                                index=0, delta=OpenAIChatStreamDelta(content=first_text), finish_reason=None
                             )
                         ],
                     )
-                    yield f"data: {encode_json(content_chunk)}\n\n"
+                    yield f"data: {encode_json(first_chunk)}\n\n"
 
-        stop_chunk = OpenAIChatCompletionChunk(
-            id=completion_id,
-            created=created_ts,
-            model=requested_model,
-            choices=[OpenAIChatStreamChoice(index=0, delta=OpenAIChatStreamDelta(), finish_reason="stop")],
-        )
-        yield f"data: {encode_json(stop_chunk)}\n\n"
-        yield "data: [DONE]\n\n"
+                async for event in stream_iter:
+                    piece = event.text()
+                    if piece:
+                        content_chunk = OpenAIChatCompletionChunk(
+                            id=completion_id,
+                            created=created_ts,
+                            model=requested_model,
+                            choices=[
+                                OpenAIChatStreamChoice(
+                                    index=0, delta=OpenAIChatStreamDelta(content=piece), finish_reason=None
+                                )
+                            ],
+                        )
+                        yield f"data: {encode_json(content_chunk)}\n\n"
+
+            stop_chunk = OpenAIChatCompletionChunk(
+                id=completion_id,
+                created=created_ts,
+                model=requested_model,
+                choices=[OpenAIChatStreamChoice(index=0, delta=OpenAIChatStreamDelta(), finish_reason="stop")],
+            )
+            yield f"data: {encode_json(stop_chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+        finally:
+            await cls._aclose_iterator(stream_iter)
+
+    @staticmethod
+    async def _aclose_iterator(stream_iter: AsyncIterator[AgentEvent]) -> None:
+        """Close an async generator iterator when it exposes an ``aclose`` coroutine method."""
+        aclose = getattr(stream_iter, "aclose", None)
+        if callable(aclose):
+            maybe_coro = aclose()
+            if inspect.isawaitable(maybe_coro):
+                await maybe_coro
 
     @staticmethod
     def _raise_if_service_unavailable(exc: Exception) -> None:

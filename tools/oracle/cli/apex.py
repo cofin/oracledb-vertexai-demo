@@ -207,16 +207,11 @@ def apex_configure_vertex(
             gateway_url=gateway_url,
             workspace_name=workspace,
         )
-        result = _build_apex_vertex_configurator(config).configure(refresh_token_only=refresh_token, verify=verify)
+        result = ApexVertexConfigurator(config).configure(refresh_token_only=refresh_token, verify=verify)
         _render_apex_vertex_result(result, refresh_token_only=refresh_token)
     except Exception as exc:
         console.print(f"[red]✗ APEX Vertex AI configuration failed: {exc}[/red]", soft_wrap=True)
         raise click.Abort from exc
-
-
-def _build_apex_vertex_configurator(config: ApexVertexConfig) -> ApexVertexConfigurator:
-    """Build the Oracle APEX 26.1 Vertex AI configurator."""
-    return ApexVertexConfigurator(config)
 
 
 def _render_apex_vertex_result(result: ApexVertexResult, *, refresh_token_only: bool) -> None:
