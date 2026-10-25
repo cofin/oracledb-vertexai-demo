@@ -15,9 +15,15 @@ page 4 (
     }
 
     region inventory-api (
-        name: /api/apex/inventory/summary
-        title: /api/apex/inventory/summary
+        name: Litestar Inventory Summary Endpoint (/api/apex/inventory/summary)
+        title: Litestar Inventory Summary Endpoint (/api/apex/inventory/summary)
         type: staticContent
+        source {
+            htmlCode:
+                ```html
+                <p>Aggregates <code>STORE_PRODUCT_INVENTORY</code> stock states (<code>IN_STOCK</code>, <code>LOW_STOCK</code>, <code>OUT_OF_STOCK</code>) and pickup quantities across DFW cafe locations, matching <code>GET /api/apex/inventory/summary</code>.</p>
+                ```
+        }
         layout {
             sequence: 20
             slot: body
@@ -29,8 +35,8 @@ page 4 (
     )
 
     region inventory-summary (
-        name: Store Inventory
-        title: Store Inventory
+        name: Store Inventory Summary
+        title: Store Inventory Summary
         type: interactiveReport
         source {
             location: localDatabase
@@ -38,15 +44,16 @@ page 4 (
             sqlQuery:
                 ```sql
                 select s.name as store_name,
-                       count(spi.product_id) as product_count,
+                       s.city,
+                       count(spi.product_id) as tracked_products,
                        sum(case when spi.stock_status = 'IN_STOCK' then 1 else 0 end) as in_stock_count,
                        sum(case when spi.stock_status = 'LOW_STOCK' then 1 else 0 end) as low_stock_count,
                        sum(case when spi.stock_status = 'OUT_OF_STOCK' then 1 else 0 end) as out_of_stock_count,
-                       sum(spi.quantity_available) as total_quantity
+                       coalesce(sum(spi.quantity_available), 0) as total_pickup_units
                   from store s
                   left join store_product_inventory spi on spi.store_id = s.id
-                 group by s.id, s.name
-                 order by s.name
+                 group by s.id, s.name, s.city
+                 order by s.city, s.name
                 ```
         }
         layout {

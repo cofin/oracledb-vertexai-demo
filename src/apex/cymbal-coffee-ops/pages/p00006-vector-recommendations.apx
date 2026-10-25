@@ -1,7 +1,7 @@
 page 6 (
-    name: Vector Recommendations
+    name: Vertex AI Coffee Concierge
     alias: VECTOR-RECOMMENDATIONS
-    title: Vector Recommendations
+    title: Vertex AI Coffee Concierge
     appearance {
         pageTemplate: @/standard
         templateOptions: #DEFAULT#
@@ -14,10 +14,33 @@ page 6 (
         formAutoComplete: false
     }
 
-    region recommendations-api (
-        name: /api/apex/recommendations
-        title: /api/apex/recommendations
-        type: staticContent
+    region catalog-recommendations (
+        name: Grounded Catalog Candidates
+        title: Grounded Catalog Candidates
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select id,
+                       name,
+                       category,
+                       coalesce(json_value(metadata, '$.roast_level'), 'n/a') as roast_level,
+                       price as price_usd,
+                       case when embedding is not null then 'HNSW Ready (3072d)' else 'Lexical Fallback' end as retrieval_mode,
+                       description
+                  from product
+                 where in_stock
+                   and (:P6_CATEGORY is null or upper(category) like '%' || upper(trim(:P6_CATEGORY)) || '%')
+                   and (
+                       :P6_PROMPT is null
+                       or upper(name || ' ' || coalesce(category, '') || ' ' || coalesce(description, ''))
+                          like '%' || upper(trim(:P6_PROMPT)) || '%'
+                   )
+                 order by category, name
+                ```
+        }
         layout {
             sequence: 20
             slot: body
@@ -26,12 +49,25 @@ page 6 (
             template: @/standard
             templateOptions: #DEFAULT#
         }
+        advanced {
+            savedReportMappingIdentifier: 3635614902664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
     )
 
-    region vector-recommendations (
-        name: Vector Recommendations
-        title: Vector Recommendations
+    region concierge-controls (
+        name: Ask Vertex AI (COFFEE_VERTEX_AI)
+        title: Ask Vertex AI (COFFEE_VERTEX_AI)
         type: staticContent
+        source {
+            htmlCode:
+                ```html
+                <p>Enter a tasting profile, roast preference, or pastry pairing request to invoke <code>APEX_AI.GENERATE</code> against the <code>COFFEE_VERTEX_AI</code> Generative AI Service grounded on live <code>PRODUCT</code> rows.</p>
+                ```
+        }
         layout {
             sequence: 10
             slot: body
@@ -39,6 +75,160 @@ page 6 (
         appearance {
             template: @/standard
             templateOptions: #DEFAULT#
+        }
+    )
+
+    region recommendations-api (
+        name: Vertex AI & Hybrid Search Endpoints
+        title: Vertex AI & Hybrid Search Endpoints
+        type: staticContent
+        source {
+            htmlCode:
+                ```html
+                <p>Powered by Direct Vertex AI (<code>/endpoints/openapi</code> with <code>google/gemini-3.8-flash</code>) or the Litestar OpenAI-compatible gateway (<code>POST /api/apex/ai/v1/chat/completions</code>), alongside <code>POST /api/apex/recommendations</code>.</p>
+                ```
+        }
+        layout {
+            sequence: 30
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P6_AI_RESPONSE (
+        type: displayOnly
+        label {
+            label: Vertex AI Concierge Recommendation
+            alignment: left
+        }
+        layout {
+            sequence: 30
+            region: @concierge-controls
+            slot: body
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+        }
+    )
+
+    pageItem P6_CATEGORY (
+        type: textField
+        label {
+            label: Category Filter (Optional)
+            alignment: left
+        }
+        layout {
+            sequence: 20
+            region: @concierge-controls
+            slot: body
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 30
+            valuePlaceholder: Whole Bean, Espresso, Bakery...
+        }
+        validation {
+            maxLength: 100
+        }
+    )
+
+    pageItem P6_PROMPT (
+        type: textField
+        label {
+            label: Coffee & Pairing Prompt
+            alignment: left
+        }
+        layout {
+            sequence: 10
+            region: @concierge-controls
+            slot: body
+        }
+        appearance {
+            template: @/optional-floating
+            templateOptions: #DEFAULT#
+            width: 60
+            valuePlaceholder: Recommend a bright floral pour-over and a pastry pairing
+        }
+        validation {
+            maxLength: 500
+        }
+    )
+
+    button ask-concierge (
+        buttonName: ASK_CONCIERGE
+        label: Ask Vertex AI
+        layout {
+            sequence: 10
+            region: @concierge-controls
+            slot: edit
+        }
+        appearance {
+            buttonTemplate: @/text
+            hot: true
+            templateOptions: #DEFAULT#
+        }
+        behavior {
+            action: submitPage
+        }
+    )
+
+    process run-vertex-concierge (
+        name: Generate Grounded Vertex AI Recommendation
+        type: executeCode
+        source {
+            plsqlCode:
+                ```plsql
+                declare
+                    v_catalog clob := '';
+                    v_prompt  varchar2(4000) := coalesce(
+                        nullif(trim(:P6_PROMPT), ''),
+                        'Recommend a signature Cymbal Coffee drink and pastry pairing.'
+                    );
+                begin
+                    for r in (
+                        select name,
+                               category,
+                               price,
+                               coalesce(description, 'House specialty') as description
+                          from product
+                         where in_stock
+                           and (:P6_CATEGORY is null or upper(category) like '%' || upper(trim(:P6_CATEGORY)) || '%')
+                         order by category, name
+                         fetch first 20 rows only
+                    ) loop
+                        v_catalog := v_catalog
+                            || '- ' || r.name
+                            || ' (' || r.category || ', $' || to_char(r.price, 'FM9990.00') || '): '
+                            || r.description || chr(10);
+                    end loop;
+
+                    :P6_AI_RESPONSE := apex_ai.generate(
+                        p_prompt            => 'Customer request: ' || v_prompt || chr(10) || chr(10)
+                                               || 'Available Cymbal Coffee catalog:' || chr(10) || v_catalog,
+                        p_system_prompt     => 'You are the Cymbal Coffee Concierge. Recommend only items from the provided catalog with exact prices and concise tasting notes.',
+                        p_service_static_id => 'COFFEE_VERTEX_AI'
+                    );
+                exception
+                    when others then
+                        :P6_AI_RESPONSE := 'COFFEE_VERTEX_AI service status: ' || sqlerrm
+                            || '. Provision with: uv run python manage.py infra apex configure-vertex --mode direct --verify';
+                end;
+                ```
+        }
+        execution {
+            sequence: 10
+            point: afterSubmit
+        }
+        serverSideCondition {
+            whenButtonPressed: @ask-concierge
+        }
+        advanced {
+            executionMappingIdentifier: 3635629104664502
         }
     )
 
