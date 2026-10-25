@@ -38,3 +38,7 @@ class AppSettings:
     """CSRF Secure Cookie."""
     MCP_API_KEY: str | None = field(default_factory=lambda: (os.getenv("MCP_API_KEY") or "").strip() or None)
     """Optional shared secret for authenticating machine requests to ``/mcp`` and ``/a2a``."""
+    APEX_GATEWAY_API_KEY: str | None = field(
+        default_factory=lambda: (os.getenv("APEX_GATEWAY_API_KEY") or "").strip() or None
+    )
+    """Optional Bearer shared secret for authenticating ``/api/apex/ai/v1/*`` requests."""
