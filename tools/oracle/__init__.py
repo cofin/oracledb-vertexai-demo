@@ -3,60 +3,47 @@
 
 """Oracle deployment and management tools.
 
-This package provides comprehensive Oracle database deployment and management:
-- Container runtime abstraction (Docker/Podman)
-- Local Oracle Database Free container management
-- Remote database connectivity
-- Autonomous Database wallet configuration
-- SQLcl installation
-- Health checking and monitoring
-- Connection testing
-- Click CLI command groups
+This package provides Oracle AI Database 26ai container lifecycle, Autonomous
+Database wallet export and configuration, SQLcl APEXlang tooling, connectivity
+testing, and Click CLI command groups.
 """
 
 from __future__ import annotations
 
-__all__ = [
-    # Business logic classes
+from tools.oracle.adb import AdbBootstrap, AdbBootstrapConfig, AdbBootstrapError, AdbBootstrapResult
+from tools.oracle.apex_lang import ApexLang, ApexLangConfig, ApexLangError, ApexLangResult
+from tools.oracle.cli import apex_group, connect_group, database_group, wallet_group
+from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
+from tools.oracle.container import ContainerRuntime, RuntimeType
+from tools.oracle.database import ContainerFlavor, DatabaseConfig, OracleDatabase
+from tools.oracle.sqlcl_installer import SQLclCapabilityStatus, SQLclConfig, SQLclInstaller
+from tools.oracle.wallet import WalletConfig, WalletConfigurator, WalletInfo
+
+__all__ = (
+    "AdbBootstrap",
+    "AdbBootstrapConfig",
+    "AdbBootstrapError",
+    "AdbBootstrapResult",
+    "ApexLang",
+    "ApexLangConfig",
+    "ApexLangError",
+    "ApexLangResult",
     "ConnectionConfig",
     "ConnectionTester",
+    "ContainerFlavor",
     "ContainerRuntime",
     "DatabaseConfig",
     "DeploymentMode",
-    "HealthChecker",
-    "HealthStatus",
     "OracleDatabase",
     "RuntimeType",
     "SQLclCapabilityStatus",
     "SQLclConfig",
     "SQLclInstaller",
-    "SystemHealth",
     "WalletConfig",
     "WalletConfigurator",
     "WalletInfo",
-    # CLI command groups
     "apex_group",
     "connect_group",
     "database_group",
-    "ords_group",
-    "sqlcl_group",
-    "status_command",
     "wallet_group",
-]
-
-# Import CLI command groups
-from tools.oracle.cli import (
-    apex_group,
-    connect_group,
-    database_group,
-    ords_group,
-    sqlcl_group,
-    status_command,
-    wallet_group,
 )
-from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
-from tools.oracle.container import ContainerRuntime, RuntimeType
-from tools.oracle.database import DatabaseConfig, OracleDatabase
-from tools.oracle.health import HealthChecker, HealthStatus, SystemHealth
-from tools.oracle.sqlcl_installer import SQLclCapabilityStatus, SQLclConfig, SQLclInstaller
-from tools.oracle.wallet import WalletConfig, WalletConfigurator, WalletInfo
