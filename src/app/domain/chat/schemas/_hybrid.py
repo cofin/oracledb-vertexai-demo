@@ -3,11 +3,13 @@
 
 """Hybrid RRF search and route resolution schemas for the chat domain."""
 
+from __future__ import annotations
+
 from typing import Literal
 
 import msgspec
 
-from app.lib.schema import BaseStruct
+from app.lib.schema import FrozenBaseStruct
 
 __all__ = (
     "HybridProductCandidate",
@@ -23,7 +25,7 @@ HybridRouteLabel = Literal[
 ]
 
 
-class HybridSearchRow(BaseStruct, kw_only=True):
+class HybridSearchRow(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Single row projected by ``hybrid-search-turn`` across route, product, and store CTEs."""
 
     entity_type: str
@@ -44,14 +46,14 @@ class HybridSearchRow(BaseStruct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class TermHitRow(BaseStruct, kw_only=True):
+class TermHitRow(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Per-term Oracle Text lexical hit count returned by ``hybrid-term-hits``."""
 
     term: str
     hit_count: int = 0
 
 
-class HybridProductCandidate(BaseStruct, kw_only=True):
+class HybridProductCandidate(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Fused product candidate with lexical, vector, and RRF rank metadata."""
 
     id: int
@@ -67,7 +69,7 @@ class HybridProductCandidate(BaseStruct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class HybridStoreCandidate(BaseStruct, kw_only=True):
+class HybridStoreCandidate(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Fused store candidate matched by Oracle Text multi-column search."""
 
     id: int
@@ -80,7 +82,7 @@ class HybridStoreCandidate(BaseStruct, kw_only=True):
     rrf_score: float = 0.0
 
 
-class HybridTurnContext(BaseStruct, kw_only=True):
+class HybridTurnContext(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Complete single-query hybrid retrieval and routing context for one chat turn."""
 
     user_message: str

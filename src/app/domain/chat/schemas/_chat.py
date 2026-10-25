@@ -3,14 +3,16 @@
 
 """Chat message schema representations."""
 
+from __future__ import annotations
+
 from typing import Literal
 
-from app.lib.schema import CamelizedBaseStruct
+from app.lib.schema import CamelizedFrozenStruct
 
 __all__ = ("ChatMessage",)
 
 
-class ChatMessage(CamelizedBaseStruct, omit_defaults=True):
+class ChatMessage(CamelizedFrozenStruct, frozen=True, gc=False):
     """Individual chat message within a session."""
 
     message: str

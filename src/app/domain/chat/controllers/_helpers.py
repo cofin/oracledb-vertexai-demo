@@ -5,16 +5,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from litestar.exceptions import ValidationException
+
+from app.domain.chat.schemas import CoffeeChatForm
 
 if TYPE_CHECKING:
     from litestar_htmx import HTMXRequest
 
 __all__ = (
-    "CoffeeChatForm",
     "chat_form_from_request",
     "location_context_from_form",
     "location_text",
@@ -31,21 +31,8 @@ _MAX_LONGITUDE = 180.0
 _MISSING = object()
 
 
-@dataclass
-class CoffeeChatForm:
-    message: str
-    persona: str = "barista"
-    location_consent: bool = False
-    latitude: float | None = None
-    longitude: float | None = None
-    accuracy: float | None = None
-    city: str = ""
-    state: str = ""
-    zip_code: str = ""
-    store_name: str = ""
-
-
 def payload_raw(payload: Any, *keys: str, default: Any = "") -> Any:
+    """Extract the first present raw field value from a form or JSON mapping."""
     getter = getattr(payload, "get", None)
     if not callable(getter):
         return default
@@ -62,11 +49,13 @@ def payload_raw(payload: Any, *keys: str, default: Any = "") -> Any:
 
 
 def payload_value(payload: Any, *keys: str, default: str = "") -> str:
+    """Extract a string field value from a form or JSON mapping."""
     value = payload_raw(payload, *keys, default=default)
     return str(value or default)
 
 
 def payload_bool(payload: Any, *keys: str, default: bool = False) -> bool:
+    """Coerce a boolean field value from a form or JSON mapping."""
     value = payload_raw(payload, *keys, default=default)
     if isinstance(value, bool):
         return value
@@ -78,6 +67,7 @@ def payload_bool(payload: Any, *keys: str, default: bool = False) -> bool:
 
 
 def payload_float(payload: Any, *keys: str) -> float | None:
+    """Coerce an optional floating-point coordinate field from a form or JSON mapping."""
     value = payload_raw(payload, *keys, default=None)
     if value is None or (isinstance(value, str) and not value):
         return None
@@ -88,6 +78,7 @@ def payload_float(payload: Any, *keys: str) -> float | None:
 
 
 def location_context_from_form(data: CoffeeChatForm) -> dict[str, Any]:
+    """Build a validated request-scoped location context from parsed chat form fields."""
     context: dict[str, Any] = {}
     for key, value in (
         ("city", data.city),
@@ -117,12 +108,9 @@ def location_context_from_form(data: CoffeeChatForm) -> dict[str, Any]:
 
 
 async def chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
-    """Parse either JSON API payloads or HTMX form submissions."""
+    """Parse either JSON API payloads or HTMX form submissions into a frozen CoffeeChatForm."""
     content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        payload = await request.json()
-    else:
-        payload = await request.form()
+    payload = await request.json() if "application/json" in content_type else await request.form()
     return CoffeeChatForm(
         message=payload_value(payload, "message"),
         persona=payload_value(payload, "persona", default="barista"),
@@ -138,4 +126,5 @@ async def chat_form_from_request(request: HTMXRequest) -> CoffeeChatForm:
 
 
 def location_text(value: str) -> str:
+    """Strip null bytes and bound user-supplied location hint text."""
     return value.replace("\x00", "").strip()[:100]

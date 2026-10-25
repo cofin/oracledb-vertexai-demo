@@ -15,15 +15,17 @@ from litestar_htmx import HTMXRequest
 from litestar_security import AuthenticationPolicy, PublicController, exclude
 
 from app.domain.ai.services import AgentOrchestrationService
+from app.domain.chat._session import chat_session_identity, clear_chat_session_id
 from app.domain.chat.controllers._helpers import chat_form_from_request, location_context_from_form
-from app.domain.chat.session import chat_session_identity, clear_chat_session_identity
 from app.lib.di import Inject
-from app.utils.serialization import to_json
+from app.lib.exceptions import AIServiceUnconfigured, is_credential_error, is_expected_service_unavailable
+from app.utils.serialization import encode_json
 
 __all__ = ("CoffeeChatController",)
 
 logger = structlog.get_logger()
 _STREAM_ERROR_MESSAGE = "Chat failed while streaming. Please try again."
+_UNCONFIGURED_STREAM_MESSAGE = "Vertex AI service is not configured."
 
 
 class CoffeeChatController(PublicController):
@@ -99,15 +101,23 @@ class CoffeeChatController(PublicController):
                     location_context=location_context,
                 ):
                     frame_type = str(frame.get("type", "message"))
-                    yield {"event": frame_type, "data": to_json(frame, as_bytes=False)}
+                    yield {"event": frame_type, "data": encode_json(frame)}
             except Exception as exc:
-                await logger.aexception(
-                    "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
-                )
-                yield {
-                    "event": "error",
-                    "data": to_json({"type": "error", "message": _STREAM_ERROR_MESSAGE}, as_bytes=False),
-                }
+                if is_credential_error(exc) or is_expected_service_unavailable(exc):
+                    detail = (
+                        exc.detail
+                        if isinstance(exc, AIServiceUnconfigured) and exc.detail
+                        else _UNCONFIGURED_STREAM_MESSAGE
+                    )
+                    await logger.awarning(
+                        "Chat stream unavailable due to AI configuration", error_type=type(exc).__name__, detail=detail
+                    )
+                    yield {"event": "error", "data": encode_json({"type": "error", "message": detail})}
+                else:
+                    await logger.aexception(
+                        "Chat stream failed after response started", error_type=type(exc).__name__, detail=str(exc)
+                    )
+                    yield {"event": "error", "data": encode_json({"type": "error", "message": _STREAM_ERROR_MESSAGE})}
 
         return ServerSentEvent(stream_events(), status_code=200)
 
@@ -128,5 +138,5 @@ class CoffeeChatController(PublicController):
         """
         user_id, session_id = chat_session_identity(request)
         await orchestrator.clear_session(session_id=session_id, user_id=user_id)
-        clear_chat_session_identity(request)
+        clear_chat_session_id(request)
         return {"status": "cleared"}

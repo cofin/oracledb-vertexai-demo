@@ -1,21 +1,29 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Deterministic grounded route composers for Cymbal Coffee chat turns."""
+"""Deterministic grounded route orchestration for Cymbal Coffee chat turns."""
 
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 import time
 from typing import TYPE_CHECKING, Any
 
+import msgspec
 import structlog
-from google.genai import errors as genai_errors
 from google.genai import types
 
-from app.domain.chat.exceptions import AIServiceUnconfigured
+from app.domain.chat.services._composers import (
+    ORDER_STATUS_ANSWER,
+    build_candidate_block,
+    compose_availability_answer,
+    compose_grounded_selection,
+    compose_off_menu_alternative,
+    compose_product_rag_answer,
+    compose_store_location_answer,
+    partition_availability_rows,
+    select_grounded_products,
+)
 from app.domain.chat.services._telemetry import (
     SearchMetrics,
     SQLPhase,
@@ -29,9 +37,10 @@ from app.domain.chat.services._telemetry import (
     safe_location_context,
 )
 from app.domain.system.services import PersonaManager
-from app.lib.schema import BaseStruct
+from app.lib.exceptions import AIServiceUnconfigured, is_credential_error, is_expected_service_unavailable
+from app.lib.schema import FrozenBaseStruct
 from app.lib.settings import Settings
-from app.utils.serialization import sanitize_for_json
+from app.utils.serialization import decode_json, sanitize_for_json
 
 if TYPE_CHECKING:
     from app.domain.chat.schemas import HybridProductCandidate, HybridRouteLabel, HybridTurnContext
@@ -42,10 +51,6 @@ __all__ = ("GroundedRouteService", "GroundedTurnResult")
 logger = structlog.get_logger()
 
 _UNCONFIGURED_MESSAGE = "AI service is not configured. Set GOOGLE_API_KEY or VERTEX_AI_API_KEY in your .env file."
-_ORDER_STATUS_ANSWER = (
-    "This demo does not include order tracking yet. I can help with menu recommendations, "
-    "store locations, and product availability."
-)
 _GROUNDED_ANSWER_TEMPERATURE = 0.0
 _GROUNDED_SELECTION_MODES = frozenset({"recommend", "off_menu_alternative"})
 _GROUNDED_ANSWER_INSTRUCTION_TEMPLATE = """You are a Cymbal Coffee product selector acting under a specific Barista Persona.
@@ -76,7 +81,7 @@ _GROUNDED_ANSWER_SCHEMA: dict[str, Any] = {
 }
 
 
-class GroundedTurnResult(BaseStruct, kw_only=True):
+class GroundedTurnResult(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Completed deterministic turn payload ready for caching and SSE emission."""
 
     answer: str
@@ -84,15 +89,17 @@ class GroundedTurnResult(BaseStruct, kw_only=True):
     search_metrics: SearchMetrics
     sql_phases: list[SQLPhase]
     embedding_cache_hit: bool = False
-    store_results: list[dict[str, Any]] = []
-    inventory_results: list[dict[str, Any]] = []
-    map_actions: list[dict[str, str]] = []
-    location_context: dict[str, Any] = {}
+    store_results: list[dict[str, Any]] = msgspec.field(default_factory=list)
+    inventory_results: list[dict[str, Any]] = msgspec.field(default_factory=list)
+    map_actions: list[dict[str, str]] = msgspec.field(default_factory=list)
+    location_context: dict[str, Any] = msgspec.field(default_factory=dict)
     last_products: list[str] | None = None
 
 
 class GroundedRouteService:
-    """Composes deterministic responses for PRODUCT_RAG, STORE_LOCATION, PRODUCT_AVAILABILITY, and ORDER_STATUS."""
+    """Orchestrates deterministic responses for PRODUCT_RAG, STORE_LOCATION, PRODUCT_AVAILABILITY, and ORDER_STATUS."""
+
+    __slots__ = ("product_service", "store_service", "vertex_ai_service")
 
     def __init__(
         self,
@@ -191,7 +198,7 @@ class GroundedRouteService:
 
         if turn_context.off_menu_terms:
             off_menu_term = turn_context.off_menu_terms[0].title()
-            answer = _render_off_menu_alternative(off_menu_term, products)
+            answer = compose_off_menu_alternative(off_menu_term, products)
             grounded_ms = (time.perf_counter() - started) * 1000
             total_ms = embedding_ms + oracle_ms + grounded_ms
             metrics = build_search_metrics(
@@ -301,7 +308,7 @@ class GroundedRouteService:
                 )
             )
 
-        answer = _format_store_location_answer(stores)
+        answer = compose_store_location_answer(stores)
         total_ms = embedding_ms + oracle_ms + (time.perf_counter() - started) * 1000
         metrics = build_search_metrics(
             query=query,
@@ -354,10 +361,10 @@ class GroundedRouteService:
         )
         sql_phases.append(availability_phase)
 
-        target_row, alternatives = _partition_availability_rows(
+        target_row, alternatives = partition_availability_rows(
             inventory, target_store.id if target_store is not None else None
         )
-        answer = _format_availability_answer(
+        answer = compose_availability_answer(
             target=target_row,
             alternatives=alternatives,
             target_store_name=target_store.name if target_store is not None else None,
@@ -413,7 +420,7 @@ class GroundedRouteService:
             results_count=0,
         )
         return GroundedTurnResult(
-            answer=_ORDER_STATUS_ANSWER,
+            answer=ORDER_STATUS_ANSWER,
             intent_detected="ORDER_STATUS",
             search_metrics=metrics,
             sql_phases=sql_phases,
@@ -485,23 +492,6 @@ def _resolve_location_hint(query: str, location_context: dict[str, Any] | None) 
     return " ".join(str(filters[k]) for k in ("city", "state", "zip_code") if filters[k]) or query
 
 
-def _partition_availability_rows(
-    inventory: list[dict[str, Any]], target_store_id: int | None
-) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-    if target_store_id is None:
-        return None, inventory
-    target_row: dict[str, Any] | None = None
-    alternatives: list[dict[str, Any]] = []
-    for row in inventory:
-        if _get_field(row, "store_id") == target_store_id:
-            target_row = row
-        else:
-            alternatives.append(row)
-    if target_row is None:
-        return None, inventory
-    return target_row, alternatives
-
-
 def _candidates_to_dicts(
     candidates: list[HybridProductCandidate] | tuple[HybridProductCandidate, ...],
 ) -> list[dict[str, Any]]:
@@ -525,151 +515,18 @@ def _coerce_dict_rows(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
-def _get_field(row: dict[str, Any], snake_name: str) -> Any:
-    if snake_name in row:
-        return row[snake_name]
-    parts = snake_name.split("_")
-    camel_name = parts[0] + "".join(p.title() for p in parts[1:])
-    return row.get(camel_name)
-
-
-def _format_price(value: Any) -> str:
-    if not isinstance(value, int | float):
-        return ""
-    return f" (${value:.2f})"
-
-
-def _render_selected_product(product: dict[str, Any]) -> str:
-    name = str(product["name"])
-    return f"{name}{_format_price(product.get('price'))}"
-
-
-def _render_off_menu_alternative(off_menu_term: str, products: list[dict[str, Any]]) -> str:
-    cleaned_term = re.sub(r"\s+", " ", off_menu_term.strip().strip("\"'"))[:60] or "that item"
-    if not products:
-        return (
-            f"Cymbal Coffee does not carry {cleaned_term}. "
-            "Ask about our light, medium, or dark roasts and I can recommend an in-catalog option."
-        )
-    first = products[0]
-    answer = (
-        f"Cymbal Coffee does not carry {cleaned_term}, but {_render_selected_product(first)} is the closest menu option"
-    )
-    description = str(first.get("description") or "").strip()
-    if description:
-        answer += f": {description}"
-    if not answer.endswith("."):
-        answer += "."
-    if len(products) > 1:
-        second = products[1]
-        answer += f" Another good menu option is {_render_selected_product(second)}."
-    return answer
-
-
-def _grounded_product_answer(query: str, products: list[dict[str, Any]]) -> str:
-    if not products:
-        return (
-            "I couldn't find a matching Cymbal Coffee menu item for that. "
-            "Try another flavor, roast, or drink style and I'll check the menu again."
-        )
-    first = products[0]
-    lead = "For breakfast" if "breakfast" in query.casefold() else "For that"
-    name = str(first["name"])
-    description = str(first.get("description") or "").strip()
-    answer = f"{lead}, I'd start with {name}{_format_price(first.get('price'))}"
-    if description:
-        answer += f": {description}"
-    if not answer.endswith("."):
-        answer += "."
-    if len(products) > 1:
-        second = products[1]
-        answer += f" Another good menu option is {second['name']}{_format_price(second.get('price'))}."
-    return answer
-
-
-def _candidate_id(product: dict[str, Any]) -> str:
-    for key in ("id", "product_id", "sku", "name"):
-        value = product.get(key)
-        if value is not None and str(value).strip():
-            return str(value).strip()
-    return str(product["name"]).strip()
-
-
-def _candidate_block(products: list[dict[str, Any]]) -> str:
-    lines: list[str] = []
-    for product in products:
-        name = str(product.get("name") or "").strip()
-        if not name:
-            continue
-        description = str(product.get("description") or "").strip()
-        line = f"- id={_candidate_id(product)}; name={name}{_format_price(product.get('price'))}"
-        if description:
-            line += f"; description={description}"
-        lines.append(line)
-    return "\n".join(lines)
-
-
 def _response_payload(response: Any) -> dict[str, Any] | None:
     parsed = getattr(response, "parsed", None)
     if isinstance(parsed, dict):
         return parsed
-    text = getattr(response, "text", "")
+    text = getattr(response, "text", None)
+    if not isinstance(text, str | bytes) or not text:
+        return None
     try:
-        payload = json.loads(str(text))
-    except (TypeError, ValueError):
+        payload = decode_json(text)
+    except msgspec.DecodeError:
         return None
     return payload if isinstance(payload, dict) else None
-
-
-def _selected_products(payload: dict[str, Any], products: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
-    mode = str(payload.get("mode") or "").strip()
-    if mode not in _GROUNDED_SELECTION_MODES:
-        return None
-    selected_ids = payload.get("selected_product_ids")
-    if not isinstance(selected_ids, list) or not selected_ids:
-        return None
-    candidates = {_candidate_id(product): product for product in products}
-    selected: list[dict[str, Any]] = []
-    for raw_id in selected_ids:
-        product = candidates.get(str(raw_id).strip())
-        if product is None:
-            return None
-        selected.append(product)
-    return selected
-
-
-def _render_grounded_selection(query: str, payload: dict[str, Any], selected: list[dict[str, Any]]) -> str | None:
-    mode = str(payload.get("mode") or "").strip()
-    explanation = str(payload.get("explanation") or "").strip()
-    if mode == "recommend":
-        base_answer = _grounded_product_answer(query, selected)
-        if explanation:
-            return f"{explanation} {base_answer}"
-        return base_answer
-    if mode == "off_menu_alternative":
-        off_menu_term = str(payload.get("off_menu_term") or "that item")
-        answer = _render_off_menu_alternative(off_menu_term, selected)
-        if explanation:
-            return f"{explanation} {answer}"
-        return answer
-    return None
-
-
-def _is_credential_error(exc: BaseException) -> bool:
-    text = str(exc).lower()
-    if isinstance(exc, genai_errors.ClientError):
-        return any(
-            marker in text
-            for marker in (
-                "api key",
-                "credentials",
-                "permission_denied",
-                "service_disabled",
-                "forbidden",
-                "unauthorized",
-            )
-        )
-    return "api key" in text or "credentials" in text
 
 
 async def _compose_grounded_answer(
@@ -677,9 +534,11 @@ async def _compose_grounded_answer(
 ) -> tuple[str, str, float]:
     started = time.perf_counter()
     if not products or vertex_ai_service is None:
-        return _grounded_product_answer(query, products), "template", (time.perf_counter() - started) * 1000
+        return compose_product_rag_answer(query, products), "template", (time.perf_counter() - started) * 1000
 
-    contents = f"Customer request: {query}\n\nCandidate products (select only these ids):\n{_candidate_block(products)}"
+    contents = (
+        f"Customer request: {query}\n\nCandidate products (select only these ids):\n{build_candidate_block(products)}"
+    )
     persona_config = PersonaManager.PERSONAS.get(persona, PersonaManager.PERSONAS["barista"])
     instruction = _GROUNDED_ANSWER_INSTRUCTION_TEMPLATE.format(persona_guidelines=persona_config.system_prompt_addon)
     settings = Settings.from_env()
@@ -697,139 +556,24 @@ async def _compose_grounded_answer(
             )
     except TimeoutError:
         await logger.awarning("Grounded answer generation timed out")
-        return _grounded_product_answer(query, products), "timeout", (time.perf_counter() - started) * 1000
+        return compose_product_rag_answer(query, products), "timeout", (time.perf_counter() - started) * 1000
     except Exception as exc:
-        if _is_credential_error(exc):
+        if is_credential_error(exc) or is_expected_service_unavailable(exc):
             raise AIServiceUnconfigured(_UNCONFIGURED_MESSAGE) from exc
         await logger.awarning("Grounded answer generation failed", error_type=type(exc).__name__)
-        return _grounded_product_answer(query, products), "error", (time.perf_counter() - started) * 1000
+        return compose_product_rag_answer(query, products), "error", (time.perf_counter() - started) * 1000
 
     payload = _response_payload(response)
-    selected = _selected_products(payload, products) if payload is not None else None
+    selected = (
+        select_grounded_products(payload, products, allowed_modes=_GROUNDED_SELECTION_MODES)
+        if payload is not None
+        else None
+    )
     answer = (
-        _render_grounded_selection(query, payload, selected) if payload is not None and selected is not None else None
+        compose_grounded_selection(query, payload, selected) if payload is not None and selected is not None else None
     )
     elapsed_ms = (time.perf_counter() - started) * 1000
     if answer is None:
         await logger.awarning("Grounded answer rejected by guard")
-        return _grounded_product_answer(query, products), "rejected", elapsed_ms
+        return compose_product_rag_answer(query, products), "rejected", elapsed_ms
     return answer, "structured", elapsed_ms
-
-
-def _format_hours(hours: Any) -> str:
-    if not isinstance(hours, dict) or not hours:
-        return ""
-    monday = hours.get("monday")
-    if monday:
-        return f" Hours: Monday {monday}."
-    first_key, first_value = next(iter(hours.items()))
-    return f" Hours: {str(first_key).title()} {first_value}."
-
-
-def _format_store_location_answer(stores: list[dict[str, Any]]) -> str:
-    if not stores:
-        return "I couldn't find a matching Cymbal Coffee store for that location. Try a city, ZIP code, or nearby landmark."
-    first = stores[0]
-    name = str(first.get("name") or first.get("store_name") or "Cymbal Coffee").strip() or "Cymbal Coffee"
-    address = str(first.get("address") or "").strip()
-    city = str(first.get("city") or "").strip()
-    state = str(first.get("state") or "").strip()
-    zip_code = str(first.get("zip") or "").strip()
-    phone = str(first.get("phone") or "").strip()
-    location = ", ".join(part for part in (address, city, " ".join(part for part in (state, zip_code) if part)) if part)
-    answer = f"{name}"
-    if location:
-        answer += f" is at {location}."
-    else:
-        answer += " is the closest matching Cymbal Coffee location."
-    if phone:
-        answer += f" Phone: {phone}."
-    answer += _format_hours(first.get("hours"))
-    if len(stores) > 1:
-        answer += f" I found {len(stores)} matching stores."
-    return answer
-
-
-def _is_in_stock(row: dict[str, Any]) -> bool:
-    status = _get_field(row, "stock_status")
-    qty = _get_field(row, "quantity_available")
-    if status in {"IN_STOCK", "LOW_STOCK"}:
-        return True
-    return bool(isinstance(qty, int | float) and qty > 0)
-
-
-def _format_in_stock_store(product_name: str, store_name: str, quantity: Any, status: str | None, distance: Any) -> str:
-    status_str = str(status or "").replace("_", " ").title()
-    answer = f"{product_name} is available at {store_name}"
-    if status_str:
-        answer += f" ({status_str})"
-    if isinstance(quantity, int | float):
-        answer += f" with {int(quantity)} on hand"
-    if isinstance(distance, int | float):
-        answer += f", about {float(distance):.1f} miles away"
-    answer += "."
-    return answer
-
-
-def _format_out_of_stock_store(product_name: str, store_name: str, alternatives: list[dict[str, Any]]) -> str:
-    answer = f"{product_name} is out of stock at {store_name}."
-    in_stock_alts = [alt for alt in alternatives if _is_in_stock(alt)]
-    if in_stock_alts:
-        best_alt = in_stock_alts[0]
-        alt_name = _get_field(best_alt, "store_name")
-        alt_distance = _get_field(best_alt, "distance_miles")
-        answer += f" However, it is in stock at {alt_name}"
-        if isinstance(alt_distance, int | float):
-            answer += f" ({float(alt_distance):.1f} miles away)"
-        answer += "."
-    else:
-        answer += " I couldn't find any other stores with stock nearby."
-    return answer
-
-
-def _format_availability_answer(
-    target: dict[str, Any] | None, alternatives: list[dict[str, Any]], target_store_name: str | None = None
-) -> str:
-    if not target and not alternatives:
-        return "I couldn't find current store-level availability for that product. Try another menu item or nearby location."
-
-    product_name: str | None = None
-    if target:
-        product_name = str(_get_field(target, "product_name") or "")
-    elif alternatives:
-        product_name = str(_get_field(alternatives[0], "product_name") or "")
-    if not product_name:
-        product_name = "that item"
-
-    if target or target_store_name:
-        store_name = str((_get_field(target, "store_name") if target else target_store_name) or "a Cymbal Coffee store")
-        if target and _is_in_stock(target):
-            return _format_in_stock_store(
-                product_name=product_name,
-                store_name=store_name,
-                quantity=_get_field(target, "quantity_available"),
-                status=_get_field(target, "stock_status"),
-                distance=_get_field(target, "distance_miles"),
-            )
-        return _format_out_of_stock_store(product_name=product_name, store_name=store_name, alternatives=alternatives)
-
-    available_alternatives = [alt for alt in alternatives if _is_in_stock(alt)]
-    if not available_alternatives:
-        first = alternatives[0]
-        store_name = str(_get_field(first, "store_name") or "a Cymbal Coffee store")
-        return _format_out_of_stock_store(product_name=product_name, store_name=store_name, alternatives=[])
-
-    first = available_alternatives[0]
-    store_name = str(_get_field(first, "store_name") or "a Cymbal Coffee store")
-    in_stock_sentence = _format_in_stock_store(
-        product_name=product_name,
-        store_name=store_name,
-        quantity=_get_field(first, "quantity_available"),
-        status=_get_field(first, "stock_status"),
-        distance=_get_field(first, "distance_miles"),
-    )
-    if len(available_alternatives) <= 1:
-        return in_stock_sentence
-    base_sentence = in_stock_sentence.removesuffix(".")
-    found_clause = f". I found {len(available_alternatives)} stores with matching availability."
-    return base_sentence + found_clause
