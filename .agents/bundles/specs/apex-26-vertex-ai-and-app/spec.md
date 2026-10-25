@@ -2,16 +2,19 @@
 type: Spec
 flow_id: apex-26-vertex-ai-and-app
 title: Direct Vertex AI APEX 26.1 Integration, Litestar OpenAI-Compatible Gateway, and Cohesive Cymbal Coffee APEX 26.1 Application
-state: planned
+state: completed
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 3
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: complete
+operation_targets:
+  - "4.1"
+  - "4.2"
+  - "4.3"
+last_verified_checkpoint: "15348ea"
 created_at: 2026-10-24T19:39:00Z
-updated_at: 2026-10-24T19:39:00Z
+updated_at: 2026-10-25T18:21:00Z
 description: Fourth stacked PR provisioning Direct Vertex AI /endpoints/openapi connectivity in Oracle APEX 26.1 (DBMS_NETWORK_ACL_ADMIN, APEX_CREDENTIAL VERTEX_AI_CRED, COFFEE_VERTEX_AI Generative AI Service targeting google/gemini-3.8-flash), adding the Litestar OpenAI-compatible Vertex AI gateway (ApexAIController) for managed/mTLS environments, and upgrading src/apex/cymbal-coffee-ops/ into a single cohesive APEX 26.1 application with SQL reports and APEX_AI.GENERATE concierge features.
 tags:
   - apex
@@ -86,27 +89,28 @@ Files examined:
 
 ### Phase 1: Direct Vertex AI Provisioner, OpenAI-Compatible Gateway & Cohesive APEX 26.1 App
 
-- [ ] 4.1 Implement `tools/oracle/apex_vertex.py` and `manage.py infra apex configure-vertex` (`--mode direct|gateway`, network ACLs, `VERTEX_AI_CRED`, `COFFEE_VERTEX_AI`, `APEX_AI.GENERATE` verification)
-- [ ] 4.2 Implement `ApexAIController` (`/api/apex/ai/v1/chat/completions` & `/api/apex/ai/v1/models`) backed by `GeminiModelClient` and `FrozenBaseStruct` OpenAI schemas
-- [ ] 4.3 Upgrade `src/apex/cymbal-coffee-ops/` (`compatibilityMode: 26.1`) with live Oracle 26ai reports, `APEX_AI.GENERATE` coffee concierge, and `USER_ANNOTATIONS_USAGE` health views
+- [x] 4.1 Implement `tools/oracle/apex_vertex.py` and `manage.py infra apex configure-vertex` (`--mode direct|gateway`, network ACLs, `VERTEX_AI_CRED`, `COFFEE_VERTEX_AI`, `APEX_AI.GENERATE` verification)
+- [x] 4.2 Implement `ApexAIController` (`/api/apex/ai/v1/chat/completions` & `/api/apex/ai/v1/models`) backed by `GeminiModelClient` and `FrozenBaseStruct` OpenAI schemas
+- [x] 4.3 Upgrade `src/apex/cymbal-coffee-ops/` (`compatibilityMode: 26.1`) with live Oracle 26ai reports, `APEX_AI.GENERATE` coffee concierge, and `USER_ANNOTATIONS_USAGE` health views
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `apex-26-vertex-ai-and-app` (`planned`)
+- **Active Flow / Lifecycle**: `apex-26-vertex-ai-and-app` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `15348ea`
 - **Key Decisions**:
   - Wire and document Direct Vertex AI (`/endpoints/openapi`, `model="google/gemini-3.8-flash"`) as `--mode direct` (default) first, with `--refresh-token` for fast OAuth2 Bearer rotation and `--mode gateway` targeting `ApexAIController` (`/api/apex/ai/v1`) for zero-expiry local dev and mTLS workstations.
   - Keep all APEX 26.1 application regions in `src/apex/cymbal-coffee-ops/` free of app-level `restDataSourceServer` FK dependencies so SQLcl 26.1.2 `apex validate`, `apex import`, and `apex export` round-trip cleanly without `WWV_WEBSRC_MODULE_RSERVER_FK`.
 - **Newest Discoveries**:
-  1. Tasks `4.1` (`tools/oracle/*`) and `4.2` (`src/app/domain/products/*`) touch completely disjoint directories and test suites and have no dependency on each other before Task `4.3` composes them in the APEX 26.1 application.
-  2. Excluding `POST /api/apex/ai/v1/chat/completions` from browser cookie CSRF (`opt={"exclude_from_csrf": True}`) is required because Oracle `APEX_AI` / `UTL_HTTP` invokes the OpenAI-compatible endpoint server-to-server without browser CSRF cookies.
-- **Blockers & Unblock Conditions**: Depends on `adb-free-26ai-and-tools-hygiene`.
-- **Next Exact Step**: Claim and execute Tasks `4.1` and `4.2` after `adb-free-26ai-and-tools-hygiene` completes.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+  1. Tasks `4.1` (`e425c95`) and `4.2` (`b42e69e`) completed cleanly across disjoint directories (`tools/oracle/*` vs `src/app/domain/products/*`) with `APEX_GATEWAY_API_KEY` exposed on `AppSettings`.
+  2. Excluding `POST /api/apex/ai/v1/chat/completions` from browser cookie CSRF (`opt={"exclude_from_csrf": True}`) enables Oracle `APEX_AI` / `UTL_HTTP` server-to-server requests without browser CSRF cookies while enforcing optional `secrets.compare_digest` Bearer authentication.
+  3. APEXlang `26.1.0+3102` compiles `src/apex/cymbal-coffee-ops/` offline (`manage.py infra apex validate --alias cymbal-coffee-ops`) using `action: submitPage` for the Page 6 `ask-concierge` button (`15348ea`).
+- **Blockers & Unblock Conditions**: None.
+- **Next Exact Step**: Branch `docs/apex-vertex-demo-recordings` from `feat/apex-26-vertex-ai` and execute `web-and-shell-demo-recordings-and-docs` Tasks `5.1`–`5.4`.
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 3`, `last_operation: complete`, `operation_targets: ["4.1", "4.2", "4.3"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/domains/ai-and-protocols.md`
