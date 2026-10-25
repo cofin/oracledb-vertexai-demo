@@ -18,7 +18,7 @@ from litestar_htmx import HTMXRequest, HTMXTemplate
 from litestar_security import AuthenticationPolicy, PublicController, exclude
 
 from app.domain.products.schemas import ExplainPlan, VectorDemo, VectorDemoMatch, VectorQuery
-from app.domain.products.services._vector import (
+from app.domain.products.services import (
     SERVICE_UNAVAILABLE_MESSAGE,
     OracleVectorSearchService,
     build_explore_telemetry_context,

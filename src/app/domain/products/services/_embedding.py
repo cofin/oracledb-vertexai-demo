@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -95,13 +95,21 @@ class VertexAIService:
         """
         effective_batch = max(1, batch_size)
         products, _ = await product_service.get_products_for_embedding(force=force)
-        prod_success, prod_errors = await self._embed_product_slices(
-            products, product_service=product_service, batch_size=effective_batch, on_batch=on_batch
+        prod_success, prod_errors = await self._embed_slices(
+            products,
+            kind="products",
+            batch_size=effective_batch,
+            on_batch=on_batch,
+            embed_row=lambda row: self._embed_single_product(row, product_service=product_service),
         )
 
         routes, _ = await product_service.get_chat_routes_for_embedding(force=force)
-        route_success, route_errors = await self._embed_route_slices(
-            routes, product_service=product_service, batch_size=effective_batch, on_batch=on_batch
+        route_success, route_errors = await self._embed_slices(
+            routes,
+            kind="chat_routes",
+            batch_size=effective_batch,
+            on_batch=on_batch,
+            embed_row=lambda row: self._embed_single_route(row, product_service=product_service),
         )
 
         return {
@@ -110,32 +118,33 @@ class VertexAIService:
             "errors": prod_errors + route_errors,
         }
 
-    async def _embed_product_slices(
+    async def _embed_slices(
         self,
-        products: list[dict[str, Any]],
+        rows: list[dict[str, Any]],
         *,
-        product_service: ProductService,
+        kind: str,
         batch_size: int,
         on_batch: BatchProgressCallback | None,
+        embed_row: Callable[[dict[str, Any]], Awaitable[bool]],
     ) -> tuple[int, int]:
-        if not products:
+        if not rows:
             return 0, 0
         total_success = 0
         total_errors = 0
-        total_batches = (len(products) + batch_size - 1) // batch_size
+        total_batches = (len(rows) + batch_size - 1) // batch_size
         for batch_index in range(total_batches):
-            slice_rows = products[batch_index * batch_size : (batch_index + 1) * batch_size]
+            slice_rows = rows[batch_index * batch_size : (batch_index + 1) * batch_size]
             batch_ok = 0
             batch_err = 0
-            for product in slice_rows:
-                if await self._embed_single_product(product, product_service=product_service):
+            for row in slice_rows:
+                if await embed_row(row):
                     batch_ok += 1
                 else:
                     batch_err += 1
             total_success += batch_ok
             total_errors += batch_err
             if on_batch is not None:
-                on_batch("products", batch_index + 1, total_batches, batch_ok, batch_err)
+                on_batch(kind, batch_index + 1, total_batches, batch_ok, batch_err)
         return total_success, total_errors
 
     async def _embed_single_product(self, product: dict[str, Any], *, product_service: ProductService) -> bool:
@@ -150,34 +159,6 @@ class VertexAIService:
         if not updated:
             logger.warning("Failed to update product embedding", product_id=product_id)
         return updated
-
-    async def _embed_route_slices(
-        self,
-        routes: list[dict[str, Any]],
-        *,
-        product_service: ProductService,
-        batch_size: int,
-        on_batch: BatchProgressCallback | None,
-    ) -> tuple[int, int]:
-        if not routes:
-            return 0, 0
-        total_success = 0
-        total_errors = 0
-        total_batches = (len(routes) + batch_size - 1) // batch_size
-        for batch_index in range(total_batches):
-            slice_rows = routes[batch_index * batch_size : (batch_index + 1) * batch_size]
-            batch_ok = 0
-            batch_err = 0
-            for route in slice_rows:
-                if await self._embed_single_route(route, product_service=product_service):
-                    batch_ok += 1
-                else:
-                    batch_err += 1
-            total_success += batch_ok
-            total_errors += batch_err
-            if on_batch is not None:
-                on_batch("chat_routes", batch_index + 1, total_batches, batch_ok, batch_err)
-        return total_success, total_errors
 
     async def _embed_single_route(self, route: dict[str, Any], *, product_service: ProductService) -> bool:
         route_id: int | None = None

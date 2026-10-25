@@ -18,8 +18,7 @@ from litestar_htmx import HTMXTemplate
 
 from app.domain.products.controllers import VectorController
 from app.domain.products.schemas import ProductMatch, VectorDemo
-from app.domain.products.services import ProductService
-from app.domain.products.services._vector import OracleVectorSearchService
+from app.domain.products.services import OracleVectorSearchService, ProductService
 from app.lib.service import OracleLoaderService
 from tests.support.paths import APP_ROOT
 

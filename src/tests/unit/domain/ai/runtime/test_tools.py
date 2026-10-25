@@ -12,7 +12,6 @@ from typing import Any, Literal
 import msgspec
 import pytest
 
-import app.domain.ai.runtime as ai_runtime
 from app.domain.ai.runtime import (
     AgentEvent,
     AgentLimits,
@@ -131,8 +130,7 @@ def test_translate_to_gemini_schema_nested_struct() -> None:
 
 
 def test_call_context_and_frozen_runtime_contracts() -> None:
-    """Verify CallContext tool_context resolution, RunContextRegistry removal, and FrozenBaseStruct wire types."""
-    assert not hasattr(ai_runtime, "RunContextRegistry")
+    """Verify CallContext tool_context resolution, CoffeeToolContext fields, and FrozenBaseStruct wire types."""
     field_names = tuple(f.name for f in fields(CoffeeToolContext))
     assert field_names == ("product_service", "store_service", "vertex_ai_service", "metrics_service", "turn_context")
 

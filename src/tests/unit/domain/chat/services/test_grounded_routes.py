@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import inspect
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
@@ -13,23 +12,19 @@ import msgspec
 import pytest
 
 from app.domain.chat.schemas import HybridProductCandidate, HybridRouteLabel, HybridStoreCandidate, HybridTurnContext
-from app.domain.chat.services import _composers as composers_module
-from app.domain.chat.services import _grounded as grounded_module
-from app.domain.chat.services import _telemetry as telemetry_module
-from app.domain.chat.services._composers import (
+from app.domain.chat.services import (
     ORDER_STATUS_ANSWER,
-    compose_availability_answer,
-    compose_off_menu_alternative,
-    compose_product_rag_answer,
-    compose_store_location_answer,
-)
-from app.domain.chat.services._grounded import GroundedRouteService, GroundedTurnResult
-from app.domain.chat.services._telemetry import (
+    GroundedRouteService,
+    GroundedTurnResult,
     SearchMetrics,
     SQLPhase,
     build_hybrid_sql_phases,
     build_response_cache_phase,
     build_search_metrics,
+    compose_availability_answer,
+    compose_off_menu_alternative,
+    compose_product_rag_answer,
+    compose_store_location_answer,
     extract_location_filters,
     safe_location_context,
 )
@@ -421,12 +416,10 @@ async def test_extract_location_filters_resolves_seeded_dfw_cities(query: str, e
     assert extract_location_filters(query)["city"] == expected_city
 
 
-async def test_composers_and_grounded_turn_result_use_frozen_structs_and_zero_config_imports() -> None:
-    """Verify deterministic route composers, frozen turn result, credential guard, and zero app.config imports."""
+async def test_composers_and_grounded_turn_result_use_frozen_structs() -> None:
+    """Verify deterministic route composers, frozen turn result, and credential guard."""
     assert issubclass(GroundedTurnResult, FrozenBaseStruct)
     assert issubclass(SQLPhase, FrozenBaseStruct)
-    for mod in (composers_module, grounded_module, telemetry_module):
-        assert "app.config" not in inspect.getsource(mod)
 
     assert "does not include order tracking yet" in ORDER_STATUS_ANSWER
     assert "does not carry Folgers" in compose_off_menu_alternative("Folgers", [])

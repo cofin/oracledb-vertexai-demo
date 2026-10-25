@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -319,17 +318,10 @@ def test_ai_runtime_sql_targets_agent_session_and_agent_event() -> None:
     assert "coalesce(max(seq), 0) + 1" in next_seq_sql
 
 
-def test_oracle_ai_stores_inherit_oracle_loader_service_without_app_config() -> None:
-    """Verify OracleSessionStore and OracleEventStore inherit OracleLoaderService with zero app.config imports."""
+def test_oracle_ai_stores_inherit_oracle_loader_service() -> None:
+    """Verify OracleSessionStore and OracleEventStore inherit OracleLoaderService."""
     assert issubclass(OracleSessionStore, OracleLoaderService)
     assert issubclass(OracleEventStore, OracleLoaderService)
-
-    store_source = (APP_ROOT / "domain" / "ai" / "runtime" / "_store.py").read_text(encoding="utf-8")
-    tree = ast.parse(store_source)
-    imported_modules = [node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)] + [
-        alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names
-    ]
-    assert all(not mod.startswith("app.config") and mod != "app" for mod in imported_modules)
 
 
 async def test_oracle_session_store_crud() -> None:

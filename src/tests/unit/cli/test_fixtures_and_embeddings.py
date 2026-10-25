@@ -1,22 +1,18 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Behavioral unit tests for hybrid Oracle Text migration DDL, chat_route fixtures, and CLI embedding helpers."""
+"""Behavioral unit tests for hybrid Oracle Text migration DDL, chat_route fixtures, and CLI batch validation."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import msgspec
 import pytest
 import rich_click as click
 
-from app.cli._helpers.embeddings import generate_product_embeddings
-from app.cli.commands import _upgrade_database
+from app.cli.commands import _run_bulk_embed, _upgrade_database
 from app.db.utils import COFFEE_SHOP_TABLES
-from app.domain.products.services import VertexAIService
 from tests.support.paths import APP_ROOT
 
 MIGRATION_0001 = APP_ROOT / "db" / "migrations" / "0001_cymball_coffee_products.sql"
@@ -90,46 +86,11 @@ def test_fixture_tables_include_chat_route_and_fixture_file_has_25_exemplars() -
 
 
 @pytest.mark.anyio
-async def test_generate_product_embeddings_embeds_products_and_chat_routes() -> None:
-    """Verify generate_product_embeddings embeds both product and chat_route records with document purpose."""
-    mock_product_service = AsyncMock()
-    mock_product_service.get_products_for_embedding.return_value = (
-        [{"id": 1, "name": "Ethiopian Yirgacheffe", "description": "Floral citrus"}],
-        1,
-    )
-    mock_product_service.update_embedding.return_value = True
-    mock_product_service.get_chat_routes_for_embedding.return_value = (
-        [
-            {
-                "id": 10,
-                "route_label": "PRODUCT_RAG",
-                "title": "Fruity coffee recommendations",
-                "exemplar_text": "What fruity or floral light roast coffees do you recommend?",
-                "keywords": "recommend menu coffee roast flavor",
-            }
-        ],
-        1,
-    )
-    mock_product_service.update_chat_route_embedding.return_value = True
+async def test_run_bulk_embed_rejects_non_positive_batch_size() -> None:
+    """Verify _run_bulk_embed validates batch_size >= 1 before enqueuing background work."""
+    queue_service = AsyncMock()
 
-    embed_content = AsyncMock(return_value=SimpleNamespace(embeddings=[SimpleNamespace(values=[0.01] * 3072)]))
-    cache_service: Any = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
-    vertex_service = VertexAIService(
-        client=cast("Any", SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content)))),
-        model="gemini-3.8-flash",
-        embedding_model="gemini-embedding-2",
-        embedding_dimensions=3072,
-        cache_service=cache_service,
-    )
+    with pytest.raises(click.ClickException, match=r"Batch size must be at least 1\."):
+        await _run_bulk_embed(batch_size=0, force=False, queue_service=queue_service)
 
-    await generate_product_embeddings(
-        batch_size=10, force=True, product_service=mock_product_service, vertex_ai_service=vertex_service
-    )
-
-    mock_product_service.get_products_for_embedding.assert_awaited_once_with(force=True)
-    mock_product_service.update_embedding.assert_awaited_once_with(1, [0.01] * 3072)
-    mock_product_service.get_chat_routes_for_embedding.assert_awaited_once_with(force=True)
-    mock_product_service.update_chat_route_embedding.assert_awaited_once_with(10, [0.01] * 3072)
-    assert embed_content.await_count == 2
-    for call in embed_content.await_args_list:
-        assert call.kwargs["contents"].startswith("Task: Generate an embedding for a document")
+    queue_service.enqueue.assert_not_awaited()

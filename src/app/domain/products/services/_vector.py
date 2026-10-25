@@ -22,7 +22,7 @@ from app.domain.products.schemas import (
     VectorDemoMatch,
 )
 from app.domain.products.services._products import ProductService
-from app.lib.exceptions import is_expected_service_unavailable
+from app.lib.exceptions import AIServiceUnconfigured, is_expected_service_unavailable
 from app.lib.service import OracleLoaderService, default_sql_loader
 from app.lib.settings import Settings
 from app.lib.text_search import build_oracle_text_query
@@ -81,6 +81,8 @@ class OracleVectorSearchService(OracleLoaderService):
             query, embedding_purpose="query", return_cache_status=True
         )
         embedding_ms = (time.perf_counter() - start_time) * 1000
+        if not embedding:
+            raise AIServiceUnconfigured(SERVICE_UNAVAILABLE_MESSAGE)
 
         oracle_start = time.perf_counter()
         results: list[ProductMatch] = []
@@ -105,6 +107,8 @@ class OracleVectorSearchService(OracleLoaderService):
         embedding, _ = await self.vertex_ai_service.get_text_embedding(
             query, embedding_purpose="query", return_cache_status=True
         )
+        if not embedding:
+            raise AIServiceUnconfigured(SERVICE_UNAVAILABLE_MESSAGE)
         if mode == "vector":
             await self.driver.execute(
                 self.get_sql("explain-plan-vector-search"), query_vector=embedding, threshold=0.5, limit=5

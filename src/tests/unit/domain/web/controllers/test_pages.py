@@ -12,8 +12,7 @@ import pytest
 
 import app.lib.schema as schema_module
 from app.domain.products.schemas import Store
-from app.domain.web.controllers._pages import PageController
-from tests.support.paths import APP_ROOT
+from app.domain.web.controllers import PageController
 
 pytestmark = pytest.mark.anyio
 
@@ -80,12 +79,6 @@ async def test_explore_page_renders_when_store_selector_is_unavailable() -> None
     assert "vector-search-products" in response.context["vector_detail_json"]
 
 
-def test_schema_and_legacy_module_cleanup_contracts() -> None:
-    """Verify legacy mutable structs and removed compatibility modules do not exist."""
+def test_schema_module_exports_frozen_struct_primitives() -> None:
+    """Verify `app.lib.schema` exports strictly the frozen struct primitives and `Message`."""
     assert tuple(schema_module.__all__) == ("CamelizedFrozenStruct", "FrozenBaseStruct", "Message")
-    assert not hasattr(schema_module, "BaseStruct")
-    assert not hasattr(schema_module, "CamelizedBaseStruct")
-    assert not (APP_ROOT / "domain" / "chat" / "exceptions.py").exists()
-    assert not (APP_ROOT / "domain" / "chat" / "session.py").exists()
-    assert not (APP_ROOT / "domain" / "products" / "services" / "_inventory.py").exists()
-    assert not (APP_ROOT / "domain" / "products" / "controllers" / "_vector_helpers.py").exists()

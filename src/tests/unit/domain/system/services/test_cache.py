@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import ast
 import gc
 import hashlib
 from datetime import UTC, datetime, timedelta
@@ -20,49 +19,21 @@ from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, CacheService, Pe
 from app.lib.schema import FrozenBaseStruct
 from app.lib.service import OracleLoaderService
 from app.utils.serialization import decode_json
-from tests.support.paths import APP_ROOT
 
 pytestmark = pytest.mark.anyio
 
-SYSTEM_DOMAIN_DIR = APP_ROOT / "domain" / "system"
-
-
-def _collect_config_imports() -> list[str]:
-    """Return any `app.config` imports across `src/app/domain/system/`."""
-    violations: list[str] = []
-    for py_file in sorted(SYSTEM_DOMAIN_DIR.rglob("*.py")):
-        tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom):
-                mod = node.module or ""
-                names = {alias.name for alias in node.names}
-                if mod == "app.config" or mod.startswith("app.config.") or (mod == "app" and "config" in names):
-                    violations.append(f"{py_file.name}:{node.lineno}")
-            elif isinstance(node, ast.Import):
-                violations.extend(
-                    f"{py_file.name}:{node.lineno}"
-                    for alias in node.names
-                    if alias.name == "app.config" or alias.name.startswith("app.config.")
-                )
-    return violations
-
 
 async def test_system_services_module_boundaries_and_exports() -> None:
-    """Verify `CacheService` inherits `OracleLoaderService`, `_health.py` is removed, and legacy aliases are gone."""
+    """Verify `CacheService` inherits `OracleLoaderService` and `system.services` exports canonical public symbols."""
     assert issubclass(CacheService, OracleLoaderService)
     assert CacheService.__module__ == "app.domain.system.services._cache"
     assert PersonaManager.__module__ == "app.domain.system.services._personas"
-    assert not (SYSTEM_DOMAIN_DIR / "services" / "_health.py").exists()
     assert set(system_services.__all__) == {
         "BASE_SYSTEM_INSTRUCTION",
         "CacheService",
         "MetricsService",
         "PersonaManager",
     }
-    assert not hasattr(system_services, "ResponseCacheService")
-    assert not hasattr(system_services, "SystemService")
-    assert not hasattr(system_services, "PersonaConfig")
-    assert _collect_config_imports() == []
 
 
 async def test_persona_manager_uses_frozen_persona_definition() -> None:

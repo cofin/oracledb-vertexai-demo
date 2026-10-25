@@ -15,7 +15,7 @@ from ._composers import (
     select_grounded_products,
 )
 from ._grounded import GroundedRouteService, GroundedTurnResult
-from ._router import HybridRouteResolver, build_oracle_text_query, extract_candidate_terms
+from ._router import HybridRouteResolver, extract_candidate_terms
 from ._telemetry import (
     SearchMetrics,
     SQLPhase,
@@ -41,7 +41,6 @@ __all__ = (
     "build_candidate_block",
     "build_hybrid_sql_phases",
     "build_map_actions",
-    "build_oracle_text_query",
     "build_response_cache_phase",
     "build_search_metrics",
     "build_sql_phase",

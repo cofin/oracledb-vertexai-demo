@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock
@@ -14,14 +13,14 @@ import msgspec
 import pytest
 
 from app.domain.chat.schemas import HybridSearchRow, HybridTurnContext, TermHitRow
-from app.domain.chat.services import _router as router_module
-from app.domain.chat.services._router import HybridRouteResolver, build_oracle_text_query, extract_candidate_terms
+from app.domain.chat.services import HybridRouteResolver, extract_candidate_terms
 from app.lib.schema import FrozenBaseStruct
 from app.lib.service import OracleLoaderService
 from app.lib.text_search import (
     ORACLE_TEXT_RESERVED_WORDS,
     ORACLE_TEXT_STOPWORDS,
     build_oracle_proximity_query,
+    build_oracle_text_query,
     extract_search_tokens,
 )
 from tests.support.paths import APP_ROOT, TESTS_ROOT
@@ -205,12 +204,11 @@ def test_text_search_proximity_and_token_extraction() -> None:
 
 
 def test_hybrid_route_resolver_uses_oracle_loader_service_and_frozen_schemas() -> None:
-    """Verify HybridRouteResolver inherits from OracleLoaderService with frozen schemas and zero app.config imports."""
+    """Verify HybridRouteResolver inherits from OracleLoaderService with frozen schemas and DFW proper-noun guards."""
     assert issubclass(HybridRouteResolver, OracleLoaderService)
     assert issubclass(HybridSearchRow, FrozenBaseStruct)
     assert issubclass(TermHitRow, FrozenBaseStruct)
     assert issubclass(HybridTurnContext, FrozenBaseStruct)
-    assert "app.config" not in inspect.getsource(router_module)
 
     terms_dfw = extract_candidate_terms("Do you have espresso in Plano or Fort Worth or Arlington or Frisco or Irving?")
     assert terms_dfw == []

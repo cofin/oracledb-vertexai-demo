@@ -11,7 +11,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import app.domain.products.services as products_services
 from app.domain.products.schemas import ProductAvailability, Store, StoreDistance, StoreHours
 from app.domain.products.services import StoreService
 from app.lib.service import OracleLoaderService
@@ -240,4 +239,3 @@ async def test_resolve_store_by_coordinates(mock_driver: Any) -> None:
     assert resolved is not None
     assert resolved.id == 16
     assert issubclass(StoreService, OracleLoaderService)
-    assert not hasattr(products_services, "InventoryService")

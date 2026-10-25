@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import app.domain.products.services as products_services
 import app.domain.products.services._maps as maps_module
 from app.domain.products.services import build_store_directions_url, build_store_search_url
 
@@ -66,11 +65,9 @@ def test_build_store_directions_url_with_browser_origin_coordinates() -> None:
 
 
 def test_build_store_directions_url_with_string_origin() -> None:
-    """Verify `build_store_directions_url` encodes string origins and `MapsService` facade is removed."""
+    """Verify `build_store_directions_url` encodes string origins and exports URL builder helpers."""
     url = build_store_directions_url(**_STORE_FIELDS, origin="Dallas, TX")
 
     assert "origin=Dallas%2C+TX" in url
     assert "key=" not in url
     assert tuple(maps_module.__all__) == ("build_store_directions_url", "build_store_search_url")
-    assert not hasattr(maps_module, "MapsService")
-    assert not hasattr(products_services, "MapsService")

@@ -13,9 +13,8 @@ from litestar_htmx import HTMXRequest
 from litestar_security import PublicController
 
 from app.domain.ai.services import AgentOrchestrationService
-from app.domain.chat._session import chat_session_identity
-from app.domain.products.services import StoreService
-from app.domain.products.services._vector import build_explore_telemetry_context
+from app.domain.chat import chat_session_identity
+from app.domain.products.services import StoreService, build_explore_telemetry_context
 from app.lib.di import Inject
 
 __all__ = ("PageController",)

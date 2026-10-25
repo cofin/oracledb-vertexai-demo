@@ -22,11 +22,10 @@ from app.domain.products.schemas import (
     ApexVectorStatus,
     ProductAvailability,
     ProductMatch,
+    RecommendationMode,
     Store,
 )
-from app.domain.products.schemas._apex import RecommendationMode
-from app.domain.products.services import ProductService, StoreService
-from app.domain.products.services._vector import OracleVectorSearchService
+from app.domain.products.services import OracleVectorSearchService, ProductService, StoreService
 from app.lib.schema import CamelizedFrozenStruct
 from app.lib.service import OracleLoaderService
 
@@ -280,6 +279,27 @@ async def test_apex_recommendations_reraises_unexpected_vector_errors(mock_drive
         )
 
     products_service.list_apex_products.assert_not_awaited()
+
+
+async def test_apex_recommendations_fall_back_when_embedding_response_is_empty(mock_driver: Any) -> None:
+    """Verify empty `(None, False)` embedding responses raise `AIServiceUnconfigured` and fall back outside `except:`."""
+    mock_vertex = MagicMock()
+    mock_vertex.get_text_embedding = AsyncMock(return_value=(None, False))
+    products_service = MagicMock()
+    products_service.list_apex_products = AsyncMock(return_value=([_product()], 1))
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=mock_vertex, product_service=products_service
+    )
+
+    response = await ApexController.recommendations.fn(
+        ApexController(owner=MagicMock()),
+        vector_search_service=vector_search_service,
+        data=ApexRecommendationRequest(query="nitro", limit=2),
+    )
+
+    assert response.mode == "fallback"
+    assert response.fallback_reason == "AIServiceUnconfigured"
+    products_service.list_apex_products.assert_awaited_once_with(q="nitro", category=None, limit=2, offset=0)
 
 
 async def test_apex_status_endpoints_report_catalog_and_vector_readiness(mock_driver: Any) -> None:

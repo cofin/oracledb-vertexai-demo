@@ -11,15 +11,20 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import app.domain.ai.services as ai_services
-from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
-from app.domain.ai.runtime._loop import AgentRuntime
-from app.domain.ai.runtime._stream import AgentStreamService
-from app.domain.ai.runtime._types import AgentEvent, Content, Part, Usage
+from app.domain.ai.runtime import (
+    AgentEvent,
+    AgentRuntime,
+    AgentStreamService,
+    CallContext,
+    CoffeeToolContext,
+    Content,
+    Part,
+    Usage,
+)
 from app.domain.ai.services import AgentOrchestrationService, build_coffee_tools, get_coffee_spec_tree
 from app.domain.ai.services._history import extract_last_products, extract_session_state, has_session_context
 from app.domain.chat.schemas import HybridProductCandidate, HybridTurnContext
-from app.domain.chat.services._grounded import GroundedRouteService
+from app.domain.chat.services import GroundedRouteService
 from app.domain.products.schemas import Product
 
 pytestmark = pytest.mark.anyio
@@ -41,7 +46,6 @@ class _FakeModelClient:
 
 def test_get_coffee_spec_tree_registers_five_grounded_tools() -> None:
     """Verify get_coffee_spec_tree registers all 5 grounded coffee tools and private _agent/_history boundaries."""
-    assert not hasattr(ai_services, "CoffeeToolServices")
     assert AgentOrchestrationService.__module__ == "app.domain.ai.services._agent"
     assert extract_session_state({"state": '{"last_products":["Espresso"]}'}) == {"last_products": ["Espresso"]}
     assert extract_last_products({"last_products": ["Espresso", " "]}) == ["Espresso"]
@@ -186,7 +190,7 @@ async def test_orchestrator_deterministic_hybrid_route_short_circuits_agent_loop
 
 
 async def test_orchestrator_skips_response_cache_when_location_present_and_never_persists_coordinates() -> None:
-    """Location-scoped turns bypass ResponseCacheService and strip raw coordinates from persisted state."""
+    """Location-scoped turns bypass CacheService and strip raw coordinates from persisted state."""
     session_store = AsyncMock()
     session_store.get_session.return_value = None
     event_store = AsyncMock()

@@ -266,13 +266,21 @@ def _build_initial_contents(
     *, user_message: str, history: list[AgentEvent] | None, dynamic_context: str | None
 ) -> list[Content]:
     history_events = list(history or [])
-    contents: list[Content] = [ev.content for ev in history_events if ev.content]
+    raw_contents: list[Content] = [ev.content for ev in history_events if ev.content]
+    start_idx = 0
+    while start_idx < len(raw_contents) and not _is_turn_opening_user_content(raw_contents[start_idx]):
+        start_idx += 1
+    contents = raw_contents[start_idx:]
     user_text = user_message
     if dynamic_context:
         fenced = fence_context_block("ACTIVE_SESSION_CONTEXT", dynamic_context)
         user_text = f"{user_message}\n\n{fenced}"
     contents.append(Content(role="user", parts=[Part(text=user_text)]))
     return contents
+
+
+def _is_turn_opening_user_content(content: Content) -> bool:
+    return content.role == "user" and not any(part.function_response is not None for part in content.parts)
 
 
 def _stamp_event(

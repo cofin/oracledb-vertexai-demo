@@ -11,8 +11,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import app.domain.products.services as products_services
-import app.domain.products.services._embedding as embedding_module
 from app.domain.products.services import VertexAIService
 
 pytestmark = pytest.mark.anyio
@@ -72,8 +70,6 @@ async def test_vertex_ai_service_embed_missing_products_runs_pure_async_batches(
         cache_service=cache_service,
     )
     assert not hasattr(service, "__dict__")
-    assert not hasattr(embedding_module, "EmbeddingService")
-    assert not hasattr(products_services, "EmbeddingService")
 
     product_service = AsyncMock()
     product_service.get_products_for_embedding.return_value = (

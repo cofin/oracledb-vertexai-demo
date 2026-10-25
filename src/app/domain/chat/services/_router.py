@@ -21,7 +21,7 @@ from app.lib.service import OracleLoaderService
 from app.lib.text_search import ORACLE_TEXT_RESERVED_WORDS, ORACLE_TEXT_STOPWORDS, build_oracle_text_query
 from app.utils.serialization import encode_json
 
-__all__ = ("HybridRouteResolver", "build_oracle_text_query", "extract_candidate_terms")
+__all__ = ("HybridRouteResolver", "extract_candidate_terms")
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9\-']*")
 _CAPITALIZED_RE = re.compile(r"\b[A-Z][a-zA-Z]{2,}\b")
