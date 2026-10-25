@@ -2,16 +2,20 @@
 type: Spec
 flow_id: domain-standardization-and-debloat
 title: Domain Service Standardization, Frozen Wire Models, MyPyC-Safe Fallbacks, and Dead-Code Removal
-state: planned
+state: completed
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 4
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: complete
+operation_targets:
+  - "2.1"
+  - "2.2"
+  - "2.3"
+  - "2.4"
+last_verified_checkpoint: "5e3fd17"
 created_at: 2026-10-24T19:29:00Z
-updated_at: 2026-10-24T19:29:00Z
+updated_at: 2026-10-25T15:59:30Z
 description: Second stacked PR migrating system, chat, ai, products, and web domains to OracleLoaderService, FrozenBaseStruct, and centralized serialization, extracting shared Oracle Text sanitization, splitting oversized modules, fixing mypyc-safe post-except SQLSpec fallbacks and DFW city filters, and deleting legacy wrappers, aliases, and banned-api ignores.
 tags:
   - refactor
@@ -82,28 +86,28 @@ Files examined:
 
 ### Phase 1: System, Chat, AI, and Products/Web Domain Standardization & Debloat
 
-- [ ] 2.1 Standardize `system` domain on `OracleLoaderService`, `FrozenBaseStruct`, atomic `MERGE INTO` cache SQL, and split `_personas.py` / `_metrics.py`
-- [ ] 2.2 Extract `src/app/lib/text_search.py` and standardize `chat` domain (`_session.py`, `schemas/_forms.py`, split `_composers.py`, seeded DFW city filters)
-- [ ] 2.3 Standardize `ai` domain (`OracleLoaderService` stores, SQL `:limit` pushdown, `_card.py` / `_executor.py`, `_agent.py` / `_history.py`, delete `RunContextRegistry` & `CoffeeToolServices`)
-- [ ] 2.4 Standardize `products` and `web` domains (`_vector.py`, mypyc-safe fallbacks, pure async batch embedding), delete dead wrappers/aliases, and remove `pyproject.toml` `banned-api` ignores
+- [x] 2.1 Standardize `system` domain on `OracleLoaderService`, `FrozenBaseStruct`, atomic `MERGE INTO` cache SQL, and split `_personas.py` / `_metrics.py` [`9d08f1f`]
+- [x] 2.2 Extract `src/app/lib/text_search.py` and standardize `chat` domain (`_session.py`, `schemas/_forms.py`, split `_composers.py`, seeded DFW city filters) [`60414e9`]
+- [x] 2.3 Standardize `ai` domain (`OracleLoaderService` stores, SQL `:limit` pushdown, `_card.py` / `_executor.py`, `_agent.py` / `_history.py`, delete `RunContextRegistry` & `CoffeeToolServices`) [`a7c83ec`]
+- [x] 2.4 Standardize `products` and `web` domains (`_vector.py`, mypyc-safe fallbacks, pure async batch embedding), delete dead wrappers/aliases, and remove `pyproject.toml` `banned-api` ignores [`5e3fd17`]
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `domain-standardization-and-debloat` (`planned`)
+- **Active Flow / Lifecycle**: `domain-standardization-and-debloat` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `5e3fd17`
 - **Key Decisions**:
   - Execute Task `2.3` (`ai` domain) before Task `2.4` (`products` & `web` domains) so `_context.py` and `_agent.py` drop `EmbeddingService`, `InventoryService`, and `MapsService` imports before Task `2.4` deletes them from `products/services/`, keeping every intermediate commit green with zero overlapping `files:`.
-  - Keep `src/tests/unit/db/test_named_sql.py` inspecting both `db_manager.get_sql(...)` and `self.get_sql(...)` / `loader.get_sql(...)` call sites so named-SQL parity remains enforced across all `OracleLoaderService` subclasses.
+  - Keep `src/tests/unit/db/test_named_sql.py` inspecting `<target>.get_sql(...)` call sites so named-SQL parity remains enforced across all `OracleLoaderService` subclasses.
 - **Newest Discoveries**:
   1. Executing fallback SQLSpec queries *after* exiting `except:` in `OracleVectorSearchService` (`_vector.py`) prevents `sqlspec[mypyc]` compiled frames from observing active `sys.exc_info()` state.
-  2. All 9 `KEEP_LIST_PATHS` in `src/tests/unit/test_test_suite_guards.py` remain at their exact filesystem paths throughout this refactor.
-- **Blockers & Unblock Conditions**: Depends on `sqlspec-069-and-core-foundation`.
-- **Next Exact Step**: Claim and execute Task `2.1` (`tasks/2.1.md`) after `sqlspec-069-and-core-foundation` completes.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+  2. Keeping `products` free of `chat` imports (`ai -> chat -> products -> system/lib`) prevents circular package initialization when `chat/services/_telemetry.py` imports URL builders from `app.domain.products.services`.
+- **Blockers & Unblock Conditions**: None
+- **Next Exact Step**: Proceed to PR 3 (`adb-free-26ai-and-tools-hygiene`) on branch `feat/adb-free-26ai-runtime`.
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 4`, `last_operation: complete`, `operation_targets: ["2.1", "2.2", "2.3", "2.4"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/domains/ai-and-protocols.md`
