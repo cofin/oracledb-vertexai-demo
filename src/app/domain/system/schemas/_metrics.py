@@ -3,7 +3,7 @@
 
 """System performance and cache telemetry schemas."""
 
-from app.lib.schema import CamelizedBaseStruct
+from app.lib.schema import CamelizedFrozenStruct
 
 __all__ = (
     "CacheStats",
@@ -22,7 +22,7 @@ __all__ = (
 )
 
 
-class SearchMetricsCreate(CamelizedBaseStruct, omit_defaults=True, kw_only=True):
+class SearchMetricsCreate(CamelizedFrozenStruct, frozen=True, kw_only=True):
     """Row inserted into ``search_metric``."""
 
     query_id: str
@@ -36,7 +36,7 @@ class SearchMetricsCreate(CamelizedBaseStruct, omit_defaults=True, kw_only=True)
     result_count: int
 
 
-class PerformanceStats(CamelizedBaseStruct, omit_defaults=True):
+class PerformanceStats(CamelizedFrozenStruct, frozen=True):
     """Aggregate latency and volume across a window of ``search_metric`` rows."""
 
     total_searches: int
@@ -45,14 +45,14 @@ class PerformanceStats(CamelizedBaseStruct, omit_defaults=True):
     avg_similarity_score: float
 
 
-class CacheStatsRow(CamelizedBaseStruct, omit_defaults=True):
+class CacheStatsRow(CamelizedFrozenStruct, frozen=True):
     """Single-row projection from ``get-cache-stats``."""
 
     total_hits: int
     total_entries: int
 
 
-class CacheStats(CamelizedBaseStruct, omit_defaults=True):
+class CacheStats(CamelizedFrozenStruct, frozen=True):
     """Embedding-cache hit/usage rollup with derived hit rate."""
 
     total_hits: int
@@ -60,7 +60,7 @@ class CacheStats(CamelizedBaseStruct, omit_defaults=True):
     cache_hit_rate: float
 
 
-class MetricCard(CamelizedBaseStruct, omit_defaults=True):
+class MetricCard(CamelizedFrozenStruct, frozen=True):
     """Single card on the metrics summary panel."""
 
     label: str
@@ -69,13 +69,13 @@ class MetricCard(CamelizedBaseStruct, omit_defaults=True):
     trend_value: str | float | None = None
 
 
-class MetricsSummary(CamelizedBaseStruct, omit_defaults=True):
+class MetricsSummary(CamelizedFrozenStruct, frozen=True):
     """Card list rendered client-side in the Explore dashboard."""
 
     cards: list[MetricCard]
 
 
-class MetricsTimeSeriesPoints(CamelizedBaseStruct, omit_defaults=True):
+class MetricsTimeSeriesPoints(CamelizedFrozenStruct, frozen=True):
     """Per-stage latency series for the latency chart."""
 
     total_ms: list[float]
@@ -83,7 +83,7 @@ class MetricsTimeSeriesPoints(CamelizedBaseStruct, omit_defaults=True):
     embedding_ms: list[float]
 
 
-class MetricsTimeSeriesRow(CamelizedBaseStruct, omit_defaults=True):
+class MetricsTimeSeriesRow(CamelizedFrozenStruct, frozen=True):
     """Single per-minute bucket projected from ``metrics-time-series``."""
 
     bucket: str
@@ -92,14 +92,14 @@ class MetricsTimeSeriesRow(CamelizedBaseStruct, omit_defaults=True):
     embedding_ms: float
 
 
-class MetricsTimeSeries(CamelizedBaseStruct, omit_defaults=True):
+class MetricsTimeSeries(CamelizedFrozenStruct, frozen=True):
     """Latency series payload consumed by ApexCharts."""
 
     labels: list[str]
     series: MetricsTimeSeriesPoints
 
 
-class MetricsScatterPoint(CamelizedBaseStruct, omit_defaults=True):
+class MetricsScatterPoint(CamelizedFrozenStruct, frozen=True):
     """Single vector-search point for similarity-vs-latency charts."""
 
     similarity_score: float
@@ -108,7 +108,7 @@ class MetricsScatterPoint(CamelizedBaseStruct, omit_defaults=True):
     embedding_ms: float
 
 
-class MetricsBreakdownRow(CamelizedBaseStruct, omit_defaults=True):
+class MetricsBreakdownRow(CamelizedFrozenStruct, frozen=True):
     """Aggregate component timing row projected from ``search_metric``."""
 
     embedding_ms: float
@@ -118,14 +118,14 @@ class MetricsBreakdownRow(CamelizedBaseStruct, omit_defaults=True):
     other_ms: float
 
 
-class MetricsBreakdown(CamelizedBaseStruct, omit_defaults=True):
+class MetricsBreakdown(CamelizedFrozenStruct, frozen=True):
     """Labels and values for the system breakdown chart."""
 
     labels: list[str]
     values: list[float]
 
 
-class MetricsCharts(CamelizedBaseStruct, omit_defaults=True):
+class MetricsCharts(CamelizedFrozenStruct, frozen=True):
     """Complete Explore dashboard chart payload."""
 
     time_series: MetricsTimeSeries

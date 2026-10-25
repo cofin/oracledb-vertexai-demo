@@ -7,11 +7,43 @@ FROM response_cache
 WHERE cache_key = :key
   AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP);
 
+-- name: upsert-response-cache
+MERGE INTO response_cache rc
+USING (
+    SELECT :cache_key AS cache_key,
+           :response_data AS response_data,
+           :expires_at AS expires_at
+    FROM dual
+) src
+ON (rc.cache_key = src.cache_key)
+WHEN MATCHED THEN
+    UPDATE SET rc.response_data = src.response_data,
+               rc.expires_at = src.expires_at,
+               rc.updated_at = CURRENT_TIMESTAMP
+WHEN NOT MATCHED THEN
+    INSERT (cache_key, response_data, expires_at)
+    VALUES (src.cache_key, src.response_data, src.expires_at);
+
 -- name: get-cached-embedding
 SELECT id, text_hash, embedding, model, created_at, last_accessed, hit_count
 FROM embedding_cache
 WHERE text_hash = :hash
   AND model = :model;
+
+-- name: upsert-embedding-cache
+MERGE INTO embedding_cache ec
+USING (
+    SELECT :text_hash AS text_hash,
+           :model AS model
+    FROM dual
+) src
+ON (ec.text_hash = src.text_hash AND ec.model = src.model)
+WHEN MATCHED THEN
+    UPDATE SET ec.embedding = :embedding,
+               ec.last_accessed = CURRENT_TIMESTAMP
+WHEN NOT MATCHED THEN
+    INSERT (text_hash, embedding, model)
+    VALUES (src.text_hash, :embedding, src.model);
 
 -- name: get-cache-stats
 SELECT COALESCE(SUM(hit_count), 0) AS total_hits,
@@ -24,7 +56,8 @@ SELECT COALESCE(COUNT(*), 0)              AS total_searches,
        COALESCE(AVG(oracle_time_ms), 0)   AS avg_oracle_time_ms,
        COALESCE(AVG(similarity_score), 0) AS avg_similarity_score
 FROM search_metric
-WHERE created_at > :since;
+WHERE created_at > CURRENT_TIMESTAMP - NUMTODSINTERVAL(:window_start_hours, 'HOUR')
+  AND created_at <= CURRENT_TIMESTAMP - NUMTODSINTERVAL(:window_end_hours, 'HOUR');
 
 -- name: metrics-time-series
 SELECT TO_CHAR(TRUNC(created_at, 'MI'), 'HH24:MI') AS bucket,
