@@ -7,9 +7,24 @@ from __future__ import annotations
 
 import argparse
 import gzip
-import json
 from pathlib import Path
 from typing import Any, cast
+
+from app.utils.serialization import decode_json, format_json
+
+__all__ = (
+    "LOW_STOCK_THRESHOLD",
+    "MAX_QUANTITY",
+    "OUT_OF_STOCK_PRODUCT_ID",
+    "PRODUCTS_PER_STORE",
+    "build_inventory_rows",
+    "generate_inventory",
+    "inventory_row",
+    "load_fixture",
+    "selected_products",
+    "stock_status",
+    "write_inventory",
+)
 
 PRODUCTS_PER_STORE = 100
 MAX_QUANTITY = 50
@@ -39,7 +54,7 @@ def generate_inventory(output_file: Path | None = None) -> None:
 def load_fixture(fixture_file: Path) -> list[dict[str, Any]]:
     """Load one gzipped JSON fixture file."""
     with gzip.open(fixture_file, "rb") as f:
-        return cast("list[dict[str, Any]]", json.load(f))
+        return cast("list[dict[str, Any]]", decode_json(f.read()))
 
 
 def build_inventory_rows(stores: list[dict[str, Any]], products: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -98,12 +113,12 @@ def stock_status(quantity: int) -> str:
 
 def write_inventory(output_file: Path, inventory: list[dict[str, Any]]) -> None:
     """Write inventory rows as JSON or gzipped JSON."""
+    payload = f"{format_json(inventory)}\n"
     if output_file.suffix == ".gz":
         with gzip.open(output_file, "wt", encoding="utf-8") as f:
-            json.dump(inventory, f, indent=2)
+            f.write(payload)
     else:
-        with Path(output_file).open("w", encoding="utf-8") as f:
-            json.dump(inventory, f, indent=2)
+        Path(output_file).write_text(payload, encoding="utf-8")
 
 
 if __name__ == "__main__":

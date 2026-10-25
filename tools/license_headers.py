@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING, Final
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+__all__ = ("HeaderResult", "collect_results", "ensure_header", "main")
+
 COPYRIGHT_LINE: Final = "SPDX-FileCopyrightText: 2026 Google LLC"
 LICENSE_LINE: Final = "SPDX-License-Identifier: Apache-2.0"
 

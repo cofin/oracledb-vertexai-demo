@@ -10,6 +10,8 @@ from rich.console import Console
 
 from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
 
+__all__ = ("connect_group", "connect_info", "connect_test", "run_connection_test")
+
 console = Console()
 
 
@@ -46,7 +48,7 @@ def run_connection_test(*, tester: ConnectionTester, mode: str | None, timeout: 
     """Build connection config and run the CLI connection test."""
     config = ConnectionConfig.from_env()
     if mode:
-        config.mode = DeploymentMode(mode.upper())
+        config.mode = DeploymentMode(mode.lower())
     result = tester.test(config, timeout=timeout, display=True)
     if not result.success:
         raise click.Abort
@@ -58,8 +60,6 @@ def connect_info() -> None:
 
     Shows current connection configuration from environment.
     """
-    from tools.oracle.connection import ConnectionTester
-
     tester = ConnectionTester(console=console)
 
     try:

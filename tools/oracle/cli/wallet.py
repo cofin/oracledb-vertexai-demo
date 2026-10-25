@@ -11,8 +11,19 @@ from typing import TYPE_CHECKING
 import rich_click as click
 from rich.console import Console
 
+from tools.oracle.wallet import WalletConfigurator
+
 if TYPE_CHECKING:
     from tools.oracle.wallet import WalletInfo
+
+__all__ = (
+    "display_wallet_validation",
+    "wallet_configure",
+    "wallet_extract",
+    "wallet_group",
+    "wallet_list_services",
+    "wallet_validate",
+)
 
 console = Console()
 
@@ -33,8 +44,6 @@ def wallet_extract(wallet_zip: str, dest: str | None) -> None:
 
     Extracts Wallet_*.zip file to specified directory.
     """
-    from tools.oracle.wallet import WalletConfigurator
-
     configurator = WalletConfigurator()
     zip_path = Path(wallet_zip)
     dest_dir = Path(dest) if dest else None
@@ -56,8 +65,6 @@ def wallet_configure(wallet_dir: str | None, non_interactive: bool) -> None:
     Guides through wallet setup and generates .env configuration.
     Replaces: app database configure
     """
-    from tools.oracle.wallet import WalletConfigurator
-
     configurator = WalletConfigurator()
     wallet_path = Path(wallet_dir) if wallet_dir else None
 
@@ -77,19 +84,8 @@ def wallet_list_services(wallet_dir: str | None) -> None:
 
     Shows all service names from tnsnames.ora.
     """
-    from tools.oracle.wallet import WalletConfigurator
-
     configurator = WalletConfigurator()
-
-    # Find wallet if not provided
-    if wallet_dir:
-        wallet_path = Path(wallet_dir)
-    else:
-        found = configurator.find_wallet()
-        if not found:
-            console.print("[yellow]⚠ No wallet found. Please specify --wallet-dir[/yellow]")
-            raise click.Abort
-        wallet_path = found if found.is_dir() else configurator.extract_wallet(found)
+    wallet_path = _resolve_wallet_path(configurator, wallet_dir)
 
     try:
         services = configurator.list_services(wallet_path, display=True)
@@ -107,19 +103,8 @@ def wallet_validate(wallet_dir: str | None) -> None:
 
     Checks for required files and verifies wallet integrity.
     """
-    from tools.oracle.wallet import WalletConfigurator
-
     configurator = WalletConfigurator()
-
-    # Find wallet if not provided
-    if wallet_dir:
-        wallet_path = Path(wallet_dir)
-    else:
-        found = configurator.find_wallet()
-        if not found:
-            console.print("[yellow]⚠ No wallet found. Please specify --wallet-dir[/yellow]")
-            raise click.Abort
-        wallet_path = found if found.is_dir() else configurator.extract_wallet(found)
+    wallet_path = _resolve_wallet_path(configurator, wallet_dir)
 
     try:
         wallet_info = configurator.validate_wallet(wallet_path)
@@ -142,3 +127,14 @@ def display_wallet_validation(wallet_info: WalletInfo) -> None:
     for error in wallet_info.validation_errors or []:
         console.print(f"  • {error}")
     raise click.Abort
+
+
+def _resolve_wallet_path(configurator: WalletConfigurator, wallet_dir: str | None) -> Path:
+    """Resolve an explicit wallet directory or discover and extract a default wallet."""
+    if wallet_dir:
+        return Path(wallet_dir)
+    found = configurator.find_wallet()
+    if not found:
+        console.print("[yellow]⚠ No wallet found. Please specify --wallet-dir[/yellow]")
+        raise click.Abort
+    return found if found.is_dir() else configurator.extract_wallet(found)
