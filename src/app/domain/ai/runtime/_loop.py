@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import msgspec
 from litestar_mcp.agent import BudgetExceededError, TurnBudget
 from litestar_mcp.core.observability import SpanManager
 
@@ -26,6 +27,8 @@ __all__ = ("AgentRuntime", "BudgetExceededError", "SpanManager", "TurnBudget")
 
 class AgentRuntime:
     """Core re-entrant agent execution loop with TurnBudget and OpenTelemetry SpanManager."""
+
+    __slots__ = ("_budget", "_limits", "_model_client", "_span_manager")
 
     def __init__(
         self,
@@ -141,7 +144,7 @@ class AgentRuntime:
             if current_spec.generation.temperature is not None:
                 stream_kwargs["temperature"] = current_spec.generation.temperature
             async for event in self._model_client.generate_stream(contents, **stream_kwargs):
-                _stamp_event(
+                event = _stamp_event(
                     event=event,
                     session_id=session_id,
                     invocation_id=invocation_id,
@@ -282,17 +285,17 @@ def _stamp_event(
     usage_totals: list[int],
     accumulated_parts: list[Part],
     pending_calls: list[FunctionCall],
-) -> None:
-    event.session_id = session_id
-    event.invocation_id = invocation_id
-    event.turn = turn
-    event.agent = agent_name
-    if event.usage is not None:
-        usage_totals[0] += event.usage.prompt_tokens
-        usage_totals[1] += event.usage.output_tokens
-    if event.content and event.content.parts:
-        accumulated_parts.extend(event.content.parts)
-        pending_calls.extend(p.function_call for p in event.content.parts if p.function_call)
+) -> AgentEvent:
+    stamped = msgspec.structs.replace(
+        event, session_id=session_id, invocation_id=invocation_id, turn=turn, agent=agent_name
+    )
+    if stamped.usage is not None:
+        usage_totals[0] += stamped.usage.prompt_tokens
+        usage_totals[1] += stamped.usage.output_tokens
+    if stamped.content and stamped.content.parts:
+        accumulated_parts.extend(stamped.content.parts)
+        pending_calls.extend(p.function_call for p in stamped.content.parts if p.function_call)
+    return stamped
 
 
 def _normalize_budget(

@@ -127,7 +127,7 @@ class SQLPhase(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
         }
 
 
-class SearchMetrics(msgspec.Struct, gc=False, kw_only=True):
+class SearchMetrics(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Structured retrieval and grounding metrics emitted in the chat SSE final payload."""
 
     vector_query: str

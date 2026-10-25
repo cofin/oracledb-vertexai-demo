@@ -24,14 +24,12 @@ from app.domain.ai.runtime import (
     OracleEventStore,
     OracleSessionStore,
     Part,
-    RunContextRegistry,
     SpanManager,
     SpecTree,
     TurnBudget,
     declare,
     to_agent_stream_frame,
 )
-from app.domain.products.services import MapsService
 
 
 class _LoopingModelClient:
@@ -101,37 +99,36 @@ def test_coffee_prompt_controller_renders_barista_and_inventory_prompts() -> Non
 
 
 def test_coffee_tool_context_and_protocols() -> None:
-    """Verify CoffeeToolContext and runtime protocols wire services and stores cleanly."""
+    """Verify CoffeeToolContext and runtime protocols wire services and OracleLoaderService stores cleanly."""
     product_svc = MagicMock()
     store_svc = MagicMock()
-    inventory_svc = MagicMock()
-    maps_svc = MapsService()
-    embed_svc = MagicMock()
+    vertex_svc = MagicMock()
+    metrics_svc = MagicMock()
     turn_ctx = MagicMock()
 
     tool_ctx = CoffeeToolContext(
         product_service=product_svc,
         store_service=store_svc,
-        inventory_service=inventory_svc,
-        maps_service=maps_svc,
-        embedding_service=embed_svc,
+        vertex_ai_service=vertex_svc,
+        metrics_service=metrics_svc,
         turn_context=turn_ctx,
     )
-    assert tool_ctx.vertex_ai_service is embed_svc
-    assert tool_ctx.embedding_service is embed_svc
-    assert tool_ctx.inventory_service is inventory_svc
-    assert tool_ctx.maps_service is maps_svc
+    assert tool_ctx.product_service is product_svc
+    assert tool_ctx.store_service is store_svc
+    assert tool_ctx.vertex_ai_service is vertex_svc
+    assert tool_ctx.metrics_service is metrics_svc
     assert tool_ctx.turn_context is turn_ctx
+    assert not hasattr(tool_ctx, "embedding_service")
+    assert not hasattr(tool_ctx, "inventory_service")
+    assert not hasattr(tool_ctx, "maps_service")
 
-    registry = RunContextRegistry()
     call_ctx = CallContext(session_id="s-1", invocation_id="inv-1", turn=1, services=tool_ctx)
-    token = registry.bind(call_ctx)
-    resolved = registry.resolve(token)
-    assert resolved.tool_context is tool_ctx
-    registry.release(token)
+    assert call_ctx.tool_context is tool_ctx
 
-    assert isinstance(OracleSessionStore(), SessionStoreProtocol)
-    assert isinstance(OracleEventStore(), EventStoreProtocol)
+    assert isinstance(OracleSessionStore(MagicMock()), SessionStoreProtocol)
+    assert isinstance(OracleEventStore(MagicMock()), EventStoreProtocol)
+    assert isinstance(OracleSessionStore.from_config(MagicMock()), SessionStoreProtocol)
+    assert isinstance(OracleEventStore.from_config(MagicMock()), EventStoreProtocol)
     assert ModelClientProtocol is not None
 
 

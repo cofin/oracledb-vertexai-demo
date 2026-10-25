@@ -13,7 +13,7 @@ from a2a.server.tasks import TaskUpdater
 from a2a.types import Part
 from dishka import AsyncContainer, Scope
 
-from app.domain.ai.services.agent_service import AgentOrchestrationService
+from app.domain.ai.services._agent import AgentOrchestrationService
 
 __all__ = ("ANONYMOUS_A2A_USER", "CoffeeAgentExecutor", "build_a2a_call_context", "resolve_a2a_user_id")
 

@@ -3,11 +3,18 @@
 
 """A2A 1.0 Agent-to-Agent protocol package."""
 
-from app.domain.ai.a2a.card import COFFEE_AGENT_CARD, build_agent_card
-from app.domain.ai.a2a.executor import CoffeeAgentExecutor, build_a2a_call_context, resolve_a2a_user_id
+from app.domain.ai.a2a._card import COFFEE_AGENT_CARD, DEFAULT_A2A_BASE_URL, build_agent_card
+from app.domain.ai.a2a._executor import (
+    ANONYMOUS_A2A_USER,
+    CoffeeAgentExecutor,
+    build_a2a_call_context,
+    resolve_a2a_user_id,
+)
 
 __all__ = (
+    "ANONYMOUS_A2A_USER",
     "COFFEE_AGENT_CARD",
+    "DEFAULT_A2A_BASE_URL",
     "CoffeeAgentExecutor",
     "build_a2a_call_context",
     "build_agent_card",

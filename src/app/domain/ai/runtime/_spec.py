@@ -44,7 +44,7 @@ def fence_context_block(label: str, body: str) -> str:
     )
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class GenerationConfig:
     """Per-agent model generation parameters.
 

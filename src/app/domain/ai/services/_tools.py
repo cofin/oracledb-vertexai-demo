@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING, Any
 
 from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._tools import Tool, declare
-from app.domain.chat.services._router import build_oracle_text_query
 from app.domain.chat.services._telemetry import (
     build_map_actions,
     build_sql_phase,
     request_coordinates,
     summarize_vector,
 )
+from app.lib.text_search import build_oracle_text_query
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 __all__ = (
     "CoffeeToolContext",
-    "CoffeeToolServices",
     "build_coffee_tools",
     "check_order_status",
     "check_product_availability",
@@ -37,8 +36,6 @@ _ORDER_UNSUPPORTED_MESSAGE = (
     "This demo does not include order tracking yet. I can help with menu recommendations, "
     "store locations, and product availability."
 )
-
-CoffeeToolServices = CoffeeToolContext
 
 
 async def search_products(ctx: CallContext, query: str, limit: int = 5) -> dict[str, Any]:
@@ -53,13 +50,12 @@ async def search_products(ctx: CallContext, query: str, limit: int = 5) -> dict[
         Dictionary containing matched products and result count.
     """
     bundle = _resolve_bundle(ctx)
-    embed_svc = bundle.embedding_service or bundle.vertex_ai_service
-    if bundle.product_service is None or embed_svc is None:
+    if bundle.product_service is None or bundle.vertex_ai_service is None:
         return {"products": [], "results_count": 0}
 
     bounded_limit = max(1, min(limit, 10))
     embed_started = time.perf_counter()
-    embedding, cache_hit = await embed_svc.get_text_embedding(
+    embedding, cache_hit = await bundle.vertex_ai_service.get_text_embedding(
         query, embedding_purpose="query", return_cache_status=True
     )
     embed_ms = (time.perf_counter() - embed_started) * 1000
@@ -186,14 +182,13 @@ async def check_product_availability(ctx: CallContext, product_query: str, locat
         Dictionary containing store availability rows and Google Maps action URLs.
     """
     bundle = _resolve_bundle(ctx)
-    store_svc = bundle.inventory_service or bundle.store_service
-    if store_svc is None:
+    if bundle.store_service is None:
         return {"availability": [], "map_actions": [], "results_count": 0}
 
     location_context = ctx.state.get("location_context")
     coordinates = request_coordinates(location_context if isinstance(location_context, dict) else None)
     started = time.perf_counter()
-    raw_availability = await store_svc.find_product_availability(
+    raw_availability = await bundle.store_service.find_product_availability(
         product_query.strip(), location_hint=location_hint.strip() or None, coordinates=coordinates
     )
     runtime_ms = (time.perf_counter() - started) * 1000

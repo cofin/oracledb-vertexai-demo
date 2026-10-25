@@ -11,12 +11,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.domain.ai.runtime._context import CallContext
+import app.domain.ai.services as ai_services
+from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._loop import AgentRuntime
 from app.domain.ai.runtime._stream import AgentStreamService
 from app.domain.ai.runtime._types import AgentEvent, Content, Part, Usage
-from app.domain.ai.services._tools import CoffeeToolServices, build_coffee_tools
-from app.domain.ai.services.agent_service import AgentOrchestrationService, get_coffee_spec_tree
+from app.domain.ai.services import AgentOrchestrationService, build_coffee_tools, get_coffee_spec_tree
+from app.domain.ai.services._history import extract_last_products, extract_session_state, has_session_context
 from app.domain.chat.schemas import HybridProductCandidate, HybridTurnContext
 from app.domain.chat.services._grounded import GroundedRouteService
 from app.domain.products.schemas import Product
@@ -39,7 +40,13 @@ class _FakeModelClient:
 
 
 def test_get_coffee_spec_tree_registers_five_grounded_tools() -> None:
-    """Verify get_coffee_spec_tree registers all 5 grounded coffee tools with valid schemas."""
+    """Verify get_coffee_spec_tree registers all 5 grounded coffee tools and private _agent/_history boundaries."""
+    assert not hasattr(ai_services, "CoffeeToolServices")
+    assert AgentOrchestrationService.__module__ == "app.domain.ai.services._agent"
+    assert extract_session_state({"state": '{"last_products":["Espresso"]}'}) == {"last_products": ["Espresso"]}
+    assert extract_last_products({"last_products": ["Espresso", " "]}) == ["Espresso"]
+    assert has_session_context([], {"last_products": ["Espresso"]}) is True
+
     tree = get_coffee_spec_tree()
     tool_names = [tool.name for tool in tree.root.tools]
     assert tool_names == [
@@ -56,7 +63,7 @@ def test_get_coffee_spec_tree_registers_five_grounded_tools() -> None:
 
 
 async def test_grounded_tools_execute_against_services_without_leaking_coordinates() -> None:
-    """Verify each of the 5 grounded tools executes against CoffeeToolServices and masks coordinates."""
+    """Verify each of the 5 grounded tools executes against CoffeeToolContext and masks coordinates."""
     product_service = AsyncMock()
     store_service = AsyncMock()
     vertex_ai_service = AsyncMock()
@@ -76,7 +83,7 @@ async def test_grounded_tools_execute_against_services_without_leaking_coordinat
         invocation_id="inv1",
         turn=1,
         state={"location_context": {"city": "Dallas", "coordinates": {"latitude": 32.75, "longitude": -96.83}}},
-        services=CoffeeToolServices(
+        services=CoffeeToolContext(
             product_service=product_service,
             store_service=store_service,
             vertex_ai_service=vertex_ai_service,
@@ -285,7 +292,8 @@ async def test_orchestrator_skips_response_cache_for_multi_turn_session_with_his
     )
 
     tool_ctx = orchestrator._build_tool_services(None)
-    assert tool_ctx.inventory_service is store_service
+    assert tool_ctx.store_service is store_service
+    assert not hasattr(tool_ctx, "inventory_service")
 
     final_frame = await orchestrator.run_conversation_turn(
         session_id="sess-multi", user_id="user-1", message="Where is it in stock?", persona="barista"

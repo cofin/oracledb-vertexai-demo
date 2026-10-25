@@ -16,6 +16,7 @@ import msgspec
 from app.domain.ai.runtime._context import CallContext, CoffeeToolContext
 from app.domain.ai.runtime._spec import AgentSpec, GenerationConfig, SpecTree
 from app.domain.ai.runtime._types import AgentEvent, Content, Part
+from app.domain.ai.services._history import extract_last_products, extract_session_state, has_session_context
 from app.domain.ai.services._tools import build_coffee_tools
 from app.domain.chat.schemas import ChatMessage
 from app.domain.chat.services._telemetry import (
@@ -25,7 +26,6 @@ from app.domain.chat.services._telemetry import (
     build_search_metrics,
     safe_location_context,
 )
-from app.domain.products.services import MapsService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import BASE_SYSTEM_INSTRUCTION, PersonaManager
 from app.lib.settings import Settings
@@ -71,6 +71,22 @@ def make_response_cache_key(query: str, persona: str, *, model: str = "gemini-3.
 
 class AgentOrchestrationService:
     """Orchestrates single-query hybrid RRF routing, grounded composers, dynamic agent turns, and persistence."""
+
+    __slots__ = (
+        "_cache_service",
+        "_event_store",
+        "_grounded_service",
+        "_metrics_service",
+        "_persona_manager",
+        "_product_service",
+        "_route_resolver",
+        "_runtime",
+        "_session_store",
+        "_spec_tree",
+        "_store_service",
+        "_stream_service",
+        "_vertex_ai_service",
+    )
 
     def __init__(
         self,
@@ -150,7 +166,7 @@ class AgentOrchestrationService:
             message=message,
             persona=persona,
             safe_loc=safe_location_context(location_context),
-            has_session_context=_has_session_context(history, session_state),
+            has_session_context=has_session_context(history, session_state),
         )
         if cached_payload is not None and cache_phase is not None:
             async for frame in self._emit_cached_turn(
@@ -175,7 +191,7 @@ class AgentOrchestrationService:
                 turn_context,
                 location_context=location_context,
                 persona=persona,
-                last_products=_extract_last_products(session_state),
+                last_products=extract_last_products(session_state),
                 embedding_ms=embed_ms,
                 oracle_ms=oracle_ms,
                 embedding_cache_hit=embed_hit,
@@ -193,7 +209,7 @@ class AgentOrchestrationService:
                     cache_key=cache_key,
                     cache_phase=cache_phase,
                     session_state=session_state,
-                    has_session_context=_has_session_context(history, session_state),
+                    has_session_context=has_session_context(history, session_state),
                 ):
                     yield frame
                 return
@@ -217,7 +233,7 @@ class AgentOrchestrationService:
             oracle_ms=oracle_ms,
             cache_key=cache_key,
             cache_phase=cache_phase,
-            has_session_context=_has_session_context(history, session_state),
+            has_session_context=has_session_context(history, session_state),
         ):
             yield frame
 
@@ -247,7 +263,7 @@ class AgentOrchestrationService:
         self, *, session_id: str, user_id: str, invocation_id: str, message: str
     ) -> tuple[list[AgentEvent], int, int, dict[str, Any]]:
         existing = await self._session_store.get_session(session_id=session_id, user_id=user_id)
-        session_state = _extract_session_state(existing)
+        session_state = extract_session_state(existing)
         if existing is None:
             await self._session_store.save_session(
                 session_id=session_id, user_id=user_id, app_name="cymbal_coffee", state=session_state
@@ -486,7 +502,7 @@ class AgentOrchestrationService:
             nonlocal next_seq
             async for event in raw_stream:
                 if not event.partial and event.content:
-                    event.seq = next_seq
+                    event = msgspec.structs.replace(event, seq=next_seq)
                     next_seq += 1
                     await self._event_store.append_event(event)
                 yield event
@@ -556,8 +572,8 @@ class AgentOrchestrationService:
                 total_ms=elapsed_ms,
                 embedding_ms=embed_ms,
                 oracle_ms=oracle_ms,
+                ai_ms=ai_ms,
             )
-            search_metrics.ai_ms = ai_ms
             merged_metrics.update(search_metrics.to_dict())
         merged_metrics.update(dict(ctx.state.get("search_metrics") or {}))
         merged_metrics["ai_ms"] = ai_ms
@@ -607,13 +623,9 @@ class AgentOrchestrationService:
                 fallback_services.turn_context = turn_context
             return fallback_services
         if any((self._product_service, self._store_service, self._vertex_ai_service, self._metrics_service)):
-            inv_svc = self._store_service
             return CoffeeToolContext(
                 product_service=self._product_service,
                 store_service=self._store_service,
-                inventory_service=inv_svc,
-                maps_service=MapsService(),
-                embedding_service=self._vertex_ai_service,
                 vertex_ai_service=self._vertex_ai_service,
                 metrics_service=self._metrics_service,
                 turn_context=turn_context,
@@ -655,29 +667,3 @@ class AgentOrchestrationService:
                 content=Content(role="model", parts=[Part(text=answer)]),
             )
         )
-
-
-def _extract_session_state(existing: dict[str, Any] | None) -> dict[str, Any]:
-    if not isinstance(existing, dict):
-        return {}
-    raw_state = existing.get("state")
-    if isinstance(raw_state, dict):
-        return dict(raw_state)
-    if isinstance(raw_state, str) and raw_state.strip():
-        try:
-            decoded = msgspec.json.decode(raw_state.encode("utf-8"))
-        except msgspec.DecodeError:
-            return {}
-        return dict(decoded) if isinstance(decoded, dict) else {}
-    return {}
-
-
-def _extract_last_products(session_state: dict[str, Any]) -> list[str] | None:
-    raw = session_state.get("last_products")
-    if not isinstance(raw, list):
-        return None
-    return [str(item) for item in raw if str(item).strip()] or None
-
-
-def _has_session_context(history: list[AgentEvent], session_state: dict[str, Any]) -> bool:
-    return bool(history) or bool(_extract_last_products(session_state))
