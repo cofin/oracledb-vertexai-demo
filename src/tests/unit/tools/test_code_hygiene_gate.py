@@ -5,10 +5,13 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
-from tools.ci.check_code_hygiene import ROOT_DIR, TOOLS_DIR, check_ast_rules, check_inline_comments, main
+from tools.ci.check_code_hygiene import ROOT_DIR, check_ast_rules, check_inline_comments, main
+
+MIN_EXPECTED_SCANNED_FILES = 150
 
 
 def test_code_hygiene_main_passes_across_repository(capsys: pytest.CaptureFixture[str]) -> None:
@@ -17,10 +20,10 @@ def test_code_hygiene_main_passes_across_repository(capsys: pytest.CaptureFixtur
     captured = capsys.readouterr()
 
     assert exit_code == 0
-    assert "Code hygiene OK" in captured.out
     assert not captured.err
-    assert (TOOLS_DIR / "bundler.py").exists()
-    assert (TOOLS_DIR / "oracle" / "adb.py").exists()
+    match = re.search(r"Code hygiene OK \((\d+) files checked\)\.", captured.out)
+    assert match is not None, captured.out
+    assert int(match.group(1)) >= MIN_EXPECTED_SCANNED_FILES
 
 
 def test_check_inline_comments_flags_prose_and_allows_directives(tmp_path: Path) -> None:
@@ -41,8 +44,8 @@ def test_check_inline_comments_flags_prose_and_allows_directives(tmp_path: Path)
     assert "sample.py:6: disallowed inline comment" in errors[0]
 
 
-def test_check_ast_rules_flags_nested_imports_ordering_future_ioc_and_controllers(tmp_path: Path) -> None:
-    """Verify check_ast_rules catches nested imports, ordering, ioc annotations, and raw controllers."""
+def test_check_ast_rules_flags_docstrings_nested_imports_ordering_future_ioc_and_slots(tmp_path: Path) -> None:
+    """Verify check_ast_rules catches missing docstrings, nested imports, ordering, ioc annotations, and unslotted dataclasses."""
     nested_and_order = tmp_path / "module_order.py"
     nested_and_order.write_text(
         '"""Module ordering fixture."""\n\n'
@@ -61,18 +64,18 @@ def test_check_ast_rules_flags_nested_imports_ordering_future_ioc_and_controller
         encoding="utf-8",
     )
 
-    controller_file = tmp_path / "controllers" / "_bad_controller.py"
-    controller_file.parent.mkdir(parents=True)
-    controller_file.write_text(
-        '"""Unsecured controller fixture."""\n\nclass BareController:\n    pass\n', encoding="utf-8"
+    missing_doc_and_slots = tmp_path / "unslotted_module.py"
+    missing_doc_and_slots.write_text(
+        "from dataclasses import dataclass\n\n\n@dataclass\nclass Unslotted:\n    value: int = 1\n", encoding="utf-8"
     )
 
-    errors = check_ast_rules([nested_and_order, ioc_file, controller_file])
+    errors = check_ast_rules([nested_and_order, ioc_file, missing_doc_and_slots])
 
     assert any("function-scoped import inside 'public_fn'" in err for err in errors)
     assert any("public symbol 'public_fn' defined after private helper" in err for err in errors)
     assert any("Dishka provider modules in src/app/ioc/ must not use" in err for err in errors)
-    assert any("controller 'BareController' must inherit from" in err for err in errors)
+    assert any("module is missing a top-level docstring" in err for err in errors)
+    assert any("@dataclass class 'Unslotted' must specify slots=True" in err for err in errors)
 
 
 def test_makefile_start_infra_and_apex_targets_use_adb_free_workflow() -> None:

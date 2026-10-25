@@ -19,21 +19,16 @@ from rich.table import Table
 from sqlspec.adapters.oracledb import extract_oracle_wallet_zip
 
 __all__ = (
-    "AutonomousConnectionError",
     "ConnectionConfig",
     "ConnectionInfo",
     "ConnectionTestResult",
     "ConnectionTester",
     "DeploymentMode",
-    "LocalConnectionError",
-    "OracleConnectionError",
-    "RemoteConnectionError",
     "detect_deployment_mode",
     "get_connection_suggestions",
 )
 
 _SQLALCHEMY_URL_RE = re.compile(r"oracle\+oracledb://([^:]+):([^@]+)@(.+)")
-_DEFAULT_DEV_SECRET = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 
 
 class DeploymentMode(StrEnum):
@@ -41,22 +36,6 @@ class DeploymentMode(StrEnum):
 
     MANAGED = "managed"
     EXTERNAL = "external"
-
-
-class OracleConnectionError(Exception):
-    """Base exception for connection errors."""
-
-
-class LocalConnectionError(OracleConnectionError):
-    """Raised when a local container connection fails."""
-
-
-class RemoteConnectionError(OracleConnectionError):
-    """Raised when a remote database connection fails."""
-
-
-class AutonomousConnectionError(OracleConnectionError):
-    """Raised when an Autonomous AI Database connection fails."""
 
 
 def detect_deployment_mode() -> DeploymentMode:
@@ -148,7 +127,21 @@ class ConnectionConfig:
 
         user = os.getenv("DATABASE_USER", "app")
         password = os.getenv("DATABASE_PASSWORD", "SuperSecret1" if mode == DeploymentMode.MANAGED else "")
-        host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
+        explicit_host = os.getenv("DATABASE_HOST")
+        flavor = os.getenv("ORACLE_CONTAINER_FLAVOR", "adb-free").strip().lower()
+        default_tns = Path(".envs/tns")
+        if (
+            not wallet_location
+            and mode == DeploymentMode.MANAGED
+            and not explicit_host
+            and flavor != "free"
+            and (default_tns / "tnsnames.ora").is_file()
+        ):
+            wallet_location = str(default_tns)
+            if not wallet_password:
+                wallet_password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
+
+        host = explicit_host if explicit_host is not None else ("localhost" if mode == DeploymentMode.MANAGED else "")
         port = int(os.getenv("DATABASE_PORT", "1521"))
         default_service = "myatp_low" if wallet_location else "freepdb1"
         service_name = (
@@ -171,54 +164,6 @@ class ConnectionConfig:
             database_url=database_url,
         )
 
-    @classmethod
-    def for_managed(
-        cls,
-        user: str = "app",
-        password: str = _DEFAULT_DEV_SECRET,
-        host: str = "localhost",
-        port: int = 1521,
-        service_name: str = "myatp_low",
-        wallet_location: Path | None = Path(".envs/tns"),
-        wallet_password: str | None = _DEFAULT_DEV_SECRET,
-    ) -> ConnectionConfig:
-        """Create configuration for the managed ``cymbal-adb-free`` container."""
-        return cls(
-            mode=DeploymentMode.MANAGED,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            service_name=service_name,
-            wallet_location=wallet_location,
-            wallet_password=wallet_password,
-        )
-
-    @classmethod
-    def for_external(
-        cls,
-        user: str,
-        password: str,
-        host: str | None = None,
-        port: int = 1521,
-        service_name: str = "freepdb1",
-        database_url: str | None = None,
-        wallet_location: Path | None = None,
-        wallet_password: str | None = None,
-    ) -> ConnectionConfig:
-        """Create configuration for an external Oracle database (with optional wallet)."""
-        return cls(
-            mode=DeploymentMode.EXTERNAL,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            service_name=service_name,
-            database_url=database_url,
-            wallet_location=wallet_location,
-            wallet_password=wallet_password,
-        )
-
     def get_dsn(self) -> str:
         """Return the effective DSN or TNS alias string."""
         if self.dsn:
@@ -237,7 +182,6 @@ class ConnectionTestResult:
     message: str
     connection_time_ms: float | None = None
     server_version: str | None = None
-    user_info: dict[str, Any] | None = None
     error: str | None = None
     suggestions: list[str] | None = None
 
@@ -324,24 +268,8 @@ class ConnectionTester:
 
         self.console.print(table)
 
-    def validate_credentials(self, config: ConnectionConfig) -> bool:
-        """Validate required connection and wallet fields without opening a socket."""
-        if not config.user or not config.password:
-            return False
-
-        if config.wallet_location:
-            if not config.wallet_location.exists():
-                return False
-            if config.wallet_location.is_file() and config.wallet_location.suffix == ".zip":
-                return True
-            required_files = ("cwallet.sso", "tnsnames.ora", "sqlnet.ora")
-            return all((config.wallet_location / name).exists() for name in required_files)
-
-        return bool(config.host and config.port and config.service_name)
-
     def _do_connection_test(self, config: ConnectionConfig, timeout: int = 10) -> ConnectionTestResult:
         """Run preflight wallet validation and a live ``SELECT 'OK' FROM DUAL`` probe."""
-        del timeout
         start_time = time.time()
 
         if config.wallet_location and not config.wallet_location.exists():
@@ -357,7 +285,7 @@ class ConnectionTester:
             )
 
         try:
-            return self._run_connection_probe(config, start_time=start_time)
+            return self._run_connection_probe(config, start_time=start_time, timeout=timeout)
         except Exception as exc:
             error_msg = str(exc)
             suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
@@ -369,10 +297,12 @@ class ConnectionTester:
                 suggestions=suggestions,
             )
 
-    def _run_connection_probe(self, config: ConnectionConfig, *, start_time: float) -> ConnectionTestResult:
+    def _run_connection_probe(
+        self, config: ConnectionConfig, *, start_time: float, timeout: int = 10
+    ) -> ConnectionTestResult:
         """Open a ``python-oracledb`` connection and verify ``SELECT 'OK' FROM DUAL``."""
         dsn = config.get_dsn()
-        conn_params = self._connection_params(config, dsn)
+        conn_params = self._connection_params(config, dsn, timeout=timeout)
         with oracledb.connect(**conn_params) as connection:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 'OK' FROM DUAL")
@@ -381,9 +311,14 @@ class ConnectionTester:
             return self._successful_connection_result(config, dsn, str(connection.version), connection_time_ms)
 
     @staticmethod
-    def _connection_params(config: ConnectionConfig, dsn: str) -> dict[str, Any]:
+    def _connection_params(config: ConnectionConfig, dsn: str, *, timeout: int = 10) -> dict[str, Any]:
         """Build ``python-oracledb`` connection parameters, normalizing `.zip` or PEM wallets via SQLSpec."""
-        conn_params: dict[str, Any] = {"user": config.user, "password": config.password, "dsn": dsn}
+        conn_params: dict[str, Any] = {
+            "user": config.user,
+            "password": config.password,
+            "dsn": dsn,
+            "tcp_connect_timeout": float(timeout),
+        }
         if config.wallet_location:
             resolved_wallet = extract_oracle_wallet_zip(config.wallet_location, wallet_password=config.wallet_password)
             wallet_path = str(resolved_wallet)

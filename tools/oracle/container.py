@@ -106,11 +106,6 @@ class ContainerRuntime:
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         self.run_command(["cp", f"{container_name}:{src_path}", str(dest_path)])
 
-    def version(self) -> str:
-        """Return the container runtime version string."""
-        _, stdout, _ = self.run_command(["--version"])
-        return stdout.strip()
-
     def container_exists(self, container_name: str) -> bool:
         """Return True if a container with ``container_name`` exists in any state."""
         try:
@@ -171,20 +166,6 @@ class ContainerRuntime:
         _, ports_output, _ = self.run_command(["port", container_name], check=False)
         status_dict["ports"] = ports_output.strip() if ports_output else "none"
         return status_dict
-
-    def get_container_ip(self, container_name: str) -> str | None:
-        """Return the first container network IP address, or None when unavailable."""
-        try:
-            returncode, stdout, _stderr = self.run_command(
-                ["inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", container_name],
-                check=False,
-            )
-        except (subprocess.CalledProcessError, NoRuntimeAvailableError):
-            return None
-        if returncode != 0:
-            return None
-        ip_address = stdout.strip()
-        return ip_address or None
 
     def volume_exists(self, volume_name: str) -> bool:
         """Return True if a named volume exists."""

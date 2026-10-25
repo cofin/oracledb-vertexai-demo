@@ -23,15 +23,7 @@ import httpx
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-__all__ = (
-    "DownloadError",
-    "ExtractionError",
-    "InstallationError",
-    "SQLclCapabilityStatus",
-    "SQLclConfig",
-    "SQLclInstaller",
-    "VerificationError",
-)
+__all__ = ("DownloadError", "InstallationError", "SQLclCapabilityStatus", "SQLclConfig", "SQLclInstaller")
 
 
 @dataclass(slots=True)
@@ -236,10 +228,6 @@ class SQLclInstaller:
             message=f"SQLcl {minimum} or newer is required for APEXlang. Found: {raw_version}",
         )
 
-    def is_apexlang_capable(self, *, minimum: str = "26.1.2") -> bool:
-        """Return ``True`` when SQLcl meets the APEXlang version floor."""
-        return self.apexlang_status(minimum=minimum).capable
-
     def download(self, dest_dir: Path) -> Path:
         """Download SQLcl zip file.
 
@@ -295,9 +283,6 @@ class SQLclInstaller:
                   sqlcl
                 lib/
                 ...
-
-        Raises:
-            ExtractionError: If extraction fails
         """
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
@@ -417,27 +402,6 @@ class SQLclInstaller:
             return f"  set -Ux fish_user_paths {self.config.install_dir} $fish_user_paths"
         return f'  export PATH="$PATH:{self.config.install_dir}"'
 
-    def uninstall(self) -> None:
-        """Remove SQLcl installation.
-
-        Removes:
-        - Symlinks in install_dir
-        - SQLcl directory (install_dir.parent / "sqlcl")
-
-        Does not remove install_dir itself.
-        """
-        for script in ["sql", "sqlcl"]:
-            symlink_path = self.config.install_dir / script
-            if symlink_path.is_symlink() or symlink_path.exists():
-                symlink_path.unlink()
-                self.console.print(f"[green]✓[/green] Removed {symlink_path}")
-
-        if self.config.sqlcl_dir and self.config.sqlcl_dir.exists():
-            shutil.rmtree(self.config.sqlcl_dir)
-            self.console.print(f"[green]✓[/green] Removed {self.config.sqlcl_dir}")
-
-        self.console.print("[bold green]✓ SQLcl uninstalled successfully[/bold green]")
-
     @staticmethod
     def _normalise_version(version: tuple[int, ...], width: int) -> tuple[int, ...]:
         """Pad a version tuple to a comparable width."""
@@ -457,11 +421,3 @@ class InstallationError(Exception):
 
 class DownloadError(InstallationError):
     """Raised when download fails."""
-
-
-class ExtractionError(InstallationError):
-    """Raised when extraction fails."""
-
-
-class VerificationError(InstallationError):
-    """Raised when installation verification fails."""

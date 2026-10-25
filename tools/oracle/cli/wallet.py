@@ -39,7 +39,8 @@ def wallet_group() -> None:
 @wallet_group.command(name="extract")
 @click.argument("wallet_zip", type=click.Path(exists=True))
 @click.option("--dest", type=click.Path(), help="Destination directory (default: .envs/tns)")
-def wallet_extract(wallet_zip: str, dest: str | None) -> None:
+@click.option("--wallet-password", default=None, help="Wallet password for encrypted PKCS#12 archives")
+def wallet_extract(wallet_zip: str, dest: str | None, wallet_password: str | None) -> None:
     """Extract wallet zip file.
 
     Extracts Wallet_*.zip file to specified directory.
@@ -49,7 +50,7 @@ def wallet_extract(wallet_zip: str, dest: str | None) -> None:
     dest_dir = Path(dest) if dest else None
 
     try:
-        extracted_dir = configurator.extract_wallet(zip_path, dest_dir)
+        extracted_dir = configurator.extract_wallet(zip_path, dest_dir, wallet_password=wallet_password)
         console.print(f"[green]✓ Wallet extracted to: {extracted_dir}[/green]")
     except Exception as e:
         console.print(f"[red]✗ Failed to extract wallet: {e}[/red]")

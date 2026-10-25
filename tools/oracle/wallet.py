@@ -9,7 +9,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-import oracledb
 from rich.console import Console
 from rich.prompt import Confirm
 from sqlspec.adapters.oracledb import extract_oracle_wallet_zip, parse_tnsnames_ora
@@ -175,15 +174,18 @@ class WalletConfigurator:
         if not zip_path.exists():
             raise WalletExtractionError(f"Wallet zip file not found: {zip_path}")
 
-        target_dir = dest_dir if dest_dir is not None else zip_path.parent / zip_path.stem
+        default_target = self.config.default_locations[0] if self.config.default_locations else Path(".envs/tns")
+        target_dir = dest_dir if dest_dir is not None else default_target
         target_dir.mkdir(parents=True, exist_ok=True)
+        resolved_password = wallet_password if wallet_password is not None else os.getenv("WALLET_PASSWORD")
         try:
-            resolved = extract_oracle_wallet_zip(zip_path, target_dir, wallet_password=wallet_password)
+            resolved = extract_oracle_wallet_zip(zip_path, target_dir, wallet_password=resolved_password)
         except Exception as exc:
             raise WalletExtractionError(f"Failed to extract wallet: {exc}") from exc
 
-        self.console.print(f"[green]✓ Extracted wallet to {resolved}[/green]")
-        return resolved
+        resolved_path = resolved.resolve()
+        self.console.print(f"[green]✓ Extracted wallet to {resolved_path}[/green]")
+        return resolved_path
 
     def validate_wallet(self, wallet_dir: Path) -> WalletInfo:
         """Validate required files and parseable service aliases in ``wallet_dir``."""
@@ -286,40 +288,3 @@ class WalletConfigurator:
         self.console.print("  DATABASE_USER=<your_username>")
         self.console.print("  DATABASE_PASSWORD=<your_password>")
         self.console.print()
-
-    def test_wallet(
-        self, wallet_dir: Path, service_name: str, username: str, password: str, *, wallet_password: str | None = None
-    ) -> bool:
-        """Execute a quick ``SELECT 1 FROM DUAL`` probe through the configured wallet."""
-        try:
-            self._test_wallet_query(
-                wallet_dir=wallet_dir,
-                service_name=service_name,
-                username=username,
-                password=password,
-                wallet_password=wallet_password,
-            )
-        except Exception as exc:
-            self.console.print(f"[red]✗ Connection test failed: {exc}[/red]")
-            return False
-        return True
-
-    @staticmethod
-    def _test_wallet_query(
-        *, wallet_dir: Path, service_name: str, username: str, password: str, wallet_password: str | None = None
-    ) -> None:
-        """Execute ``SELECT 1 FROM DUAL`` using explicit ``config_dir`` and ``wallet_location``."""
-        resolved_dir = str(wallet_dir.resolve())
-        params: dict[str, str] = {
-            "user": username,
-            "password": password,
-            "dsn": service_name,
-            "config_dir": resolved_dir,
-            "wallet_location": resolved_dir,
-        }
-        resolved_wallet_pw = wallet_password or os.getenv("WALLET_PASSWORD")
-        if resolved_wallet_pw:
-            params["wallet_password"] = resolved_wallet_pw
-        with oracledb.connect(**params) as connection, connection.cursor() as cursor:
-            cursor.execute("SELECT 1 FROM DUAL")
-            cursor.fetchone()

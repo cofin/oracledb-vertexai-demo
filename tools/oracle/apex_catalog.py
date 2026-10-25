@@ -10,6 +10,7 @@ import os
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from app.utils.serialization import format_json
 
@@ -74,7 +75,10 @@ def export_current_app_apex_catalog(
     *, output_path: Path = DEFAULT_APEX_OPENAPI_PATH, server_url: str | None = None
 ) -> Path:
     """Create the app OpenAPI schema and export its APEX REST Source Catalog subset."""
-    return export_apex_openapi_catalog(_current_app_openapi_document(), output_path=output_path, server_url=server_url)
+    effective_server_url = server_url if server_url is not None else _default_server_url()
+    return export_apex_openapi_catalog(
+        _current_app_openapi_document(), output_path=output_path, server_url=effective_server_url
+    )
 
 
 def _current_app_openapi_document() -> dict[str, Any]:
@@ -104,7 +108,14 @@ def _document_version(openapi_document: dict[str, Any]) -> str:
 
 def _default_server_url() -> str:
     """Resolve the container-reachable Litestar base URL for APEX catalog imports."""
+    if catalog_url := (os.getenv("APEX_CATALOG_SERVER_URL") or "").strip():
+        return catalog_url
     if app_url := (os.getenv("APP_URL") or "").strip():
+        parsed = urlsplit(app_url)
+        if parsed.hostname in {"localhost", "127.0.0.1", "0.0.0.0"}:  # ruff: ignore[hardcoded-bind-all-interfaces]
+            port_suffix = f":{parsed.port}" if parsed.port else ""
+            netloc = f"{_DEFAULT_CONTAINER_HOST}{port_suffix}"
+            return urlunsplit((parsed.scheme or "http", netloc, parsed.path, parsed.query, parsed.fragment))
         return app_url
     port = (os.getenv("PORT") or os.getenv("LITESTAR_PORT") or _DEFAULT_PORT).strip() or _DEFAULT_PORT
     return f"http://{_DEFAULT_CONTAINER_HOST}:{port}"

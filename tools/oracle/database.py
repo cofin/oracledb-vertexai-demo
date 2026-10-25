@@ -30,7 +30,6 @@ from tools.oracle.container import ContainerNotFoundError, ContainerRuntime, Run
 __all__ = (
     "ADB_FREE_IMAGE",
     "DEFAULT_FREE_IMAGE",
-    "DEFAULT_IMAGE",
     "LEGACY_FREE_CONTAINER_NAME",
     "PDB_SERVICE_NAME",
     "ContainerFlavor",
@@ -38,13 +37,11 @@ __all__ = (
     "ContainerStatus",
     "DatabaseConfig",
     "DatabaseError",
-    "DatabaseNotReadyError",
     "OracleDatabase",
 )
 
 ADB_FREE_IMAGE = ADB_FREE_DEFAULT_IMAGE
 DEFAULT_FREE_IMAGE = "gvenzl/oracle-free:latest"
-DEFAULT_IMAGE = ADB_FREE_IMAGE
 DEFAULT_HOST_PORT = 1521
 LEGACY_FREE_CONTAINER_NAME = "oracle-free-db"
 PDB_SERVICE_NAME = "freepdb1"
@@ -65,10 +62,6 @@ class DatabaseError(Exception):
 
 class ContainerStartError(DatabaseError):
     """Raised when the Oracle container fails to start or bootstrap."""
-
-
-class DatabaseNotReadyError(DatabaseError):
-    """Raised when the Oracle database is not ready for SQL operations."""
 
 
 @dataclass(slots=True)
@@ -415,24 +408,6 @@ class OracleDatabase:
             "password": self.config.app_user_password,
             "dsn": f"localhost:{self.config.host_port}/{self.config.service_name}",
         }
-
-    def exec_sql(self, sql: str, *, user: str | None = None) -> str:
-        """Execute a SQL statement inside the running ``free`` container via sqlplus."""
-        if not self.is_running():
-            raise ContainerNotFoundError(f"Container '{self.config.container_name}' is not running")
-        if not self.is_healthy():
-            raise DatabaseNotReadyError("Database is not healthy yet")
-
-        connect_user = user or self.config.app_user
-        _, stdout, _ = self.runtime.run_command([
-            "exec",
-            self.config.container_name,
-            "sqlplus",
-            "-S",
-            f"{connect_user}/{self.config.app_user_password}@localhost:{self.config.container_port}/{self.config.service_name}",
-            sql,
-        ])
-        return stdout
 
     def _guard_port_collision(self) -> None:
         """Fail fast with an actionable wipe command if ``oracle-free-db`` already binds port 1521."""

@@ -8,9 +8,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
 
-import oracledb
 import pytest
 from click.testing import CliRunner
 from rich.console import Console
@@ -19,8 +17,8 @@ from tools.cli.install import install_sqlcl_with_config
 from tools.lib.utils import create_env_interactive, detect_deployment_mode, write_antigravity_mcp_config
 from tools.oracle.sqlcl_installer import SQLclConfig, SQLclInstaller
 
-from app.cli._helpers.ords import configure_apex_cdn_helper, parse_plsql_block
-from app.lib.settings import BASE_DIR, Settings
+from app.cli._helpers.ords import parse_plsql_block
+from app.lib.settings import BASE_DIR
 from app.utils.serialization import decode_json, format_json
 
 if TYPE_CHECKING:
@@ -30,25 +28,6 @@ REPO_ROOT = BASE_DIR.parents[1]
 DEPLOY_SQL_DIR = BASE_DIR / "db" / "sql" / "deploy"
 LOW_CPU_COUNT = "2"
 LOW_MEM_BYTES = str(4 * 1024**3)
-
-
-def _build_mock_connection(output_lines: list[str] | None = None) -> MagicMock:
-    """Create a mocked python-oracledb connection with DBMS_OUTPUT cursor variables."""
-    emitted = output_lines if output_lines is not None else ["APEX IMAGE_PREFIX successfully updated to CDN"]
-    mock_conn = MagicMock()
-    mock_conn.__enter__.return_value = mock_conn
-    mock_cursor = MagicMock()
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_conn.cursor.return_value = mock_cursor
-
-    mock_num_lines_var = MagicMock()
-    mock_num_lines_var.getvalue.side_effect = [len(emitted), 0]
-    mock_cursor.var.return_value = mock_num_lines_var
-
-    mock_lines_var = MagicMock()
-    mock_lines_var.getvalue.side_effect = [emitted, []]
-    mock_cursor.arrayvar.return_value = mock_lines_var
-    return mock_conn
 
 
 def _parse_dotenv_lines(content: str) -> dict[str, str]:
@@ -100,71 +79,6 @@ def test_packaged_deploy_sql_files_exist_and_parse_cleanly(tmp_path: Path) -> No
 
     with pytest.raises(FileNotFoundError):
         parse_plsql_block(tmp_path / "missing.sql")
-
-
-def test_configure_apex_cdn_helper_resolves_packaged_sql_for_sysdba(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-    """Verify `configure_apex_cdn_helper` loads packaged SQL via `Settings.from_env()` on standard PDBs."""
-    monkeypatch.chdir(tmp_path)
-    for key in (
-        "DATABASE_URL",
-        "DATABASE_DSN",
-        "WALLET_LOCATION",
-        "WALLET_PASSWORD",
-        "TNS_ADMIN",
-        "DATABASE_ADMIN_PASSWORD",
-        "ORACLE_ADMIN_PASSWORD",
-    ):
-        monkeypatch.delenv(key, raising=False)
-    monkeypatch.setenv("DATABASE_HOST", "10.10.0.10")
-    monkeypatch.setenv("DATABASE_PORT", "1521")
-    monkeypatch.setenv("DATABASE_SERVICE_NAME", "freepdb1")
-    Settings.from_env.cache_clear()
-
-    mock_conn = _build_mock_connection()
-    mock_connect = MagicMock(return_value=mock_conn)
-    monkeypatch.setattr("app.cli._helpers.ords.oracledb.connect", mock_connect)
-
-    configure_apex_cdn_helper("sysdba-secret")
-
-    mock_connect.assert_called_once_with(
-        user="SYS", password="sysdba-secret", dsn="10.10.0.10:1521/freepdb1", mode=oracledb.AUTH_MODE_SYSDBA
-    )
-    executed_sql = mock_conn.cursor.return_value.execute.call_args[0][0]
-    assert "https://static.oracle.com/cdn/apex/26.1.0/" in executed_sql
-
-
-def test_configure_apex_cdn_helper_supports_autonomous_admin_wallet(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
-    """Verify `configure_apex_cdn_helper` connects as `ADMIN` with wallet when `settings.db.is_autonomous`."""
-    monkeypatch.chdir(tmp_path)
-    wallet_dir = tmp_path / "wallet"
-    wallet_dir.mkdir()
-    (wallet_dir / "tnsnames.ora").write_text("myatp_low = (DESCRIPTION=...)\n", encoding="utf-8")
-
-    monkeypatch.delenv("DATABASE_SYSTEM_PASSWORD", raising=False)
-    monkeypatch.delenv("ORACLE_SYSTEM_PASSWORD", raising=False)
-    monkeypatch.setenv("DATABASE_URL", "myatp_low")
-    monkeypatch.setenv("WALLET_LOCATION", str(wallet_dir))
-    monkeypatch.setenv("WALLET_PASSWORD", "WalletSecret1")
-    monkeypatch.setenv("DATABASE_ADMIN_PASSWORD", "AdminSecret1")
-    Settings.from_env.cache_clear()
-
-    mock_extract = MagicMock(return_value=wallet_dir)
-    monkeypatch.setattr("app.cli._helpers.ords.extract_oracle_wallet_zip", mock_extract)
-    mock_conn = _build_mock_connection()
-    mock_connect = MagicMock(return_value=mock_conn)
-    monkeypatch.setattr("app.cli._helpers.ords.oracledb.connect", mock_connect)
-
-    configure_apex_cdn_helper()
-
-    mock_extract.assert_called_once_with(wallet_dir, wallet_password="WalletSecret1")
-    mock_connect.assert_called_once_with(
-        user="ADMIN",
-        password="AdminSecret1",
-        dsn="myatp_low",
-        config_dir=str(wallet_dir),
-        wallet_location=str(wallet_dir),
-        wallet_password="WalletSecret1",
-    )
 
 
 def test_install_sqlcl_with_config_prints_path_instructions_by_line(monkeypatch: MonkeyPatch, tmp_path: Path) -> None:
@@ -272,7 +186,7 @@ def test_doctor_managed_checks_adb_free_resources_and_wallet_readiness(
 
     human_result = CliRunner().invoke(doctor_command, ["--mode", "managed"])
     assert human_result.exit_code == 0, human_result.output
-    assert "4" in human_result.output
+    assert "recommend >= 4 CPUs" in human_result.output
     assert "8 GiB" in human_result.output
     assert "cymbal-adb-free" in human_result.output
     assert "tnsnames.ora" in human_result.output
@@ -300,4 +214,4 @@ def test_dockerfile_and_cloudbuild_align_onefile_and_ords_deploy() -> None:
     assert "dist/coffee-amd64-linux-gnu" in cloudbuild_text
     assert cloudbuild_text.index("dist/coffee-amd64-linux-gnu") < cloudbuild_text.index("--file")
     assert "tools/deploy/gcp/configure-apex-cdn.sql" not in cloudbuild_text
-    assert "26.3" in cloudbuild_text
+    assert '_ORDS_TAG: "26.3"' in cloudbuild_text

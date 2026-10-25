@@ -5,8 +5,7 @@
 
 from __future__ import annotations
 
-import http.client
-import ssl
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +14,7 @@ import rich_click as click
 from rich.console import Console
 from sqlspec.adapters.oracledb import extract_oracle_wallet_zip
 
+from tools.oracle.adb import probe_ords_https
 from tools.oracle.apex_catalog import DEFAULT_APEX_OPENAPI_PATH, export_current_app_apex_catalog
 from tools.oracle.apex_lang import ApexLang, ApexLangConfig
 from tools.oracle.connection import ConnectionConfig
@@ -31,9 +31,6 @@ __all__ = (
     "apex_validate",
     "console",
 )
-
-_HTTP_OK_MIN = 200
-_HTTP_SERVER_ERROR_MIN = 500
 
 console = Console()
 
@@ -183,7 +180,7 @@ def _render_apex_status() -> None:
     db_config = DatabaseConfig.from_env()
     conn_config = ConnectionConfig.from_env()
     version_no, api_compat = _query_apex_release(db_config, conn_config)
-    ords_ready = _probe_ords_https(db_config.https_port)
+    ords_ready = probe_ords_https(db_config.https_port)
     ords_base = f"https://localhost:{db_config.https_port}/ords"
     ords_state = "[green]ready[/green]" if ords_ready else "[yellow]unreachable[/yellow]"
     console.print(f"[bold]APEX Release:[/bold] {version_no} (API: {api_compat})")
@@ -199,7 +196,7 @@ def _resolve_status_connection_params(db_config: DatabaseConfig, conn_config: Co
     password = conn_config.password or db_config.app_user_password
 
     wallet_dir = conn_config.wallet_location
-    if wallet_dir is None and db_config.flavor == ContainerFlavor.ADB_FREE and not conn_config.host:
+    if wallet_dir is None and db_config.flavor == ContainerFlavor.ADB_FREE and not os.getenv("DATABASE_HOST"):
         wallet_dir = db_config.wallet_dir
 
     if wallet_dir is not None:
@@ -239,19 +236,3 @@ def _query_apex_release(db_config: DatabaseConfig, conn_config: ConnectionConfig
     version_no = str(row[0]) if row[0] is not None else "not installed"
     api_compat = str(row[1]) if len(row) > 1 and row[1] is not None else "unknown"
     return (version_no, api_compat)
-
-
-def _probe_ords_https(https_port: int) -> bool:
-    """Return True when ORDS responds on ``https://localhost:<https_port>/ords/``."""
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    conn = http.client.HTTPSConnection("localhost", https_port, timeout=5, context=ssl_context)
-    try:
-        conn.request("GET", "/ords/")
-        response = conn.getresponse()
-        return _HTTP_OK_MIN <= response.status < _HTTP_SERVER_ERROR_MIN
-    except Exception:
-        return False
-    finally:
-        conn.close()

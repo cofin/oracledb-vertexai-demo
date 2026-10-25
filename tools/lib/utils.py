@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import os
 import secrets
 import shutil
 import subprocess
@@ -16,6 +15,7 @@ from rich.console import Console
 from rich.prompt import Confirm, Prompt
 
 from app.utils.serialization import decode_json, format_json
+from tools.oracle.connection import detect_deployment_mode as _detect_oracle_deployment_mode
 
 __all__ = (
     "MCP_TOOLBOX_ORACLE_SERVER_NAME",
@@ -52,12 +52,7 @@ def detect_deployment_mode() -> str:
     Honors explicit ``DATABASE_DEPLOYMENT_MODE`` (``"managed"`` or ``"external"``)
     before checking ``DATABASE_HOST`` or ``DATABASE_URL``.
     """
-    explicit = os.getenv("DATABASE_DEPLOYMENT_MODE", "").strip().lower()
-    if explicit in {"managed", "external"}:
-        return explicit
-    if os.getenv("DATABASE_HOST") or os.getenv("DATABASE_URL"):
-        return "external"
-    return "managed"
+    return _detect_oracle_deployment_mode().value
 
 
 def check_env_file() -> bool:

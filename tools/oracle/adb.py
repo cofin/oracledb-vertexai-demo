@@ -31,6 +31,7 @@ __all__ = (
     "AdbBootstrapConfig",
     "AdbBootstrapError",
     "AdbBootstrapResult",
+    "probe_ords_https",
 )
 
 ADB_FREE_DEFAULT_IMAGE = "container-registry.oracle.com/database/adb-free:latest-26ai"
@@ -239,7 +240,7 @@ class AdbBootstrap:
             "            EXECUTE IMMEDIATE 'GRANT ' || rec.grant_clause || ' TO ' || v_user;\n"
             "        EXCEPTION\n"
             "            WHEN OTHERS THEN\n"
-            "                IF SQLCODE NOT IN (-1919, -4042, -942) THEN\n"
+            "                IF SQLCODE NOT IN (-1919, -4042, -942, -1031, -2030) THEN\n"
             "                    RAISE;\n"
             "                END IF;\n"
             "        END;\n"
@@ -303,11 +304,16 @@ class AdbBootstrap:
             "                p_change_password_on_first_use => 'N'\n"
             "            );\n"
             "        ELSE\n"
-            "            APEX_UTIL.RESET_PASSWORD(\n"
-            "                p_user_name           => UPPER(:schema_name),\n"
-            "                p_new_password        => :app_password,\n"
-            "                p_change_on_first_use => FALSE\n"
-            "            );\n"
+            "            BEGIN\n"
+            "                APEX_UTIL.RESET_PASSWORD(\n"
+            "                    p_user_name                    => UPPER(:schema_name),\n"
+            "                    p_new_password                 => :app_password,\n"
+            "                    p_change_password_on_first_use => FALSE\n"
+            "                );\n"
+            "            EXCEPTION\n"
+            "                WHEN OTHERS THEN\n"
+            "                    NULL;\n"
+            "            END;\n"
             "        END IF;\n"
             "    END IF;\n"
             "END;"
@@ -377,18 +383,23 @@ class AdbBootstrap:
 
     def _is_ords_https_ready(self) -> bool:
         """Return True when ORDS responds on ``https://localhost:<https_port>/ords/``."""
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        conn = http.client.HTTPSConnection("localhost", self.config.https_port, timeout=5, context=ssl_context)
-        try:
-            conn.request("GET", "/ords/")
-            response = conn.getresponse()
-            return _HTTP_OK_MIN <= response.status < _HTTP_SERVER_ERROR_MIN
-        except Exception:
-            return False
-        finally:
-            conn.close()
+        return probe_ords_https(self.config.https_port)
+
+
+def probe_ords_https(https_port: int, *, timeout: float = 5.0) -> bool:
+    """Return True when ORDS responds on ``https://localhost:<https_port>/ords/``."""
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    conn = http.client.HTTPSConnection("localhost", https_port, timeout=timeout, context=ssl_context)
+    try:
+        conn.request("GET", "/ords/")
+        response = conn.getresponse()
+        return _HTTP_OK_MIN <= response.status < _HTTP_SERVER_ERROR_MIN
+    except Exception:
+        return False
+    finally:
+        conn.close()
 
 
 def _validate_oracle_identifier(value: str) -> str:

@@ -73,7 +73,7 @@ def validate_requests(
     return issues
 
 
-@dataclass
+@dataclass(slots=True)
 class _BatchState:
     """Running view of the deck while a batch is checked request by request."""
 

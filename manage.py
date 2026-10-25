@@ -21,8 +21,10 @@ Examples::
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import rich_click as click
+from dotenv import load_dotenv
 from litestar.cli._utils import LitestarEnv
 from litestar_vite.cli import vite_group
 from rich.console import Console
@@ -69,6 +71,7 @@ _VITE_ASSET_COMMANDS = frozenset({"install", "generate-types", "build", "serve"}
 @click.version_option(version=__version__, prog_name="manage")
 def cli() -> None:
     """Top-level entry point."""
+    _load_default_env()
 
 
 cli.add_command(init_command, name="init")
@@ -122,6 +125,13 @@ def main() -> None:
     except KeyboardInterrupt:
         console.print("\n[yellow]Interrupted by user[/yellow]")
         sys.exit(130)
+
+
+def _load_default_env() -> None:
+    """Load ``.env`` from the working directory without overriding explicit shell variables."""
+    env_path = Path(".env")
+    if env_path.is_file():
+        load_dotenv(env_path, override=False)
 
 
 def _get_litestar_env() -> LitestarEnv:

@@ -13,8 +13,9 @@ from unittest.mock import MagicMock
 
 import pytest
 from rich.console import Console
+from sqlspec.adapters.oracledb import extract_oracle_wallet_zip as sqlspec_extract_wallet_zip
 from tools.oracle.adb import AdbBootstrap, AdbBootstrapConfig
-from tools.oracle.connection import ConnectionConfig, DeploymentMode, detect_deployment_mode
+from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode, detect_deployment_mode
 from tools.oracle.container import ContainerRuntime, RuntimeType
 from tools.oracle.database import ContainerFlavor, ContainerStartError, DatabaseConfig, OracleDatabase
 from tools.oracle.wallet import WalletConfig, WalletConfigurator, WalletInfo
@@ -256,23 +257,40 @@ def test_adb_bootstrap_provision_schema_and_workspace_executes_idempotent_plsql(
     assert "DBMS_CLOUD_AI" in combined_sql
     assert "ORDS.ENABLE_SCHEMA" in combined_sql
     assert "APEX_INSTANCE_ADMIN.ADD_WORKSPACE" in combined_sql
+    assert "p_change_password_on_first_use => FALSE" in combined_sql
+    assert "p_change_on_first_use" not in combined_sql
+    assert "-1031" in combined_sql
+    assert "-2030" in combined_sql
     mock_conn.commit.assert_called()
 
 
-def test_wallet_configurator_prints_database_user_and_extracts_via_sqlspec(tmp_path: Path) -> None:
-    """Verify WalletConfigurator prints DATABASE_USER (never DATABASE_USERNAME) and parses tnsnames via SQLSpec."""
+def test_wallet_configurator_prints_database_user_and_extracts_via_sqlspec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify WalletConfigurator defaults dest_dir to .envs/tns, forwards WALLET_PASSWORD, and prints DATABASE_USER."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("WALLET_PASSWORD", "EnvWalletPass1")
+    recorded_passwords: list[str | None] = []
+
+    def spy_extract(source: Path, target_dir: Path | None = None, *, wallet_password: str | None = None) -> Path:
+        recorded_passwords.append(wallet_password)
+        return sqlspec_extract_wallet_zip(source, target_dir, wallet_password=wallet_password)
+
+    monkeypatch.setattr("tools.oracle.wallet.extract_oracle_wallet_zip", spy_extract)
+
     console, buffer = _make_console()
     configurator = WalletConfigurator(config=WalletConfig(), console=console)
 
     zip_source = tmp_path / "Wallet_DEMO.zip"
-    extract_dir = tmp_path / "extracted_wallet"
     with zipfile.ZipFile(zip_source, "w") as zf:
         zf.writestr("tnsnames.ora", SAMPLE_TNSNAMES)
         zf.writestr("sqlnet.ora", SAMPLE_SQLNET)
         zf.writestr("cwallet.sso", b"sso-placeholder")
+        zf.writestr("ewallet.pem", "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n")
 
-    out_dir = configurator.extract_wallet(zip_source, extract_dir)
-    assert out_dir == extract_dir.resolve()
+    out_dir = configurator.extract_wallet(zip_source)
+    assert out_dir == (tmp_path / ".envs" / "tns").resolve()
+    assert recorded_passwords == ["EnvWalletPass1"]
     services = configurator.parse_tnsnames(out_dir)
     assert services == ["myatp_high", "myatp_low"]
 
@@ -281,6 +299,55 @@ def test_wallet_configurator_prints_database_user_and_extracts_via_sqlspec(tmp_p
     rendered = buffer.getvalue()
     assert "DATABASE_USER=<your_username>" in rendered
     assert "DATABASE_USERNAME" not in rendered
+
+
+def test_connection_tester_passes_timeout_and_defaults_managed_tns_wallet(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify ConnectionConfig auto-detects .envs/tns in managed mode and ConnectionTester forwards tcp_connect_timeout."""
+    monkeypatch.chdir(tmp_path)
+    _populate_wallet_files(tmp_path / ".envs" / "tns")
+    for key in (
+        "WALLET_LOCATION",
+        "TNS_ADMIN",
+        "WALLET_PASSWORD",
+        "DATABASE_URL",
+        "DATABASE_HOST",
+        "DATABASE_DEPLOYMENT_MODE",
+        "ORACLE_CONTAINER_FLAVOR",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    cfg = ConnectionConfig.from_env()
+    assert cfg.mode == DeploymentMode.MANAGED
+    assert cfg.wallet_location == Path(".envs/tns")
+    assert cfg.service_name == "myatp_low"
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = ("OK",)
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = None
+
+    mock_conn = MagicMock()
+    mock_conn.version = "23.26.0.0.0"
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = None
+
+    connect_calls: list[dict[str, Any]] = []
+
+    def fake_connect(**kwargs: Any) -> Any:
+        connect_calls.append(kwargs)
+        return mock_conn
+
+    monkeypatch.setattr("tools.oracle.connection.oracledb.connect", fake_connect)
+    console, _ = _make_console()
+    result = ConnectionTester(console=console).test(cfg, timeout=7, display=False)
+
+    assert result.success is True
+    assert len(connect_calls) == 1
+    assert connect_calls[0]["dsn"] == "myatp_low"
+    assert connect_calls[0]["tcp_connect_timeout"] == 7.0
 
 
 def test_connection_config_respects_database_deployment_mode_managed(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 import ssl
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,7 @@ import msgspec
 import pytest
 from click.testing import CliRunner
 from tools.oracle import apex_catalog
-from tools.oracle.apex_catalog import build_apex_catalog, export_apex_openapi_catalog
+from tools.oracle.apex_catalog import build_apex_catalog, export_apex_openapi_catalog, export_current_app_apex_catalog
 from tools.oracle.apex_lang import ApexLang, ApexLangConfig, ApexLangResult
 from tools.oracle.container import ContainerRuntime
 from tools.oracle.database import ContainerFlavor, ContainerStatus, DatabaseConfig, OracleDatabase
@@ -278,6 +279,29 @@ def test_export_apex_openapi_catalog_formats_via_central_serializer(
     assert "/api/apex/ai/v1/chat/completions" not in decoded["paths"]
 
 
+def test_export_current_app_apex_catalog_preserves_container_host_before_app_init(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Verify export_current_app_apex_catalog resolves host.docker.internal before create_app mutates APP_URL."""
+    for env_key in ("APEX_CATALOG_SERVER_URL", "APP_URL", "PORT", "LITESTAR_PORT"):
+        monkeypatch.delenv(env_key, raising=False)
+
+    def fake_current_app_openapi() -> dict[str, Any]:
+        os.environ["APP_URL"] = "http://localhost:8000"
+        return SAMPLE_OPENAPI_DOCUMENT
+
+    monkeypatch.setattr(apex_catalog, "_current_app_openapi_document", fake_current_app_openapi)
+    output_file = tmp_path / "catalog.json"
+
+    written = export_current_app_apex_catalog(output_path=output_file)
+    decoded = decode_json(written.read_text(encoding="utf-8"))
+    assert decoded["servers"][0]["url"] == "http://host.docker.internal:8000"
+
+    monkeypatch.setenv("APP_URL", "http://localhost:9000")
+    loopback_catalog = build_apex_catalog(SAMPLE_OPENAPI_DOCUMENT)
+    assert loopback_catalog["servers"][0]["url"] == "http://host.docker.internal:9000"
+
+
 def test_manage_cli_infra_and_database_command_surfaces() -> None:
     """Verify manage.py exposes trimmed infra, apex, and database command surfaces."""
     runner = CliRunner()
@@ -342,7 +366,7 @@ def test_manage_infra_apex_status_queries_release_and_probes_ords_https(
     _FakeHTTPSConnection.calls = []
     _FakeHTTPSConnection.next_status = 200
     monkeypatch.setattr("tools.oracle.cli.apex.oracledb.connect", fake_connect)
-    monkeypatch.setattr("tools.oracle.cli.apex.http.client.HTTPSConnection", _FakeHTTPSConnection)
+    monkeypatch.setattr("tools.oracle.adb.http.client.HTTPSConnection", _FakeHTTPSConnection)
 
     result = CliRunner().invoke(manage.cli, ["infra", "apex", "status"])
 
@@ -361,6 +385,55 @@ def test_manage_infra_apex_status_queries_release_and_probes_ords_https(
     assert "https://localhost:8443/ords/apex" in result.output
     assert "https://localhost:8443/ords/sql-developer" in result.output
     assert "COFFEE" in result.output
+
+
+def test_manage_infra_apex_status_loads_dotenv_and_defaults_to_managed_wallet(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Verify `manage.py infra apex status` loads `.env` and defaults to `.envs/tns` when env vars are unset."""
+    monkeypatch.chdir(tmp_path)
+    tns_dir = tmp_path / ".envs" / "tns"
+    tns_dir.mkdir(parents=True, exist_ok=True)
+    (tns_dir / "tnsnames.ora").write_text("myatp_low = (DESCRIPTION=...)\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("DATABASE_DEPLOYMENT_MODE=managed\nAPEX_WORKSPACE=COFFEE_DOTENV\n", encoding="utf-8")
+    for key in (
+        "WALLET_LOCATION",
+        "TNS_ADMIN",
+        "WALLET_PASSWORD",
+        "DATABASE_URL",
+        "DATABASE_HOST",
+        "DATABASE_DEPLOYMENT_MODE",
+        "ORACLE_CONTAINER_FLAVOR",
+        "APEX_WORKSPACE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    connect_kwargs: list[dict[str, Any]] = []
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = ("26.1.5", "2026.01.05")
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.__exit__.return_value = None
+
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_conn.__enter__.return_value = mock_conn
+    mock_conn.__exit__.return_value = None
+
+    def fake_connect(**kwargs: Any) -> Any:
+        connect_kwargs.append(kwargs)
+        return mock_conn
+
+    _FakeHTTPSConnection.calls = []
+    _FakeHTTPSConnection.next_status = 200
+    monkeypatch.setattr("tools.oracle.cli.apex.oracledb.connect", fake_connect)
+    monkeypatch.setattr("tools.oracle.adb.http.client.HTTPSConnection", _FakeHTTPSConnection)
+
+    result = CliRunner().invoke(manage.cli, ["infra", "apex", "status"])
+
+    assert result.exit_code == 0, result.output
+    assert connect_kwargs[0]["dsn"] == "myatp_low"
+    assert connect_kwargs[0]["wallet_location"] == str(tns_dir.resolve())
+    assert "COFFEE_DOTENV" in result.output
 
 
 def test_manage_infra_status_renders_adb_free_endpoints_and_wallet_summary(
