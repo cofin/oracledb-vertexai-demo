@@ -44,21 +44,15 @@ WHERE (:q IS NULL
        OR LOWER(description) LIKE '%' || LOWER(:q) || '%'
        OR LOWER(sku) = LOWER(:q))
   AND (:category IS NULL OR LOWER(category) = LOWER(:category))
-ORDER BY name
-OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY;
-
--- name: count-apex-products
-SELECT COUNT(*) AS total
-FROM product
-WHERE (:q IS NULL
-       OR LOWER(name) LIKE '%' || LOWER(:q) || '%'
-       OR LOWER(description) LIKE '%' || LOWER(:q) || '%'
-       OR LOWER(sku) = LOWER(:q))
-  AND (:category IS NULL OR LOWER(category) = LOWER(:category));
+ORDER BY name;
 
 -- name: get-vector-readiness
 SELECT COUNT(*) AS product_count,
-       COALESCE(SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END), 0) AS embedded_product_count
+       COALESCE(SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END), 0) AS embedded_product_count,
+       (SELECT COUNT(*)
+        FROM user_indexes
+        WHERE index_name IN ('PRODUCT_EMBEDDING_IDX', 'PRODUCT_HYBRID_CTX_IDX')
+          AND status = 'VALID') AS hybrid_index_count
 FROM product;
 
 -- docs:start-vector-search-sql

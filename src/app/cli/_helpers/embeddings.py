@@ -1,45 +1,25 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Embedding lifecycle helpers for ``coffee`` CLI commands."""
+"""Embedding lifecycle Rich console presenter for ``coffee`` CLI commands."""
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import rich_click as click
-import structlog
 from rich import get_console
 
 if TYPE_CHECKING:
     from app.domain.products.services import ProductService, VertexAIService
 
-__all__ = (
-    "BatchProcessor",
-    "chat_route_embedding_input",
-    "embed_in_batches",
-    "fetch_chat_routes_to_embed",
-    "fetch_products_to_embed",
-    "generate_product_embeddings",
-    "print_embedding_results",
-    "process_chat_route_batch",
-    "process_product_batch",
-    "product_embedding_input",
-    "update_chat_route_embedding",
-    "update_product_embedding",
-    "validate_batch_size",
-)
-
-BatchProcessor = Callable[[list[Any], int, int], Awaitable[tuple[int, int]]]
-
-logger = structlog.get_logger()
+__all__ = ("generate_product_embeddings", "print_embedding_results", "validate_batch_size")
 
 
 async def generate_product_embeddings(
     batch_size: int, force: bool, product_service: ProductService, vertex_ai_service: VertexAIService
 ) -> dict[str, int]:
-    """Generate document-purpose embeddings for product and chat_route rows.
+    """Generate document-purpose embeddings for ``product`` and ``chat_route`` rows with Rich output.
 
     Returns:
         Summary dictionary with ``products_embedded``, ``routes_embedded``, and ``errors`` counts.
@@ -48,210 +28,27 @@ async def generate_product_embeddings(
 
     console = get_console()
     console.rule("[bold blue]Product Embeddings", style="blue", align="left")
-    console.print()
+    console.print(f"[dim]Batch size: {batch_size} | Force: {force}[/dim]\n")
 
-    products, message = await fetch_products_to_embed(product_service, force)
-    console.print(message)
-
-    prod_success = 0
-    route_success = 0
-    total_errors = 0
-
-    if not products:
+    def _report_batch(kind: str, batch_num: int, total_batches: int, successes: int, errors: int) -> None:
+        label = "products" if kind == "products" else "chat routes"
         console.print(
-            "[yellow]No products found in database[/yellow]"
+            f"[green]✓ Completed {label} batch {batch_num}/{total_batches}[/green] "
+            f"([cyan]{successes} embedded[/cyan], [yellow]{errors} errors[/yellow])"
+        )
+
+    summary = await vertex_ai_service.embed_missing_products(
+        product_service, batch_size=batch_size, force=force, on_batch=_report_batch
+    )
+    total_embedded = summary["products_embedded"] + summary["routes_embedded"]
+    if total_embedded == 0 and summary["errors"] == 0:
+        console.print(
+            "[yellow]No records found in database[/yellow]"
             if force
-            else "[green]✓ All products already have embeddings![/green]"
+            else "[green]✓ All products and chat routes already have embeddings[/green]"
         )
-    else:
-        console.print(f"[dim]Batch size: {batch_size}[/dim]\n")
-        prod_success, prod_errors = await embed_in_batches(
-            products,
-            batch_size,
-            lambda batch, start_idx, total: process_product_batch(
-                batch, product_service, vertex_ai_service, start_idx, total
-            ),
-        )
-        total_errors += prod_errors
-
-    routes, route_message = await fetch_chat_routes_to_embed(product_service, force)
-    if routes:
-        console.print(route_message)
-        route_success, route_errors = await embed_in_batches(
-            routes,
-            batch_size,
-            lambda batch, start_idx, total: process_chat_route_batch(
-                batch, product_service, vertex_ai_service, start_idx, total
-            ),
-        )
-        total_errors += route_errors
-
-    print_embedding_results(prod_success + route_success, total_errors)
-    return {"products_embedded": prod_success, "routes_embedded": route_success, "errors": total_errors}
-
-
-async def fetch_products_to_embed(product_service: ProductService, force: bool) -> tuple[list[dict[str, Any]], str]:
-    """Fetch products that need embeddings."""
-    console = get_console()
-    with console.status("[bold yellow]Finding products to process...", spinner="dots"):
-        products, _total = await product_service.get_products_for_embedding(force=force)
-
-    label = "ALL products (force mode)" if force else "products without embeddings"
-    return products, f"[cyan]Processing {len(products)} {label}[/cyan]"
-
-
-async def fetch_chat_routes_to_embed(product_service: ProductService, force: bool) -> tuple[list[dict[str, Any]], str]:
-    """Fetch chat_route exemplars that need embeddings."""
-    getter = getattr(product_service, "get_chat_routes_for_embedding", None)
-    if getter is None:
-        return [], ""
-    console = get_console()
-    with console.status("[bold yellow]Finding chat route exemplars to process...", spinner="dots"):
-        result = await getter(force=force)
-    if not isinstance(result, tuple):
-        return [], ""
-    routes = result[0] if result else []
-    if not isinstance(routes, list):
-        return [], ""
-    label = "ALL chat routes (force mode)" if force else "chat routes without embeddings"
-    return routes, f"[cyan]Processing {len(routes)} {label}[/cyan]"
-
-
-async def process_product_batch(
-    batch: list[Any],
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    start_idx: int,
-    total_products: int,
-) -> tuple[int, int]:
-    """Process a batch of products for embedding generation."""
-    console = get_console()
-    success_count = 0
-    error_count = 0
-
-    with console.status("[bold yellow]Generating embeddings...", spinner="dots") as status:
-        for i, product in enumerate(batch):
-            product_id: int | None = None
-            try:
-                product_id, product_name, description = product_embedding_input(product)
-                global_idx = start_idx + i + 1
-                status.update(f"[bold yellow]Processing {global_idx}/{total_products}: {product_name}...")
-                success_count, error_count = await update_product_embedding(
-                    product_service=product_service,
-                    vertex_ai_service=vertex_ai_service,
-                    product_id=product_id,
-                    product_name=product_name,
-                    description=description,
-                    success_count=success_count,
-                    error_count=error_count,
-                )
-            except Exception as e:
-                error_count += 1
-                logger.warning("Failed to process product", product_id=product_id, error=str(e))
-
-    return success_count, error_count
-
-
-async def process_chat_route_batch(
-    batch: list[Any],
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    start_idx: int,
-    total_routes: int,
-) -> tuple[int, int]:
-    """Process a batch of chat_route exemplars for embedding generation."""
-    console = get_console()
-    success_count = 0
-    error_count = 0
-
-    with console.status("[bold yellow]Generating route exemplar embeddings...", spinner="dots") as status:
-        for i, route in enumerate(batch):
-            route_id: int | None = None
-            try:
-                route_id, route_title, route_text = chat_route_embedding_input(route)
-                global_idx = start_idx + i + 1
-                status.update(f"[bold yellow]Processing route {global_idx}/{total_routes}: {route_title}...")
-                success_count, error_count = await update_chat_route_embedding(
-                    product_service=product_service,
-                    vertex_ai_service=vertex_ai_service,
-                    route_id=route_id,
-                    route_text=route_text,
-                    success_count=success_count,
-                    error_count=error_count,
-                )
-            except Exception as e:
-                error_count += 1
-                logger.warning("Failed to process chat route", route_id=route_id, error=str(e))
-
-    return success_count, error_count
-
-
-def product_embedding_input(product: Any) -> tuple[int, str, str]:
-    """Extract product fields needed for document embedding."""
-    if isinstance(product, dict):
-        product_id = int(product["id"])
-        return product_id, str(product.get("name", f"Product {product_id}")), str(product.get("description", ""))
-
-    product_id = int(product.id)
-    return product_id, product.name or f"Product {product_id}", product.description or ""
-
-
-def chat_route_embedding_input(route: Any) -> tuple[int, str, str]:
-    """Extract chat_route fields needed for document embedding."""
-    if isinstance(route, dict):
-        route_id = int(route["id"])
-        route_label = str(route.get("route_label", ""))
-        title = str(route.get("title", f"Route {route_id}"))
-        exemplar_text = str(route.get("exemplar_text", ""))
-        keywords = str(route.get("keywords", ""))
-        return route_id, title, f"{route_label} | {title}: {exemplar_text} ({keywords})"
-
-    route_id = int(route.id)
-    title = getattr(route, "title", None) or f"Route {route_id}"
-    return (
-        route_id,
-        title,
-        f"{getattr(route, 'route_label', '')} | {title}: {getattr(route, 'exemplar_text', '')} ({getattr(route, 'keywords', '')})",
-    )
-
-
-async def update_product_embedding(
-    *,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    product_id: int,
-    product_name: str,
-    description: str,
-    success_count: int,
-    error_count: int,
-) -> tuple[int, int]:
-    """Generate and store one product embedding, returning updated counters."""
-    embedding = await vertex_ai_service.get_text_embedding(
-        f"{product_name}: {description}", embedding_purpose="document"
-    )
-    updated = await product_service.update_embedding(product_id, embedding)
-    if not updated:
-        logger.warning("Failed to process product", product_id=product_id, error="update affected 0 rows")
-        return success_count, error_count + 1
-    return success_count + 1, error_count
-
-
-async def update_chat_route_embedding(
-    *,
-    product_service: ProductService,
-    vertex_ai_service: VertexAIService,
-    route_id: int,
-    route_text: str,
-    success_count: int,
-    error_count: int,
-) -> tuple[int, int]:
-    """Generate and store one chat_route embedding, returning updated counters."""
-    embedding = await vertex_ai_service.get_text_embedding(route_text, embedding_purpose="document")
-    updated = await product_service.update_chat_route_embedding(route_id, embedding)
-    if not updated:
-        logger.warning("Failed to process chat route", route_id=route_id, error="update affected 0 rows")
-        return success_count, error_count + 1
-    return success_count + 1, error_count
+    print_embedding_results(total_embedded, summary["errors"])
+    return summary
 
 
 def validate_batch_size(batch_size: int) -> None:
@@ -259,26 +56,6 @@ def validate_batch_size(batch_size: int) -> None:
     if batch_size < 1:
         msg = "Batch size must be at least 1."
         raise click.ClickException(msg)
-
-
-async def embed_in_batches(items: list[Any], batch_size: int, processor: BatchProcessor) -> tuple[int, int]:
-    """Iterate items in batches and aggregate (success, error) counts."""
-    console = get_console()
-    total_success = 0
-    total_errors = 0
-    total_batches = (len(items) + batch_size - 1) // batch_size
-
-    for batch_num in range(total_batches):
-        start_idx = batch_num * batch_size
-        end_idx = min(start_idx + batch_size, len(items))
-        batch = items[start_idx:end_idx]
-        console.print(f"[bold]Processing batch {batch_num + 1}/{total_batches} ({len(batch)} items)[/bold]")
-        success, errors = await processor(batch, start_idx, len(items))
-        total_success += success
-        total_errors += errors
-        console.print(f"[green]✓ Batch {batch_num + 1} complete[/green]\n")
-
-    return total_success, total_errors
 
 
 def print_embedding_results(total_success: int, total_errors: int) -> None:

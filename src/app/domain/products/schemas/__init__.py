@@ -16,6 +16,7 @@ from ._apex import (
     ApexStoreList,
     ApexVectorReadiness,
     ApexVectorStatus,
+    RecommendationMode,
 )
 from ._products import (
     ExplainPlan,
@@ -23,6 +24,7 @@ from ._products import (
     Product,
     ProductAvailability,
     ProductMatch,
+    StockStatus,
     Store,
     StoreDistance,
     StoreHours,
@@ -50,6 +52,8 @@ __all__ = (
     "Product",
     "ProductAvailability",
     "ProductMatch",
+    "RecommendationMode",
+    "StockStatus",
     "Store",
     "StoreDistance",
     "StoreHours",

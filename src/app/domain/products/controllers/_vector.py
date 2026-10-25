@@ -6,7 +6,7 @@
 import re
 import time
 import uuid
-from typing import Annotated, ClassVar
+from typing import Annotated, Any, ClassVar
 from urllib.parse import quote
 
 import structlog
@@ -17,21 +17,18 @@ from litestar.status_codes import HTTP_503_SERVICE_UNAVAILABLE
 from litestar_htmx import HTMXRequest, HTMXTemplate
 from litestar_security import AuthenticationPolicy, PublicController, exclude
 
-from app.domain.chat.exceptions import AIServiceUnconfigured
-from app.domain.products.controllers._vector_helpers import (
+from app.domain.products.schemas import ExplainPlan, VectorDemo, VectorDemoMatch, VectorQuery
+from app.domain.products.services._vector import (
     SERVICE_UNAVAILABLE_MESSAGE,
+    OracleVectorSearchService,
     build_explore_telemetry_context,
     build_vector_demo_matches,
-    is_expected_service_unavailable,
-    payload_value,
     unavailable_plan,
-    vector_query_from_request,
 )
-from app.domain.products.schemas import ExplainPlan, VectorDemo, VectorDemoMatch
-from app.domain.products.services import OracleVectorSearchService
 from app.domain.system.schemas import SearchMetricsCreate
 from app.domain.system.services import MetricsService
 from app.lib.di import Inject
+from app.lib.exceptions import AIServiceUnconfigured, is_expected_service_unavailable
 
 __all__ = ("VectorController",)
 
@@ -67,7 +64,7 @@ class VectorController(PublicController):
         request: HTMXRequest,
     ) -> Response | HTMXTemplate:
         """Run vector search; HTMX clients get a partial + PushUrl, SPA clients JSON."""
-        data = await vector_query_from_request(request)
+        data = await _vector_query_from_request(request)
         query = self.validate_message(data.query)
 
         full_request_start = time.perf_counter()
@@ -139,12 +136,16 @@ class VectorController(PublicController):
         )
 
         if request.htmx:
+            plan: ExplainPlan | None = None
+            plan_error: str | None = None
             try:
                 plan = await vector_search_service.explain_search_plan(query)
             except Exception as exc:
                 if not is_expected_service_unavailable(exc):
                     raise
-                await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
+                plan_error = type(exc).__name__
+            if plan is None:
+                await logger.awarning("Explain plan unavailable", error_type=plan_error)
                 plan = unavailable_plan()
             return HTMXTemplate(
                 template_name="partials/explore_search_response.html.j2",
@@ -173,8 +174,9 @@ class VectorController(PublicController):
         self, request: HTMXRequest, vector_search_service: Inject[OracleVectorSearchService]
     ) -> ExplainPlan:
         """Return the Oracle EXPLAIN PLAN for the hybrid RRF or vector-search SQL."""
-        query = self.validate_message(payload_value(request.query_params, "query"))
-        mode = payload_value(request.query_params, "mode").strip().lower()
+        query = self.validate_message(_payload_value(request.query_params, "query"))
+        mode = _payload_value(request.query_params, "mode").strip().lower()
+        plan_error: str | None = None
         try:
             if mode == "vector":
                 return await vector_search_service.explain_search_plan(query, mode="vector")
@@ -182,8 +184,9 @@ class VectorController(PublicController):
         except Exception as exc:
             if not is_expected_service_unavailable(exc):
                 raise
-            await logger.awarning("Explain plan unavailable", error_type=type(exc).__name__)
-            return unavailable_plan()
+            plan_error = type(exc).__name__
+        await logger.awarning("Explain plan unavailable", error_type=plan_error)
+        return unavailable_plan()
 
     @get(
         path="/api/vector-search", name="vector.search", summary="Search Products by Vector", mcp_tool="search_products"
@@ -212,3 +215,17 @@ class VectorController(PublicController):
                 raise AIServiceUnconfigured(SERVICE_UNAVAILABLE_MESSAGE) from exc
             raise
         return build_vector_demo_matches(results)
+
+
+def _payload_value(payload: Any, key: str, default: str = "") -> str:
+    getter = getattr(payload, "get", None)
+    value = getter(key, default) if callable(getter) else default
+    if isinstance(value, list | tuple):
+        value = value[0] if value else default
+    return str(value or default)
+
+
+async def _vector_query_from_request(request: HTMXRequest) -> VectorQuery:
+    content_type = request.headers.get("content-type", "")
+    payload = await request.json() if "application/json" in content_type else await request.form()
+    return VectorQuery(query=_payload_value(payload, "query"))

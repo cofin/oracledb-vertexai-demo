@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from msgspec import Meta, field
 
 from app.domain.products.schemas._products import ProductAvailability, StockStatus, Store
-from app.lib.schema import CamelizedBaseStruct
+from app.lib.schema import CamelizedFrozenStruct
 
 __all__ = (
     "ApexInventoryList",
@@ -29,13 +29,13 @@ __all__ = (
     "RecommendationMode",
 )
 
-RecommendationMode = Literal["vector", "fallback"]
+RecommendationMode = Literal["hybrid", "vector", "fallback"]
 
 PositiveLimit = Annotated[int, Meta(ge=1, le=100)]
 NonEmptyQuery = Annotated[str, Meta(min_length=1, max_length=500)]
 
 
-class ApexProduct(CamelizedBaseStruct, kw_only=True, omit_defaults=True):
+class ApexProduct(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=True):
     """Product catalog row safe for APEX REST Source Catalogs."""
 
     id: int
@@ -49,7 +49,7 @@ class ApexProduct(CamelizedBaseStruct, kw_only=True, omit_defaults=True):
     updated_at: datetime | None = None
 
 
-class ApexProductList(CamelizedBaseStruct, kw_only=True):
+class ApexProductList(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Paginated product rows for APEX catalog consumption."""
 
     items: list[ApexProduct]
@@ -58,14 +58,14 @@ class ApexProductList(CamelizedBaseStruct, kw_only=True):
     offset: int
 
 
-class ApexStoreList(CamelizedBaseStruct, kw_only=True):
+class ApexStoreList(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Seeded store rows safe for APEX display."""
 
     items: list[Store]
     total: int
 
 
-class ApexInventorySummaryRow(CamelizedBaseStruct, kw_only=True):
+class ApexInventorySummaryRow(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Inventory aggregate counts for a single store."""
 
     store_id: int
@@ -77,21 +77,23 @@ class ApexInventorySummaryRow(CamelizedBaseStruct, kw_only=True):
     total_quantity: int
 
 
-class ApexInventorySummaryList(CamelizedBaseStruct, kw_only=True):
+class ApexInventorySummaryList(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Inventory summary collection."""
 
     items: list[ApexInventorySummaryRow]
     total: int
 
 
-class ApexInventoryList(CamelizedBaseStruct, kw_only=True):
+class ApexInventoryList(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Inventory or availability row collection."""
 
     items: list[ProductAvailability]
     total: int
 
 
-class ApexRecommendationRequest(CamelizedBaseStruct, forbid_unknown_fields=True, kw_only=True):
+class ApexRecommendationRequest(
+    CamelizedFrozenStruct, frozen=True, forbid_unknown_fields=True, kw_only=True, omit_defaults=False
+):
     """Recommendation request body accepted by APEX REST clients."""
 
     query: NonEmptyQuery
@@ -99,7 +101,7 @@ class ApexRecommendationRequest(CamelizedBaseStruct, forbid_unknown_fields=True,
     limit: PositiveLimit = 5
 
 
-class ApexRecommendation(CamelizedBaseStruct, kw_only=True, omit_defaults=True):
+class ApexRecommendation(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=True):
     """Grounded recommendation row returned to APEX."""
 
     product_id: int
@@ -116,7 +118,7 @@ class ApexRecommendation(CamelizedBaseStruct, kw_only=True, omit_defaults=True):
     pickup_available: bool | None = None
 
 
-class ApexRecommendationResponse(CamelizedBaseStruct, kw_only=True, omit_defaults=True):
+class ApexRecommendationResponse(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=True):
     """Recommendation response with vector timings when available."""
 
     query: str
@@ -129,25 +131,27 @@ class ApexRecommendationResponse(CamelizedBaseStruct, kw_only=True, omit_default
     fallback_reason: str | None = None
 
 
-class ApexVectorReadiness(CamelizedBaseStruct, kw_only=True):
-    """Oracle vector data readiness counts."""
+class ApexVectorReadiness(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
+    """Oracle vector and hybrid RRF index readiness counts."""
 
     product_count: int = 0
     embedded_product_count: int = 0
+    hybrid_index_count: int | None = None
 
 
-class ApexVectorStatus(CamelizedBaseStruct, kw_only=True):
-    """Embedding provider and Oracle vector readiness status."""
+class ApexVectorStatus(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
+    """Embedding provider and Oracle vector/hybrid readiness status."""
 
     embedding_model: str
     embedding_dimensions: int
     provider_configured: bool
     oracle_vector_ready: bool
+    hybrid_rrf_ready: bool
     product_count: int
     embedded_product_count: int
 
 
-class ApexOpenAPIStatus(CamelizedBaseStruct, kw_only=True):
+class ApexOpenAPIStatus(CamelizedFrozenStruct, frozen=True, kw_only=True, omit_defaults=False):
     """Catalog metadata for APEX display."""
 
     title: str

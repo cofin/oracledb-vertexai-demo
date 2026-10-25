@@ -18,7 +18,9 @@ from litestar_htmx import HTMXTemplate
 
 from app.domain.products.controllers import VectorController
 from app.domain.products.schemas import ProductMatch, VectorDemo
-from app.domain.products.services import OracleVectorSearchService, ProductService
+from app.domain.products.services import ProductService
+from app.domain.products.services._vector import OracleVectorSearchService
+from app.lib.service import OracleLoaderService
 from tests.support.paths import APP_ROOT
 
 PRODUCTS_SQL = APP_ROOT / "db" / "sql" / "products.sql"
@@ -113,6 +115,8 @@ async def test_similarity_search_returns_typed_product_matches() -> None:
     ]
 
     service = OracleVectorSearchService(vertex_ai_service=mock_vertex, product_service=mock_product_service)
+    assert issubclass(OracleVectorSearchService, OracleLoaderService)
+    assert not hasattr(service, "__dict__")
 
     results, cache_hit, timings = await service.similarity_search("dark roast", k=5)
 

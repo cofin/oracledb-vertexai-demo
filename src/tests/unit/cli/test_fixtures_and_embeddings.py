@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import msgspec
@@ -14,6 +16,7 @@ import rich_click as click
 from app.cli._helpers.embeddings import generate_product_embeddings
 from app.cli.commands import _upgrade_database
 from app.db.utils import COFFEE_SHOP_TABLES
+from app.domain.products.services import VertexAIService
 from tests.support.paths import APP_ROOT
 
 MIGRATION_0001 = APP_ROOT / "db" / "migrations" / "0001_cymball_coffee_products.sql"
@@ -109,17 +112,24 @@ async def test_generate_product_embeddings_embeds_products_and_chat_routes() -> 
     )
     mock_product_service.update_chat_route_embedding.return_value = True
 
-    mock_vertex = AsyncMock()
-    mock_vertex.get_text_embedding.return_value = [0.01] * 3072
+    embed_content = AsyncMock(return_value=SimpleNamespace(embeddings=[SimpleNamespace(values=[0.01] * 3072)]))
+    cache_service: Any = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
+    vertex_service = VertexAIService(
+        client=cast("Any", SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content)))),
+        model="gemini-3.8-flash",
+        embedding_model="gemini-embedding-2",
+        embedding_dimensions=3072,
+        cache_service=cache_service,
+    )
 
     await generate_product_embeddings(
-        batch_size=10, force=True, product_service=mock_product_service, vertex_ai_service=mock_vertex
+        batch_size=10, force=True, product_service=mock_product_service, vertex_ai_service=vertex_service
     )
 
     mock_product_service.get_products_for_embedding.assert_awaited_once_with(force=True)
     mock_product_service.update_embedding.assert_awaited_once_with(1, [0.01] * 3072)
     mock_product_service.get_chat_routes_for_embedding.assert_awaited_once_with(force=True)
     mock_product_service.update_chat_route_embedding.assert_awaited_once_with(10, [0.01] * 3072)
-    assert mock_vertex.get_text_embedding.await_count == 2
-    for call in mock_vertex.get_text_embedding.await_args_list:
-        assert call.kwargs.get("embedding_purpose") == "document"
+    assert embed_content.await_count == 2
+    for call in embed_content.await_args_list:
+        assert call.kwargs["contents"].startswith("Task: Generate an embedding for a document")

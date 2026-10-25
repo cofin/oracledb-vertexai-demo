@@ -8,26 +8,36 @@ from __future__ import annotations
 from app.domain.products.services._embedding import (
     EMBEDDING_PURPOSE_INSTRUCTIONS,
     GEMINI_EMBEDDING_2_MODEL,
-    EmbeddingService,
-    OracleVectorSearchService,
+    BatchProgressCallback,
     VertexAIService,
 )
-from app.domain.products.services._inventory import InventoryService
-from app.domain.products.services._maps import MapsService, build_store_directions_url, build_store_search_url
-from app.domain.products.services._products import ProductService, sanitize_oracle_text_query
+from app.domain.products.services._maps import build_store_directions_url, build_store_search_url
+from app.domain.products.services._products import ProductService
 from app.domain.products.services._stores import StoreService
+from app.domain.products.services._vector import (
+    RRF_DEFAULT_K,
+    SERVICE_UNAVAILABLE_MESSAGE,
+    OracleVectorSearchService,
+    build_explore_sql_phases,
+    build_explore_telemetry_context,
+    build_vector_demo_matches,
+    unavailable_plan,
+)
 
 __all__ = (
     "EMBEDDING_PURPOSE_INSTRUCTIONS",
     "GEMINI_EMBEDDING_2_MODEL",
-    "EmbeddingService",
-    "InventoryService",
-    "MapsService",
+    "RRF_DEFAULT_K",
+    "SERVICE_UNAVAILABLE_MESSAGE",
+    "BatchProgressCallback",
     "OracleVectorSearchService",
     "ProductService",
     "StoreService",
     "VertexAIService",
+    "build_explore_sql_phases",
+    "build_explore_telemetry_context",
     "build_store_directions_url",
     "build_store_search_url",
-    "sanitize_oracle_text_query",
+    "build_vector_demo_matches",
+    "unavailable_plan",
 )

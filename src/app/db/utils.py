@@ -9,8 +9,7 @@ import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.config import db, db_manager
-from app.lib.settings import get_settings
+from app.lib.settings import Settings
 from app.utils.fixtures import FixtureExporter, FixtureLoader
 
 if TYPE_CHECKING:
@@ -26,19 +25,23 @@ async def load_fixtures(tables: list[str] | None = None) -> dict[str, dict | str
     """Load fixture data into database using generic loader.
 
     Args:
-        tables: Optional list of specific tables to load
+        tables: Optional list of specific tables to load.
 
     Returns:
-        Dictionary mapping table names to loading results
+        Dictionary mapping table names to loading results.
     """
-    async with db_manager.provide_session(db) as driver:
-        settings = get_settings()
-        fixtures_dir = Path(settings.db.FIXTURE_PATH)
-
-        loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
-        results = await loader.load_all_fixtures(specific_tables=tables)
-        await _reset_sequences(driver)
-        return results
+    settings = Settings.from_env()
+    db_config = settings.db.get_config()
+    try:
+        async with db_config.provide_session() as driver:
+            fixtures_dir = Path(settings.db.FIXTURE_PATH)
+            loader = FixtureLoader(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
+            results = await loader.load_all_fixtures(specific_tables=tables)
+            await _reset_sequences(driver)
+            return results
+    finally:
+        with contextlib.suppress(Exception):
+            await db_config.close_pool()
 
 
 async def export_fixtures(
@@ -47,23 +50,24 @@ async def export_fixtures(
     """Export database tables to fixture files.
 
     Args:
-        tables: Optional list of specific tables to export
-        output_dir: Output directory (defaults to fixtures dir)
-        compress: Whether to gzip compress output
+        tables: Optional list of specific tables to export.
+        output_dir: Output directory (defaults to fixtures dir).
+        compress: Whether to gzip compress output.
 
     Returns:
-        Dictionary mapping table names to output paths or error messages
+        Dictionary mapping table names to output paths or error messages.
     """
-    async with db_manager.provide_session(db) as driver:
-        settings = get_settings()
-        fixtures_dir = Path(settings.db.FIXTURE_PATH)
-
-        if output_dir is None:
-            output_dir = fixtures_dir
-
-        exporter = FixtureExporter(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
-
-        return await exporter.export_all_fixtures(tables=tables, output_dir=output_dir, compress=compress)
+    settings = Settings.from_env()
+    db_config = settings.db.get_config()
+    try:
+        async with db_config.provide_session() as driver:
+            fixtures_dir = Path(settings.db.FIXTURE_PATH)
+            target_dir = output_dir if output_dir is not None else fixtures_dir
+            exporter = FixtureExporter(fixtures_dir=fixtures_dir, driver=driver, table_order=COFFEE_SHOP_TABLES)
+            return await exporter.export_all_fixtures(tables=tables, output_dir=target_dir, compress=compress)
+    finally:
+        with contextlib.suppress(Exception):
+            await db_config.close_pool()
 
 
 async def _reset_sequences(driver: AsyncDriverAdapterBase) -> None:

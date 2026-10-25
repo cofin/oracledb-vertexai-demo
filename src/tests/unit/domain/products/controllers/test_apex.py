@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+import gc
+import sys
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, get_args
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -17,11 +19,16 @@ from app.domain.products.schemas import (
     ApexProduct,
     ApexRecommendationRequest,
     ApexVectorReadiness,
+    ApexVectorStatus,
     ProductAvailability,
     ProductMatch,
     Store,
 )
+from app.domain.products.schemas._apex import RecommendationMode
 from app.domain.products.services import ProductService, StoreService
+from app.domain.products.services._vector import OracleVectorSearchService
+from app.lib.schema import CamelizedFrozenStruct
+from app.lib.service import OracleLoaderService
 
 pytestmark = pytest.mark.anyio
 
@@ -144,42 +151,45 @@ async def test_apex_inventory_and_availability_are_json_data() -> None:
     assert availability.items[0].store_name == "Cymbal Coffee Dallas Arts District"
 
 
-async def test_apex_recommendations_use_store_aware_vector_search() -> None:
+async def test_apex_recommendations_use_store_aware_vector_search(mock_driver: Any) -> None:
     """Verify `ApexController.recommendations` uses store-scoped vector search when available."""
-    vector_search_service = MagicMock()
-    vector_search_service.similarity_search = AsyncMock(
-        return_value=(
-            [
-                ProductMatch(
-                    id=1,
-                    name="Cold Brew Nitro",
-                    description="A velvety cold coffee with a creamy finish.",
-                    price=5.25,
-                    similarity_score=0.91,
-                    store_id=16,
-                    store_name="Cymbal Coffee Dallas Arts District",
-                    quantity_available=8,
-                    stock_status="IN_STOCK",
-                    pickup_available=True,
-                )
-            ],
-            False,
-            {"embedding_ms": 4.0, "oracle_ms": 2.0},
-        )
-    )
+    mock_vertex = MagicMock()
+    mock_vertex.get_text_embedding = AsyncMock(return_value=([0.25, 0.75], False))
     products_service = MagicMock()
     products_service.list_apex_products = AsyncMock()
+    products_service.search_by_vector = AsyncMock(
+        return_value=[
+            ProductMatch(
+                id=1,
+                name="Cold Brew Nitro",
+                description="A velvety cold coffee with a creamy finish.",
+                price=5.25,
+                similarity_score=0.91,
+                store_id=16,
+                store_name="Cymbal Coffee Dallas Arts District",
+                quantity_available=8,
+                stock_status="IN_STOCK",
+                pickup_available=True,
+            )
+        ]
+    )
     stores_service = MagicMock()
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=mock_vertex, product_service=products_service, store_service=stores_service
+    )
 
     response = await ApexController.recommendations.fn(
         ApexController(owner=MagicMock()),
         vector_search_service=vector_search_service,
-        products_service=products_service,
-        stores_service=stores_service,
         data=ApexRecommendationRequest(query="nitro cold brew", store_id=16, limit=3),
     )
 
-    vector_search_service.similarity_search.assert_awaited_once_with("nitro cold brew", k=3, threshold=0.5, store_id=16)
+    mock_vertex.get_text_embedding.assert_awaited_once_with(
+        "nitro cold brew", embedding_purpose="query", return_cache_status=True
+    )
+    products_service.search_by_vector.assert_awaited_once_with(
+        [0.25, 0.75], similarity_threshold=0.5, limit=3, store_id=16
+    )
     products_service.list_apex_products.assert_not_awaited()
     assert response.mode == "vector"
     assert response.cache_hit is False
@@ -187,100 +197,122 @@ async def test_apex_recommendations_use_store_aware_vector_search() -> None:
     assert response.items[0].store_id == 16
 
 
-async def test_apex_recommendations_fall_back_to_catalog_search_when_vector_unavailable() -> None:
-    """Verify `ApexController.recommendations` falls back to catalog search when vector search raises RuntimeError."""
-    vector_search_service = MagicMock()
-    vector_search_service.similarity_search = AsyncMock(side_effect=RuntimeError("credentials unavailable"))
+async def test_apex_recommendations_fall_back_to_catalog_search_outside_except_block(mock_driver: Any) -> None:
+    """Verify `OracleVectorSearchService.recommend_for_apex` runs fallback SQL outside `except:` (`sys.exc_info()[1] is None`)."""
+    exc_info_during_fallback: list[BaseException | None] = []
+
+    async def _list_apex_products(**_kwargs: Any) -> tuple[list[ApexProduct], int]:
+        exc_info_during_fallback.append(sys.exc_info()[1])
+        return [_product()], 1
+
+    mock_vertex = MagicMock()
+    mock_vertex.get_text_embedding = AsyncMock(side_effect=RuntimeError("credentials unavailable"))
     products_service = MagicMock()
-    products_service.list_apex_products = AsyncMock(return_value=([_product()], 1))
+    products_service.list_apex_products = AsyncMock(side_effect=_list_apex_products)
     stores_service = MagicMock()
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=mock_vertex, product_service=products_service, store_service=stores_service
+    )
 
     response = await ApexController.recommendations.fn(
         ApexController(owner=MagicMock()),
         vector_search_service=vector_search_service,
-        products_service=products_service,
-        stores_service=stores_service,
         data=ApexRecommendationRequest(query="nitro", limit=2),
     )
 
     products_service.list_apex_products.assert_awaited_once_with(q="nitro", category=None, limit=2, offset=0)
+    assert exc_info_during_fallback == [None]
     assert response.mode == "fallback"
+    assert response.fallback_reason == "RuntimeError"
     assert response.items[0].product_id == 1
     assert response.items[0].similarity_score is None
 
 
-async def test_apex_recommendations_fall_back_to_store_inventory_when_store_scoped() -> None:
-    """Verify store-scoped `ApexController.recommendations` falls back to `search_store_inventory`."""
-    vector_search_service = MagicMock()
-    vector_search_service.similarity_search = AsyncMock(side_effect=RuntimeError("credentials unavailable"))
+async def test_apex_recommendations_fall_back_to_store_inventory_when_store_scoped(mock_driver: Any) -> None:
+    """Verify store-scoped `ApexController.recommendations` falls back to `search_store_inventory` outside `except:`."""
+    exc_info_during_fallback: list[BaseException | None] = []
+
+    async def _search_store_inventory(**_kwargs: Any) -> list[ProductAvailability]:
+        exc_info_during_fallback.append(sys.exc_info()[1])
+        return [_availability()]
+
+    mock_vertex = MagicMock()
+    mock_vertex.get_text_embedding = AsyncMock(side_effect=RuntimeError("credentials unavailable"))
     products_service = MagicMock()
     products_service.list_apex_products = AsyncMock()
     stores_service = MagicMock()
-    stores_service.search_store_inventory = AsyncMock(return_value=[_availability()])
+    stores_service.search_store_inventory = AsyncMock(side_effect=_search_store_inventory)
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=mock_vertex, product_service=products_service, store_service=stores_service
+    )
 
     response = await ApexController.recommendations.fn(
         ApexController(owner=MagicMock()),
         vector_search_service=vector_search_service,
-        products_service=products_service,
-        stores_service=stores_service,
         data=ApexRecommendationRequest(query="nitro", store_id=16, limit=2),
     )
 
     stores_service.search_store_inventory.assert_awaited_once_with(store_id=16, q="nitro", limit=2)
     products_service.list_apex_products.assert_not_awaited()
+    assert exc_info_during_fallback == [None]
     assert response.mode == "fallback"
     assert response.items[0].product_id == 1
     assert response.items[0].store_id == 16
     assert response.items[0].quantity_available == 8
 
 
-async def test_apex_recommendations_reraises_unexpected_vector_errors() -> None:
+async def test_apex_recommendations_reraises_unexpected_vector_errors(mock_driver: Any) -> None:
     """Verify non-RuntimeError exceptions from vector search propagate out of `recommendations`."""
-    vector_search_service = MagicMock()
-    vector_search_service.similarity_search = AsyncMock(side_effect=ValueError("bad vector shape"))
+    mock_vertex = MagicMock()
+    mock_vertex.get_text_embedding = AsyncMock(side_effect=ValueError("bad vector shape"))
     products_service = MagicMock()
     products_service.list_apex_products = AsyncMock()
     stores_service = MagicMock()
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=mock_vertex, product_service=products_service, store_service=stores_service
+    )
 
     with pytest.raises(ValueError, match="bad vector shape"):
         await ApexController.recommendations.fn(
             ApexController(owner=MagicMock()),
             vector_search_service=vector_search_service,
-            products_service=products_service,
-            stores_service=stores_service,
             data=ApexRecommendationRequest(query="nitro", limit=2),
         )
 
     products_service.list_apex_products.assert_not_awaited()
 
 
-async def test_apex_status_endpoints_report_catalog_and_vector_readiness() -> None:
-    """Verify `vector_status` and `openapi_status` report readiness and operation IDs."""
+async def test_apex_status_endpoints_report_catalog_and_vector_readiness(mock_driver: Any) -> None:
+    """Verify `vector_status` and `openapi_status` report `hybrid_rrf_ready`, readiness, and operation IDs."""
     products_service = MagicMock()
     products_service.get_vector_readiness = AsyncMock(
-        return_value=ApexVectorReadiness(product_count=4, embedded_product_count=3)
+        return_value=ApexVectorReadiness(product_count=4, embedded_product_count=3, hybrid_index_count=2)
     )
     vertex_ai_service = MagicMock(embedding_model="gemini-embedding-2", embedding_dimensions=3072)
-    vector_search_service = MagicMock(vertex_ai_service=vertex_ai_service)
+    vector_search_service = OracleVectorSearchService(
+        mock_driver, vertex_ai_service=vertex_ai_service, product_service=products_service
+    )
     controller = ApexController(owner=MagicMock())
 
-    vector_status = await ApexController.vector_status.fn(
-        controller, products_service=products_service, vector_search_service=vector_search_service
-    )
+    vector_status = await ApexController.vector_status.fn(controller, vector_search_service=vector_search_service)
     catalog_status = await ApexController.openapi_status.fn(controller)
 
+    assert get_args(RecommendationMode) == ("hybrid", "vector", "fallback")
+    assert issubclass(ApexVectorStatus, CamelizedFrozenStruct)
+    assert issubclass(ProductService, OracleLoaderService)
+    assert gc.is_tracked(vector_status) is False
     assert vector_status.embedding_model == "gemini-embedding-2"
     assert vector_status.embedding_dimensions == 3072
     assert vector_status.oracle_vector_ready is True
+    assert vector_status.hybrid_rrf_ready is True
     assert isinstance(vector_status.provider_configured, bool)
     assert catalog_status.base_path == "/api/apex"
     assert "ApexListProducts" in catalog_status.operation_ids
 
 
 async def test_apex_service_helpers_use_named_sql_and_typed_rows(mock_driver: Any) -> None:
-    """Verify `ProductService.list_apex_products` and `StoreService.list_inventory_summary` map typed rows."""
-    mock_driver.select = AsyncMock(return_value=[_product()])
-    mock_driver.select_value = AsyncMock(return_value=1)
+    """Verify `ProductService.list_apex_products` uses `paginate_limit_offset` and `StoreService.list_inventory_summary` maps typed rows."""
+    mock_driver.select_with_total = AsyncMock(return_value=([_product()], 1))
     products = await ProductService(mock_driver).list_apex_products(
         q="nitro", category="Cold Coffee", limit=10, offset=5
     )
@@ -288,10 +320,11 @@ async def test_apex_service_helpers_use_named_sql_and_typed_rows(mock_driver: An
     rows, total = products
     assert total == 1
     assert rows[0].name == "Cold Brew Nitro"
-    select_call = mock_driver.select.await_args
+    select_call = mock_driver.select_with_total.await_args
     assert select_call is not None
     assert select_call.kwargs["schema_type"] is ApexProduct
     assert select_call.kwargs["q"] == "nitro"
+    assert select_call.kwargs["category"] == "Cold Coffee"
 
     mock_driver.select = AsyncMock(
         return_value=[
