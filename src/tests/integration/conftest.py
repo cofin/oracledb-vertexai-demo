@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 from litestar.testing import AsyncTestClient
 from tools.oracle.container import ContainerRuntime
-from tools.oracle.database import DatabaseConfig, OracleDatabase
+from tools.oracle.database import ContainerFlavor, DatabaseConfig, OracleDatabase
 
 from app import config as app_config
 from app.db.utils import COFFEE_SHOP_TABLES, _reset_sequences
@@ -56,6 +56,7 @@ def find_free_port() -> int:
 @pytest.fixture(scope="session")
 def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
     """Start an ephemeral gvenzl/oracle-free container on a free port for the test session."""
+    os.environ.setdefault("ORACLE_CONTAINER_FLAVOR", ContainerFlavor.FREE.value)
     password = "SuperSecret1"
     reuse_port = os.getenv("ORACLE_TEST_REUSE_PORT")
     if reuse_port:
@@ -71,6 +72,7 @@ def oracle_test_container() -> Generator[dict[str, str | int], None, None]:
     suffix = uuid.uuid4().hex[:8]
     port = find_free_port()
     config = DatabaseConfig(
+        flavor=ContainerFlavor.FREE,
         container_name=f"oracle-test-{suffix}",
         host_port=port,
         app_user="app",
