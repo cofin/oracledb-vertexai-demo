@@ -85,7 +85,7 @@ The bundled APEXlang application in `src/apex/cymbal-coffee-ops/` (App ID
 
 ## Where to go next
 
-::::{grid} 1 1 2 4
+::::{grid} 1 1 2 3
 :gutter: 3
 
 :::{grid-item-card} {octicon}`workflow;1.1em` Walkthrough
@@ -102,6 +102,13 @@ answer.
 
 Vectors in Oracle, RAG, and how the chat router chooses grounded service
 calls.
+:::
+
+:::{grid-item-card} {octicon}`browser;1.1em` Oracle APEX 26.1
+:link: apex
+:link-type: doc
+
+Autonomous 26ai runtime, Direct Vertex AI vs Gateway, App 100 pages, and demo recordings.
 :::
 
 :::{grid-item-card} {octicon}`mortar-board;1.1em` Hands-on lab
@@ -130,6 +137,13 @@ concepts/vector-search
 concepts/rag
 concepts/agent-flow
 maps
+```
+
+```{toctree}
+:hidden:
+:caption: Oracle APEX
+
+apex
 ```
 
 ```{toctree}
