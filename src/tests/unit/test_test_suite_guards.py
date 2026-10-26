@@ -30,12 +30,7 @@ ALLOWED_PRAGMAS = (
     "# docs-end:",
 )
 
-ALLOW_NESTED_IMPORTS = frozenset({
-    "src/app/cli/commands.py",
-    "src/app/cli/main.py",
-    "src/app/config.py",
-    "src/app/server/plugins.py",
-})
+ALLOW_NESTED_IMPORTS = frozenset({"src/app/cli/commands.py", "src/app/cli/main.py"})
 
 KEEP_LIST_PATHS = (
     "unit/domain/chat/services/test_hybrid_router.py",

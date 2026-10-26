@@ -6,27 +6,30 @@
 from __future__ import annotations
 
 import os
-import ssl
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
-from urllib.parse import urlparse
+from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote, urlparse
 
 from litestar_queues.backends.sqlspec.extension import configure_queue_migration_extension
 from sqlspec.adapters.oracledb import OracleAsyncConfig
+from sqlspec.adapters.oracledb.core import default_statement_config
 from sqlspec.observability import LoggingConfig, ObservabilityConfig, TelemetryConfig
 
 from app.lib.settings._env import BASE_DIR, _env_bool, _env_int
 
+if TYPE_CHECKING:
+    from sqlspec.core import StatementConfig
+
 __all__ = ("DatabaseSettings",)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DatabaseSettings:
     """Oracle Database connection settings."""
 
     URL: str | None = field(default_factory=lambda: os.getenv("DATABASE_URL"))
-    """Oracle Database URL (for Autonomous DB). Format: oracle+oracledb://user:password@service_name"""
+    """Oracle Database URL or TNS service alias (for Autonomous DB)."""
     WALLET_PASSWORD: str | None = field(default_factory=lambda: os.getenv("WALLET_PASSWORD"))
     """Oracle Database Wallet Password (for Autonomous DB)."""
     WALLET_LOCATION: str | None = field(default_factory=lambda: os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN"))
@@ -48,16 +51,8 @@ class DatabaseSettings:
     """Minimum pool size."""
     POOL_MAX_SIZE: int = field(default_factory=lambda: _env_int("DATABASE_POOL_MAX_SIZE", 20))
     """Maximum pool size."""
-    AGENT_IN_MEMORY: bool = field(
-        default_factory=lambda: _env_bool("ORACLE_AGENT_IN_MEMORY", _env_bool("ORACLE_ADK_IN_MEMORY", True))
-    )
+    AGENT_IN_MEMORY: bool = field(default_factory=lambda: _env_bool("ORACLE_AGENT_IN_MEMORY", True))
     """Enable Oracle INMEMORY for agent session/event tables when licensed."""
-    ADK_IN_MEMORY: bool = field(
-        default_factory=lambda: _env_bool("ORACLE_AGENT_IN_MEMORY", _env_bool("ORACLE_ADK_IN_MEMORY", True))
-    )
-    """Backward-compatible alias for AGENT_IN_MEMORY."""
-    ADK_ENABLE_MEMORY: bool = field(default_factory=lambda: _env_bool("ADK_ENABLE_MEMORY", True))
-    """Backward-compatible flag for legacy memory table settings."""
     LITESTAR_SESSION_IN_MEMORY: bool = field(
         default_factory=lambda: _env_bool("ORACLE_LITESTAR_SESSION_IN_MEMORY", True)
     )
@@ -99,18 +94,33 @@ class DatabaseSettings:
         Returns:
             Oracle connection parameters for the configured deployment mode.
         """
-        if self.is_autonomous:
-            parsed = urlparse(self.URL)
+        if self.is_autonomous and self.URL is not None:
+            raw_url = self.URL.strip()
+            if "://" in raw_url:
+                parsed = urlparse(raw_url)
+                user = unquote(parsed.username) if parsed.username else self.USER
+                password = unquote(parsed.password) if parsed.password else self.PASSWORD
+                service_path = parsed.path.lstrip("/")
+                if parsed.hostname:
+                    host_port = f"{parsed.hostname}:{parsed.port}" if parsed.port else parsed.hostname
+                    dsn = f"{host_port}/{service_path}" if service_path else host_port
+                else:
+                    dsn = service_path or self.DSN
+                return {"user": user, "password": password, "dsn": dsn, "wallet_password": self.WALLET_PASSWORD or ""}
             return {
-                "user": parsed.username or self.USER,
-                "password": parsed.password or self.PASSWORD,
-                "dsn": parsed.hostname or "",
+                "user": self.USER,
+                "password": self.PASSWORD,
+                "dsn": raw_url or self.DSN,
                 "wallet_password": self.WALLET_PASSWORD or "",
             }
         return {"user": self.USER, "password": self.PASSWORD, "dsn": self.DSN}
 
     def create_config(self) -> OracleAsyncConfig:
         """Create Oracle database configuration based on connection mode (autonomous vs local).
+
+        SQLSpec ``0.69.0`` defaults ``fetch_lobs`` to ``False``, returning LOB
+        columns under 1 GB directly as inline ``str`` / ``bytes`` values across
+        both ``select`` and ``select_stream`` without extra locator round-trips.
 
         Returns:
             SQLSpec Oracle async configuration for the app.
@@ -121,8 +131,9 @@ class DatabaseSettings:
         pool_config = self._build_pool_config(min_sessions=self.POOL_MIN_SIZE, max_sessions=self.POOL_MAX_SIZE)
         config = OracleAsyncConfig(
             connection_config=pool_config,
+            statement_config=self._build_statement_config(),
             observability_config=self._build_observability_config(),
-            driver_features={"enable_AutoLob": True},
+            driver_features={"enable_session_tracing": True},
             migration_config={
                 "version_table_name": "migrations",
                 "script_location": self.MIGRATION_PATH,
@@ -149,8 +160,10 @@ class DatabaseSettings:
     def get_queue_config(self) -> OracleAsyncConfig:
         """Create a dedicated OracleAsyncConfig for ``litestar-queues`` SQLSpec storage.
 
-        Isolates ``OracledbAsyncQueueStore``'s ``driver_features["fetch_lobs"] = False``
-        mutation from the primary application ``OracleAsyncConfig``.
+        ``QueuePlugin`` and ``SQLSpecQueueBackend`` own the ``queue_db`` pool
+        lifespan (``min=1, max=4``, ``session_key="queue_db_session"``),
+        isolating ``OracledbAsyncQueueStore``'s in-place ``driver_features`` and
+        ``extension_config`` mutations from the primary application pool.
 
         Returns:
             Dedicated ``OracleAsyncConfig`` for background queue persistence.
@@ -158,10 +171,11 @@ class DatabaseSettings:
         pool_config = self._build_pool_config(min_sessions=1, max_sessions=4)
         return OracleAsyncConfig(
             connection_config=pool_config,
+            statement_config=self._build_statement_config(),
             observability_config=self._build_observability_config(),
-            driver_features={"fetch_lobs": False},
+            driver_features={"fetch_lobs": False, "enable_session_tracing": True},
             extension_config={
-                "litestar": {"session_key": "queue_db_session", "disable_di": True},
+                "litestar": {"session_key": "queue_db_session", "disable_di": True, "manage_lifespan": True},
                 "events": {"backend": self.EVENTS_BACKEND, "aq_queue": self.EVENTS_QUEUE},
                 "litestar_queues": {"in_memory": self.AGENT_IN_MEMORY},
             },
@@ -176,24 +190,13 @@ class DatabaseSettings:
                 msg = "WALLET_LOCATION or TNS_ADMIN environment variable must be set for Autonomous Database"
                 raise ValueError(msg)
 
-            wallet_path = Path(self.WALLET_LOCATION).resolve()
-            absolute_wallet_path = str(wallet_path)
-            os.environ["TNS_ADMIN"] = absolute_wallet_path
-
-            ssl_ctx = ssl.create_default_context()
-            ssl_ctx.check_hostname = False
-            pem_path = wallet_path / "ewallet.pem"
-            if pem_path.exists():
-                ssl_ctx.load_verify_locations(cafile=str(pem_path))
-
+            wallet_path = str(Path(self.WALLET_LOCATION).resolve())
             return {
                 "user": conn_params["user"],
                 "password": conn_params["password"],
                 "dsn": conn_params["dsn"],
-                "wallet_location": absolute_wallet_path,
-                "config_dir": absolute_wallet_path,
+                "wallet_zip": wallet_path,
                 "wallet_password": conn_params["wallet_password"],
-                "ssl_context": ssl_ctx,
                 "min": min_sessions,
                 "max": max_sessions,
             }
@@ -205,6 +208,12 @@ class DatabaseSettings:
             "min": min_sessions,
             "max": max_sessions,
         }
+
+    def _build_statement_config(self) -> StatementConfig:
+        """Construct SQLSpec statement configuration with wire-level sqlcommenter."""
+        return default_statement_config.replace(
+            enable_sqlcommenter=True, sqlcommenter_enable_context=True, sqlcommenter_enable_traceparent=True
+        )
 
     def _build_observability_config(self) -> ObservabilityConfig:
         """Construct SQLSpec observability settings."""

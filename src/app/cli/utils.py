@@ -13,7 +13,7 @@ import rich_click as click
 from dishka import Scope
 from sqlspec.utils.sync_tools import run_
 
-from app.ioc import make_container
+from app.ioc import create_container
 from app.lib.di import request_container_var, worker_container_var
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ def async_inject[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, R]:
             if ctx is not None and isinstance(ctx.obj, dict):
                 container_factory = ctx.obj.get("container_factory")
             if container_factory is None:
-                container_factory = make_container
+                container_factory = create_container
 
             container = cast("AsyncContainer", container_factory())
             worker_token = worker_container_var.set(container)

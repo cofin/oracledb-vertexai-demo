@@ -35,7 +35,7 @@ research:
 Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database 26ai** integration and interactive **"Breaking the Context Ceiling"** demo inside Cymbal Coffee that:
 
 1. **Harvests Oracle 26ai Native `ANNOTATIONS(...)` Directly into Knowledge Catalog & OKF v0.2**:
-   - Uses a single CLI command (`uv run coffee sync-catalog`) to query Oracle 26ai's `USER_ANNOTATIONS_USAGE` and `USER_TAB_COLUMNS` (`src/app/db/migrations/0001_cymball_coffee_products.sql:18-264`), combine them with steward-certified agent `guidelines` (2-tier inventory contract, off-menu brand rule, request-scoped coordinate privacy invariant) and Golden SQL `queries`, and write both:
+   - Uses a single CLI command (`uv run coffee sync-catalog`) to query Oracle 26ai's `USER_ANNOTATIONS_USAGE` and `USER_TAB_COLUMNS` (`src/app/db/migrations/0001_cymball_coffee_products.sql:18-264`), combine them with steward-certified agent `guidelines` (store-level inventory precedence contract, off-menu brand rule, request-scoped coordinate privacy invariant) and Golden SQL `queries`, and write both:
      - **A committed local OKF v0.2 bundle + JSON snapshot** (`src/app/db/fixtures/knowledge_catalog_context.json` and `.agents/bundles/knowledge/catalog/`) for zero-cloud, `<2ms` offline/CI execution and `kcmd push --format okf` compatibility.
      - **Live Google Cloud Knowledge Catalog (`dataplex.googleapis.com/v1`) Custom Entries & Global System Aspects** (`projects/655216118709/locations/global/aspectTypes/{schema,overview,guidelines,queries}`) via `httpx` + `google.auth` ADC (zero VPC/PSC Network Attachment or `SYS.COL$` DBA grants required).
 2. **Grounds the Native `google-genai` Agent & Multi-Protocol MCP Surface at Runtime**:
@@ -54,10 +54,10 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
    - `coffee sync-catalog` instead queries `USER_ANNOTATIONS_USAGE` directly over the existing SQLSpec connection pool and upserts `EntryGroup` (`cymbal-coffee-oracle`), `Entry` records (`entrySource.system = "ORACLE"`), and global system aspects (`projects/655216118709/locations/global/aspectTypes/{schema,overview,guidelines,queries}`) via `dataplex.googleapis.com/v1` REST using `httpx` and `google.auth` (already installed via `google-genai`).
 2. **Global System Aspects (`schema`, `overview`, `guidelines`, `queries`) for `lookupContext` Compatibility**:
    - Public Knowledge Catalog docs (`enrich-entries-metadata`, `retrieve-data-context`) confirm that `lookupContext` (`POST /v1/projects/{p}/locations/{l}:lookupContext`) automatically assembles the global system aspects (`schema`, `overview`, `guidelines`, `queries`) and linked Business Glossary terms into a single LLM-ready YAML string, whereas user-defined custom aspect types are omitted by `lookupContext`. Encoding Oracle 26ai annotations and steward rules into `overview`, `guidelines`, `schema`, and `queries` guarantees single-call `lookupContext` assembly.
-3. **Dual-Mode Execution (`local` Snapshot vs `gcp` Live API)**:
+3. **Dual-Mode Execution (`local` Snapshot vs `live` GCP API)**:
    - `CatalogSettings.mode` defaults to `"auto"` (uses live `dataplex.googleapis.com/v1` when `KNOWLEDGE_CATALOG_ENABLED=true` and `GOOGLE_CLOUD_PROJECT` is a real project, and seamlessly falls back to the committed `src/app/db/fixtures/knowledge_catalog_context.json` snapshot built from `0001_cymball_coffee_products.sql` annotations when running locally/offline or in CI).
-4. **Composable Alignment with `coffee-agent-stabilization-and-hybrid-search`**:
-   - Settings live in `src/app/lib/settings/_catalog.py` (and re-export via `app.lib.settings`), schemas live in `src/app/domain/system/schemas/_catalog.py`, service logic lives in `src/app/domain/system/services/_catalog.py`, and controller endpoints live in `src/app/domain/system/controllers/_catalog.py` so zero files collide with active tasks in `runtime-stabilization` or `hybrid-rrf-retrieval`.
+4. **Module & Boundary Placement**:
+   - Settings live in `src/app/lib/settings/_catalog.py` (re-exported via `app.lib.settings` on `Settings.from_env().catalog`), schemas inherit from `FrozenBaseStruct` / `CamelizedFrozenStruct` in `src/app/domain/system/schemas/_catalog.py`, service logic inherits from `OracleLoaderService` in `src/app/domain/system/services/_catalog.py`, and controller endpoints live in `src/app/domain/system/controllers/_catalog.py`.
 
 ---
 
@@ -86,8 +86,8 @@ Deliver a fast, meaningful **Google Cloud Knowledge Catalog + Oracle AI Database
 
 ## Global Constraints
 
-1. **Zero Inline Comments in Python**: Never use inline `#` comments in Python files (except required `# noqa:` directives or `# docs:start-*` / `# docs:end-*` Sphinx anchors). Use Google-style docstrings exclusively.
-2. **Modern Python Typing & Layout**: Use PEP 585/604 types (`list[str]`, `X | None`), `msgspec.Struct` / `CamelizedBaseStruct`, module layout (`docstring` $\rightarrow$ grouped top-level imports $\rightarrow$ `__all__` $\rightarrow$ public classes/functions $\rightarrow$ private `_...` helpers), and class layout (class attributes $\rightarrow$ `__init__` $\rightarrow$ properties $\rightarrow$ public methods $\rightarrow$ private `_...` helpers).
+1. **Zero Inline Comments in Python**: Never use inline `#` comments in Python files (except required `# noqa:` directives or `# docs-start:` / `# docs-end:` Sphinx anchors). Use Google-style docstrings exclusively.
+2. **Modern Python Typing & Layout**: Use PEP 585/604 types (`list[str]`, `X | None`), `FrozenBaseStruct` / `CamelizedFrozenStruct`, module layout (`docstring` $\rightarrow$ grouped top-level imports $\rightarrow$ `__all__` $\rightarrow$ public classes/functions $\rightarrow$ private `_...` helpers), and class layout (class attributes $\rightarrow$ `__init__` $\rightarrow$ properties $\rightarrow$ public methods $\rightarrow$ private `_...` helpers).
 3. **Dishka DI Discipline**: Any file in `src/app/ioc` must never include `from __future__ import annotations`. Controller handlers use `Inject[T]` without `@inject` decorators.
 4. **Coordinate Privacy Invariant**: Browser geolocation coordinates (`latitude`, `longitude`, `accuracy`) remain strictly request-scoped and must never be persisted to Knowledge Catalog entries, `agent_session`, `agent_event`, `response_cache`, `search_metric`, or logs.
 5. **Zero Heavy New SDK Dependencies**: Use `httpx` and `google.auth` (already installed in `pyproject.toml`) to call `https://dataplex.googleapis.com/v1` REST endpoints directly so lockfile footprint and startup time remain minimal.

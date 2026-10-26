@@ -29,12 +29,7 @@ ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
     "#!",
 )
 
-ALLOWED_LAZY_IMPORT_FILES: frozenset[Path] = frozenset({
-    APP_DIR / "cli" / "commands.py",
-    APP_DIR / "cli" / "main.py",
-    APP_DIR / "config.py",
-    APP_DIR / "server" / "plugins.py",
-})
+ALLOWED_LAZY_IMPORT_FILES: frozenset[Path] = frozenset({APP_DIR / "cli" / "commands.py", APP_DIR / "cli" / "main.py"})
 
 ALLOWED_CONTROLLER_BASES: frozenset[str] = frozenset({
     "PublicController",

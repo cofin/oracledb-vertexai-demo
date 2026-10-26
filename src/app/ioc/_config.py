@@ -4,31 +4,35 @@
 """Dishka provider for application settings."""
 
 from dishka import Provider, Scope, provide
+from sqlspec.loader import SQLFileLoader
 
+from app.lib.service import default_sql_loader
 from app.lib.settings import (
     AISettings,
     AppSettings,
+    ChatSettings,
     DatabaseSettings,
     LogSettings,
     MapsSettings,
     OpenTelemetrySettings,
+    QueueSettings,
     ServerSettings,
     Settings,
-    get_settings,
+    ViteSettings,
 )
 
 __all__ = ("ConfigProvider",)
 
 
 class ConfigProvider(Provider):
-    """APP-scoped provider for cached settings objects."""
+    """APP-scoped provider for cached settings objects and SQL file loader."""
 
     scope = Scope.APP
 
     @provide
     def provide_settings(self) -> Settings:
         """Provide the root Settings object."""
-        return get_settings()
+        return Settings.from_env()
 
     @provide
     def provide_app_settings(self, settings: Settings) -> AppSettings:
@@ -51,6 +55,16 @@ class ConfigProvider(Provider):
         return settings.ai
 
     @provide
+    def provide_chat_settings(self, settings: Settings) -> ChatSettings:
+        """Provide chat response-caching settings."""
+        return settings.chat
+
+    @provide
+    def provide_vite_settings(self, settings: Settings) -> ViteSettings:
+        """Provide Vite asset settings."""
+        return settings.vite
+
+    @provide
     def provide_maps_settings(self, settings: Settings) -> MapsSettings:
         """Provide Google Maps settings."""
         return settings.maps
@@ -64,3 +78,13 @@ class ConfigProvider(Provider):
     def provide_otel_settings(self, settings: Settings) -> OpenTelemetrySettings:
         """Provide OpenTelemetry settings."""
         return settings.otel
+
+    @provide
+    def provide_queue_settings(self, settings: Settings) -> QueueSettings:
+        """Provide background queue settings."""
+        return settings.queue
+
+    @provide
+    def provide_sql_loader(self) -> SQLFileLoader:
+        """Provide the shared named-SQL file loader."""
+        return default_sql_loader()

@@ -55,7 +55,7 @@ Files examined:
   - Extend `renderMetrics` and `renderMessageTelemetry` in `src/resources/telemetry.js` to inspect `phasesFor(payload, "lookup-knowledge-catalog")` and `metrics.catalog_enabled` / `metrics.catalog_ms`, rendering a clickable **`K` (`Knowledge Catalog`)** telemetry chip that opens the telemetry popover showing matched entry URIs (`oracle:cymbal-coffee:product`, `oracle:cymbal-coffee:store`, `oracle:cymbal-coffee:store_product_inventory`), active Oracle 26ai `Privacy` and `Data_Role` rules (`store.latitude/longitude`), steward guidelines, and the `dataplex.googleapis.com/v1:lookupContext` YAML bundle.
 - **KC-REQ-06 (Presentation Slides, OKF Knowledge Guide & Sphinx Documentation)**:
   - Create `.agents/bundles/knowledge/architecture/knowledge-catalog.md` and link it in `.agents/bundles/knowledge/index.md` and `AGENTS.md`.
-  - Add slides to `SLIDES.md` covering the 3-pillar architecture (**Oracle 26ai `ANNOTATIONS` + Google Cloud Knowledge Catalog `lookupContext` + OKF v0.2**) and the 3-act **"Breaking the Context Ceiling"** presenter walkthrough.
+  - Add slides to `SLIDES.md` covering the combined **Oracle 26ai `ANNOTATIONS` + Google Cloud Knowledge Catalog `lookupContext` + OKF v0.2** grounding architecture and the **"Breaking the Context Ceiling"** presenter walkthrough.
   - Update `README.md`, `docs/concepts/agent-flow.md`, `docs/mcp-antigravity.md`, `docs/reference/cli.md`, and `docs/reference/api.md` to document `uv run coffee sync-catalog`, `GET /api/catalog/context` (`mcp_tool="lookup_knowledge_catalog"`), `GET /api/catalog/entries`, and the Dataplex MCP Toolbox server.
 
 ### Requirement-to-Task Traceability

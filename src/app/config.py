@@ -25,21 +25,32 @@ import logging
 import warnings
 from typing import TYPE_CHECKING, cast
 
+import structlog
+from litestar.config.cors import CORSConfig
+from litestar.config.csrf import CSRFConfig
+from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
+from litestar.logging.config import LoggingConfig, StructLoggingConfig, default_logger_factory
+from litestar.middleware.logging import LoggingMiddlewareConfig
+from litestar.middleware.session.server_side import ServerSideSessionConfig
+from litestar.plugins.jinja import JinjaTemplateEngine
+from litestar.plugins.problem_details import ProblemDetailsConfig
+from litestar.plugins.structlog import StructlogConfig
+from litestar.stores.registry import StoreRegistry
+from litestar.template import TemplateConfig
+from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
+from sqlspec.base import SQLSpec
+
+from app.lib import log as log_conf
+from app.lib import settings as app_settings
+from app.lib.settings import BASE_DIR, Settings
+
 if TYPE_CHECKING:
-    from litestar.config.cors import CORSConfig
-    from litestar.config.csrf import CSRFConfig
-    from litestar.middleware.session.server_side import ServerSideSessionConfig
-    from litestar.plugins.problem_details import ProblemDetailsConfig
-    from litestar.plugins.structlog import StructlogConfig
+    from collections.abc import Callable
+
     from litestar.stores.base import Store
-    from litestar.stores.registry import StoreRegistry
-    from litestar.template import TemplateConfig
     from litestar_queues import QueueConfig
     from litestar_vite import ViteConfig
     from sqlspec.adapters.oracledb import OracleAsyncConfig
-    from sqlspec.base import SQLSpec
-
-    from app.lib.settings import Settings
 
 __all__ = (
     "cors",
@@ -50,6 +61,7 @@ __all__ = (
     "problem_details",
     "queue",
     "queue_db",
+    "register_reset_hook",
     "session_config",
     "setup_logging",
     "stores",
@@ -58,6 +70,7 @@ __all__ = (
 )
 
 _initialized: bool = False
+_reset_hooks: list[Callable[[], None]] = []
 
 _settings: Settings
 db_manager: SQLSpec
@@ -86,19 +99,22 @@ def __getattr__(name: str) -> object:
     raise AttributeError(msg)
 
 
+def register_reset_hook(hook: Callable[[], None]) -> None:
+    """Register a callback invoked whenever ``_reset()`` clears cached configuration."""
+    if hook not in _reset_hooks:
+        _reset_hooks.append(hook)
+
+
 def setup_logging() -> None:
-    """Configure structlog and stdlib logging plus noise-suppression filters."""
+    """Configure structlog and stdlib logging plus noise-suppression filters without forcing DB pool init."""
     _install_warning_filters()
 
-    if not _initialized:
-        _initialize()
-
-    import structlog
-
-    from app.lib import log as log_conf
-
-    structlog_config = cast("StructlogConfig", globals()["log"])
-    settings = cast("Settings", globals()["_settings"])
+    if _initialized:
+        settings = cast("Settings", globals()["_settings"])
+        structlog_config = cast("StructlogConfig", globals()["log"])
+    else:
+        settings = app_settings.get_settings()
+        structlog_config = _build_structlog_config(settings)
 
     if structlog_config.structlog_logging_config.standard_lib_logging_config:
         structlog_config.structlog_logging_config.standard_lib_logging_config.configure()
@@ -111,49 +127,14 @@ def setup_logging() -> None:
     )
     logging.captureWarnings(True)
 
-    adk_filter = log_conf.SuppressADKWarningsFilter()
-    logging.getLogger("py.warnings").addFilter(adk_filter)
-    for logger_name in ("google.adk", "google.genai", "google_genai", "google_genai.types"):
-        logging.getLogger(logger_name).addFilter(adk_filter)
-    logging.root.addFilter(adk_filter)
-
     logging.getLogger("asyncio").addFilter(log_conf.SuppressAsyncioTaskExceptionFilter())
     logging.getLogger("_granian").addFilter(log_conf.SuppressGranianExcInfoFilter())
 
 
-def _initialize() -> None:
-    """Materialize every public attribute from the current environment."""
-    global _initialized
-
-    from litestar.config.cors import CORSConfig as _CORSConfig
-    from litestar.config.csrf import CSRFConfig as _CSRFConfig
-    from litestar.exceptions import NotAuthorizedException, NotFoundException, PermissionDeniedException
-    from litestar.logging.config import LoggingConfig, StructLoggingConfig, default_logger_factory
-    from litestar.middleware.logging import LoggingMiddlewareConfig
-    from litestar.middleware.session.server_side import ServerSideSessionConfig as _SessionConfig
-    from litestar.plugins.jinja import JinjaTemplateEngine
-    from litestar.plugins.problem_details import ProblemDetailsConfig as _ProblemDetailsConfig
-    from litestar.plugins.structlog import StructlogConfig as _StructlogConfig
-    from litestar.stores.registry import StoreRegistry as _StoreRegistry
-    from litestar.template import TemplateConfig as _TemplateConfig
-    from sqlspec.adapters.oracledb.litestar import OracleAsyncStore
-    from sqlspec.base import SQLSpec as _SQLSpec
-
-    from app.lib import log as log_conf
-    from app.lib.settings import BASE_DIR, get_settings
-
-    settings = get_settings()
+def _build_structlog_config(settings: Settings) -> StructlogConfig:
+    """Construct the Litestar ``StructlogConfig`` from active settings without database side effects."""
     log_as_json = not log_conf.is_tty()
-    db_cfg = settings.db.create_config()
-    queue_db_cfg = settings.db.get_queue_config()
-    queue_cfg = settings.queue.get_config(queue_db_cfg)
-    db_mgr = _SQLSpec(observability_config=db_cfg.observability_config)
-    db_mgr.add_config(db_cfg)
-    db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
-
-    store_registry = _StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
-
-    structlog_config = _StructlogConfig(
+    return StructlogConfig(
         enable_middleware_logging=False,
         structlog_logging_config=StructLoggingConfig(
             disable_stack_trace={
@@ -212,7 +193,6 @@ def _initialize() -> None:
                         "level": settings.log.GRANIAN_ACCESS_LEVEL,
                         "handlers": ["queue_listener"],
                     },
-                    "google.adk": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
                     "google.genai": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
                     "google_genai": {"propagate": False, "level": settings.log.LEVEL, "handlers": ["queue_listener"]},
                     "google_genai.types": {
@@ -228,6 +208,22 @@ def _initialize() -> None:
         ),
     )
 
+
+def _initialize() -> None:
+    """Materialize every public attribute from the current environment."""
+    global _initialized
+
+    settings = app_settings.get_settings()
+    db_cfg = settings.db.create_config()
+    queue_db_cfg = settings.db.get_queue_config()
+    queue_cfg = settings.queue.get_config(queue_db_cfg)
+    db_mgr = SQLSpec(observability_config=db_cfg.observability_config)
+    db_mgr.add_config(db_cfg)
+    db_mgr.load_sql_files(BASE_DIR / "db" / "sql")
+
+    store_registry = StoreRegistry(stores={"sessions": cast("Store", OracleAsyncStore(config=db_cfg))})
+    structlog_config = _build_structlog_config(settings)
+
     g = globals()
     g["_settings"] = settings
     g["db_manager"] = db_mgr
@@ -235,26 +231,24 @@ def _initialize() -> None:
     g["queue_db"] = queue_db_cfg
     g["queue"] = queue_cfg
     g["stores"] = store_registry
-    g["session_config"] = _SessionConfig(store="sessions")
-    g["csrf"] = _CSRFConfig(
+    g["session_config"] = ServerSideSessionConfig(store="sessions")
+    g["csrf"] = CSRFConfig(
         secret=settings.app.SECRET_KEY,
         cookie_secure=settings.app.CSRF_COOKIE_SECURE,
         cookie_name=settings.app.CSRF_COOKIE_NAME,
         header_name=settings.app.CSRF_HEADER_NAME,
     )
-    g["cors"] = _CORSConfig(allow_origins=settings.app.ALLOWED_CORS_ORIGINS)
-    g["problem_details"] = _ProblemDetailsConfig(enable_for_all_http_exceptions=True)
+    g["cors"] = CORSConfig(allow_origins=settings.app.ALLOWED_CORS_ORIGINS)
+    g["problem_details"] = ProblemDetailsConfig(enable_for_all_http_exceptions=True)
     g["vite"] = settings.vite.get_config()
     g["log"] = structlog_config
-    g["template"] = _TemplateConfig(engine=JinjaTemplateEngine, directory=BASE_DIR / "domain" / "web" / "templates")
+    g["template"] = TemplateConfig(engine=JinjaTemplateEngine, directory=BASE_DIR / "domain" / "web" / "templates")
     _initialized = True
 
 
 def _reset() -> None:
     """Discard cached configuration so the next access re-initializes from env."""
     global _initialized
-
-    from app.lib.settings import Settings
 
     lazy_names = (
         "_settings",
@@ -278,9 +272,8 @@ def _reset() -> None:
     Settings.from_env.cache_clear()
     _initialized = False
 
-    from app.server import plugins
-
-    plugins._reset()
+    for hook in tuple(_reset_hooks):
+        hook()
 
 
 def _install_warning_filters() -> None:
@@ -290,12 +283,6 @@ def _install_warning_filters() -> None:
         message=r".*non-text parts in the response.*function_call.*",
         category=Warning,
         module=r"google_(?:genai|generativeai)(?:\..*)?$",
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=r".*\[EXPERIMENTAL\] feature FeatureName\.(?:PLUGGABLE_AUTH|PROGRESSIVE_SSE_STREAMING) is enabled\.",
-        category=UserWarning,
-        module=r"google\.adk\.features\._feature_decorator",
     )
     warnings.filterwarnings(
         "ignore",

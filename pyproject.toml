@@ -18,7 +18,8 @@ dependencies = [
     "litestar[cryptography,jinja,jwt,opentelemetry,structlog]",
     "litestar-granian[uvloop]",
     "litestar-mcp[a2a,google-genai,opentelemetry]>=0.15.0",
-    "sqlspec[litestar,mypyc,oracledb,performance]>=0.65.0",
+    "msgspec>=0.22.0",
+    "sqlspec[litestar,mypyc,opentelemetry,oracledb,performance]>=0.69.0",
     "google-genai>=1.68.0",
     "tenacity>=9.0.0",
     "numpy",
@@ -310,7 +311,6 @@ split-on-trailing-comma = false
 "src/app/domain/products/services/_stores.py" = ["banned-api"]
 "src/app/domain/system/services/_cache.py" = ["banned-api"]
 "src/app/domain/system/services/_health.py" = ["banned-api"]
-"src/app/ioc/**/*.py" = ["banned-api"]
 "src/app/server/**/*.py" = ["banned-api"]
 "src/tests/*.py" = [
     "ANN",

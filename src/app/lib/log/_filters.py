@@ -7,24 +7,7 @@ from __future__ import annotations
 
 import logging
 
-__all__ = ("SuppressADKWarningsFilter", "SuppressAsyncioTaskExceptionFilter", "SuppressGranianExcInfoFilter")
-
-
-class SuppressADKWarningsFilter(logging.Filter):
-    """Filter to suppress specific ADK/GenAI warnings that clutter demo logs."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        """Return False to suppress log record."""
-        msg = record.getMessage()
-        suppressed_fragments = (
-            "FeatureName.PLUGGABLE_AUTH is enabled",
-            "FeatureName.PROGRESSIVE_SSE_STREAMING is enabled",
-            "authlib.jose module is deprecated",
-            "returning concatenated text result from text parts",
-        )
-        if any(fragment in msg for fragment in suppressed_fragments):
-            return False
-        return not ("non-text parts in the response" in msg and "function_call" in msg)
+__all__ = ("SuppressAsyncioTaskExceptionFilter", "SuppressGranianExcInfoFilter")
 
 
 class SuppressAsyncioTaskExceptionFilter(logging.Filter):

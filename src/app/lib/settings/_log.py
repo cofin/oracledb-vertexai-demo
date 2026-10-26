@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 __all__ = ("LogSettings",)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class LogSettings:
     """Logger configuration."""
 

@@ -25,7 +25,7 @@ QueueExecutionMode = Literal["asgi", "standalone", "immediate", "none"]
 QueueWakeupMode = Literal["polling", "oracle_aq"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class QueueSettings:
     """Configuration settings for background task queues."""
 
@@ -50,7 +50,7 @@ class QueueSettings:
             else "asgi"
         )
     )
-    """Worker placement mode ('asgi', 'standalone', or 'none')."""
+    """Worker placement mode ('asgi', 'standalone', 'immediate', or 'none')."""
     WAKEUP_MODE: QueueWakeupMode = field(
         default_factory=lambda: (
             "oracle_aq" if os.getenv("QUEUE_WAKEUP_MODE", "polling").strip().lower() == "oracle_aq" else "polling"
@@ -64,48 +64,6 @@ class QueueSettings:
     MANAGE_SCHEMA: bool = field(default_factory=lambda: _env_bool("QUEUE_MANAGE_SCHEMA", True))
     """Allow litestar-queues to register and manage queue schema migrations."""
 
-    @property
-    def enabled(self) -> bool:
-        """Whether background queue processing is enabled."""
-        return self.ENABLED
-
-    @property
-    def in_memory(self) -> bool:
-        """Whether in-memory queue fallback is active."""
-        return self.IN_MEMORY
-
-    @property
-    def backend(self) -> QueueBackendMode:
-        """Resolved queue storage backend."""
-        if self.IN_MEMORY:
-            return "memory"
-        return self.BACKEND
-
-    @property
-    def execution_backend(self) -> QueueExecutionMode:
-        """Resolved worker execution mode."""
-        return self.EXECUTION_BACKEND
-
-    @property
-    def wakeup_mode(self) -> QueueWakeupMode:
-        """Resolved worker wakeup transport mode."""
-        return self.WAKEUP_MODE
-
-    @property
-    def concurrency(self) -> int:
-        """Maximum concurrent worker tasks."""
-        return self.CONCURRENCY
-
-    @property
-    def poll_interval(self) -> float:
-        """Base polling interval in seconds."""
-        return self.POLL_INTERVAL
-
-    @property
-    def manage_schema(self) -> bool:
-        """Whether queue schema migrations are managed automatically."""
-        return self.MANAGE_SCHEMA
-
     def get_config(self, sqlspec_config: OracleAsyncConfig | None = None) -> QueueConfig:
         """Build a ``QueueConfig`` instance from current settings.
 
@@ -115,20 +73,20 @@ class QueueSettings:
         Returns:
             Configured ``QueueConfig`` for ``QueuePlugin``.
         """
-        effective_backend = self.backend
+        effective_backend: QueueBackendMode = "memory" if self.IN_MEMORY else self.BACKEND
         effective_execution: Literal["local", "immediate"] = (
-            "immediate" if self.execution_backend == "immediate" else "local"
+            "immediate" if self.EXECUTION_BACKEND == "immediate" else "local"
         )
         placement: WorkerPlacement
-        if not self.enabled or self.execution_backend in {"none", "immediate"}:
+        if not self.ENABLED or self.EXECUTION_BACKEND in {"none", "immediate"}:
             placement = "external"
-        elif self.execution_backend == "standalone":
+        elif self.EXECUTION_BACKEND == "standalone":
             placement = "asgi" if effective_backend == "memory" else "server"
         else:
             placement = "asgi"
 
         worker_config = WorkerConfig(
-            placement=placement, max_concurrency=self.concurrency, poll_interval=self.poll_interval
+            placement=placement, max_concurrency=self.CONCURRENCY, poll_interval=self.POLL_INTERVAL
         )
 
         if effective_backend == "memory":
@@ -137,22 +95,22 @@ class QueueSettings:
                 queue_backend="memory",
                 execution_backend=effective_execution,
                 worker=worker_config,
-                initialize_schedules=self.enabled and self.execution_backend not in {"none", "immediate"},
+                initialize_schedules=self.ENABLED and self.EXECUTION_BACKEND not in {"none", "immediate"},
             )
 
         if sqlspec_config is None:
             sqlspec_config = DatabaseSettings().get_queue_config()
 
-        transport = "txeventq" if self.wakeup_mode == "oracle_aq" else "polling"
+        transport = "txeventq" if self.WAKEUP_MODE == "oracle_aq" else "polling"
         backend_config = SQLSpecBackendConfig(
             sqlspec_config=sqlspec_config,
             worker_wakeups=SQLSpecWorkerWakeupConfig(transport=transport),
-            manage_schema=self.manage_schema,
+            manage_schema=self.MANAGE_SCHEMA,
         )
         return QueueConfig(
             namespace="coffee",
             queue_backend=backend_config,
             execution_backend=effective_execution,
             worker=worker_config,
-            initialize_schedules=self.enabled and self.execution_backend not in {"none", "immediate"},
+            initialize_schedules=self.ENABLED and self.EXECUTION_BACKEND not in {"none", "immediate"},
         )

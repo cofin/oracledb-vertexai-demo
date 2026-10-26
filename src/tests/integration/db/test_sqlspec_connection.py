@@ -296,3 +296,17 @@ async def test_oracle_schema_annotations(driver: OracleAsyncDriver) -> None:
     )
 
     assert annotation_map.get(("PRODUCT_IN_STOCK_IDX", None, "DISPLAY")) == "Product stock lookup"
+
+
+async def test_clob_inline_string_materialization_across_select_and_stream(driver: OracleAsyncDriver) -> None:
+    """Verify SQLSpec 0.69.0 default fetch_lobs=False materializes CLOB columns as str in select and select_stream."""
+    query = "SELECT TO_CLOB('cortado') AS clob_col FROM dual"
+    selected = await driver.select(query)
+    assert len(selected) == 1
+    assert isinstance(selected[0]["clob_col"], str)
+    assert selected[0]["clob_col"] == "cortado"
+
+    streamed_rows: list[dict[str, Any]] = [row async for row in driver.select_stream(query)]
+    assert len(streamed_rows) == 1
+    assert isinstance(streamed_rows[0]["clob_col"], str)
+    assert streamed_rows[0]["clob_col"] == "cortado"

@@ -12,11 +12,7 @@ from typing import Any
 
 import structlog
 
-from app.lib.log._filters import (
-    SuppressADKWarningsFilter,
-    SuppressAsyncioTaskExceptionFilter,
-    SuppressGranianExcInfoFilter,
-)
+from app.lib.log._filters import SuppressAsyncioTaskExceptionFilter, SuppressGranianExcInfoFilter
 from app.lib.log._middleware import (
     HTTP_RESPONSE_BODY,
     HTTP_RESPONSE_START,
@@ -35,7 +31,6 @@ from app.lib.log._processors import (
     structlog_json_serializer,
     structlog_processors,
 )
-from app.lib.log._security import apply_security_headers, build_security_headers
 
 __all__ = (
     "HTTP_RESPONSE_BODY",
@@ -44,15 +39,12 @@ __all__ = (
     "BeforeSendHandler",
     "EventFilter",
     "StructlogMiddleware",
-    "SuppressADKWarningsFilter",
     "SuppressAsyncioTaskExceptionFilter",
     "SuppressGranianExcInfoFilter",
     "add_google_cloud_attributes",
     "add_logger_name_safe",
     "add_logger_source",
     "after_exception_hook_handler",
-    "apply_security_headers",
-    "build_security_headers",
     "is_cli_mode",
     "is_tty",
     "log_error",

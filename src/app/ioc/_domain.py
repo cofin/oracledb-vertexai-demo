@@ -6,7 +6,6 @@
 from dishka import Provider, Scope, provide
 from google.genai import Client
 
-import app.ioc as _ioc_pkg
 from app.domain.ai.runtime import AgentRuntime, AgentStreamService, OracleEventStore, OracleSessionStore, SpecTree
 from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.services import GroundedRouteService, HybridRouteResolver
@@ -19,6 +18,7 @@ from app.domain.products.services import (
     VertexAIService,
 )
 from app.domain.system.services import CacheService, MetricsService, PersonaManager
+from app.lib.settings import AISettings
 
 __all__ = ("DomainServiceProvider",)
 
@@ -41,19 +41,15 @@ class DomainServiceProvider(Provider):
         return MapsService()
 
     @provide
-    def provide_agent_stream_service(self) -> AgentStreamService:
-        """Provide the SSE AgentStreamService adapter."""
-        return AgentStreamService()
-
-    @provide
-    def provide_vertex_ai_service(self, client: Client, cache_service: CacheService) -> VertexAIService:
+    def provide_vertex_ai_service(
+        self, client: Client, cache_service: CacheService, ai_settings: AISettings
+    ) -> VertexAIService:
         """Provide VertexAIService configured with embedding and chat model settings."""
-        settings = _ioc_pkg.get_settings()
         return VertexAIService(
             client=client,
-            model=settings.ai.chat_model,
-            embedding_model=settings.ai.embedding_model,
-            embedding_dimensions=settings.ai.embedding_dimensions,
+            model=ai_settings.chat_model,
+            embedding_model=ai_settings.embedding_model,
+            embedding_dimensions=ai_settings.embedding_dimensions,
             cache_service=cache_service,
         )
 

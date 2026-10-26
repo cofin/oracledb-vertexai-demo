@@ -7,7 +7,7 @@ import shutil
 import ssl
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import google.auth
 import httpx
@@ -17,16 +17,21 @@ from google.auth.exceptions import GoogleAuthError, RefreshError
 from google.auth.transport import mtls
 from google.genai import Client, types
 
-import app.ioc as _ioc_pkg
-from app.domain.ai.runtime import AgentRuntime, GeminiModelClient, OracleEventStore, OracleSessionStore, SpecTree
+from app.domain.ai.runtime import (
+    AgentRuntime,
+    AgentStreamService,
+    GeminiModelClient,
+    OracleEventStore,
+    OracleSessionStore,
+    SpecTree,
+)
 from app.domain.ai.services import get_coffee_spec_tree
-from app.domain.chat.exceptions import AIServiceUnconfigured
 from app.domain.system.services import PersonaManager
-from app.lib.settings._ai import PLACEHOLDER_VALUES
+from app.lib.exceptions import AIServiceUnconfigured
+from app.lib.settings import AISettings
 
-__all__ = ("DEFAULT_RETRY", "AIProvider", "IntegrationsProvider")
+__all__ = ("DEFAULT_RETRY", "AIProvider", "CredentialProtocol")
 
-_PLACEHOLDER_VALUES = PLACEHOLDER_VALUES
 _CLOUD_PLATFORM_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 DEFAULT_RETRY = types.HttpRetryOptions(
@@ -39,42 +44,66 @@ DEFAULT_RETRY = types.HttpRetryOptions(
 )
 
 
+@runtime_checkable
+class CredentialProtocol(Protocol):
+    """Protocol describing refreshable Google Cloud OAuth2 credentials."""
+
+    token: str | None
+    expiry: Any
+
+    @property
+    def quota_project_id(self) -> str | None:
+        """Optional Google Cloud quota project identifier attached to the credential."""
+        ...
+
+    @property
+    def valid(self) -> bool:
+        """Whether the active credential holds a non-expired access token."""
+        ...
+
+    def refresh(self, request: Any) -> None:
+        """Refresh the credential access token."""
+        ...
+
+
 class AIProvider(Provider):
     """APP-scoped singletons for external AI integrations and native runtime stores."""
 
     @provide(scope=Scope.APP)
-    def provide_genai_client(self) -> Client:
+    def provide_genai_client(self, ai_settings: AISettings) -> Client:
         """Provide a configured Google GenAI client or raise 503 AIServiceUnconfigured."""
-        settings = _ioc_pkg.get_settings()
-        project_id = (settings.ai.project_id or "").strip()
-        api_key = (settings.ai.api_key or "").strip()
-        if project_id and project_id.lower() not in _PLACEHOLDER_VALUES:
-            location = settings.ai.resolve_location(settings.ai.gcp_region)
+        if ai_settings.has_valid_project_id():
+            project_id = ai_settings.project_id.strip()
+            location = ai_settings.resolve_location(ai_settings.gcp_region)
             credentials = _VertexFallbackCredentials(quota_project_id=project_id)
             http_options = _build_vertex_http_options(location)
             return Client(
                 vertexai=True, project=project_id, location=location, credentials=credentials, http_options=http_options
             )
-        if api_key and api_key.lower() not in _PLACEHOLDER_VALUES:
+        if ai_settings.has_valid_api_key() and ai_settings.api_key is not None:
             http_options = types.HttpOptions(
                 client_args={"transport": httpx.HTTPTransport()},
                 async_client_args={"transport": httpx.AsyncHTTPTransport()},
                 retry_options=DEFAULT_RETRY,
             )
-            return Client(api_key=api_key, http_options=http_options)
+            return Client(api_key=ai_settings.api_key.strip(), http_options=http_options)
         msg = "Vertex AI or Google GenAI credentials are not configured."
         raise AIServiceUnconfigured(msg)
 
     @provide(scope=Scope.APP)
-    def provide_model_client(self, client: Client) -> GeminiModelClient:
+    def provide_model_client(self, client: Client, ai_settings: AISettings) -> GeminiModelClient:
         """Provide a GeminiModelClient bound to the configured chat model."""
-        settings = _ioc_pkg.get_settings()
-        return GeminiModelClient(client=client, default_model=settings.ai.chat_model)
+        return GeminiModelClient(client=client, default_model=ai_settings.chat_model)
 
     @provide(scope=Scope.APP)
     def provide_agent_runtime(self, model_client: GeminiModelClient) -> AgentRuntime:
         """Provide the re-entrant native AgentRuntime."""
         return AgentRuntime(model_client=model_client)
+
+    @provide(scope=Scope.APP)
+    def provide_agent_stream_service(self) -> AgentStreamService:
+        """Provide the APP-scoped SSE AgentStreamService adapter."""
+        return AgentStreamService()
 
     @provide(scope=Scope.APP)
     def provide_spec_tree(self) -> SpecTree:
@@ -97,15 +126,12 @@ class AIProvider(Provider):
         return OracleEventStore()
 
 
-IntegrationsProvider = AIProvider
-
-
 class _VertexFallbackCredentials(Credentials):
     """Credentials adapter that falls back to ``gcloud`` ADC token minting on mTLS workstations."""
 
-    def __init__(self, wrapped: Credentials | None = None, *, quota_project_id: str | None = None) -> None:
+    def __init__(self, wrapped: CredentialProtocol | None = None, *, quota_project_id: str | None = None) -> None:
         super().__init__()  # type: ignore[no-untyped-call]
-        self._wrapped = wrapped
+        self._wrapped: CredentialProtocol | None = wrapped
         self._quota_project_id = quota_project_id or (wrapped.quota_project_id if wrapped is not None else None)
         self._prefer_gcloud = False
         if wrapped is not None:
@@ -116,23 +142,27 @@ class _VertexFallbackCredentials(Credentials):
         """Refresh the access token via ``google-auth`` or fall back to ``gcloud`` CLI."""
         if not self._prefer_gcloud:
             try:
-                if self._wrapped is None:
-                    creds, _ = google.auth.default(
-                        scopes=_CLOUD_PLATFORM_SCOPES, quota_project_id=self._quota_project_id
-                    )
-                    self._wrapped = creds
-                self._wrapped.refresh(request)  # type: ignore[no-untyped-call]
+                wrapped = self._ensure_wrapped()
+                wrapped.refresh(request)
             except GoogleAuthError:
                 self._prefer_gcloud = True
             else:
-                self.token = self._wrapped.token
-                self.expiry = self._wrapped.expiry
+                self.token = wrapped.token
+                self.expiry = wrapped.expiry
                 if self.token:
                     return
                 self._prefer_gcloud = True
 
         self.token = _mint_gcloud_adc_access_token()
         self.expiry = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=50)
+
+    def _ensure_wrapped(self) -> CredentialProtocol:
+        wrapped = self._wrapped
+        if wrapped is None:
+            creds, _ = google.auth.default(scopes=_CLOUD_PLATFORM_SCOPES, quota_project_id=self._quota_project_id)
+            wrapped = creds
+            self._wrapped = wrapped
+        return wrapped
 
 
 def _mint_gcloud_adc_access_token() -> str:

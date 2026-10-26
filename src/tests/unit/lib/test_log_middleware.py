@@ -21,18 +21,17 @@ def test_middleware_module_does_not_freeze_settings_singleton() -> None:
     assert not hasattr(_middleware, "settings")
 
 
-async def test_before_send_handler_handles_response_start_without_headers() -> None:
-    """Verify BeforeSendHandler safely mutates http.response.start messages omitting headers."""
+async def test_before_send_handler_records_response_start_without_mutating_headers() -> None:
+    """Verify BeforeSendHandler records http.response.start state without injecting duplicate security headers."""
     handler = BeforeSendHandler()
     message: dict[str, Any] = {"type": "http.response.start", "status": 204}
     scope: dict[str, Any] = {"type": ScopeType.HTTP, "path": "/api/chat/", "method": "POST", "state": {}}
 
     await handler(message, scope)  # type: ignore[arg-type]
 
-    assert isinstance(message.get("headers"), list)
-    header_names = {name.lower() for name, _value in message["headers"]}
-    assert b"permissions-policy" in header_names
+    assert "headers" not in message
     assert scope["state"]["http.response.start"] is message
+    assert scope["state"]["log_level"] == 20
 
 
 async def test_structlog_middleware_clears_contextvars_and_calls_app() -> None:
