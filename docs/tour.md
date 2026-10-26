@@ -13,25 +13,26 @@ user types it until the grounded reply renders in the browser.
 </div>
 
 The phrase isn't an obvious coffee question. The router has to recognize that
-"bold" is an idiom for a dark roast or strong espresso, retrieve matching
-products from the menu, and verify whether any off-menu brand was requested —
-all in a single Oracle 26ai Hybrid RRF round trip.
+"bold" is an idiom for a dark roast or strong espresso and retrieve matching
+products from the menu in a single Oracle 26ai Hybrid RRF round trip (running a
+follow-up `hybrid-term-hits` lexical check only when quoted or capitalized
+brand tokens appear in the prompt).
 
 The path of this message:
 
-1. The browser opens an SSE stream to `/api/chat/stream`.
-2. Vertex AI embeds the question with `gemini-embedding-2` (with an Oracle-backed `embedding_cache` in front).
+1. The browser opens an SSE stream to `/api/chat/stream` on `http://localhost:8000`, and `AgentOrchestrationService` checks `response_cache` before embedding.
+2. On a cache miss, Vertex AI embeds the question with `gemini-embedding-2` (with an Oracle-backed `embedding_cache` in front).
 3. Oracle 26ai executes `hybrid-search-turn`, fusing BM25-style `CONTAINS`/`SCORE` lexical ranking with HNSW `VECTOR_DISTANCE(..., COSINE) FETCH APPROX` across `chat_route`, `product`, and `store` via Reciprocal Rank Fusion ($k=60$).
-4. `HybridRouteResolver` resolves the `PRODUCT_RAG` route and product candidates from that single query, checks `hybrid-term-hits` for off-menu nouns, and renders a grounded `final` SSE event.
+4. `HybridRouteResolver` resolves the `PRODUCT_RAG` route and product candidates from that query (running `hybrid-term-hits` only when quoted or capitalized brand tokens are present), and `GroundedRouteService` composes the grounded answer emitted across `session`, `delta`, and `final` SSE frames.
 
 ```{mermaid}
 flowchart LR
     B([Browser]) -->|POST /api/chat/stream| C[Litestar controller]
-    C --> R[AgentOrchestrationService]
+    C --> R[AgentOrchestrationService<br/>+ response_cache check]
     R --> V[Vertex AI<br/>embedding]
-    V --> O[(Oracle 26ai Hybrid RRF<br/>hybrid-search-turn)]
-    O --> G[Grounded composer<br/>+ term_hits check]
-    G -->|SSE final| B
+    V --> O[(Oracle 26ai Hybrid RRF<br/>hybrid-search-turn + conditional term_hits)]
+    O --> G[GroundedRouteService]
+    G -->|SSE session / delta / final| B
 ```
 
 *The whole product-RAG turn in one picture: SSE in, SSE out, with single-query
@@ -63,7 +64,8 @@ flowchart TD
 :::{tour-stop}
 The chat controller is intentionally thin. Input validation, CSRF enforcement,
 session bridging, and error sanitization happen here; orchestration and
-grounding live in `AgentOrchestrationService` and `HybridRouteResolver`.
+grounding live in `AgentOrchestrationService`, `HybridRouteResolver`, and
+`GroundedRouteService`.
 :::
 
 ## 2. Vertex AI embeds the question
@@ -97,9 +99,12 @@ generated for compatible retrieval roles.
 
 ## 3. Oracle 26ai runs Hybrid RRF routing & retrieval
 
-The 3072-dimension query vector and sanitized Oracle Text query are bound into
-named SQL statements under `src/app/db/sql/`. For direct vector search,
-Oracle's HNSW index (`INMEMORY NEIGHBOR GRAPH`) uses `ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX`:
+The 3072-dimension query vector and sanitized Oracle Text query
+(`build_oracle_text_query` in `src/app/lib/text_search.py`) are bound into
+named SQL statements under `src/app/db/sql/` loaded through
+`OracleLoaderService.get_sql()` (`src/app/lib/service.py`). For direct vector
+search, Oracle's HNSW index (`INMEMORY NEIGHBOR GRAPH`) uses
+`ORDER BY VECTOR_DISTANCE(..., COSINE) FETCH APPROX`:
 
 ```{literalinclude} ../src/app/db/sql/products.sql
 :language: sql
@@ -108,8 +113,10 @@ Oracle's HNSW index (`INMEMORY NEIGHBOR GRAPH`) uses `ORDER BY VECTOR_DISTANCE(.
 :caption: src/app/db/sql/products.sql
 ```
 
+`ProductService` inherits from `OracleLoaderService`, and
 `ProductService.search_by_vector` and `ProductService.search_hybrid` map each
-returned row directly into a typed `ProductMatch` `msgspec.Struct`:
+returned row directly into an immutable `ProductMatch` (`FrozenBaseStruct` in
+`src/app/lib/schema.py`):
 
 ```{literalinclude} ../src/app/domain/products/services/_products.py
 :language: python
@@ -135,10 +142,15 @@ intent-classification round trip:
 :caption: src/app/domain/chat/services/_router.py
 ```
 
-For `PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, and `ORDER_STATUS`,
-the orchestrator formats a deterministic grounded answer from the Oracle rows
-and emits the `final` SSE frame. For `GENERAL_CONVERSATION`, execution streams
-through the native `AgentRuntime` (`Gemini 3.8 Flash`) with closure-bound tools.
+For deterministic `PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, and
+`ORDER_STATUS` turns, `GroundedRouteService`
+(`src/app/domain/chat/services/_grounded.py`) builds a `GroundedTurnResult`
+from the Oracle rows (using schema-constrained `gemini-3.8-flash` ID selection
+with deterministic template fallback on in-catalog `PRODUCT_RAG` turns), and
+`AgentOrchestrationService` emits the `session`, `delta`, and `final` SSE frames. For `GENERAL_CONVERSATION` and
+ambiguous turns, execution streams through the native `AgentRuntime`
+(`gemini-3.8-flash`) with `CallContext`-bound grounded tools
+(`build_coffee_tools` in `src/app/domain/ai/services/_tools.py`).
 
 ## What's next
 

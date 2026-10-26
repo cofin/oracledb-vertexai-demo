@@ -151,6 +151,7 @@ packages = ["src/app"]
 
 [dependency-groups]
 build = ["bump-my-version"]
+demos = ["playwright>=1.50"]
 dev = [
     { include-group = "extras" },
     { include-group = "lint" },

@@ -2,16 +2,20 @@
 type: Spec
 flow_id: web-and-shell-demo-recordings-and-docs
 title: Deterministic VHS and Playwright Demo Video Recorders and Multi-Agent Sentence-Verified Documentation Refresh
-state: planned
+state: completed
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 4
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: complete
+operation_targets:
+  - "5.1"
+  - "5.2"
+  - "5.3"
+  - "5.4"
+last_verified_checkpoint: "bccc0e8"
 created_at: 2026-10-24T19:41:00Z
-updated_at: 2026-10-24T19:41:00Z
+updated_at: 2026-10-26T15:42:00Z
 description: Fifth stacked PR adding deterministic VHS terminal/SQLcl tapes and runner, headless Playwright + FFmpeg browser video recorder for APEX 26.1 Vertex AI configuration and app creation, and a full sentence-by-sentence multi-agent audit and synchronization across all public Sphinx docs, READMEs, AGENTS.md rules, OKF knowledge chapters, and GHOP review skills.
 tags:
   - demos
@@ -79,27 +83,27 @@ Files examined:
 
 ### Phase 1: VHS Shell Recorder, Playwright Web Recorder & Multi-Agent Sentence-Verified Documentation
 
-- [ ] 5.1 Implement deterministic VHS shell/SQLcl recorder (`tools/demos/shell.py`), `.tape` scripts (`docs/_tapes/`), and prompt-gated live recording wrapper
-- [ ] 5.2 Implement headless Playwright + FFmpeg browser video recorder (`tools/demos/web.py`, `tools/demos/cli.py`, `manage.py demos`, `Makefile` targets)
-- [ ] 5.3 Refresh and run parallel multi-agent sentence-by-sentence factual audit across `README.md`, `CONTRIBUTING.md`, `SLIDES.md`, and all Sphinx `docs/` pages
-- [ ] 5.4 Refresh and run parallel multi-agent sentence-by-sentence factual audit across `AGENTS.md`, test guides, OKF product/knowledge chapters, and GHOP review skills
+- [x] 5.1 Implement deterministic VHS shell/SQLcl recorder (`tools/demos/shell.py`), `.tape` scripts (`docs/_tapes/`), and prompt-gated live recording wrapper (`6018f66`)
+- [x] 5.2 Implement headless Playwright + FFmpeg browser video recorder (`tools/demos/web.py`, `tools/demos/cli.py`, `manage.py demos`, `Makefile` targets) (`7c25b47`)
+- [x] 5.3 Refresh and run parallel multi-agent sentence-by-sentence factual audit across `README.md`, `CONTRIBUTING.md`, `SLIDES.md`, and all Sphinx `docs/` pages (`1039379`)
+- [x] 5.4 Refresh and run parallel multi-agent sentence-by-sentence factual audit across `AGENTS.md`, test guides, OKF product/knowledge chapters, and GHOP review skills (`bccc0e8`)
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `web-and-shell-demo-recordings-and-docs` (`planned`)
+- **Active Flow / Lifecycle**: `web-and-shell-demo-recordings-and-docs` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `bccc0e8`
 - **Key Decisions**:
   - Split the sentence-by-sentence documentation audit across two strictly disjoint tasks (`5.3` for public `README.md` + Sphinx `docs/**` with `test_docs_accuracy.py` + `make docs`, and `5.4` for `AGENTS.md` + OKF `.agents/bundles/{product,knowledge}/**` + `.agents/skills/**` with `test_okf_layout.py` + `validate_agentic_review.py`) so parallel domain audit subagents inspect every sentence against live source files without overlap.
   - Keep `make docs` completely independent of `vhs`, `playwright`, and a live `adb-free` container by referencing static assets gracefully and gating live regeneration behind `make docs-demos-{shell,web,live}`.
 - **Newest Discoveries**:
-  1. Splitting documentation surfaces into `5.3` (22 public doc files) and `5.4` (57 agent/OKF/skill files) enables dedicated sentence-by-sentence subagent verification shards (~8–12 files per auditor subagent) checking every path, symbol, SQL clause, CLI flag, env var, and architectural claim against the repository.
-- **Blockers & Unblock Conditions**: Depends on `apex-26-vertex-ai-and-app`.
-- **Next Exact Step**: Claim and execute Task `5.1` (`tasks/5.1.md`) after `apex-26-vertex-ai-and-app` completes.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+  1. Splitting documentation surfaces into `5.3` (22 public doc files audited across 4 read-only auditors) and `5.4` (61 agent/OKF/skill files audited across 5 read-only auditors) verified every sentence against live source files, SQL queries, CLI commands, and slide storyboards with automated drift guards (`test_docs_accuracy.py` and `test_okf_layout.py`).
+- **Blockers & Unblock Conditions**: None.
+- **Next Exact Step**: Flow complete (`6018f66`, `7c25b47`, `1039379`, `bccc0e8`).
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 4`, `last_operation: complete`, `operation_targets: ["5.1", "5.2", "5.3", "5.4"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/styleguides/general.md`

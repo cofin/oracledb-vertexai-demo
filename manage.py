@@ -4,7 +4,7 @@
 """Cymbal Coffee Infrastructure and Database Lifecycle Management.
 
 Unified DevOps CLI for the Oracle 26ai + Vertex AI demo exposing ``init``,
-``install``, ``doctor``, ``infra``, ``database``, ``assets``, and ``slides``.
+``install``, ``doctor``, ``infra``, ``database``, ``assets``, ``demos``, and ``slides``.
 
 Examples::
 
@@ -13,9 +13,11 @@ Examples::
     python manage.py doctor
     python manage.py infra start
     python manage.py infra apex status
+    python manage.py infra apex configure-vertex --mode direct --verify
     python manage.py database upgrade
     python manage.py database wallet configure
     python manage.py assets build
+    python manage.py demos check
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from litestar_vite.cli import vite_group
 from rich.console import Console
 from sqlspec.cli import add_migration_commands
 from tools.cli import doctor_command, init_command, install_group
+from tools.demos import demos_group
 from tools.oracle import apex_group as oracle_apex_group
 from tools.oracle import connect_group as oracle_connect_group
 from tools.oracle import database_group as oracle_container_group
@@ -77,6 +80,7 @@ def cli() -> None:
 cli.add_command(init_command, name="init")
 cli.add_command(install_group, name="install")
 cli.add_command(doctor_command, name="doctor")
+cli.add_command(demos_group, name="demos")
 cli.add_command(slides_group, name="slides")
 
 

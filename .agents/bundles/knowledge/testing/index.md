@@ -1,9 +1,9 @@
 ---
 type: Index
 title: Testing Knowledge Index
-description: Unit and integration test suite structure, AST meta-guards, and database fixture isolation
+description: Unit and integration test suite structure, complete module catalog, AST meta-guards, and Oracle 26ai fixture isolation
 ---
 
 # Testing Knowledge Index
 
-- [Unit & Integration Test Catalog](unit-and-integration-catalog.md) - Flattened test tree layout, AnyIO async rules, AST/tokenize meta-guards, and Oracle 26ai integration fixtures
+- [Unit & Integration Test Catalog](unit-and-integration-catalog.md) - Flattened `src/tests/` tree layout, complete unit and integration test module inventory, AST/tokenize meta-guards, and Oracle 26ai container fixtures

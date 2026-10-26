@@ -1,252 +1,156 @@
 ---
 type: Guide
 title: TypeScript Styleguide
-description: TypeScript type safety and client widget conventions
+description: TypeScript 7 and ES2022 client module conventions for Vite 8, HTMX 2.x event delegation, SSE streaming, and coordinate privacy
 tags:
   - styleguide
   - typescript
 ---
 
-# TypeScript Style Guide
+# TypeScript and Client Module Style Guide
 
-Modern TypeScript with strict mode and functional patterns.
+Conventions for TypeScript configuration and ES2022 browser modules under `src/resources/`.
 
-## Core Rules
+## Frontend Toolchain (`src/resources/`)
 
-### Strict Mode
+The frontend bundle is built from `src/resources/` without a client SPA framework:
+
+- **Bundler**: Vite 8 (`src/resources/vite.config.ts`) integrated with `litestar-vite-plugin` and `@tailwindcss/vite`.
+- **Typechecker**: TypeScript 7 (`src/resources/tsconfig.json`) targeting `ES2022` with `DOM` and `DOM.Iterable` libraries, invoked via `make frontend-typecheck` (included in `make lint`).
+- **Client Modules**: `src/resources/main.js` (HTMX registration and event delegation), `src/resources/chat-stream.js` (SSE chat reader and structured store cards), `src/resources/geolocation.js` (opt-in browser location), `src/resources/telemetry.js` (SQL and score inspection popover), `src/resources/charts.js` (ApexCharts telemetry), `src/resources/vector-calculator.js` (vector footprint and SGA Vector Pool sizing calculator), `src/resources/easter-egg.js`, and `src/resources/util.js`.
+
+## License Headers
+
+Every `.ts` and `.js` source file under `src/resources/` starts with the SPDX header enforced by `tools/license_headers.py`:
 
 ```typescript
-// tsconfig.json
+// SPDX-FileCopyrightText: 2026 Google LLC
+// SPDX-License-Identifier: Apache-2.0
+```
+
+## Strict Compiler Configuration (`src/resources/tsconfig.json`)
+
+Keep strict checks enabled in `src/resources/tsconfig.json`:
+
+```json
 {
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "noEmit": true,
     "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
   }
 }
 ```
 
-### Variable Declarations
+## Declarations, Naming, and Exports
+
+| Construct | Convention | Example |
+| :--- | :--- | :--- |
+| Interfaces & Type Aliases | `PascalCase` | `StreamEvent`, `MapAction` |
+| Functions & Methods | `camelCase` | `handleChatSubmit`, `requestBrowserLocation` |
+| Local Variables | `camelCase` | `formData`, `stockStatus` |
+| Module Constants | `SCREAMING_SNAKE_CASE` | `GEOLOCATION_OPTIONS` |
+
+- Default to `const`; use `let` only when reassignment is required (such as SSE stream buffers), and never use `var`.
+- Use named exports (`export const ...`, `export function ...`, `export type { ... }`) across client modules. Reserve `export default` exclusively for framework configuration files that mandate it (`src/resources/vite.config.ts`).
+
+## Type Narrowing and Safe DOM Access
+
+- Prefer `unknown` with explicit runtime checks over `any` or unvalidated `as` type assertions.
+- Narrow DOM nodes with `instanceof` (`Element`, `HTMLElement`, `HTMLFormElement`, `HTMLInputElement`, `HTMLButtonElement`, `HTMLTemplateElement`) rather than non-null postfix operators:
 
 ```typescript
-// Always use const by default
-const items: Item[] = [];
+// SPDX-FileCopyrightText: 2026 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 
-// Use let only when reassignment is needed
-let count = 0;
-count++;
-
-// Never use var
-```
-
-### Type Definitions
-
-```typescript
-// Use interface for object shapes
-interface User {
-  id: string;
-  email: string;
-  name?: string;  // Optional property
-}
-
-// Use type for unions, intersections, and aliases
-type Status = 'pending' | 'active' | 'inactive';
-type UserWithRole = User & { role: Role };
-
-// Prefer T | null over T | undefined for explicit absence
-function findUser(id: string): User | null {
-  return users.get(id) ?? null;
-}
-```
-
-### Avoid These
-
-```typescript
-// Never use any - prefer unknown
-function bad(data: any) { ... }
-function good(data: unknown) {
-  if (typeof data === 'string') { ... }
-}
-
-// Never use {} - prefer Record or object
-function bad(obj: {}) { ... }
-function good(obj: Record<string, unknown>) { ... }
-
-// Avoid type assertions when possible
-const bad = data as User;  // Avoid
-const good = parseUser(data);  // Validate instead
-
-// Don't use non-null assertions without justification
-const bad = user!.name;  // Avoid
-const good = user?.name ?? 'Anonymous';  // Handle null
-```
-
-## Naming Conventions
-
-| Concept          | Convention                     | Example                 |
-| :--------------- | :----------------------------- | :---------------------- |
-| Interfaces/Types | `PascalCase`                   | `UserProfile`           |
-| Classes          | `PascalCase`                   | `UserService`           |
-| Functions        | `camelCase`                    | `getUserById`           |
-| Variables        | `camelCase`                    | `currentUser`           |
-| Constants        | `SCREAMING_SNAKE_CASE`         | `MAX_RETRIES`           |
-| Enums            | `PascalCase`                   | `UserStatus`            |
-| Generics         | Single uppercase or `T` prefix | `T`, `TValue`, `TKey`   |
-
-## Functions
-
-```typescript
-// Prefer function declarations for named functions
-function calculateTotal(items: Item[]): number {
-  return items.reduce((sum, item) => sum + item.price, 0);
-}
-
-// Use arrow functions for callbacks and inline
-const doubled = items.map((item) => item.value * 2);
-
-// Explicit return types for public functions
-export function parseConfig(raw: string): Config {
-  return JSON.parse(raw);
-}
-
-// Optional parameters and defaults
-function greet(name: string, greeting = 'Hello'): string {
-  return `${greeting}, ${name}!`;
-}
-```
-
-## Async/Await
-
-```typescript
-// Always use async/await over raw Promises
-async function fetchUser(id: string): Promise<User> {
-  const response = await fetch(`/api/users/${id}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch user: ${response.status}`);
+export function readPersonaSelection(picker: ParentNode): string {
+  const selected = picker.querySelector('[data-persona-option][aria-pressed="true"]');
+  if (selected instanceof HTMLElement && selected.dataset.personaOption) {
+    return selected.dataset.personaOption;
   }
-  return response.json();
+  return "barista";
 }
+```
 
-// Handle cleanup with try/finally
-async function withTransaction<T>(
-  fn: (tx: Transaction) => Promise<T>
-): Promise<T> {
-  const tx = await beginTransaction();
+## HTMX-Safe Event Delegation (`src/resources/main.js`)
+
+Because HTMX replaces DOM subtrees during partial swaps, avoid binding one-off listeners directly to replaceable elements on initial page load. Delegate `click` and `submit` listeners from `document.body` using `data-*` selectors and `Element.closest(...)`:
+
+```typescript
+// SPDX-FileCopyrightText: 2026 Google LLC
+// SPDX-License-Identifier: Apache-2.0
+
+document.body.addEventListener("click", (event: MouseEvent): void => {
+  if (!(event.target instanceof Element)) {
+    return;
+  }
+  const trigger = event.target.closest("[data-use-location]");
+  if (trigger instanceof HTMLButtonElement && trigger.form instanceof HTMLFormElement) {
+    requestBrowserLocation(trigger.form, trigger);
+  }
+});
+```
+
+When inserting new HTMX-annotated nodes outside normal HTMX swaps, run `processHtmxDom()` (`src/resources/util.js`) so `htmx.process(...)` wires the new subtree.
+
+## Forms, SSE Streaming, and HTML Escaping (`src/resources/chat-stream.js`)
+
+1. **Capture `FormData` Before Disabling Controls**: Always construct `new FormData(form)` before calling `control.disabled = true` on inputs; disabled form controls are omitted from `FormData` per the HTML specification.
+2. **CSRF Token Propagation**: Read `<meta name="csrf-token">` and pass `{"x-csrftoken": token}` on `fetch` POST requests (`/api/chat/stream`, `/api/chat/session/clear`).
+3. **XSS and URL Validation**: Write plain text via `element.textContent` or escape dynamic strings with `escapeHtml(...)` (`src/resources/util.js`) before inserting HTML templates. Validate external map action URLs (`https://www.google.com/maps/...`) via `new URL(url)` before rendering anchor tags.
+
+```typescript
+// SPDX-FileCopyrightText: 2026 Google LLC
+// SPDX-License-Identifier: Apache-2.0
+
+export async function submitChatForm(form: HTMLFormElement): Promise<void> {
+  const input = form.elements.namedItem("message");
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const message = input.value.trim();
+  if (!message) {
+    return;
+  }
+
+  const formData = new FormData(form);
+  formData.set("message", message);
+  input.disabled = true;
+
   try {
-    const result = await fn(tx);
-    await tx.commit();
-    return result;
-  } catch (error) {
-    await tx.rollback();
-    throw error;
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+    const headers: Record<string, string> = { Accept: "text/event-stream" };
+    if (token) {
+      headers["x-csrftoken"] = token;
+    }
+    const response = await fetch(form.action, { method: "POST", body: formData, headers });
+    if (!response.ok) {
+      throw new Error(`Chat request failed with status ${response.status}`);
+    }
+  } finally {
+    input.disabled = false;
   }
 }
 ```
 
-## Error Handling
+## Opt-In Browser Geolocation (`src/resources/geolocation.js`)
 
-```typescript
-// Create specific error classes
-class NotFoundError extends Error {
-  constructor(public readonly resource: string, public readonly id: string) {
-    super(`${resource} not found: ${id}`);
-    this.name = 'NotFoundError';
-  }
-}
+- Call `navigator.geolocation.getCurrentPosition(...)` only in response to an explicit user click on `[data-use-location]`.
+- Populate request-scoped hidden form fields (`[data-location-consent]`, `[data-location-latitude]`, `[data-location-longitude]`, `[data-location-accuracy]`) in memory only; never persist raw coordinates in `localStorage`, `sessionStorage`, cookies, or URL query strings.
+- Clear all coordinate fields whenever geolocation is unsupported, denied, or times out.
 
-// Use discriminated unions for result types
-type Result<T, E = Error> =
-  | { success: true; data: T }
-  | { success: false; error: E };
+## Build and Verification Commands
 
-function parseJson<T>(raw: string): Result<T> {
-  try {
-    return { success: true, data: JSON.parse(raw) };
-  } catch (error) {
-    return { success: false, error: error as Error };
-  }
-}
-```
-
-## Module Organization
-
-```typescript
-// Named exports only - no default exports
-export { UserService };
-export type { User, UserCreate };
-
-// Group imports
-import { useState, useEffect, useCallback } from 'react';
-
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-
-import type { User } from './types';
-import { UserService } from './service';
-```
-
-## Generics
-
-```typescript
-// Use descriptive generic names for complex types
-interface Repository<TEntity, TId = string> {
-  findById(id: TId): Promise<TEntity | null>;
-  save(entity: TEntity): Promise<TEntity>;
-  delete(id: TId): Promise<void>;
-}
-
-// Constrain generics appropriately
-function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
-  return obj[key];
-}
-```
-
-## Utility Types
-
-```typescript
-// Use built-in utility types
-type UserInput = Omit<User, 'id' | 'createdAt'>;
-type ReadonlyUser = Readonly<User>;
-type PartialUpdate = Partial<User>;
-type RequiredFields = Required<User>;
-
-// Pick for selecting specific fields
-type UserPreview = Pick<User, 'id' | 'name'>;
-```
-
-## Tooling
-
-- **Formatter/Linter**: `prettier`/`eslint` OR `biome` (see `bun` skill)
-- **Build**: `vite`, `esbuild`, or `tsc`
-- **Test runner**: `vitest` or `bun test` (see `bun` skill)
-
-## Performance Patterns
-
-See `performance-patterns` skill for IPC and serialization details.
-
-## Anti-Patterns
-
-```typescript
-// Bad: Using any
-function process(data: any) { ... }
-
-// Bad: Type assertions to silence errors
-const user = response as User;
-
-// Bad: Non-null assertions without reason
-return items.find(i => i.id === id)!;
-
-// Bad: Using namespace
-namespace Utils { ... }
-
-// Bad: Using default exports
-export default function MyComponent() { ... }
-
-// Bad: Ignoring Promise rejections
-fetchData().catch(() => {});  // Swallows error
-
-// Good alternatives:
-fetchData().catch(console.error);  // At minimum, log
-await fetchData();  // Let it propagate
+```bash
+uv run python manage.py assets install
+uv run python manage.py assets build
+make frontend-typecheck
+make lint
 ```

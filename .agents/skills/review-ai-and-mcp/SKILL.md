@@ -1,11 +1,11 @@
 ---
 name: review-ai-and-mcp
-description: Review the native Gemini 3.8 Flash AgentRuntime, Vertex AI gemini-embedding-2 integration, LitestarMCP 0.15, LitestarA2A, and coordinate privacy.
+description: Review the native Gemini 3.8 Flash AgentRuntime, Vertex AI gemini-embedding-2 integration, OpenAI-compatible APEX 26.1 AI gateway, LitestarMCP 0.15, LitestarA2A, and coordinate privacy.
 ---
 
-# Native AI Runtime, MCP & A2A Review (`review-ai-and-mcp`)
+# Native AI Runtime, MCP, A2A & APEX AI Gateway Review (`review-ai-and-mcp`)
 
-Reviews changes under `src/app/domain/ai/`, `src/app/domain/chat/`, and `src/app/ioc/_ai.py`.
+Reviews changes under `src/app/domain/ai/` (`src/app/domain/ai/runtime/`, `src/app/domain/ai/services/`, `src/app/domain/ai/protocols/`, `src/app/domain/ai/mcp/`, `src/app/domain/ai/a2a/`), `src/app/domain/chat/`, `src/app/domain/products/services/_embedding.py` (`VertexAIService`), `src/app/domain/products/controllers/_apex_ai.py` (`ApexAIController`), `src/app/ioc/_ai.py`, and `tools/oracle/apex_vertex.py` (`ApexVertexConfigurator`).
 
 ## Capsule Constraints
 

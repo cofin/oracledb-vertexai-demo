@@ -147,7 +147,7 @@ async def test_get_embedding_returns_none_on_miss(mock_driver) -> None:
 
 
 async def test_save_embedding_executes_single_atomic_merge(mock_driver) -> None:
-    """Verify `CacheService.save_embedding` executes `MERGE INTO embedding_cache` once without pre-selecting."""
+    """Verify `CacheService.save_embedding` executes `MERGE INTO embedding_cache` once without preselecting."""
     mock_driver.select_value_or_none = AsyncMock()
     mock_driver.execute = AsyncMock()
     mock_driver.commit = AsyncMock()

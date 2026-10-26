@@ -207,6 +207,28 @@ docs-clean: ## Remove built documentation
 	@rm -rf docs/_build
 	@echo "${OK} Docs build removed"
 
+.PHONY: docs-demos-shell
+docs-demos-shell: ## Record VHS terminal and SQLcl demo videos (.mp4 + .gif)
+	@echo "${INFO} Recording VHS terminal demo videos... 🎬"
+	@uv run python manage.py demos shell
+	@echo "${OK} VHS terminal demo videos recorded"
+
+.PHONY: docs-demos-web
+docs-demos-web: ## Record headless Playwright + FFmpeg APEX 26.1 browser demo videos (.mp4 + .gif)
+	@echo "${INFO} Recording Playwright APEX 26.1 browser demo videos... 🎬"
+	@uv run --group demos python manage.py demos web
+	@echo "${OK} Playwright browser demo videos recorded"
+
+.PHONY: docs-demos-live
+docs-demos-live: ## Record all live VHS terminal and Playwright browser demos (interactive confirmation)
+	@./tools/scripts/record-live-demos.sh
+
+.PHONY: docs-demos-clean
+docs-demos-clean: ## Remove generated demo video and GIF artifacts under docs/_static/demos/
+	@echo "${INFO} Cleaning generated demo media artifacts... 🧹"
+	@rm -f docs/_static/demos/*.mp4 docs/_static/demos/*.gif docs/_static/demos/*.webm
+	@echo "${OK} Demo media artifacts removed"
+
 # =============================================================================
 # Cleaning and Maintenance
 # =============================================================================

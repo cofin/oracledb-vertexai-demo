@@ -20,7 +20,7 @@ extensions = [
 
 source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 master_doc = "index"
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "screenshots/**"]
+exclude_patterns = ["_build", "_tapes/**", "Thumbs.db", ".DS_Store", "screenshots/**"]
 nitpicky = False
 
 myst_enable_extensions = ["attrs_block", "colon_fence", "deflist", "fieldlist", "linkify", "substitution", "tasklist"]

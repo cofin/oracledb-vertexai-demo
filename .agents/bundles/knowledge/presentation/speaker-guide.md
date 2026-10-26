@@ -40,9 +40,9 @@ The deck is structured **DBA-first** across **34 active slides** (`storyboard.md
 - Write for senior Oracle DBAs. Explain AI concepts in exact Oracle terms (an embedding is a `VECTOR(3072, FLOAT32)` column; an HNSW index is an `INMEMORY NEIGHBOR GRAPH` in the SGA Vector Memory Pool).
 - Keep slide copy concise and scannable; put multi-sentence explanations in speaker notes.
 - No per-slide badges, `"Part N"` labels, or bottom status banners.
-- Never reference internal repository file names (`hybrid.sql`, `migration 0001`, `src/app/...`, `SLIDES.md`) on slides.
+- Never reference internal repository file names (`hybrid.sql`, `migration 0001`, `src/app/`, `SLIDES.md`) on slides.
 - Titles stay on one line, 48 characters or fewer.
-- Every core slide (`dba_s01`–`dba_s40`) ends its speaker notes with a `BRIDGE:` line that hands off to the next slide.
+- Every active slide except the final Thank You slide (slides `1`–`33`, ending before `dba_s41`) ends its speaker notes with a `BRIDGE:` line that hands off to the next slide.
 
 ## Accuracy rules
 
@@ -52,10 +52,10 @@ The full list, with sources, is in [verified facts](verified-facts.md). The rule
 2. Oracle uses the HNSW index only for `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST n ROWS ONLY`. Ordering by `1 - VECTOR_DISTANCE` or omitting `APPROX` forces an exact scan.
 3. `VECTOR_DISTANCE` returns a distance: 0 means identical. Similarity is `1 - distance`.
 4. HNSW indexes live in the SGA Vector Memory Pool (`vector_memory_size`, tracked in `V$VECTOR_MEMORY_POOL`), which is separate from the Database In-Memory column store (`inmemory_size`, tracked in `V$IM_SEGMENTS`).
-5. Select AI's `google` provider calls the Gemini API (`generativelanguage.googleapis.com`) with an API key. Select AI has no native `vertexai` provider today; for Vertex AI from SQL, use `DBMS_VECTOR.UTL_TO_EMBEDDING` / `UTL_TO_GENERATE_TEXT`, a Cloud Run function via `DBMS_CLOUD_FUNCTION`, or the application tier.
+5. Select AI's `google` provider calls the Gemini API (`generativelanguage.googleapis.com`) with an API key. Select AI has no native `vertexai` provider today; for Vertex AI from SQL or PL/SQL, use `DBMS_VECTOR.UTL_TO_EMBEDDING` / `UTL_TO_GENERATE_TEXT`, Oracle APEX 26.1 `APEX_AI.GENERATE` (`COFFEE_VERTEX_AI` against Vertex AI's OpenAI-compatible `/endpoints/openapi` endpoint or Litestar's `/api/apex/ai/v1` gateway on `http://localhost:8000`), a Cloud Run function via `DBMS_CLOUD_FUNCTION`, or the application tier.
 6. AWR and ASH views require the Oracle Diagnostics Pack license; always note `V$SESSION` / `V$SQL` / `V$SYSSTAT` alternatives.
 7. Agents connect as least-privilege diagnostic or application users (`SELECT_CATALOG_ROLE`), never `SYS` or `SYSTEM`.
-8. Standalone Gemini CLI reached end of life in June 2026; Antigravity (`agy` CLI and Antigravity 2.0 IDE) is the successor and reads `~/.gemini/config/mcp_config.json` and `.agents/mcp_config.json`.
+8. Standalone Gemini CLI reached end of life in June 2026; Antigravity (`agy` CLI and Antigravity 2.0 IDE) is the successor and reads `.agents/mcp_config.json` (workspace), `~/.gemini/config/mcp_config.json` (global IDE), and `~/.gemini/antigravity-cli/mcp_config.json` (global `agy` CLI).
 
 ## Demo approach
 

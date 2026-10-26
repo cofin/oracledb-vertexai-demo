@@ -36,15 +36,16 @@ secrets outside tracked files.
 
 ## Config Location
 
-Antigravity CLI (`agy`) and Antigravity IDE read MCP server entries from a
-global user-level file or a workspace-scoped file:
+Antigravity IDE and Antigravity CLI (`agy`) read MCP server entries from a
+workspace-scoped file or an explicit global user-level file:
 
 ```text
-~/.gemini/config/mcp_config.json
 .agents/mcp_config.json
+~/.gemini/config/mcp_config.json
+~/.gemini/antigravity-cli/mcp_config.json
 ```
 
-On Windows the global file is `%USERPROFILE%\.gemini\config\mcp_config.json`.
+On Windows the global IDE file is `%USERPROFILE%\.gemini\config\mcp_config.json`.
 To manage servers in the IDE UI, open **Settings > Customizations > Installed
 MCP Servers**. Keep secret-free workspace templates under `.agents/` or `docs/`,
 and store credentials in environment variables or Secret Manager rather than
@@ -53,46 +54,73 @@ tracked files.
 ## SQLcl MCP
 
 SQLcl MCP is the shortest path from Antigravity to the local Oracle 26ai demo
-schema. It should use the same app-scoped database user that Cymbal Coffee uses,
-not `SYS` or `SYSTEM`.
+schema. Against the default managed `adb-free:latest-26ai` container
+(`cymbal-adb-free`, serving Oracle APEX 26.1.5 and ORDS 26.3 at
+`https://localhost:8443/ords/apex` for workspace `COFFEE`), connect as the
+app-scoped user `APP` over service `myatp_low` with the exported TLS wallet in
+`.envs/tns` rather than `ADMIN`, `SYS`, or `SYSTEM`.
 
 ```json
 {
   "mcpServers": {
     "sqlcl": {
-      "command": "/absolute/path/to/sql",
+      "command": "sql",
       "args": ["-mcp"]
     }
   }
 }
 ```
 
-Use an absolute executable path. Agent and desktop environments often start
-without the same `PATH` as the terminal shell.
+Ensure `~/.local/bin` is on `PATH` (or supply an absolute path to `sql` if your
+desktop environment starts with a minimal `PATH`).
 
 ## MCP Toolbox Oracle
 
-Google's MCP Toolbox can run a prebuilt Oracle server:
+Google's MCP Toolbox runs a prebuilt Oracle server configured through
+environment placeholders so credentials never sit in `mcp_config.json`:
 
 ```json
 {
   "mcpServers": {
     "oracle-toolbox": {
-      "command": "/absolute/path/to/toolbox",
+      "command": "toolbox",
       "args": ["--prebuilt", "oracledb", "--stdio"],
       "env": {
-        "ORACLE_CONNECTION_STRING": "localhost:1521/FREEPDB1",
-        "ORACLE_USERNAME": "app",
-        "ORACLE_PASSWORD": "<set locally>"
+        "ORACLE_CONNECTION_STRING": "${ORACLE_CONNECTION_STRING}",
+        "ORACLE_USERNAME": "${ORACLE_USERNAME}",
+        "ORACLE_PASSWORD": "${ORACLE_PASSWORD}",
+        "ORACLE_WALLET": "${ORACLE_WALLET}",
+        "ORACLE_USE_OCI": "${ORACLE_USE_OCI}"
       }
     }
   }
 }
 ```
 
-The prebuilt profile is useful for a workshop because it avoids maintaining a
-custom `tools.yaml` before the teaching flow stabilizes. Move to explicit
-Toolbox source configuration later if the lab needs a curated tool list.
+For the default managed `adb-free:latest-26ai` container (`cymbal-adb-free`),
+point `ORACLE_USERNAME` to `app`, `ORACLE_CONNECTION_STRING` to `myatp_low`, and
+`ORACLE_WALLET` to `.envs/tns`. For an external non-wallet Oracle instance, set
+`ORACLE_CONNECTION_STRING` to `host:1521/service_name` and leave
+`ORACLE_WALLET` unset. The prebuilt profile avoids maintaining a custom
+`tools.yaml` before the workshop flow needs a curated tool list.
+
+## Application MCP And A2A Endpoints
+
+Alongside database-level MCP servers, the running Cymbal Coffee Litestar app
+(`http://localhost:8000`) exposes its own `LitestarMCP` `0.15` and `LitestarA2A`
+protocol endpoints:
+
+- `http://localhost:8000/mcp` — HTTP MCP server exposing catalog, Hybrid RRF
+  search, store inventory, `CoffeePromptController`
+  (`src/app/domain/ai/mcp/_prompts.py`), and `CoffeeSkillController`
+  (`src/app/domain/ai/mcp/_skills.py`).
+- `http://localhost:8000/a2a` and
+  `http://localhost:8000/.well-known/agent-card.json` — Agent-to-Agent endpoint
+  and discovery card (`src/app/domain/ai/a2a/_card.py`,
+  `src/app/domain/ai/a2a/_executor.py`).
+
+When `MCP_API_KEY` is set in `.env`, both `/mcp` and `/a2a` require the matching
+`X-API-Key` or `Authorization: Bearer` header (`src/app/lib/security.py`).
 
 ## Google Cloud Oracle MCP
 
@@ -109,20 +137,23 @@ to be enabled, OAuth 2.0 credentials over IAM (Application Default Credentials
 satisfy this), and a principal granted the MCP Tool User role
 (`roles/mcp.toolUser`) plus the resource roles for the databases it touches.
 
-## Installer Surface To Add
+## Repository CLI Installer
 
-These commands are the intended clean repo interface; they should be added as
-explicit installer/configuration actions rather than hidden inside `install all`:
+Use the `manage.py install` commands (`tools/cli/install.py`) to install SQLcl
+and preview or write the secret-free Antigravity MCP configuration:
 
 ```shell
-uv run python manage.py install mcp-toolbox --version 1.5.0
-uv run python manage.py install mcp sqlcl --client antigravity --dry-run
-uv run python manage.py install mcp oracle-toolbox --client antigravity --dry-run
-uv run python manage.py install mcp status
+uv run python manage.py install list
+uv run python manage.py install sqlcl
+uv run python manage.py install mcp-toolbox --dry-run
+uv run python manage.py install mcp-toolbox --workspace
+uv run python manage.py install mcp-toolbox --ide
+uv run python manage.py install mcp-toolbox --cli-global
 ```
 
-The writer should preserve unrelated MCP servers, replace only repo-owned
-entries when requested, and avoid reading legacy `~/.gemini/settings.json`.
+`write_antigravity_mcp_config` (`tools/lib/utils.py`) merges the `sqlcl` and
+`oracle-toolbox` entries into `mcpServers`, preserves unrelated MCP servers, and
+never reads legacy `~/.gemini/settings.json`.
 
 ## Visual References
 

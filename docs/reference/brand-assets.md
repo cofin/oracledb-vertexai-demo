@@ -22,6 +22,15 @@ unchanged, and use them only to identify the referenced products and platforms.
 | `_static/logos/antigravity-logo.png` | `https://antigravity.google/assets/image/antigravity-logo.png` | Official Antigravity site asset. |
 | `_static/logos/mcp-toolbox-logo.png` | `https://github.com/googleapis/mcp-toolbox/blob/main/logo.png` | First-party Google APIs repository asset; repository is Apache-2.0 licensed. |
 
+## Demo Application Marks
+
+| File | Usage | Notes |
+| --- | --- | --- |
+| `_static/cymbal-coffee-logo.svg` | Sphinx `html_logo` (`docs/conf.py`) | Primary white (`#ffffff`) Cymbal Coffee wordmark for the green learning portal navigation header. |
+| `_static/cymbal-coffee-logo-light.svg` | Header wordmark copy | White (`#ffffff`) Cymbal Coffee wordmark asset (currently identical to `cymbal-coffee-logo.svg`). |
+| `_static/cymbal-coffee-logo-dark.svg` | Dark-surface wordmark | White (`#ffffff`) Cymbal Coffee wordmark for dark surfaces. |
+| `_static/cymbal-coffee-cup.svg` | Sphinx `html_favicon` (`docs/conf.py`) | Standalone Cymbal Coffee cup icon used as the documentation site favicon. |
+
 ## Source References
 
 - [Google Cloud icon library](https://cloud.google.com/icons)
@@ -55,8 +64,8 @@ dark, swapped by the active color scheme:
 ```
 
 The theme sets `data-md-color-scheme` on `<body>` (`default` for light, `slate`
-for dark), so this same pattern covers any future logo that needs a
-dark-background variant.
+for dark); add the `.logo-light` / `.logo-dark` rules above to
+`docs/_static/custom.css` whenever embedding a theme-swapped mark on a page.
 
 ## Usage Notes
 
