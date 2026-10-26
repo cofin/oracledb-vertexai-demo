@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 import gc
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -160,7 +159,7 @@ def test_exceptions_classify_credentials_and_render_503_handler() -> None:
 
 
 def test_security_principal_dataclasses_are_slotted_and_resolver_frozen() -> None:
-    """Verify API-key security dataclasses define slots and _ApiKeyResolver is frozen."""
+    """Verify API-key security helpers omit __dict__ and _ApiKeyResolver is frozen and GC-exempt."""
     slot = _ApiKeySlot()
     verifier = _ApiKeyVerifier(expected_key="token")
     resolver = _ApiKeyResolver()
@@ -168,7 +167,8 @@ def test_security_principal_dataclasses_are_slotted_and_resolver_frozen() -> Non
     for obj in (slot, verifier, resolver):
         assert not hasattr(obj, "__dict__")
 
-    with pytest.raises(dataclasses.FrozenInstanceError):
+    assert gc.is_tracked(resolver) is False
+    with pytest.raises(AttributeError):
         setattr(resolver, "extra", "mutated")
 
 

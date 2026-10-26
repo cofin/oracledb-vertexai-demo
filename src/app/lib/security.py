@@ -26,6 +26,8 @@ from litestar_security import (
     SecurityHeadersConfig,
 )
 
+from app.lib.schema import FrozenBaseStruct
+
 if TYPE_CHECKING:
     from litestar.connection import ASGIConnection
 
@@ -123,8 +125,7 @@ class _ApiKeyVerifier:
         return InvalidCredentials()
 
 
-@dataclass(frozen=True, slots=True)
-class _ApiKeyResolver:
+class _ApiKeyResolver(FrozenBaseStruct, frozen=True, gc=False):
     """IdentityResolver mapping verified API key claims into an authenticated Principal."""
 
     async def resolve(self, claims: str) -> IdentityResolution[dict[str, object]]:
