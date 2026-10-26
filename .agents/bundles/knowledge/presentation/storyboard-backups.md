@@ -9,9 +9,12 @@ tags:
 
 # Storyboard — Backup Slides (B1–B17)
 
-Backups sit after slide 36 and stay skipped in presentation mode. Each one
-answers a question that comes up often enough to deserve a prepared slide.
-Notes on backups do not need a `BRIDGE:` line.
+All hidden and skipped slides are purged from the primary 34-slide active deck
+([storyboard](storyboard.md)). When an event copy needs Q&A backup slides,
+append `B1`–`B17` after the closing Thank You slide (`dba_s41`, slide 34) and
+mark them skipped (`isSkipped: true`) in presentation mode. Each entry answers
+a question that comes up often enough to deserve a prepared slide. Notes on
+backups do not need a `BRIDGE:` line.
 
 ### B1. AI Search Terms for Oracle DBAs
 
@@ -51,7 +54,7 @@ Notes on backups do not need a `BRIDGE:` line.
 ### B8. SQLSpec and python-oracledb Patterns
 
 - **Target:** `slide_1790707646253357135_220`
-- **Content:** named SQL files loaded by name (`-- name: hybrid-search-turn`), Python `list[float]` vectors bound directly, explicit `commit()` after writes, and a separate queue pool so `fetch_lobs=False` stays off the app pool.
+- **Content:** named SQL files in `src/app/db/sql/` loaded by name (`-- name: hybrid-search-turn`) via `OracleLoaderService` and `OracleAsyncService` (`src/app/lib/service.py`), immutable `FrozenBaseStruct` and `CamelizedFrozenStruct` wire/domain schemas (`src/app/lib/schema.py`), Dishka `create_container()` (`src/app/ioc/__init__.py` with `ConfigProvider`, `DBProvider`, `AIProvider`, `DomainServiceProvider`), Python `list[float]` vectors bound directly to `VECTOR(3072, FLOAT32)`, explicit `commit()` after writes, SQLSpec `0.69.0` inline LOBs (`fetch_lobs=False` by default, returning `CLOB`/`BLOB` under 1 GB directly as `str`/`bytes` without `LOB` locator round-trips) with `driver_features={"enable_session_tracing": True}`, wire-level `sqlcommenter`, and `wallet_zip`, and a dedicated queue pool (`DatabaseSettings.get_queue_config()` in `src/app/lib/settings/_database.py`, `min=1, max=4`, `session_key="queue_db_session"`, `"manage_lifespan": True`) isolating `OracledbAsyncQueueStore` from `config.db`.
 
 ### B9. Bulk Embedding with SKIP LOCKED Queues
 
@@ -63,9 +66,9 @@ Notes on backups do not need a `BRIDGE:` line.
 - **Target:** `slide_1790707646253553449_292`
 - **Content:** a small `CREATE PROPERTY GRAPH` over products, stores, and inventory, and a `GRAPH_TABLE` query that starts from a vector match. Mark it as an illustration unless the repo adds a graph.
 
-### B11. Vertex AI from PL/SQL with DBMS_VECTOR
+### B11. Vertex AI from PL/SQL with DBMS_VECTOR and APEX_AI
 
-- **Target:** `backup_b11` (duplicate of slide 14)
+- **Target:** `backup_b11` (duplicate of `dba_s24`, slide 23)
 - **Code card:**
 
   ```sql
@@ -80,15 +83,15 @@ Notes on backups do not need a `BRIDGE:` line.
            JSON('{"provider": "vertexai",
                   "credential_name": "VERTEX_CRED",
                   "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/<project-num>/locations/us-central1/publishers/google/models/",
-                  "model": "text-embedding-004:predict"}'))
+                  "model": "gemini-embedding-2:predict"}'))
   FROM dual;
   ```
 
-- **Notes:** the access token is short-lived, so production use needs a job that refreshes the credential. Include `:predict` on the model name (`text-embedding-004:predict` or `gemini-embedding-001:predict`) and pass the numeric GCP project number so `"url"` stays within Oracle 26ai's 128-character buffer.
+- **Notes:** the access token is short-lived, so production use needs a job that refreshes the credential. Include `:predict` on the model name (`gemini-embedding-2:predict`, `gemini-embedding-001:predict`, or `text-embedding-004:predict`) and pass the numeric GCP project number so `"url"` stays within Oracle 26ai's 128-character buffer. For text generation inside Oracle APEX 26.1.5 (pre-bundled in `container-registry.oracle.com/database/adb-free:latest-26ai`), `src/apex/cymbal-coffee-ops/` (App ID `100`, `compatibilityMode: 26.1`) calls `APEX_AI.GENERATE(p_prompt => ..., p_service_static_id => 'COFFEE_VERTEX_AI')` against either Vertex AI's OpenAI-compatible endpoint (`https://aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/openapi`, `model="google/gemini-3.8-flash"`, `DBMS_NETWORK_ACL_ADMIN`, `VERTEX_AI_CRED`) or Litestar's local OpenAI-compatible gateway (`http://host.docker.internal:8000/api/apex/ai/v1` via `ApexAIController` in `src/app/domain/products/controllers/_apex_ai.py`).
 
 ### B12. Cloud Run Functions as SQL Functions
 
-- **Target:** `backup_b12` (duplicate of slide 14)
+- **Target:** `backup_b12` (duplicate of `dba_s24`, slide 23)
 - **Code card:**
 
   ```sql
@@ -114,25 +117,25 @@ Notes on backups do not need a `BRIDGE:` line.
 
 ### B13. Regions, Purchasing, and Support
 
-- **Target:** `backup_b13` (duplicate of slide 6)
+- **Target:** `backup_b13` (duplicate of `dba_s04`, slide 4)
 - **Content:** current regions from the public Oracle Database@Google Cloud locations page (check the count on the day); Marketplace purchase with commitment drawdown, pay-as-you-go or private offer, single Google Cloud bill; bring your own license and keep Oracle Support Rewards; collaborative support (database and billing cases with Oracle, application and networking cases with Google).
 
 ### B14. Vertex AI Platform and Model Garden
 
-- **Target:** `backup_b14` (duplicate of slide 7)
+- **Target:** `backup_b14` (duplicate of `dba_s03`, slide 3)
 - **Content:** Gemini models, Google embedding models, partner and open models in Model Garden, Agent Builder and Agent Engine, ADK, and the MCP and A2A interoperability story. Update every model name against current Vertex AI docs; the lists in earlier decks are out of date.
 
 ### B15. System Prompts and Personas
 
-- **Target:** `backup_b15` (duplicate of slide 32)
-- **Content:** Cymbal Coffee's base instruction and persona picker (`PersonaManager` in `src/app/domain/system/services/`). Quote the current text from the code, not the older "Coffee Novice" example.
+- **Target:** `backup_b15` (duplicate of `dba_s34`, slide 31)
+- **Content:** Cymbal Coffee's base instruction (`BASE_SYSTEM_INSTRUCTION`) and persona picker (`PersonaManager` in `src/app/domain/system/services/_personas.py`: `barista`, `snob`, `scientist`, `wellness`). Quote the current text from the code, not the older "Coffee Novice" example.
 
 ### B16. It's Still All SQL: Vectors + Inventory
 
-- **Target:** `backup_b16` (duplicate of slide 30)
-- **Content:** the corrected version of the earlier "It's All SQL!" slide: a vector match on `product` (`ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST 5 ROWS ONLY`) joined to `store_product_inventory` and `store`, filtered to `stock_status <> 'OUT_OF_STOCK'`, with distance to the user computed in the app (Haversine), not with PostGIS functions. Tested against the Cymbal Coffee Oracle 26ai schema.
+- **Target:** `backup_b16` (duplicate of `dba_s35`, slide 32)
+- **Content:** the corrected version of the earlier "It's All SQL" slide: a vector match on `product` (`ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST 5 ROWS ONLY`) joined to `store_product_inventory` and `store`, filtered to `stock_status <> 'OUT_OF_STOCK'`, with distance to the user computed in the app (Haversine), not with PostGIS functions. Tested against the Cymbal Coffee Oracle 26ai schema.
 
 ### B17. Demo Clips
 
-- **Target:** `backup_b17` (duplicate of slide 24)
+- **Target:** `backup_b17` (duplicate of `dba_s30`, slide 28)
 - **Content:** the re-recorded muted clips listed in the speaker guide, one per slide, as fallbacks for the walkthrough slides.

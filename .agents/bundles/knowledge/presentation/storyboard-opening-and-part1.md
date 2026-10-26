@@ -1,259 +1,223 @@
 ---
 type: Guide
-title: Storyboard — Opening and Part 1 (slides 1–14)
-description: Slide-by-slide content, code, banners, and speaker notes for the opening and the "Extend your workflow" part
+title: Storyboard — Opening and Antigravity & Context for DBAs (slides 1–13)
+description: Slide-by-slide content, code, takeaways, and speaker notes for the Opening and Antigravity & Context for DBAs sections (slides 1–13)
 tags:
   - presentation
   - storyboard
 ---
 
-# Storyboard — Opening and Part 1 (slides 1–14)
+# Storyboard — Opening and Antigravity & Context for DBAs (slides 1–13)
 
-Targets refer to objectIds in the deck (see [storyboard](storyboard.md)).
+Targets refer to objectIds in the 34-slide active deck (see [storyboard](storyboard.md)).
 Facts and sources are in [verified facts](verified-facts.md).
 
 ## Opening
 
 ### 1. Oracle in the Age of Gemini
 
-- **Target:** `g3f6b77ebb7f_5_0` (title box `g3f6b77ebb7f_5_2`, subtitle `g3f6b77ebb7f_5_4`, speaker line `textbox_1790706618594082759_6`)
+- **Target:** `dba_s01`
 - **Title:** Oracle in the Age of Gemini
-- **Subtitle:** How DBAs use Vertex AI to work smarter and build real apps
+- **Subtitle:** Practical AI Agents, MCP Workflows, and Vector Search for Oracle DBAs
 - **Speaker line:** Cody Fincher · Database Black Belts, Google Cloud
-- **Notes:** This talk is for people who run Oracle for a living. We start with the tools you already use, move to the DBA work agents can take off your plate, and finish with a real application built on Oracle AI Database 26ai and Vertex AI. Everything I show is in a public repository you can run on a laptop or on Google Cloud.
+- **Notes:** This talk is for people who run Oracle for a living. We start with the terminal and IDE tools you already use, move to routine diagnostic and readiness work agents can summarize for your review, and finish with a real application built on Oracle AI Database 26ai, Oracle APEX 26.1, and Vertex AI. Everything shown today lives in a public repository you can run locally or on Google Cloud.
   BRIDGE: First, who I am and where to find the code.
 - **Sources:** NorCal 1
 
 ### 2. About the Speaker
 
-- **Target:** `slide_about_me_v4`
-- **Content:** Database Black Belts, Google Cloud. LinkedIn `linkedin.com/in/cofin`; GitHub `github.com/cofin` and `github.com/litestar-org` (Litestar and SQLSpec maintainer). Keep the existing photo and QR layout.
-- **Notes:** Short. Mention that the demo app is built on open-source Python libraries I maintain, which is why the SQL in this talk is real SQL rather than an ORM.
-  BRIDGE: Here's the path we'll take today.
+- **Target:** `dba_s02`
+- **Title:** About the Speaker
+- **Content:** Database Black Belts, Google Cloud. LinkedIn `linkedin.com/in/cofin`; GitHub `github.com/cofin` and `github.com/litestar-org` (Litestar and SQLSpec maintainer). Keep the existing photo and contact layout.
+- **Notes:** Keep this brief. Mention maintaining Litestar and SQLSpec, which is why every database example in this talk is explicit, explainable Oracle SQL with `:bind` parameters rather than hidden ORM queries.
+  BRIDGE: Here is where Gemini meets your Oracle estate across tools, operations, and applications.
 - **Sources:** NorCal 2
 
-### 3. Today's Path: Extend, Improve, Build
+### 3. Where Gemini Meets Your Oracle Estate
 
-- **Target:** `g3f6b77ebb7f_5_8`
-- **Badge:** Agenda
-- **Subtitle:** Gemini in your tools, then your DBA work, then your apps
+- **Target:** `dba_s03` (`T_ICONS_3`)
+- **Title:** Where Gemini Meets Your Oracle Estate
+- **Subtitle:** Tools in your terminal and IDE, diagnostics and in-database SQL, and operational apps
 - **Cards:**
-  - **Extend your workflow:** put Gemini in the terminal, the IDE, and SQL itself with Antigravity, MCP, and Select AI.
-  - **Be a better DBA:** hand agents plan reviews, AWR summaries, access audits, and schema notes. You approve every change.
-  - **Build real apps:** Cymbal Coffee answers questions with one Oracle query for exact words, meaning, and routing, and uses Gemini only to phrase the answer.
-- **Banner:** **Runs on:** Oracle AI Database 26ai · Oracle Database@Google Cloud · Vertex AI
-- **Notes:** The order matters. Most DBAs meet AI through their own tools first, then trust it with routine work, and only then build applications on it. Each part ends with something you can try next week.
-  BRIDGE: Before the tools, let's look at who is querying your database now.
-- **Sources:** NorCal 3 (agenda rewritten into three parts)
+  - **Your DBA toolchain:** connect Antigravity (`agy` CLI and IDE) to Oracle schemas with SQLcl MCP, MCP Toolbox, and managed Google Cloud MCP endpoints.
+  - **Your diagnostics and SQL:** summarize `DBMS_XPLAN`, SQL Tuning Advisor, and RMAN checks; ground schemas with `ANNOTATIONS` and Knowledge Catalog; call Gemini from Autonomous AI Database or PL/SQL.
+  - **Your applications:** combine `VECTOR(3072, FLOAT32)` HNSW indexes and `CTXSYS.CONTEXT` in one Hybrid RRF SQL turn, with Gemini phrasing grounded answers.
+- **Notes:** Most DBAs adopt AI in this exact progression: first inside their own workstation tools, next for read-only diagnostic triage and schema documentation where a DBA still approves every change, and finally inside operational applications. Every section ends with a concrete pattern you can test on a development schema next week.
+  BRIDGE: Let's ground where those Oracle databases run on Google Cloud today.
+- **Sources:** NorCal 3; AI World 2
 
-### 4. Who Is Querying Oracle Now?
+### 4. Oracle Database@Google Cloud Services
 
-- **Target:** `g3f6b77ebb7f_5_23`
-- **Badge:** Why now
-- **Subtitle:** Assistants and agents read operational data
-- **Left card — Apps:** look things up by key; predictable plans; steady concurrency; answers come from the app's own logic.
-- **Right card — Assistants and agents:** ask by meaning ("something bold but low acid"); run several tool calls per question, in bursts; need current rows (stock, orders, store hours); every answer has to be grounded in data you can audit.
-- **Banner:** **Takeaway:** the data stays in Oracle; the question is how AI reaches it safely.
-- **Notes:** None of this replaces the database. It adds a new kind of client that asks fuzzier questions, more often, and expects fresh answers. That client is what the rest of the talk designs for.
-  BRIDGE: Where does Oracle run on Google Cloud today?
-- **Sources:** NorCal 4–5
+- **Target:** `dba_s04`
+- **Title:** Oracle Database@Google Cloud Services
+- **Subtitle:** Oracle-managed databases running inside Google Cloud data centers
+- **Left card — Services:** Exadata Database Service on dedicated infrastructure; Exadata Database Service on Exascale Infrastructure; Autonomous AI Database Service; Base Database Service; GoldenGate.
+- **Right card — Operating model:** Oracle runs the database hardware and software inside Google Cloud data centers on your VPC network, one network hop from Vertex AI, BigQuery, and Cloud Run; purchase through Google Cloud Marketplace with BYOL and collaborative support, or connect existing OCI estates over Cross-Cloud Interconnect.
+- **Source line:** `docs.cloud.google.com/oracle/database/docs/overview`
+- **Notes:** This is the same Oracle software and Exadata hardware managed by Oracle, deployed inside Google Cloud data centers next to your applications and Vertex AI endpoints. You choose co-managed Exadata, Exascale, Base Database, or serverless Autonomous AI Database. Check the live public locations page before quoting a region count on stage; backup B13 covers regional availability, Marketplace purchasing, and collaborative support.
+  BRIDGE: Let's open with Antigravity and MCP workflows built specifically for Oracle DBAs.
+- **Sources:** NorCal 8–9; AI World 5–9; [verified facts](verified-facts.md)
 
-### 5. Oracle Database@Google Cloud Today
+## Antigravity & Context for DBAs
 
-- **Target:** `g3f6b77ebb7f_5_36`
-- **Badge:** Oracle on Google Cloud
-- **Subtitle:** Oracle-managed databases inside Google Cloud data centers
-- **Left card — Services:** Exadata Database Service on dedicated infrastructure; Exadata Database Service on Exascale Infrastructure; Autonomous AI Database (serverless); Base Database Service; GoldenGate.
-- **Right card — Deployment choices:** Oracle Database@Google Cloud (Oracle runs the database, Google runs the data center, network, and physical security); OCI and Google Cross-Cloud Interconnect for existing OCI estates; self-managed Oracle on Compute Engine or GKE.
-- **Banner:** **Source:** docs.cloud.google.com/oracle/database/docs/overview
-- **Notes:** This is the same Oracle software and Exadata hardware, provided by Oracle, sitting in Google data centers next to your applications. You pick the service level you want, from co-managed Exadata to fully managed Autonomous.
-  BRIDGE: Why would a DBA team choose to run it here?
-- **Sources:** NorCal 8–9; AI World 6
+### 5. Antigravity for DBAs
 
-### 6. Why Run Oracle on Google Cloud
+- **Target:** `dba_s05` (section divider)
+- **Title:** Antigravity for DBAs
+- **Subtitle:** Core AI concepts, MCP servers, and schema context in your terminal and IDE
+- **Notes:** Standalone Gemini CLI reached end of life in June 2026, and Antigravity—both the `agy` CLI and the Antigravity 2.0 IDE—is the unified successor. In this section we translate core agent terms into Oracle concepts, wire read-only MCP tools, and layer schema context so the agent writes RAC-safe SQL.
+  BRIDGE: First, let's map four core AI terms to protocols every DBA already knows.
+- **Sources:** NorCal 26; [verified facts](verified-facts.md)
 
-- **Target:** `slide_converged_arch_v4`
-- **Badge:** Oracle on Google Cloud
-- **Subtitle:** The same Oracle, next to Google's data and AI services
-- **Cards:**
-  - **Operate:** provision from the Google Cloud console, gcloud, or Terraform; run apps on Compute Engine or GKE next to the database; one monitoring view for apps and databases.
-  - **Secure:** databases are reachable only from your VPC network, inside Google's security perimeter.
-  - **Buy and support:** purchase through Google Cloud Marketplace (eligible for commitment drawdown); bring existing licenses and keep Oracle Support Rewards; Oracle and Google support work cases together.
-- **Banner:** **Takeaway:** BigQuery, Looker, and Vertex AI are a network hop away, not a migration away.
-- **Notes:** Use the notes from the Webinar version for common reasons customers move: resilience, low latency between transactions and analytics, a data-center exit without refactoring, and AI on operational data. Do not state a region count here; it lives on backup B13 after checking the public locations page.
-  BRIDGE: Here's every place Gemini can touch your Oracle data.
-- **Sources:** AI World 5, 8, 9; Webinar 6–7 (notes)
-
-### 7. Where Gemini Meets Your Oracle Data
-
-- **Target:** `h4eca8d59b73cbebf_3_122`
-- **Badge:** Map of the talk
-- **Subtitle:** Four places Gemini meets Oracle; this talk walks through each
-- **Diagram or cards:**
-  - **Your tools:** Antigravity with MCP servers for SQLcl, MCP Toolbox, and Oracle Database@Google Cloud (Part 1).
-  - **Your SQL:** Select AI with Gemini; `DBMS_VECTOR` calling Vertex AI (Part 1).
-  - **Your DBA work:** plan reviews, AWR summaries, access audits, annotations, Knowledge Catalog (Part 2).
-  - **Your apps and users:** Cymbal Coffee with Vertex AI embeddings and Gemini; Gemini Enterprise with the Oracle AI Database Agent (Parts 2 and 3).
-- **Banner:** **Takeaway:** start where you already work, then carry the same patterns into your applications.
-- **Notes:** Use this slide as the map and come back to it at each part divider.
-  BRIDGE: Part 1 starts with the tools you already use.
-- **Sources:** new; AI World 2 as visual reference
-
-## Part 1 · Extend your workflow
-
-### 8. Part 1 · Extend Your Workflow
-
-- **Target:** `slide_1790707646253493082_268` (move to position 8)
-- **Subtitle:** Gemini in the terminal, the IDE, and SQL
-- **Notes:** Three tools in this part: an agent in your terminal and IDE, the MCP servers that connect it to Oracle, and Select AI inside the database.
-  BRIDGE: First, what an agent is, in DBA terms.
-- **Sources:** NorCal 26
-
-### 6. AI Terms for DBAs: LLMs, MCP, and A2A (`dba_s06`)
+### 6. Core AI Terms: LLMs, Context, MCP, and A2A
 
 - **Target:** `dba_s06` (`T_TOOLBOX`)
-- **Title:** AI Terms for DBAs: LLMs, MCP, and A2A
-- **Left card (`Familiar Protocol Analogies`):**
-  - **LLM (`Gemini`):** The reasoning engine—summarizes tuning & RMAN reports, plans, and wait events.
-  - **MCP (Agent-to-Tool ≈ `WSDL` / `JDBC`):** Publishes typed, read-only SQL tool schemas so agents call vetted queries.
-  - **A2A (Agent-to-Agent ≈ `REST` / `gRPC`):** Lets an app or peer agent delegate database tasks to an Oracle specialist agent.
-  - **Two-Way Partnership:** Agent speeds up `GV$` synthesis; you supply RAC rules, context & approval.
-- **Notes:** Ground the three AI terms in protocols every DBA already knows: LLM (`Gemini`), MCP (`WSDL`/`JDBC` contract for tools), and A2A (`REST`/`gRPC` between specialist agents).
-  BRIDGE: Now let's look at the client that drives both your IDE and CLI: Antigravity.
+- **Title:** Core AI Terms: LLMs, Context, MCP, and A2A
+- **Left card (`Familiar DBA Analogies`):**
+  - **LLM (`Gemini`) & Harness (`Antigravity`):** Gemini is the reasoning engine; Antigravity (`agy` CLI + IDE) is the harness managing files, context, and tool approvals.
+  - **Context & Embeddings (`≈ GPS Coordinates`):** Context is the active window of rules and schema metadata; embeddings map meaning to `VECTOR(3072, FLOAT32)` coordinates for cosine distance lookup.
+  - **MCP (`≈ REST / SOAP for Tools`):** Publishes typed, read-only SQL tool schemas so agents invoke DBA-vetted queries instead of guessing.
+  - **A2A (`≈ REST / SOAP With an Agent`):** Lets an application or peer agent delegate tasks to a specialist database agent.
+- **Notes:** Ground these terms in interfaces DBAs already trust: Gemini is the reasoning model, Antigravity is the client harness, embeddings behave like high-dimensional GPS coordinates stored in a `VECTOR` column, MCP is a typed `JDBC` or `WSDL` contract for tools, and A2A is `REST` between specialist agents. The agent accelerates synthesis across `GV$` views while the DBA supplies operational rules and change approval.
+  BRIDGE: Now let's look at practical DBA workflows inside Google Antigravity across the CLI and IDE.
+- **Sources:** NorCal 27–30; [verified facts](verified-facts.md)
 
-### 7. Antigravity: IDE + CLI Together (`dba_s08`)
+### 7. Developing with Google Antigravity: DBA Ideas
 
-- **Target:** `dba_s08` (`T_LAPTOP` with composite IDE + CLI image on `dba_s08_e06`)
-- **Title:** Antigravity: IDE + CLI Together
-- **Left card (`One Agent Across Both Surfaces`):**
-  - **Antigravity IDE:** Edit SQL & PL/SQL, review inline diffs, inspect `DBMS_XPLAN`, and approve MCP calls visually.
-  - **Antigravity CLI (`agy`):** Pipe `sql -s` output into `agy -p` from SSH bastions, cron jobs, and shell scripts.
-  - **Shared Config:** Both read `~/.gemini/config/mcp_config.json` and `.agents/` rules.
-  - **Docs:** `antigravity.google/docs/mcp`
-- **Notes:** Antigravity gives DBAs both a full agentic IDE and the `agy` terminal CLI backed by the same MCP config and team rules.
-  BRIDGE: Where can you leverage these MCP tools against your Oracle estate today?
+- **Target:** `dba_s08` (`T_LAPTOP` with composite IDE + CLI capture and `dba_pipe_demo.gif`)
+- **Title:** Developing with Google Antigravity: DBA Ideas
+- **Left card (`CLI + IDE Workflows & Practical Ideas`):**
+  - **IDE + CLI (`agy`) & Subagents:** Review inline SQL/PLSQL diffs and `DBMS_XPLAN` visually in the IDE, pipe `sql -s` into `agy -p` over SSH, and fan out read-only subagents.
+  - **Automatic Annotation Generation:** Draft Oracle 26ai `ANNOTATIONS` and `COMMENT ON` DDL from schema DDL and sample rows for DBA review.
+  - **AWR-Lite & SQL Plan Second Opinion:** Summarize `V$SQL` and `V$SYSSTAT` snapshots (respecting Diagnostics Pack licensing) and turn `DBMS_XPLAN` output into reviewable fix scripts.
+  - **User Access Audit:** Flag dormant accounts (`DBA_USERS.LAST_LOGIN`) and excess grants, producing a draft revoke script.
+- **Source line:** `antigravity.google/docs/mcp`
+- **Notes:** Antigravity gives DBAs one agent across both surfaces: a full IDE for reviewing PL/SQL diffs and execution plans, and the `agy` CLI for piping non-interactive SQLcl output from jump hosts or cron scripts. Both share workspace MCP configs in `.agents/mcp_config.json` alongside global configs in `~/.gemini/config/mcp_config.json` (IDE) and `~/.gemini/antigravity-cli/mcp_config.json` (`agy` CLI).
+  BRIDGE: Where can you connect Antigravity to your Oracle databases today?
+- **Sources:** NorCal 33–34; [verified facts](verified-facts.md); `docs/mcp-antigravity.md`, `tools/lib/utils.py`
 
-### 8. Where You Can Leverage These Tools Today (`dba_s07`)
+### 8. Where You Can Leverage These Tools Today
 
 - **Target:** `dba_s07` (`T_ICONS_3`)
 - **Title:** Where You Can Leverage These Tools Today
-- **Subtitle:** Three Oracle MCP Options Across Local, Team, and Cloud Workflows
+- **Subtitle:** Oracle MCP options across local wallets, team allowlists, and Google Cloud
 - **Cards:**
-  - **1. Interactive SQLcl (`sql -mcp`):** Run `sql -mcp` (SQLcl 25.2+) with saved wallets for ad-hoc IDE/CLI triage; logs every query in `DBTOOLS$MCP_LOG`.
-  - **2. Team Allowlist (`MCP Toolbox`):** Run `toolbox --stdio` with 7 prebuilt Oracle checks (`--prebuilt oracledb`) or a shared `tools.yaml` allowlist of read-only SQL.
-  - **3. Managed Cloud MCP (`Preview`):** `oracledatabase.googleapis.com/mcp` (`Preview`: Exadata, Exascale, ADB, BaseDB & GoldenGate) + `dataplex.googleapis.com/mcp` (`Preview`).
-- **Notes:** Walk through the three Oracle MCP options and clarify both what `tools.yaml` is and that `oracledatabase.googleapis.com/mcp` (in Preview) covers Exadata, Exascale, BaseDB, Autonomous DB, ODB Networks, and GoldenGate.
-  BRIDGE: Let's look at the two toolkit files you configure: first `mcp_config.json`, then `tools.yaml`.
+  - **Interactive SQLcl (`sql -mcp`):** Run `sql -mcp` (SQLcl 25.2+) with saved wallets for ad-hoc IDE and CLI triage; records every agent query in `DBTOOLS$MCP_LOG` and tags `V$SESSION.MODULE` and `ACTION`.
+  - **Team Allowlist (`MCP Toolbox`):** Run `toolbox --prebuilt oracledb --stdio` (7 prebuilt checks) or a shared `tools.yaml` allowlist configured in `.agents/mcp_config.json`, `~/.gemini/config/mcp_config.json`, or `~/.gemini/antigravity-cli/mcp_config.json`.
+  - **Managed Cloud MCP (`Preview`):** `oracledatabase.googleapis.com/mcp` (`Preview`: 21 control-plane tools across Exadata, Exascale, ADB, BaseDB, ODB Networks, and GoldenGate) plus `dataplex.googleapis.com/mcp` (`Preview`).
+- **Notes:** Walk through the three Oracle MCP surfaces and their config targets (`.agents/mcp_config.json` for workspace templates, `~/.gemini/config/mcp_config.json` for global IDE, and `~/.gemini/antigravity-cli/mcp_config.json` for global `agy` CLI, implemented in `tools/lib/utils.py`). Pair wallet-backed TCPS connections with an Oracle 26ai account-level `READ ONLY` user (`CREATE USER mcp_diag_ro ... READ ONLY`, enforced with `ORA-28194`) and never connect agents as `SYS` or `SYSTEM`.
+  BRIDGE: Let's look inside `tools.yaml` to see why a DBA-curated tool file beats open `execute_sql`.
+- **Sources:** [verified facts](verified-facts.md); `docs/mcp-antigravity.md`, `tools/lib/utils.py`
 
-### 9. Connect Antigravity to Oracle@GCP (`dba_s09`)
-
-- **Target:** `dba_s09` (`T_SCULPTURE`)
-- **Title:** Connect Antigravity to Oracle@GCP
-- **Left card (`Wallet + 26ai Read-Only User`):**
-  - Config file: `~/.gemini/config/mcp_config.json`
-  - Connect over TCPS with `ORACLE_WALLET`
-  - Use a 26ai `READ ONLY` user (`CREATE USER mcp_diag_ro ... READ ONLY`)—ignores higher grants and only allows reads
-  - Never connect as `SYSDBA`
-- **Right code card (JSON):**
-
-  ```json
-  {
-    "mcpServers": {
-      "sqlcl-exadata": {
-        "command": "/opt/sqlcl/bin/sql",
-        "args": ["-mcp"]
-      },
-      "oracle-toolbox": {
-        "command": "/usr/local/bin/toolbox",
-        "args": ["--tools-file", "dba-tools.yaml", "--stdio"],
-        "env": {
-          "ORACLE_CONNECTION_STRING": "exadb-scan:2484/prd_tp",
-          "ORACLE_WALLET": "/etc/oracle/wallets/exadb_prd",
-          "ORACLE_USERNAME": "MCP_DIAG_RO",
-          "ORACLE_PASSWORD": "${ORACLE_DIAG_PASSWORD}"
-        }
-      }
-    }
-  }
-  ```
-
-- **Notes:** Highlight Oracle 26ai `READ ONLY` user accounts (`CREATE USER mcp_diag_ro ... READ ONLY` / `ALTER USER mcp_diag_ro READ ONLY`), which enforce read-only access at the account level (`ORA-28194`) even if higher grants exist.
-  BRIDGE: Next, let's look at what goes inside `dba-tools.yaml`.
-
-### 10. A Curated, Read-Only DBA tools.yaml (`dba_s10`)
+### 9. A Curated, Read-Only DBA tools.yaml
 
 - **Target:** `dba_s10` (`T_CORAL`)
 - **Title:** A Curated, Read-Only DBA tools.yaml
+- **Subtitle:** Your Queries. Your knowledge.
 - **Left card (`Why Custom Tools Beat Raw SQL`):**
-  - Open `execute_sql` allows arbitrary queries
-  - `tools.yaml` is a YAML allowlist of DBA-vetted `SELECT` statements
-  - Bakes in RAC-aware `GV$` views and `:1` binds
+  - Open `execute_sql` permits arbitrary ad-hoc queries
+  - `tools.yaml` (`kind: source` / `type: oracle` + `kind: tool` / `type: oracle-sql`) publishes DBA-vetted `SELECT` statements
+  - Bakes in RAC-aware `GV$` joins (`s.inst_id = t.inst_id`) and positional `:1` binds
   - Shared in Git across the entire DBA team
-- **Right code card (YAML + embedded Oracle SQL):**
-  - Highlighted with composite YAML + Oracle SQL syntax highlighting via `tools/slides/highlight.py`.
-- **Notes:** Every tool in `tools.yaml` is a parameterized, read-only `SELECT` statement that DBAs have already tested and tuned.
-  BRIDGE: Connectivity and tools are only half the story—why is Context Management critical for DBAs?
+- **Right code card (`yaml`):**
 
-### 11. Why Context Management Is Critical for DBAs (`dba_s11`)
+  ```yaml
+  kind: source
+  name: oracle-prod-ro
+  type: oracle
+  tnsAlias: prd_tp
+  tnsAdmin: /etc/oracle/wallets/exadb_prd
+  user: ${ORACLE_USERNAME}
+  password: ${ORACLE_PASSWORD}
+  ---
+  kind: tool
+  name: list_long_transactions
+  type: oracle-sql
+  source: oracle-prod-ro
+  description: Active transactions running longer than N minutes across RAC.
+  statement: |
+    SELECT s.inst_id, s.sid, s.serial#, s.username, s.sql_id,
+           ROUND((SYSDATE - t.start_date) * 1440, 1) AS active_min
+    FROM gv$transaction t
+    JOIN gv$session s
+      ON s.saddr = t.ses_addr AND s.inst_id = t.inst_id
+    WHERE t.start_date < SYSDATE - NUMTODSINTERVAL(:1, 'MINUTE')
+    ORDER BY t.start_date
+  parameters:
+    - name: min_minutes
+      type: integer
+      description: Minimum transaction age in minutes.
+  ```
+
+- **Notes:** Highlight the subtitle—*Your Queries. Your knowledge.*—because every entry in `tools.yaml` encodes a `SELECT` statement your senior DBAs have already tuned and verified across RAC (`s.saddr = t.ses_addr AND s.inst_id = t.inst_id` against `GV$TRANSACTION.START_DATE`), keeping credentials in environment placeholders. Format the dark code card with `tools/slides/highlight.py` (`--language yaml`).
+  BRIDGE: Connectivity and curated tools are half the equation; next is why context management matters just as much.
+- **Sources:** [verified facts](verified-facts.md)
+
+### 10. Context Matters: Higher Accuracy, Fewer Tokens
+
+- **Target:** `h33f425bc278cd40f_26_0`
+- **Title:** Context Matters: Higher Accuracy, Fewer Tokens
+- **Subtitle:** Focused schema and operational rules outperform dumping raw dictionary views
+- **Left card — Without curated context:** the agent burns turns probing `ALL_TAB_COLUMNS`, misses RAC `INST_ID` predicates, guesses status enums, or touches Diagnostics Pack views on unlicensed databases.
+- **Right card — With layered context:** concise team rules, on-demand runbook skills, and table/column annotations steer the first query to the right tables, join keys, and business constraints in a fraction of the tokens.
+- **Notes:** Giving an agent a database connection without context is like handing a new contractor SQLcl access without your runbooks or data model notes. Curated context cuts exploratory dictionary queries, reduces token latency, and prevents wrong joins on the first turn.
+  BRIDGE: Let's break down the specific context layers that protect an Oracle DBA team.
+- **Sources:** NorCal 31–32
+
+### 11. Why Context Management Is Critical for DBAs
 
 - **Target:** `dba_s11` (`T_GRADIENT_3`)
 - **Title:** Why Context Management Is Critical for DBAs
-- **Subtitle:** Tools give database access—context prevents `V$` mistakes on RAC, license issues, and bad joins
+- **Subtitle:** Tools give database access; context prevents `V$` mistakes on RAC, license issues, and bad joins
 - **Cards:**
-  - **1. Guardrail Rules (`AGENTS.md`):** Always-on team standards: read-only access, query `GV$` instead of `V$` on RAC, respect pack licenses, and never run DDL/DML.
-  - **2. Runbook Skills (`SKILL.md`):** On-demand playbooks loaded only when needed: SQL Tuning Advisor triage, RMAN backup checks, and patch pre-checks.
-  - **3. Schema & Fleet Metadata:** In-database 26ai `ANNOTATIONS` and Knowledge Catalog so the agent knows table business rules and join keys first.
-- **Notes:** Explain why connectivity + tools alone aren't enough and how layering `AGENTS.md`, `SKILL.md`, and 26ai `ANNOTATIONS` + Knowledge Catalog prevents `V$` mistakes on RAC, license issues, and bad joins.
-  BRIDGE: Let's walk through two visual DBA use cases to see these tools and playbooks in action.
+  - **Guardrail Rules (`AGENTS.md`):** Always-on team standards: read-only access, query `GV$` instead of `V$` on RAC, respect Diagnostics Pack licenses, and never run DDL or DML.
+  - **Runbook Skills (`SKILL.md`):** On-demand playbooks loaded only when needed: SQL Tuning Advisor triage, RMAN backup checks, and patch pre-checks.
+  - **Schema & Fleet Metadata:** In-database Oracle 26ai `ANNOTATIONS` and Google Cloud Knowledge Catalog so agents read business rules and join keys before writing SQL.
+- **Notes:** Explain how these layers divide responsibility cleanly: `AGENTS.md` holds short, non-negotiable rules loaded on every session, `SKILL.md` holds deep diagnostic playbooks loaded only when relevant so they do not bloat the context window, and `ANNOTATIONS` plus Knowledge Catalog keep schema semantics next to the data.
+  BRIDGE: Let's look at how Oracle 26ai `ANNOTATIONS` store that schema context directly inside the data dictionary.
+- **Sources:** [verified facts](verified-facts.md)
 
-### 13. Select AI: Ask Oracle in Plain English
+### 12. In-Database Context: Oracle 26ai ANNOTATIONS
 
-- **Target:** `slide_1790707646253004939_120` (unskip, move to position 13)
-- **Badge:** Part 1 · SQL
-- **Subtitle:** Natural language to SQL in Autonomous AI Database, with Gemini
-- **Left card — How it works:** a profile names the AI provider, the model, and the tables Select AI may describe. For SQL generation it sends schema metadata, including comments and annotations, not row data; `narrate` sends query results. Actions: `showsql`, `runsql`, `explainsql`, `narrate`, `chat`, plus summarize, translate, and synthetic data.
-- **Right code card:**
+- **Target:** `dba_s20`
+- **Title:** In-Database Context: Oracle 26ai ANNOTATIONS
+- **Subtitle:** Store units, privacy rules, and AI hints beside the columns they describe
+- **Left card — Why it matters:** column names alone do not convey stock precedence, embedding dimensions, or coordinate privacy rules. Select AI, SQLcl MCP, and catalog harvesters read `COMMENT ON` and `USER_ANNOTATIONS_USAGE` directly from Oracle.
+- **Right code card (`sql`):**
 
   ```sql
-  BEGIN
-    DBMS_CLOUD.CREATE_CREDENTIAL(
-      credential_name => 'GEMINI_CRED',
-      username        => 'GOOGLE',
-      password        => '<gemini-api-key>');
-    DBMS_CLOUD_AI.CREATE_PROFILE(
-      profile_name => 'COFFEE_GEMINI',
-      attributes   => '{"provider": "google",
-                        "credential_name": "GEMINI_CRED",
-                        "model": "gemini-3.5-flash",
-                        "object_list": [{"owner": "APP"}]}');
-  END;
-  /
-  EXEC DBMS_CLOUD_AI.SET_PROFILE('COFFEE_GEMINI');
-  SELECT AI showsql which stores have Ethiopian beans in stock;
+  embedding VECTOR(3072, FLOAT32)
+      ANNOTATIONS (
+          Display 'Product embedding',
+          Embedding_Model 'gemini-embedding-2',
+          Embedding_Dimensions '3072',
+          Embedding_Purpose 'document',
+          Distance 'COSINE'
+      ),
+
+  COMMENT ON COLUMN store_product_inventory.stock_status IS
+    'Inventory status enum: IN_STOCK, LOW_STOCK, or OUT_OF_STOCK';
+
+  SELECT object_name, column_name, annotation_name, annotation_value
+  FROM user_annotations_usage
+  WHERE object_name = 'PRODUCT';
   ```
 
-- **Banner:** **Note:** Select AI's Google provider uses a Gemini API key. Need Vertex AI controls? Next slide.
-- **Notes:** The credential holds an API key from Google AI Studio, and the database user needs a network ACL for `generativelanguage.googleapis.com`. The model list comes from Oracle's documentation; check it before the event. `APP` is the demo schema owner (the default `DATABASE_USER`).
-  BRIDGE: Many enterprises need Vertex AI specifically, so here are the options.
-- **Sources:** NorCal 24; verified facts, Select AI
+- **Notes:** Unlike external wiki pages that drift out of date, Oracle 26ai `ANNOTATIONS` live in DDL and are queryable through `USER_ANNOTATIONS_USAGE`. In this repository (`src/app/db/migrations/0001_cymball_coffee_products.sql`), tables and columns declare `Display`, `Data_Role`, `Privacy`, `Embedding_Model`, and `AI_Surface` annotations—and an agent can draft them for existing schemas while DBAs review the DDL in a pull request.
+  BRIDGE: Those in-database annotations also scale across an entire fleet through Google Cloud Knowledge Catalog.
+- **Sources:** NorCal 24; `src/app/db/migrations/0001_cymball_coffee_products.sql`; [verified facts](verified-facts.md)
 
-### 14. Gemini and Vertex AI from Inside Oracle
+### 13. Fleet Context: Google Cloud Knowledge Catalog
 
-- **Target:** `slide_1790707646252679909_11` (decision-matrix layout)
-- **Badge:** Part 1 · Options
-- **Subtitle:** What works today, and which paths stay inside Vertex AI
-- **Matrix (four columns: Path · Calls · Auth · Status):**
-
-  | Path | Calls | Auth | Status |
-  | :--- | :--- | :--- | :--- |
-  | Select AI, provider `google` | Gemini API | API key | Documented |
-  | Select AI, provider `oci` | Gemini on OCI Generative AI | OCI credentials | Documented |
-  | `DBMS_VECTOR`, provider `vertexai` | Vertex AI: embeddings, text, rerank | Access token, rotated | Documented |
-  | Cloud Run function from SQL | Vertex AI via the function's service account | Database's Google service account (`GCP$PA`) | Documented building blocks |
-  | Application tier (`google-genai`) | Vertex AI | Service account | What Cymbal Coffee does |
-  | Select AI calling Vertex AI directly | — | — | Not available today |
-
-- **Banner:** **Takeaway:** need Vertex AI controls (IAM, VPC-SC, GCP billing)? Use `PL/SQL`, Cloud Run, or your app.
-- **Notes:** Be precise here; this question comes up with every enterprise audience. Backups B11 and B12 have the SQL for the `DBMS_VECTOR` and Cloud Run function paths.
-  BRIDGE: That's the toolbox. Part 2 is about using it to be a better DBA.
-- **Sources:** verified facts, Select AI and Vertex AI
+- **Target:** `dba_s21`
+- **Title:** Fleet Context: Google Cloud Knowledge Catalog
+- **Subtitle:** Turn schema annotations into governed context across your Oracle estate
+- **Flow (left to right):**
+  1. **Oracle AI Database 26ai:** `COMMENT ON` and `USER_ANNOTATIONS_USAGE` harvested via the managed Oracle metadata connector (`Preview`, Private Service Connect + `SELECT_CATALOG_ROLE`).
+  2. **Open Knowledge Format (`OKF v0.2`):** version-controlled domain glossaries, join guidelines, and verified SQL patterns.
+  3. **Knowledge Catalog:** governed entries combining technical schema metadata with business rules.
+  4. **Managed Remote MCP (`dataplex.googleapis.com/mcp`):** agents call `search_entries`, `lookup_context`, and `lookup_entry` before writing SQL.
+- **Source line:** `docs.cloud.google.com/knowledge-catalog/docs/use-remote-mcp`
+- **Notes:** Knowledge Catalog (formerly Dataplex Universal Catalog) imports Oracle metadata on a schedule via its managed connector (`Preview` since 2026-06-22) and serves governed context to agents over `https://dataplex.googleapis.com/mcp`. In this repository, automated OKF v0.2 catalog harvesting is tracked as a planned roadmap spec (`.agents/bundles/specs/knowledge-catalog-grounding-demo/spec.md`), so present this slide as the fleet architecture; backups B4 and B5 cover the deeper walkthrough.
+  BRIDGE: Now that the tools and context are wired up, let's see what DBAs can build and automate with them.
+- **Sources:** [verified facts](verified-facts.md); `.agents/bundles/specs/knowledge-catalog-grounding-demo/spec.md`

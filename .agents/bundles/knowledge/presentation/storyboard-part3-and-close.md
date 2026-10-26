@@ -1,85 +1,105 @@
 ---
 type: Guide
-title: Storyboard — Part 3 and Close (slides 23–36)
-description: Slide-by-slide content, code, banners, and speaker notes for the "Build real apps" part and the close
+title: "Storyboard — Build Real Apps: Cymbal Coffee and Close (slides 26–34)"
+description: Slide-by-slide content, code, takeaways, and speaker notes for the Build Real Apps Cymbal Coffee walkthrough and Close (slides 26–34)
 tags:
   - presentation
   - storyboard
 ---
 
-# Storyboard — Part 3: Build Real Apps, and Close (slides 23–36)
+# Storyboard — Build Real Apps: Cymbal Coffee and Close (slides 26–34)
 
-Part 3 follows `SLIDES.md` (the architecture walkthrough) and the named SQL in
-`src/app/db/sql/`. Quote SQL from those files rather than retyping it.
+This section follows the architecture walkthrough in [`SLIDES.md`](../../../../SLIDES.md),
+the baseline schema in `src/app/db/migrations/0001_cymball_coffee_products.sql`,
+and the named SQL queries in `src/app/db/sql/`. Keep repository file paths strictly
+in speaker notes and sources—never on public slide faces.
 
-### 23. Part 3 · Build Real Apps
+## Build Real Apps: Cymbal Coffee
 
-- **Target:** duplicate of `slide_1790707646253493082_268`
-- **Subtitle:** Cymbal Coffee on Oracle AI Database 26ai and Vertex AI
-- **Notes:** Everything so far helps you run Oracle. This part shows Oracle doing the retrieval for an AI application, with Gemini only phrasing the answer.
-  BRIDGE: Here's how the app fits together.
-- **Sources:** NorCal 35; Webinar 39
+### 26. Build Real Apps: Cymbal Coffee
 
-### 24. Cymbal Coffee: How the App Fits Together
+- **Target:** `dba_s29` (section divider)
+- **Title:** Build Real Apps: Cymbal Coffee
+- **Subtitle:** Grounded conversational commerce on Oracle AI Database 26ai, Oracle APEX 26.1, and Vertex AI
+- **Notes:** Everything up to this point helps you operate Oracle. The next six slides show Oracle AI Database 26ai doing intent routing, lexical matching, and approximate vector retrieval in SQL for a production-shaped web and APEX application (`SLIDES.md`), so prices and store inventory come straight from database rows.
+  BRIDGE: First, let's look at the customer scenario the AI Barista has to solve.
+- **Sources:** NorCal 35; Webinar 39; `SLIDES.md`
 
-- **Target:** `h3b66c3a7511ce890_1_1` (architecture diagram slide; unskip, move to position 24)
-- **Badge:** Part 3 · Architecture
-- **Subtitle:** Oracle does the retrieval; Gemini does the talking
+### 27. The Demo Scenario: Cymbal Coffee AI Barista
+
+- **Target:** `dba_s38`
+- **Title:** The Demo Scenario: Cymbal Coffee AI Barista
+- **Subtitle:** Natural taste questions, off-menu brand checks, and store stock grounded in live SQL rows
+- **Cards:**
+  - **Idiom & Taste Discovery:** `"I need something bold"` matches dark roasts via `gemini-embedding-2` even when the customer never writes the word `"coffee"`.
+  - **Exact Terms & Off-Menu Guard:** `CTXSYS.CONTEXT` matches SKUs, ZIP codes, and `"Do you carry Folgers?"`—`JSON_TABLE` + `CONTAINS` sees `0` catalog hits and recommends `Dark Roast House Blend (\$4.99)` without an extra LLM call.
+  - **Grounded SQL vs Open-Ended Agent:** `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, and `ORDER_STATUS` answer directly from SQL rows without calling Gemini; `PRODUCT_RAG` uses deterministic off-menu replies or constrained ID selection over SQL candidates; `GENERAL_CONVERSATION` runs the tool-calling Gemini 3.8 Flash loop.
+- **Notes:** Walk through how `GroundedRouteService` (`src/app/domain/chat/services/_grounded.py`) keeps prices and stock deterministic: `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, and static `ORDER_STATUS` format Oracle rows in Python without calling Gemini at all; `PRODUCT_RAG` replies deterministically when `hybrid-term-hits` detects an off-menu brand like Folgers (offering `Dark Roast House Blend` at `\$4.99` and `Signature Bold Blend` at `\$4.99` from `src/app/db/fixtures/product.json.gz`) or runs constrained structured ID selection over the SQL candidate rows with deterministic template fallback; and only open-ended `GENERAL_CONVERSATION` turns invoke `AgentRuntime` (`src/app/domain/ai/runtime/_loop.py`) via `AgentOrchestrationService` (`src/app/domain/ai/services/_agent.py`).
+  BRIDGE: Let's look at how the application, Oracle 26ai, Oracle APEX 26.1, and Vertex AI fit together.
+- **Sources:** `SLIDES.md` slides 0, 6, and appendix; `src/app/domain/chat/services/_grounded.py`, `src/app/domain/ai/services/_agent.py`, `src/app/db/fixtures/product.json.gz`
+
+### 28. Cymbal Coffee Reference Architecture
+
+- **Target:** `dba_s30` (bordered 2026 UI screenshot + architecture diagram)
+- **Title:** Cymbal Coffee Reference Architecture
+- **Subtitle:** Oracle 26ai handles hybrid retrieval and queues; Litestar and APEX 26.1 share one schema
 - **Diagram boxes:**
-  - **Browser:** chat page; answers stream back as server-sent events.
-  - **App:** Litestar on Cloud Run or a Compute Engine VM.
-  - **Oracle AI Database 26ai** (Free container, VM, or Autonomous on Oracle Database@Google Cloud): `product`, `store`, `store_product_inventory`, `chat_route`, session tables, and the job queue.
-  - **Vertex AI:** `gemini-embedding-2` (3,072 dimensions) and Gemini 3.8 Flash, called with `google-genai` in Vertex AI mode.
-  - **Other agents:** `/mcp` and `/a2a` endpoints.
-- **Banner:** **Code:** github.com/cofin/oracledb-vertexai-demo
-- **Notes:** Walk the request path from `SLIDES.md` slide 0: cache check, one hybrid SQL query, then either a reply built from SQL rows or a Gemini turn with tools. Operational data is what grounds the model; that's the point the earlier versions made with the RAG diagram.
-  BRIDGE: Start with embeddings, in Oracle terms.
-- **Sources:** NorCal 37, 40, 50–52; `SLIDES.md` slide 0
+  - **Browser & Operations UI:** Streaming SSE chat web app (`http://localhost:8000`) plus pre-bundled Oracle APEX 26.1.5 + ORDS 26.3 Operations Console (`https://localhost:8443/ords/apex`, App ID `100`, workspace `COFFEE`, schema `APP`).
+  - **Litestar 2 Application Tier:** Async Python service on Cloud Run or Compute Engine using SQLSpec `0.69.0` (`fetch_lobs=False` inline `CLOB`/`BLOB` strings, session tracing, wire-level `sqlcommenter`), an isolated `FOR UPDATE SKIP LOCKED` queue pool (`min=1, max=4`), and short transactions committed before model calls.
+  - **Oracle AI Database 26ai:** Autonomous AI Database Free (`adb-free:latest-26ai` on `:1522` mTLS) or Oracle Database@Google Cloud storing `product` (`130` rows), `store` (`17` rows), `store_product_inventory` (`1,700` rows), `chat_route` (`25` exemplars across `5` routes), `embedding_cache`, `response_cache`, `agent_session` / `agent_event`, and queue tables; browser coordinates stay request-scoped in memory only.
+  - **Vertex AI:** `gemini-embedding-2` (`3,072` dimensions) and `Gemini 3.8 Flash`, called from Python via `google-genai` (`vertexai=True`) and from Oracle APEX 26.1 PL/SQL via `APEX_AI.GENERATE` (`COFFEE_VERTEX_AI` against Vertex AI `/endpoints/openapi` or the local OpenAI-compatible `/api/apex/ai/v1` gateway).
+  - **Shared Agent Protocols (`POST /mcp` & `POST /a2a`):** Exposes catalog search, product details, store inventory, barista prompts, and the `/.well-known/agent-card.json` A2A skill over the same parameterized SQL services, optionally gated by `MCP_API_KEY`.
+- **Source line:** `github.com/cofin/oracledb-vertexai-demo`
+- **Notes:** Trace one turn from `SLIDES.md` slides 0, 3, 7, and 8: `OracleSessionStore` and `OracleEventStore` (`src/app/domain/ai/runtime/_store.py`) commit immediately before any Vertex AI call; SQLSpec `0.69.0` (`src/app/lib/settings/_database.py`) defaults `fetch_lobs=False` and isolates `OracledbAsyncQueueStore` on `DatabaseSettings.get_queue_config()` (`session_key="queue_db_session"`); and the APEX 26.1 console (`src/apex/cymbal-coffee-ops/`, backed by `ApexController` in `src/app/domain/products/controllers/_apex.py` and `ApexAIController` in `src/app/domain/products/controllers/_apex_ai.py`) shares the `APP` schema. Emphasize protocol reuse: the same parameterized SQL services (`ProductService`, `StoreService`, `OracleVectorSearchService`) back `AgentRuntime`'s five Gemini tools (`search_products`, `get_product_details`, `find_nearby_stores`, `check_product_availability`, `check_order_status` in `src/app/domain/ai/services/_tools.py`), `LitestarMCP` (`POST /mcp` in `src/app/server/mcp/_config.py` exposing `search_products`, `get_product`, `get_store_inventory`, `describe_barista_capabilities`, and barista prompts in `src/app/domain/ai/mcp/`), and `LitestarA2A` (`POST /a2a`, agent card `/.well-known/agent-card.json` in `src/app/domain/ai/a2a/`), optionally gated by `MCP_API_KEY`.
+  BRIDGE: Let's walk through the four SQL building blocks, starting with Step 1: dense embeddings in the `product` table.
+- **Sources:** `SLIDES.md` slides 0, 2, 3, 7, 8; `src/apex/README.md`, `src/app/lib/settings/_database.py`, `src/app/server/plugins.py`, `src/app/server/mcp/_config.py`, `src/app/domain/ai/services/_tools.py`, `src/app/domain/ai/mcp/`, `src/app/domain/ai/a2a/`
 
-### 25. Dense Embeddings in Oracle 26ai (`dba_s31`)
+### 29. Step 1: Dense Embeddings in Oracle 26ai
 
 - **Target:** `dba_s31` (`T_SCULPTURE`)
-- **Title:** Dense Embeddings in Oracle 26ai
+- **Title:** Step 1: Dense Embeddings in Oracle 26ai
 - **Left card (`Native VECTOR + In-Memory`):**
-  - `gemini-embedding-2` outputs 3,072 `FLOAT32` dimensions (~12 KB/row)
-  - Stored in `VECTOR(3072, FLOAT32)` inside the same table as relational columns
-  - **Why `INMEMORY PRIORITY HIGH`:** keeps scalar filters (`in_stock`, `price`) in the IM column store alongside HNSW (`vector_memory_size`)
+  - `gemini-embedding-2` outputs 3,072 `FLOAT32` dimensions (`~12 KB` per row)
+  - Stored in `VECTOR(3072, FLOAT32)` inside the same table as relational, `BOOLEAN`, and `JSON` columns
+  - **Why `INMEMORY PRIORITY HIGH`:** keeps scalar filters (`in_stock`, `category`, `price`) in the In-Memory column store (`inmemory_size`) alongside HNSW (`vector_memory_size`)
   - `python-oracledb` binds a Python `list[float]` directly
-- **Right code card:**
+- **Right code card (`sql`):**
 
   ```sql
   CREATE TABLE product (
       id          NUMBER GENERATED BY DEFAULT ON NULL AS IDENTITY PRIMARY KEY,
-      sku         VARCHAR2(64)   NOT NULL UNIQUE,
-      name        VARCHAR2(255)  NOT NULL,
-      category    VARCHAR2(100)  NOT NULL,
-      price       NUMBER(10, 2)  NOT NULL,
-      in_stock    BOOLEAN        DEFAULT TRUE NOT NULL,
+      name        VARCHAR2(255) NOT NULL,
       description VARCHAR2(4000),
+      price       NUMBER(10, 2),
+      category    VARCHAR2(100),
+      sku         VARCHAR2(100) UNIQUE,
+      in_stock    BOOLEAN DEFAULT TRUE,
+      metadata    JSON,
       embedding   VECTOR(3072, FLOAT32)
   ) INMEMORY PRIORITY HIGH;
-  -- ^ Populates scalar filters (in_stock, category, price) into the
-  --   In-Memory Column Store alongside HNSW (no-op if inmemory_size = 0)
+  -- Populates scalar filters (in_stock, category, price) into the
+  -- In-Memory Column Store alongside HNSW (no-op if inmemory_size = 0)
 
   -- Bind Python list[float] directly via python-oracledb
-  UPDATE product SET embedding = :embedding_vec WHERE id = :product_id;
+  UPDATE product SET embedding = :embedding WHERE id = :id;
   ```
 
-- **Notes:** Explain why `INMEMORY PRIORITY HIGH` is paired with HNSW: HNSW lives in `vector_memory_size`, while `INMEMORY PRIORITY HIGH` populates scalar filter columns into the In-Memory Column Store (`inmemory_size`) for fast pre-filtering (and is a safe no-op when `inmemory_size = 0` on Free containers).
-  BRIDGE: Next, let's look at the HNSW vector index configuration.
+- **Notes:** Quote the exact column definitions from `src/app/db/migrations/0001_cymball_coffee_products.sql` (`lines 11-36`, where `in_stock` and `embedding` also carry `ANNOTATIONS` and `created_at` / `updated_at` track row timestamps) and `ProductService.update_embedding()` (`src/app/domain/products/services/_products.py`). Explain why `INMEMORY PRIORITY HIGH` is paired with HNSW: HNSW lives in `vector_memory_size`, while `INMEMORY PRIORITY HIGH` populates scalar filter columns into `inmemory_size` (and is a safe no-op when `inmemory_size = 0`).
+  BRIDGE: Next, Step 2: sizing the vector pool and configuring the HNSW neighbor graph index.
+- **Sources:** `src/app/db/migrations/0001_cymball_coffee_products.sql`, `src/app/domain/products/services/_products.py`
 
-### 26. HNSW Vector Index Configuration in 26ai (`dba_s32`)
+### 30. Step 2: HNSW Vector Index Configuration in 26ai
 
 - **Target:** `dba_s32` (`T_CORAL`)
-- **Title:** HNSW Vector Index Configuration in 26ai
+- **Title:** Step 2: HNSW Vector Index Configuration in 26ai
 - **Left card (`Minimum Pool + HNSW Graph`):**
-  - **Minimum Pool on Free:** `vector_memory_size = 512M` (`SCOPE = SPFILE`) is the minimum carve-out to enable HNSW inside 26ai Free's 1.5 GB SGA cap (Autonomous Free manages it automatically)
-  - **Graph Parameters:** `NEIGHBORS 40` (edges/node) and `EFCONSTRUCTION 500` (build depth) at `95%` target accuracy
-  - **Optimizer Rule:** Query with `ORDER BY VECTOR_DISTANCE(...)` + `FETCH APPROX`
-- **Right code card:**
+  - **Minimum Pool on Free:** `vector_memory_size = 512M` (`SCOPE = SPFILE`) is the minimum carve-out to enable HNSW inside 26ai Free's ~1.5 GB SGA cap (Autonomous AI Database Free manages it automatically)
+  - **Graph Parameters:** `NEIGHBORS 40` (edges per node) and `EFCONSTRUCTION 500` (build search depth) at `95%` target accuracy
+  - **Optimizer Rule:** Query with `ORDER BY VECTOR_DISTANCE(..., COSINE)` + `FETCH APPROX`
+- **Right code card (`sql`):**
 
   ```sql
-  -- 1. Minimum pool config on 26ai Free (1.5 GB SGA cap)
+  -- 1. Minimum pool config on 26ai Free (~1.5 GB SGA cap)
   --    (Autonomous AI DB Free manages vector memory automatically)
   ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 
@@ -100,155 +120,92 @@ Part 3 follows `SLIDES.md` (the architecture walkthrough) and the named SQL in
   );
   ```
 
-- **Notes:** Highlight the minimum configuration (`vector_memory_size = 512M SCOPE = SPFILE`) used to enable HNSW on Oracle 26ai Free (and automatic vector pool management on Autonomous AI DB Free), `V$VECTOR_MEMORY_POOL` verification, and the HNSW DDL parameters.
-  BRIDGE: Vector search captures meaning, but what about exact SKUs, ZIP codes, or 'decaf'?
+- **Notes:** Contrast local sizing across both container flavors: `gvenzl/oracle-free:latest` (`ORACLE_CONTAINER_FLAVOR=free`) sets `vector_memory_size = 512M SCOPE = SPFILE` on init (`tools/oracle/on_init/00_configure_vector_memory.sql`) to avoid `ORA-51962`, whereas default `container-registry.oracle.com/database/adb-free:latest-26ai` manages the vector memory pool automatically when `product_embedding_idx` and `chat_route_embedding_idx` (`src/app/db/migrations/0001_cymball_coffee_products.sql`) are created.
+  BRIDGE: Fast vector search still cannot distinguish user intent or exact SKUs on its own—that brings us to Step 3.
+- **Sources:** `tools/oracle/on_init/00_configure_vector_memory.sql`, `src/app/db/migrations/0001_cymball_coffee_products.sql`
 
-### 27. Exact Words Still Matter: Oracle Text
+### 31. Step 3: Route Intent in SQL (No Extra LLM Call)
 
-- **Target:** `slide_1790707646252711299_21`
-- **Badge:** Part 3 · Oracle Text
-- **Subtitle:** `CTXSYS.CONTEXT` handles SKUs, ZIP codes, brands, and "decaf"
-- **Left card:** vectors measure topic similarity, so exact strings get lost: "decaf", a SKU, a ZIP code like 75208, a brand name, or a dietary keyword. A `MULTI_COLUMN_DATASTORE` indexes name, category, SKU, and description together and syncs on commit. `SCORE(1)` is an integer from 1 to 100 from Oracle's inverse-frequency formula: BM25-style ranking, not BM25.
-- **Right code card (from migration `0001`):**
+- **Target:** `dba_s34`
+- **Title:** Step 3: Route Intent in SQL (No Extra LLM Call)
+- **Subtitle:** Score 25 route exemplars across 5 route labels in the same Oracle 26ai turn
+- **Left card (`Routing as an Indexed Lookup Table`):**
+  - Earlier two-step pipelines spent `~300–450 ms` on a classifier LLM call before querying Oracle
+  - `chat_route` stores `25` exemplars across `5` labels (`PRODUCT_RAG`, `STORE_LOCATION`, `PRODUCT_AVAILABILITY`, `ORDER_STATUS`, `GENERAL_CONVERSATION`) with keywords (`CTXSYS.CONTEXT` `MULTI_COLUMN_DATASTORE`, `SYNC (ON COMMIT)`) and `VECTOR(3072, FLOAT32)` HNSW embeddings
+  - Sanitize raw user text into `{token} ACCUM ...` before `CONTAINS` to prevent `DRG-50901` operator errors
+- **Right comparison table:**
 
-  ```sql
-  BEGIN
-      CTX_DDL.CREATE_PREFERENCE('product_search_ds', 'MULTI_COLUMN_DATASTORE');
-      CTX_DDL.SET_ATTRIBUTE('product_search_ds', 'COLUMNS',
-                            'name, category, sku, description');
-  END;
-  /
-  CREATE INDEX product_hybrid_ctx_idx ON product (description)
-  INDEXTYPE IS CTXSYS.CONTEXT
-  PARAMETERS ('DATASTORE product_search_ds LEXER product_lexer SYNC (ON COMMIT)');
-  ```
-
-- **Banner:** **Tip:** never pass raw user text to `CONTAINS`; the app sends `{decaf} ACCUM {espresso}` to avoid `DRG-50901`.
-- **Notes:** `AND`, `OR`, `NOT`, `NEAR`, `%`, and braces are Oracle Text operators. `build_oracle_text_query()` strips them, wraps each word in braces, and joins with `ACCUM`.
-  BRIDGE: Even with both kinds of search, there's a bigger problem: intent.
-- **Sources:** NorCal 42 (footnote); AI World 19 (keyword idea); `src/app/domain/chat/services/_router.py`
-
-### 28. Vectors Can't Tell What the User Wants
-
-- **Target:** `slide_1790707646252896716_80`
-- **Badge:** Part 3 · Routing
-- **Subtitle:** From an extra LLM call to one SQL statement
-- **Left card — The problem:** "How's it going?" lands close to something on the menu, and the bot recommends waffles. The first fix was intent exemplars plus a classifier call before every search (about 300–450 ms of network time). Now five route rows in `chat_route` (keywords plus an embedding) are scored with products and stores in the same statement.
-- **Right table (from `SLIDES.md` slide 4):**
-
-  | | Two-step pipeline | One hybrid query |
+  | Step | Two-step pipeline | Single hybrid SQL turn |
   | :--- | :--- | :--- |
-  | Calls before answering | 1 embedding + 1 LLM classifier + 1–2 SQL | 1 embedding (cached) + 1 SQL |
-  | Routing and retrieval | ~350–500 ms | ~15–25 ms in Oracle |
-  | Exact terms | Weak | Oracle Text |
-  | Off-menu brands | Another LLM call | Same SQL turn |
+  | Calls before composing reply | 1 embedding + 1 classifier LLM + 1–2 SQL | 1 embedding (cached) + 1 SQL |
+  | Routing + retrieval (local example) | ~350–500 ms | ~15–25 ms in Oracle 26ai |
+  | Exact SKUs, ZIPs, `"decaf"` | Weak in pure vector search | `CTXSYS.CONTEXT` (`CONTAINS` / `SCORE`) |
+  | Off-menu brands (`"Folgers"`) | Extra LLM check | `JSON_TABLE` + `CONTAINS` in same turn |
 
-- **Banner:** **Note:** example timings from a local run, not a benchmark.
-- **Notes:** This is where the app stopped looking like a chatbot demo and started looking like a database design: the routing table is just another indexed table.
-  BRIDGE: To merge text and vector results, we need RRF.
-- **Sources:** Webinar 32–33; NorCal 44; `SLIDES.md` slide 4
+- **Notes:** Turning intent classification into an indexed lookup table (`chat_route`, seeded from `src/app/db/fixtures/chat_route.json` and resolved by `HybridRouteResolver` in `src/app/domain/chat/services/_router.py`) eliminates an entire network LLM round-trip. Point out `build_oracle_text_query()` (`src/app/lib/text_search.py`), which strips Oracle Text operators and stopwords so `CONTAINS` never raises `DRG-50901`, and note that timings are local example timings rather than benchmarks (backup B15 holds the `PersonaManager` prompts from `src/app/domain/system/services/_personas.py`).
+  BRIDGE: Now let's look at Step 4: the single Reciprocal Rank Fusion SQL query that joins lexical and HNSW rankings together.
+- **Sources:** `SLIDES.md` slide 4; `src/app/domain/chat/services/_router.py`, `src/app/lib/text_search.py`, `src/app/db/fixtures/chat_route.json`
 
-### 29. Merging Two Rankings with RRF
+### 32. Step 4: It's All SQL — Hybrid RRF (k = 60)
 
-- **Target:** `slide_1790707646252924686_90`
-- **Badge:** Part 3 · RRF
-- **Subtitle:** Use the finishing place, not the raw score
-- **Left card:** `SCORE` runs from 1 to 100 and cosine similarity from −1 to 1, so adding raw scores lets one list dominate. Reciprocal Rank Fusion ranks each list and adds `1 / (60 + rank)` from each.
-- **Right card — Worked example:** product A is #1 in the text list only: 1/61 = 0.0164. Product C is #10 in both lists: 1/70 + 1/70 = 0.0286, so C wins. Without the 60, A scores 1.0 and C scores 0.2, and the single lucky match wins.
-- **Banner:** **Why 60?** It keeps one lucky #1 from beating a row that ranks well in both lists.
-- **Notes:** `k = 60` is the value from the original RRF paper and the default most systems use; the app passes it as `:rrf_k`.
-  BRIDGE: Here's what that looks like in one query.
-- **Sources:** `SLIDES.md` slide 5
-
-### 30. One SQL Turn: Route, Products, Stores
-
-- **Target:** `slide_hybrid_breakdown_21`
-- **Badge:** Part 3 · Hybrid SQL
-- **Subtitle:** `hybrid-search-turn` in `src/app/db/sql/hybrid.sql`
-- **Code card:** the `prod_lex`, `prod_vec`, and fusion part of `hybrid-search-turn` (use the trimmed version in `SLIDES.md` slide 5).
-- **Side card — What comes back:** the best route label, the top products, and matching stores from one embedding call and one SQL statement.
-- **Banner:** **Takeaway:** every CTE is plain SQL you can `EXPLAIN`.
-- **Notes:** Point out the two legs: `CONTAINS` with `SCORE` for exact words and `VECTOR_DISTANCE` with `FETCH APPROX` for meaning, joined with a `FULL OUTER JOIN` so a row found by either leg survives.
-  BRIDGE: One more check runs in the same turn: off-menu brands.
-- **Sources:** `src/app/db/sql/hybrid.sql`; `SLIDES.md` slide 5
-
-### 31. Catching Off-Menu Brands Without an LLM
-
-- **Target:** `slide_1790707646252980978_110`
-- **Badge:** Part 3 · Guardrail
-- **Subtitle:** `JSON_TABLE` plus `CONTAINS` answers "Do you carry Folgers?"
-- **Left card:** vectors put "Do you carry Folgers?" about as close to the dark roasts as "I want a bold morning coffee" (similarity around 0.65–0.72). A similarity cutoff can't separate them: too low and the bot pretends to sell Folgers, too high and real questions return nothing.
-- **Right code card (`hybrid-term-hits`):**
+- **Target:** `dba_s35`
+- **Title:** Step 4: It's All SQL — Hybrid RRF (k = 60)
+- **Subtitle:** Fuse Oracle Text `SCORE` and HNSW `VECTOR_DISTANCE` positions in one explainable query
+- **Left card (`Why Reciprocal Rank Fusion Works`):**
+  - Oracle Text `SCORE` (`1..100` inverse-frequency TF-IDF family, BM25-style ranking) and cosine similarity (`-1..1`) use incompatible scales
+  - RRF sums `1 / (60 + rank)` across a `FULL OUTER JOIN` so rows strong in both lists beat a noisy `#1` in only one list (`1/63 + 1/63 = 0.0317` vs `1/61 = 0.0164`)
+  - Isolating `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX` inside `prod_vec_top` and numbering with `ROWNUM` in `prod_vec` preserves `VECTOR INDEX HNSW SCAN` in `DBMS_XPLAN`
+- **Right code card (`sql`):**
 
   ```sql
-  SELECT jt.term AS term,
-         (SELECT COUNT(*)
-          FROM product p
-          WHERE CONTAINS(p.description, '{' || jt.term || '}') > 0) AS hit_count
-  FROM JSON_TABLE(
-      :terms_json,
-      '$[*]' COLUMNS (term VARCHAR2(128) PATH '$')
-  ) jt;
+  WITH prod_lex AS (
+      SELECT p.id, p.name, SCORE(2) AS lex_score,
+             ROW_NUMBER() OVER (ORDER BY SCORE(2) DESC, p.id) AS lex_rank
+      FROM product p
+      WHERE :has_text_query = 1 AND CONTAINS(p.description, :text_query, 2) > 0
+      FETCH FIRST :limit ROWS ONLY
+  ),
+  prod_vec_top AS (
+      SELECT p.id, p.name,
+             1 - VECTOR_DISTANCE(p.embedding, :query_vector, COSINE) AS vec_sim
+      FROM product p
+      WHERE p.embedding IS NOT NULL
+      ORDER BY VECTOR_DISTANCE(p.embedding, :query_vector, COSINE)
+      FETCH APPROX FIRST :limit ROWS ONLY
+  ),
+  prod_vec AS (
+      SELECT pv.*, ROWNUM AS vec_rank FROM prod_vec_top pv
+  )
+  SELECT COALESCE(l.id, v.id) AS entity_id,
+         (CASE WHEN l.lex_rank IS NOT NULL THEN 1.0 / (:rrf_k + l.lex_rank) ELSE 0 END) +
+         (CASE WHEN v.vec_rank IS NOT NULL THEN 1.0 / (:rrf_k + v.vec_rank) ELSE 0 END) AS rrf_score
+  FROM prod_lex l FULL OUTER JOIN prod_vec v ON l.id = v.id
+  ORDER BY rrf_score DESC FETCH FIRST :limit ROWS ONLY;
   ```
 
-- **Banner:** **Result:** "Cymbal Coffee does not carry Folgers, but House Blend ($3.75) is the closest menu option."
-- **Notes:** Zero catalog hits for the noun means the app says so plainly and offers the closest real product from the vector leg. No second model call.
-  BRIDGE: So when does the app actually call Gemini?
-- **Sources:** `SLIDES.md` appendix; `src/app/db/sql/hybrid.sql`
-
-### 32. Grounded Answers vs. Open-Ended Agents
-
-- **Target:** `slide_ai_studio_adk_v4`
-- **Badge:** Part 3 · Agent
-- **Subtitle:** Four routes answer from SQL; one route calls Gemini 3.8 Flash
-- **Left card (from `SLIDES.md` slide 6):** `PRODUCT_RAG`, `STORE_LOCATION`, and `PRODUCT_AVAILABILITY` are formatted from SQL rows; `ORDER_STATUS` returns a fixed notice; `GENERAL_CONVERSATION` runs the agent loop.
-- **Right card:** the agent loop runs Gemini 3.8 Flash with five parameterized SQL tools. The model cannot write SQL; it can only ask the app to run those functions. A persona and system prompt set the tone (short, friendly, counter-style answers).
-- **Banner:** **Takeaway:** prices and stock come from SQL rows, never from the model's memory.
-- **Notes:** If ADK comes up: it's Google's managed agent framework and pairs with Agent Engine; Cymbal Coffee shows the same loop in a few hundred lines of plain `google-genai` code so you can see every step. Backup B15 has the persona text.
-  BRIDGE: Those same tools can serve other agents.
-- **Sources:** NorCal 47–49; `SLIDES.md` slide 6
-
-### 33. Share Your Queries with Other Agents
-
-- **Target:** `slide_adk_indb_tools_v4`
-- **Badge:** Part 3 · MCP and A2A
-- **Subtitle:** Write the `:bind` query once; serve it to Gemini, MCP, and A2A
-- **Content:** the same functions (`search_products`, `get_product_details`, `find_nearby_stores`, `check_product_availability`, `check_order_status`) back the Gemini tool calls, the MCP endpoint (`POST /mcp`), and the A2A endpoint (`POST /a2a`, with an agent card at `/.well-known/agent-card.json`). An optional API key gates both endpoints.
-- **Banner:** **Takeaway:** the DBA-reviewed query is the unit of reuse, not the prompt.
-- **Notes:** This ties back to slide 22: Gemini Enterprise talks to the Oracle AI Database Agent over the same A2A protocol this app exposes.
-  BRIDGE: Before you ship, a few Day-2 rules.
-- **Sources:** `SLIDES.md` slide 7
-
-### 34. Day-2 Rules for AI Workloads on Oracle
-
-- **Target:** `slide_1790707646253468658_258` (three cards)
-- **Badge:** Part 3 · Day 2
-- **Subtitle:** Habits that prevent 2 AM pages
-- **Cards:**
-  - **Keep transactions short:** commit and return the connection before calling Vertex AI; model calls take seconds.
-  - **Queues and LOBs:** a `FOR UPDATE SKIP LOCKED` job table instead of another broker; give the queue its own connection pool so its `fetch_lobs=False` setting never reaches the app pool.
-  - **Memory, caches, privacy:** size `vector_memory_size` before building HNSW; cache embeddings and answers; never store browser coordinates.
-- **Banner:** **Takeaway:** the database rules you already follow are the ones that keep AI features stable.
-- **Notes:** All three are in `SLIDES.md` slides 3, 7, and 8 with the code paths.
-  BRIDGE: Let's wrap up.
-- **Sources:** `SLIDES.md` slides 3, 7, 8
+- **Notes:** Quote the product leg of `hybrid-search-turn` (`src/app/db/sql/hybrid.sql`, `SLIDES.md` slide 5), which runs the exact same fusion pattern across `chat_route`, `product`, and `store` in one round trip. Highlight the Oracle 26ai (`23.26.0.0.0`) optimizer detail every DBA appreciates: keeping `ROW_NUMBER()` out of `prod_vec_top` prevents `TABLE ACCESS FULL` fallback and preserves `VECTOR INDEX HNSW SCAN IN-FILTER` alongside `DOMAIN INDEX` in `DBMS_XPLAN`.
+  BRIDGE: Let's wrap up with three concrete places you can start on Monday morning.
+- **Sources:** `src/app/db/sql/hybrid.sql`; `SLIDES.md` slide 5
 
 ## Close
 
-### 35. Recap and Where to Start
+### 33. Let's Recap: Where to Start on Monday
 
-- **Target:** `slide_1790707646253602272_312` (three QR cards plus banner)
-- **Subtitle:** Pick one thing to try on Monday
+- **Target:** `dba_s28` (three full-width cards)
+- **Title:** Let's Recap: Where to Start on Monday
+- **Subtitle:** Pick one workflow to try on a development schema this week
 - **Cards:**
-  - **Extend:** connect Antigravity to a development schema with SQLcl MCP or MCP Toolbox. QR: MCP Toolbox repository.
-  - **Improve:** let an agent review one slow plan and draft annotations for one schema. QR: Oracle Select AI documentation.
-  - **Build:** run Cymbal Coffee and read `hybrid.sql`. QR: github.com/cofin/oracledb-vertexai-demo.
-- **Banner:** linkedin.com/in/cofin · github.com/cofin
-- **Notes:** Thank the audience and open for questions. No `BRIDGE:` line.
+  - **Connect Your Toolchain:** Wire Antigravity (`agy` CLI + IDE) to a read-only Oracle 26ai user with SQLcl MCP (`sql -mcp`) and a team `tools.yaml` in MCP Toolbox (`mcp-toolbox.dev`).
+  - **Document & Guard Schemas:** Let `agy` review one regressed plan and draft Oracle 26ai `ANNOTATIONS` for one schema, ready for Knowledge Catalog MCP (`docs.cloud.google.com/knowledge-catalog/docs/use-remote-mcp`).
+  - **Run the Reference App:** Spin up Cymbal Coffee—Litestar on `http://localhost:8000` plus bundled Oracle APEX 26.1 on `https://localhost:8443/ords/apex`—and inspect the `DBMS_XPLAN` for single-query Hybrid RRF (`github.com/cofin/oracledb-vertexai-demo`).
+- **Notes:** Summarize the three Monday actions so every DBA leaves with a concrete starting point whether they focus on daily diagnostics, fleet schema governance, or building AI applications on Oracle 26ai (`src/app/db/sql/hybrid.sql` and `src/apex/cymbal-coffee-ops/` in the repository).
+  BRIDGE: Thank you—grab the QR links on the closing slide and let's open the floor for questions.
 - **Sources:** NorCal 55–56
 
-### 36. Thank You
+### 34. Thank You
 
-- **Target:** `slide_ux_survey_38`
-- **Content:** keep the closing layout; replace the survey link only if the event provides its own.
-- **Notes:** No `BRIDGE:` line.
+- **Target:** `dba_s41`
+- **Title:** Thank You
+- **Content:** Non-overlapping closing title, speaker contact block (`Cody Fincher · linkedin.com/in/cofin · github.com/cofin`), and closing QR codes (`github.com/cofin/oracledb-vertexai-demo`, `mcp-toolbox.dev`, `docs.cloud.google.com/knowledge-catalog/docs/use-remote-mcp`, plus the event survey QR when provided by the conference).
+- **Notes:** Thank the audience and open for questions. No `BRIDGE:` line.
+- **Sources:** NorCal 56

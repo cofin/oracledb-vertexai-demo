@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Python Styleguide
-description: Python 3.12+ style, PEP 585/604 typing, docstrings, and imports
+description: Python 3.12+ style, PEP 585/604 typing, msgspec structs, Dishka DI, SQLSpec services, and AST hygiene rules
 tags:
   - styleguide
   - python
@@ -10,391 +10,319 @@ tags:
 
 # Python Style Guide
 
-Modern Python development standards with async-first patterns.
+Python 3.12+ conventions for Litestar 2, SQLSpec (`oracledb` async), Dishka DI, `msgspec`, and repository tooling across `src/app/`, `src/tests/`, `tools/`, and `manage.py`.
 
-## Core Rules
+## License and Copyright Headers
 
-### License and Copyright Headers
-
-Every source-owned file MUST start with a concise two-line SPDX header.
-Traditional `Copyright YYYY Google LLC` blocks are deprecated; use
-`SPDX-FileCopyrightText:` instead.
+Every source-owned file begins with the concise SPDX license header enforced by `tools/license_headers.py`:
 
 ```python
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Module docstring."""
-...
+"""Module docstring describing domain responsibility."""
 ```
 
-Comment form by file type (matches `tools/license_headers.py`):
+Comment syntax by file type (`tools/license_headers.py`):
 
-| Extension / file                       | Comment form                                  |
-| :------------------------------------- | :-------------------------------------------- |
-| `.py`, `.pyi`, `.sh`, `.toml`, `.yaml` | `# SPDX-FileCopyrightText: 2026 Google LLC`   |
-| `Makefile`, `Dockerfile*`, `manage.py` | `# SPDX-FileCopyrightText: 2026 Google LLC`   |
-| `.js`, `.ts`, `.tsx`, `.mjs`, `.cjs`   | `// SPDX-FileCopyrightText: 2026 Google LLC`  |
-| `.sql`                                 | `-- SPDX-FileCopyrightText: 2026 Google LLC`  |
-| `.css`                                 | `/* SPDX-FileCopyrightText: 2026 Google LLC */` (block) |
-| `.html.j2`                             | `{# SPDX-FileCopyrightText: 2026 Google LLC #}` (block) |
+| Extension / file | Comment form |
+| :--- | :--- |
+| `.py`, `.pyi`, `.sh`, `.toml`, `.yaml`, `.yml` | `# SPDX-FileCopyrightText: 2026 Google LLC` |
+| `.pre-commit-config.yaml`, `Makefile`, `Dockerfile*`, `manage.py` | `# SPDX-FileCopyrightText: 2026 Google LLC` |
+| `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs` | `// SPDX-FileCopyrightText: 2026 Google LLC` |
+| `.sql` | `-- SPDX-FileCopyrightText: 2026 Google LLC` |
+| `.css` | `/* SPDX-FileCopyrightText: 2026 Google LLC */` (multiline block) |
+| `.html.j2` | `{# SPDX-FileCopyrightText: 2026 Google LLC #}` (multiline block) |
 
-Header insertion rules:
+Header placement and enforcement:
 
-- Place the header at the very top, before module docstrings or imports.
-- Preserve a leading shebang (`#!/usr/bin/env ...`) or Dockerfile parser
-  directive (`# syntax=...`) on line 1; insert the header immediately after.
-- Skip generated assets (`src/resources/generated/`, `src/resources/public/`)
-  and vendored content under `node_modules/`, `dist/`, `.venv/`.
+- Place the SPDX lines at the top of the file before module docstrings and imports.
+- When line 1 is a shebang (`#!/usr/bin/env ...`) or Dockerfile parser directive (`# syntax=...`), place the SPDX lines immediately after line 1.
+- Generated or vendored directories (`src/resources/public/`, `dist/`, `.venv/`, `src/resources/node_modules/`) are skipped automatically.
+- Ruff `CPY001` checks headers during `make lint`, and `uv run python tools/license_headers.py --fix` inserts missing headers across supported targets.
 
-Tooling enforcement:
+## Module Layout and AST Hygiene
 
-- **Ruff `CPY001`** runs in `make lint` and rejects any Python file whose first
-  five lines do not match the configured `notice-rgx` (accepts both legacy
-  `Copyright YYYY` and SPDX forms; new files MUST use SPDX).
-- **prek `license-headers` hook** runs `tools/license_headers.py --fix` before
-  Ruff on every commit, inserting headers in supported file types so CPY001
-  never has to fail because of a missing header.
-- Manual fix: `uv run python tools/license_headers.py --fix [paths...]`.
+`tools/ci/check_code_hygiene.py` (`src/app/`, `tools/`, `manage.py`), `src/tests/unit/test_test_suite_guards.py` (`src/app/`, `src/tests/`), and Ruff `RUF022` enforce strict AST layout rules:
 
-### Type Annotations
+1. **Zero Narrative Inline `#` Comments**: Never write narrative inline or block `#` comments inside Python files (`src/app/`, `src/tests/`, `tools/`, `manage.py`). Only leading `#!` shebangs, SPDX header lines, and tool/doc directive pragmas (`# noqa`, `# type: ignore`, `# pyright:`, `# pragma:`, `# fmt:`, `# docs-start:`, `# docs-end:`) are permitted; document intent, invariants, and edge cases in Google-style docstrings.
+2. **Module Order**: SPDX header -> module docstring -> grouped top-level imports (`stdlib` -> third-party -> `app.*`) -> sorted explicit `__all__` tuple (required across `src/app/`) -> public constants/classes/functions -> private `_...` helpers at the bottom.
+3. **Top-Level Imports Only**: Never place `import` or `from ... import` inside `def` or `async def` bodies. The sole repository exception is lazy CLI subcommand dispatch in `src/app/cli/main.py` and `src/app/cli/commands.py`.
+4. **Private Implementation Modules**: Domain subpackages (`controllers/`, `services/`, `schemas/`, `runtime/`, `protocols/`) store implementation code in private `_*` modules (such as `_products.py`, `_stores.py`, `_apex_ai.py`) and re-export public symbols exclusively from the subpackage `__init__.py` via `__all__`.
+5. **Class Member Ordering**: Order members inside every class as:
+   - Class attributes (`__slots__`, `ClassVar`, schema fields)
+   - `__init__` / `__post_init__`
+   - `@property` accessors
+   - Public methods (`@classmethod`, `@staticmethod`, instance methods)
+   - Private `_...` helper methods strictly below public methods
 
 ```python
-# Use PEP 604 union syntax
-def get_user(id: int) -> User | None:
-    ...
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-# Never use Optional or TYPE_CHECKING imports
-# Bad: from typing import Optional
-# Bad: from __future__ import annotations
+"""Oracle Text query escaping and proximity builder utilities."""
 
-# Use generic syntax for collections
-items: list[str] = []
-mapping: dict[str, int] = {}
+from __future__ import annotations
+
+from typing import Final
+
+__all__ = ("DEFAULT_MAX_TOKENS", "format_token_clause")
+
+DEFAULT_MAX_TOKENS: Final[int] = 8
+
+
+def format_token_clause(raw_query: str, *, max_tokens: int = DEFAULT_MAX_TOKENS) -> str:
+    """Normalize whitespace-delimited search input into braced Oracle Text tokens."""
+    tokens = _tokenize(raw_query)[:max_tokens]
+    return " ACCUM ".join(f"{{{token}}}" for token in tokens)
+
+
+def _tokenize(raw_query: str) -> list[str]:
+    """Split and strip non-empty tokens from raw user input."""
+    return [part for part in raw_query.strip().split() if part]
 ```
 
-### Async by Default
+## Type Annotations (PEP 585 & PEP 604)
+
+- Use built-in generic collections (`list[str]`, `dict[str, Any]`, `tuple[int, ...]`, `set[str]`) and `collections.abc` protocols (`Sequence`, `Mapping`, `Callable`, `AsyncGenerator`, `AsyncIterator`) rather than `typing.List`, `typing.Dict`, or `typing.Optional`.
+- Use PEP 604 union syntax (`Product | None`, `str | int`).
+- `from __future__ import annotations` and `if TYPE_CHECKING:` blocks are standard across application, test, and tooling modules to keep runtime import graphs light.
+- **Dishka Provider Exception**: Never include `from __future__ import annotations` in Dishka provider modules under `src/app/ioc/` (`src/app/ioc/_config.py`, `src/app/ioc/_database.py`, `src/app/ioc/_ai.py`, `src/app/ioc/_domain.py`), because Dishka inspects concrete runtime type annotations when building the container graph.
+
+## Schemas, Dataclasses, and Serialization
+
+### Immutable `msgspec` Schemas (`src/app/lib/schema.py`)
+
+Domain payloads, wire DTOs, telemetry snapshots, and tool outputs inherit from `FrozenBaseStruct` (snake_case) or `CamelizedFrozenStruct` (camelCase wire payloads). Both set `frozen=True, gc=False, omit_defaults=True` so instances omit cyclic garbage-collector tracking overhead:
 
 ```python
-# All I/O operations should be async
-async def fetch_data(url: str) -> dict:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        return response.json()
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-# Use AsyncIterable for generators with cleanup
-async def provide_session() -> AsyncIterable[AsyncSession]:
-    async with AsyncSession(engine) as session:
-        yield session
-        await session.rollback()
+"""Store search request and response schemas."""
+
+from __future__ import annotations
+
+from app.lib.schema import CamelizedFrozenStruct, FrozenBaseStruct
+
+__all__ = ("StoreCoordinates", "StoreSummary")
+
+
+class StoreCoordinates(FrozenBaseStruct, frozen=True, gc=False):
+    """Request-scoped browser coordinates for proximity search."""
+
+    latitude: float
+    longitude: float
+    radius_miles: float = 25.0
+
+
+class StoreSummary(CamelizedFrozenStruct, frozen=True, gc=False):
+    """Public camelCase store payload returned to API callers."""
+
+    store_id: int
+    store_name: str
+    distance_miles: float | None = None
 ```
 
-### Docstrings
+### Slotted Dataclasses (`make slotscheck`)
+
+Environment-backed settings (`src/app/lib/settings/`) and CLI/infrastructure value objects (`tools/`) use `@dataclass(frozen=True, slots=True)`. Non-struct service and runtime classes declare explicit `__slots__ = (...)` so `make slotscheck` passes across `app`.
+
+### Centralized JSON Serialization (`src/app/utils/serialization.py`)
+
+Never import `orjson` or `pydantic` (banned via Ruff `TID251` in `pyproject.toml`), and do not scatter direct `json.dumps` / `json.loads` calls across domain modules. Route JSON encoding, decoding, and struct conversion through `src/app/utils/serialization.py` (`encode_json`, `encode_json_bytes`, `format_json`, `decode_json`, `from_json`, `to_json`, `schema_dump`, `to_schema`, `sanitize_for_json`).
+
+## Dependency Injection, Controllers, and Services
+
+### Dishka Providers (`src/app/ioc/`)
+
+Container providers live in `src/app/ioc/` (`ConfigProvider`, `DBProvider`, `AIProvider`, `DomainServiceProvider`) and are assembled via `create_container()` and `get_providers()` in `src/app/ioc/__init__.py`.
+
+- HTTP handlers inject dependencies with `Inject[ServiceType]` (`FromDishka` alias from `src/app/lib/di.py`).
+- Async Click CLI commands inject dependencies with `@async_inject` (`src/app/cli/utils.py`).
+- Never import `app.config` inside `src/app/domain/`, `src/app/ioc/`, or `src/app/lib/`; read settings through `Settings.from_env()` (`src/app/lib/settings/`).
 
 ```python
-def calculate_total(items: list[Item], tax_rate: float) -> Decimal:
-    """Calculate the total price including tax.
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-    Args:
-        items: List of items to calculate.
-        tax_rate: Tax rate as a decimal (e.g., 0.08 for 8%).
+"""Dishka provider example without postponed annotations."""
 
-    Returns:
-        Total price with tax applied.
-
-    Raises:
-        ValueError: If tax_rate is negative.
-    """
-```
-
-## Naming Conventions
-
-| Concept     | Convention             | Example                 |
-| :---------- | :--------------------- | :---------------------- |
-| Modules     | `snake_case`           | `user_service.py`       |
-| Classes     | `PascalCase`           | `UserService`           |
-| Functions   | `snake_case`           | `get_user_by_id`        |
-| Variables   | `snake_case`           | `current_user`          |
-| Constants   | `SCREAMING_SNAKE_CASE` | `MAX_RETRIES`           |
-| Private     | `_leading_underscore`  | `_internal_cache`       |
-
-## Data Classes and Models
-
-```python
-from dataclasses import dataclass
-from uuid import UUID
-
-@dataclass
-class UserCreate:
-    """Data for creating a new user."""
-    email: str
-    name: str | None = None
-
-@dataclass
-class User:
-    """User entity."""
-    id: UUID
-    email: str
-    name: str | None
-    is_active: bool = True
-```
-
-## Exception Handling
-
-```python
-# Create specific exceptions
-class UserNotFoundError(Exception):
-    """Raised when a user cannot be found."""
-    def __init__(self, user_id: UUID) -> None:
-        self.user_id = user_id
-        super().__init__(f"User not found: {user_id}")
-
-# Catch specific exceptions, never bare except
-try:
-    user = await get_user(user_id)
-except UserNotFoundError:
-    raise HTTPException(status_code=404)
-```
-
-## Dependency Injection Pattern
-
-```python
 from dishka import Provider, Scope, provide
+from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.loader import SQLFileLoader
 
-class ServiceProvider(Provider):
-    """Provider for domain services."""
+from app.domain.products.services import ProductService
+
+__all__ = ("CatalogProvider",)
+
+
+class CatalogProvider(Provider):
+    """Request-scoped catalog service provider."""
 
     @provide(scope=Scope.REQUEST)
-    def provide_user_service(
+    def provide_product_service(
         self,
-        driver: AsyncDriverAdapterBase,
-    ) -> UserService:
-        return UserService(driver)
+        driver: OracleAsyncDriver,
+        loader: SQLFileLoader,
+    ) -> ProductService:
+        """Construct a request-scoped ProductService."""
+        return ProductService(driver, loader)
 ```
 
-## Service Pattern
+### Controllers (`src/app/lib/security.py`)
+
+Every HTTP controller must inherit from `PublicController` or `SecureController` (`litestar_security`), enforced by `tools/ci/check_litestar_security.py`. Direct inheritance from `litestar.Controller` is banned.
+
+### SQLSpec Services (`src/app/lib/service.py`)
+
+Database services inherit from `OracleLoaderService` (when executing named SQL from `src/app/db/sql/*.sql` via `self.get_sql("<query_name>")`) or `OracleAsyncService` (when using SQLSpec `sql.select`, `sql.insert`, `sql.update`, or `sql.delete` builders):
 
 ```python
-class UserService:
-    """Service for user operations."""
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-    def __init__(self, driver: AsyncDriverAdapterBase) -> None:
-        self.driver = driver
+"""Catalog lookup service backed by SQLSpec named queries."""
 
-    async def get_by_id(self, user_id: UUID) -> User | None:
-        """Get user by ID."""
-        return await self.driver.get_one_or_none(
-            User,
-            id=user_id,
+from __future__ import annotations
+
+from app.domain.products.schemas import Product
+from app.lib.service import OracleLoaderService
+
+__all__ = ("CatalogLookupService",)
+
+
+class CatalogLookupService(OracleLoaderService):
+    """Read-only product lookup operations on Oracle 26ai."""
+
+    __slots__ = ()
+
+    async def get_product(self, product_id: int) -> Product | None:
+        """Fetch a single product by primary key."""
+        return await self.driver.select_one_or_none(
+            self.get_sql("get-product").where("id = :id"),
+            id=product_id,
+            schema_type=Product,
         )
-
-    async def create(self, data: UserCreate) -> User:
-        """Create a new user."""
-        user = User(
-            id=uuid4(),
-            email=data.email,
-            name=data.name,
-        )
-        return await self.driver.add(user)
 ```
 
-## Import Organization
+## Docstrings and Error Handling
+
+Use Google-style docstrings on modules, classes, and public functions. Catch specific exception types rather than bare `except:` clauses, and raise domain-appropriate or Litestar HTTP exceptions at controller boundaries:
 
 ```python
-# Standard library
-from collections.abc import AsyncIterable
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-from uuid import UUID
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-# Third-party
-import httpx
-from sqlalchemy.ext.asyncio import AsyncSession
+"""Input validation helper with Google-style docstring."""
 
-# Local
-from app.domain.users.models import User
-from app.domain.users.service import UserService
+from __future__ import annotations
+
+__all__ = ("validate_radius_miles",)
+
+
+def validate_radius_miles(radius_miles: float) -> float:
+    """Validate a store-locator search radius in miles.
+
+    Args:
+        radius_miles: Requested search radius in miles.
+
+    Returns:
+        Validated radius clamped to a positive float.
+
+    Raises:
+        ValueError: If ``radius_miles`` is zero, negative, or exceeds 500 miles.
+    """
+    if radius_miles <= 0 or radius_miles > 500:
+        msg = f"radius_miles must be between 0 and 500, got {radius_miles}"
+        raise ValueError(msg)
+    return radius_miles
 ```
 
-## Testing
+## CLI Scripts and Repository Tooling (`tools/`)
+
+Repository automation and CI gates live under `tools/` and `manage.py` and run via `uv run`:
+
+- Write terminal output with `sys.stdout.write(...)` and `sys.stderr.write(...)` instead of `print(...)` (Ruff `T20` flags `print` calls outside explicit CLI exceptions).
+- Return integer exit codes from `main(argv: Sequence[str] | None = None) -> int` and invoke `raise SystemExit(main())` under `if __name__ == "__main__":`.
+- Do not add unnecessary executable permission bits or `#!/usr/bin/env python3` shebangs to non-executable modules invoked via `uv run python tools/...`.
 
 ```python
-import pytest
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
 
-# Function-based tests (not class-based)
-def test_user_creation():
-    user = User(id=uuid4(), email="test@example.com", name=None)
-    assert user.is_active is True
+"""Minimal CLI check template for repository tooling."""
 
-# Parametrized tests
-@pytest.mark.parametrize("email,valid", [
-    ("test@example.com", True),
-    ("invalid", False),
-    ("", False),
-])
-def test_email_validation(email: str, valid: bool):
-    assert validate_email(email) == valid
+from __future__ import annotations
 
-# Async tests
-@pytest.mark.anyio
-async def test_fetch_user(client: AsyncClient):
-    response = await client.get("/api/users/1")
-    assert response.status_code == 200
-```
-
-## Tooling
-
-- **Quality & Typing**: See `python-quality` skill (Ruff, Pyright).
-- **Emerging**: See `ty` skill (if installed).
-- **Test runner**: `pytest`
-
-## Build System
-
-- **Backend**: `hatchling` (see `python-build` skill)
-- **Manager**: `uv` (see `python-uv` skill)
-
-## Performance Optimizations
-
-For performance-critical paths:
-
-- **MyPyC**: Compile native classes (see `python-mypyc` skill).
-- **Cython**: Use typed memoryviews (see `python-cython` skill).
-
-## Anti-Patterns to Avoid
-
-```python
-# Bad: Using Optional
-from typing import Optional
-def bad(x: Optional[str]) -> Optional[int]: ...
-
-# Good: Use union syntax
-def good(x: str | None) -> int | None: ...
-
-# Bad: Mutable default arguments
-def bad(items: list = []): ...
-
-# Good: Use None and create inside
-def good(items: list | None = None):
-    items = items or []
-
-# Bad: Bare except
-try:
-    something()
-except:
-    pass
-
-# Good: Specific exception
-try:
-    something()
-except ValueError as e:
-    logger.error("Validation failed", exc_info=e)
-    raise
-```
-
-## Scripting Best Practices
-
-For Python scripts (CLI tools, automation, etc.), apply these additional patterns.
-
-### Environment Management
-
-```bash
-# Use uv for project management
-uv sync
-uv run python your_script.py
-
-# Single-file scripts with dependencies (PEP 723)
-# /// script
-# dependencies = ["requests", "rich"]
-# ///
-uv run script.py
-```
-
-### Script Structure
-
-```python
-#!/usr/bin/env python3
-"""Brief description of what the script does.
-
-Usage:
-    python script.py [options] <arguments>
-"""
 import argparse
 import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-def main() -> int:
-    """Main entry point."""
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+__all__ = ("main",)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Verify that every supplied path exists on disk."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", help="Input file path")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("paths", nargs="+", help="files to verify")
+    args = parser.parse_args(argv)
 
-    try:
-        # Main logic here
-        return 0
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+    missing = [raw for raw in args.paths if not Path(raw).exists()]
+    if missing:
+        for item in missing:
+            sys.stderr.write(f"missing file: {item}\n")
         return 1
+    sys.stdout.write(f"verified {len(args.paths)} file(s)\n")
+    return 0
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
 ```
 
-### Code Formatting
+## Testing Conventions (`src/tests/AGENTS.md`)
 
-```bash
-# Use ruff for formatting and linting
-ruff format .
-ruff check . --fix
-```
-
-### Testing with pytest
+- Write plain `def test_*` and `async def test_*` functions (never `class Test*:` groupings).
+- Mark async tests with `@pytest.mark.anyio` (never `@pytest.mark.asyncio`).
+- Place unit tests under `src/tests/unit/` (zero live database or Vertex AI dependencies) and live Oracle 26ai tests under `src/tests/integration/` (`pytestmark = pytest.mark.integration`).
 
 ```python
-# tests/test_example.py
+# SPDX-FileCopyrightText: 2026 Google LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Unit tests for Oracle Text query formatting."""
+
+from __future__ import annotations
+
 import pytest
 
-def test_function_success():
-    """Test the happy path."""
-    result = my_function(valid_input)
-    assert result == expected_output
+from app.lib.text_search import build_oracle_text_query
 
-def test_function_error():
-    """Test error handling."""
-    with pytest.raises(ValueError, match="Invalid input"):
-        my_function(invalid_input)
 
-@pytest.fixture
-def sample_data():
-    """Fixture providing test data."""
-    return {"key": "value"}
+@pytest.mark.parametrize(
+    ("raw_query", "expected"),
+    [
+        ("dark roast", "{dark} ACCUM {roast}"),
+        ("   ", None),
+    ],
+)
+def test_build_oracle_text_query_formats_tokens(raw_query: str, expected: str | None) -> None:
+    """Verify whitespace tokenization and Oracle Text bracing."""
+    assert build_oracle_text_query(raw_query) == expected
 ```
 
-### Script Anti-Patterns
+## Verification Commands
 
-```python
-# Bad: Global mutable state
-config = {}  # Modified by multiple functions
-
-# Good: Pass configuration explicitly
-def process(data: dict, config: Config) -> Result:
-    ...
-
-# Bad: Hardcoded configuration
-DATABASE_URL = "postgres://localhost/db"
-
-# Good: Environment variables or config files
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgres://localhost/db")
-
-# Bad: Swallowing errors silently
-try:
-    risky_operation()
-except Exception:
-    pass  # Silent failure
-
-# Good: Log and handle appropriately
-try:
-    risky_operation()
-except SpecificError as e:
-    logger.error("Operation failed: %s", e)
-    raise
+```bash
+make format
+make lint
+make py-check
+make slotscheck
+make test-unit
+make test-integration
 ```

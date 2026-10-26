@@ -15,11 +15,12 @@ must contain; this skill says how to get it onto the deck safely.
 | :--- | :--- |
 | Story, timing, wording and accuracy rules | `.agents/bundles/knowledge/presentation/speaker-guide.md` |
 | Slide order, target objectIds, structural steps | `.agents/bundles/knowledge/presentation/storyboard.md` |
-| Per-slide content, code, banners, notes | `storyboard-opening-and-part1.md`, `storyboard-part2.md`, `storyboard-part3-and-close.md`, `storyboard-backups.md` |
+| Per-slide content, code, banners, notes | `.agents/bundles/knowledge/presentation/storyboard-opening-and-part1.md`, `.agents/bundles/knowledge/presentation/storyboard-part2.md`, `.agents/bundles/knowledge/presentation/storyboard-part3-and-close.md`, `.agents/bundles/knowledge/presentation/storyboard-backups.md` |
 | Claims and sources; do-not-claim list | `.agents/bundles/knowledge/presentation/verified-facts.md` |
 | Fixes for content from earlier talk versions | `.agents/bundles/knowledge/presentation/porting-corrections.md` |
+| App architecture and Oracle APEX 26.1 reference | `SLIDES.md`, `src/apex/README.md` (`src/apex/cymbal-coffee-ops/`) |
 | Deck IDs, source-deck map, environment Slides commands | `.agents/local/presentation/` (git-ignored) |
-| Offline Slides CLI, batch builder, syntax highlighter, and validator | `tools/slides/{cli,deck,diff,highlight,qr,validate}.py` |
+| Offline Slides CLI (`inventory`, `validate`, `diff`, `highlight`, `qr`) | `tools/slides/cli.py`, `tools/slides/deck.py`, `tools/slides/diff.py`, `tools/slides/highlight.py`, `tools/slides/qr.py`, `tools/slides/validate.py` |
 
 If the storyboard and the deck disagree, the storyboard wins unless the
 speaker has edited the deck by hand; diff first (see "Manual edits").
@@ -62,7 +63,7 @@ Duplicate a slide with an explicit id map, so later requests can target the copy
 
 Speaker notes: the notes shape is `slideProperties.notesPage.notesProperties.speakerNotesObjectId` in the dump; replace its text with `deleteText` + `insertText`, or use the environment's notes command.
 
-Code cards: write the code to a file, then
+Code cards: write the code to a file, then (`--language` accepts `oracle`, `sql`, `python`, `bash`, `json`, or `yaml`):
 
 ```bash
 uv run python manage.py slides highlight query.sql --element CODE_BOX_ID --language oracle --output .agents/local/presentation/batches/code-NN.json
@@ -83,7 +84,7 @@ The deck follows the current Google Cloud event styling (Cloudstyle 2.0 as used 
 - **Public audience.** Describe queries and features in words; leave out repository file names, paths, migration numbers, and internal tool names.
 - **QR codes** go on the closing slide; other slides carry a hyperlinked source line.
 - **Hideable sections.** Each audience-specific block (for example, the Cymbal Coffee app walkthrough) starts with its own divider and stands alone, so a copy of the deck can skip the whole block.
-- **Code cards:** background `#161B22`, Roboto Mono 8–9 pt, base `#E6EDF3`; token colors come from `tools/slides/highlight.py`. Clone text colors and sizes from the template slide's existing runs instead of hard-coding them.
+- **Code cards:** background `#161B22`, Roboto Mono 7.5–8.5 pt, base `#E6EDF3`; token colors come from `tools/slides/highlight.py`. Clone text colors and sizes from the template slide's existing runs instead of hard-coding them.
 
 ## Gotchas
 
@@ -102,11 +103,12 @@ The deck follows the current Google Cloud event styling (Cloudstyle 2.0 as used 
 
 ## Accuracy rules
 
-Read `verified-facts.md` before writing any claim. The rules that most often go wrong:
+Read `.agents/bundles/knowledge/presentation/verified-facts.md` before writing any claim. The rules that most often go wrong:
 
 - Oracle Text `CONTAINS` / `SCORE` is BM25-style ranking, not BM25.
 - HNSW is used only with `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST n ROWS ONLY`; `VECTOR_DISTANCE` is a distance (0 is identical).
-- Select AI's `google` provider uses a Gemini API key; Select AI has no Vertex AI provider. Vertex AI paths: `DBMS_VECTOR` (`vertexai`), Cloud Run functions from SQL, or the app tier.
+- Select AI's `google` provider uses a Gemini API key; Select AI has no Vertex AI provider. Vertex AI paths: `DBMS_VECTOR` (`vertexai`), Oracle APEX 26.1 `APEX_AI.GENERATE` (`COFFEE_VERTEX_AI` direct `/endpoints/openapi` with `google/gemini-3.8-flash` or Litestar `/api/apex/ai/v1` gateway on `http://localhost:8000`, pre-bundled in `container-registry.oracle.com/database/adb-free:latest-26ai` APEX 26.1.5 + ORDS 26.3), Cloud Run functions from SQL, or the app tier.
+- SQLSpec `0.69.0` defaults `fetch_lobs=False` (inline `CLOB`/`BLOB` < 1 GB as `str`/`bytes`) with session tracing and wire-level `sqlcommenter`, and isolates `litestar-queues` (`FOR UPDATE SKIP LOCKED`) on its own pool (`session_key="queue_db_session"`).
 - AWR and ASH need the Diagnostics Pack license. Agents use least-privilege users, never `SYS`.
 - Label timings as example timings from a local run.
 
@@ -119,7 +121,7 @@ This repository is public. Never commit deck IDs or Drive links, internal tool n
 - [ ] Every request batch validated against a dump taken right before it was applied
 - [ ] Thumbnails of every changed slide viewed; no overflow, overlap, or style bleed
 - [ ] Built from template slides; no three consecutive slides share an archetype
-- [ ] Titles fit on one or two headline lines; code highlighted; no badges, "Part N" labels, repo paths, or stray QR codes
-- [ ] Notes written; every shown slide except 35 and 36 ends with `BRIDGE:`
-- [ ] `manage.py slides inventory` shows the storyboard order and skip flags
-- [ ] Claims match `verified-facts.md`; open checks are still marked as open
+- [ ] Titles fit on one line (48 characters or fewer); code highlighted; no badges, "Part N" labels, repo paths, or stray QR codes
+- [ ] Notes written; every shown slide except the closing Thank You slide (slide 34, `dba_s41`) ends with `BRIDGE:`
+- [ ] `uv run python manage.py slides inventory <dump>` shows the storyboard order and skip flags
+- [ ] Claims match `.agents/bundles/knowledge/presentation/verified-facts.md`; open checks are still marked as open

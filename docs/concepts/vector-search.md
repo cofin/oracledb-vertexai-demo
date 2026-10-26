@@ -22,7 +22,7 @@ flowchart LR
 | Distance metric | `COSINE` |
 | Index type | HNSW, `ORGANIZATION INMEMORY NEIGHBOR GRAPH` |
 | Query embedding input | Query-purpose instruction + user text |
-| Document embedding input | Document-purpose instruction + `"{name}: {description}"` (`product`) or `"{route_label} | {title}: {exemplar_text} ({keywords})"` (`chat_route`) |
+| Document embedding input | Document-purpose instruction + `"{name}: {description}"` (`product`) or `"{route_label} \| {title}: {exemplar_text} ({keywords})"` (`chat_route`) |
 
 The `product`, `chat_route`, and `embedding_cache` tables all store
 `VECTOR(3072, FLOAT32)` columns, with HNSW `INMEMORY NEIGHBOR GRAPH` indexes on

@@ -23,12 +23,51 @@ tags:
 Prefer repository-native aggregate wrappers over ad hoc commands:
 
 ```bash
-# setup: make install
-# focused tests: uv run pytest path/to/test_file.py -k test_name
-# full tests: make test
-# lint/type/build: make lint
-# type checking only: make typecheck
-# aggregate verification: make lint && make test
+# Setup & Local Environment
+make install
+make init
+make doctor
+
+# Managed Autonomous AI Database Free 26ai (cymbal-adb-free, :1522/myatp_low, .envs/tns mTLS wallet)
+# Pre-bundles Oracle APEX 26.1.5 + ORDS 26.3 at https://localhost:8443/ords/apex (workspace COFFEE, schema APP)
+make start-infra
+make apex
+uv run coffee upgrade
+uv run coffee configure-apex-cdn
+
+# Oracle APEX 26.1 -> Vertex AI Provisioning & APEXlang (src/apex/cymbal-coffee-ops/, App ID 100)
+uv run python manage.py infra apex configure-vertex --mode direct --verify
+uv run python manage.py infra apex configure-vertex --mode direct --refresh-token
+uv run python manage.py infra apex configure-vertex --mode gateway --verify
+uv run python manage.py infra apex validate --alias cymbal-coffee-ops
+uv run python manage.py infra apex import --alias cymbal-coffee-ops --app-id 100
+
+# Application Server, Workers & Data Operations
+uv run coffee run
+uv run coffee worker run
+uv run coffee worker status
+uv run coffee bulk-embed
+uv run coffee export-fixtures
+uv run coffee clear-cache
+uv run coffee model-info
+
+# Documentation & Automated Demo Video Recorders (tools/demos/{cli,shell,web}.py, docs/_tapes/*.tape)
+make docs
+uv run python manage.py demos check
+make docs-demos-shell
+make docs-demos-web
+make docs-demos-live
+make docs-demos-clean
+
+# Static Analysis, Hygiene Gates & Tests
+uv run pytest src/tests/unit/<path>.py -k <test_name> -p no:cacheprovider
+make test-unit
+make test-integration # ephemeral ORACLE_CONTAINER_FLAVOR=free (gvenzl/oracle-free:latest on :1521/freepdb1)
+make test
+make py-check         # ruff + check_code_hygiene.py + check_litestar_security.py + validate_agentic_review.py + mypy + pyright + slotscheck
+make typecheck
+make lint             # prek + make py-check + make frontend-typecheck
+make lint && make docs && make test
 ```
 
 Use non-interactive modes in automation. Before claiming a result, run the exact command freshly, read its complete output and exit status, and report limitations.

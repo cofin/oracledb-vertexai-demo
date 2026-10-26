@@ -1,11 +1,11 @@
 ---
 name: review-web-htmx
-description: Review Jinja2 templates, litestar-htmx partial responses, SSE chat frontend contracts, and keyless Google Maps URLs.
+description: Review Jinja2 templates, litestar-htmx partial responses, SSE chat frontend contracts, APEXlang store views, and keyless Google Maps URLs.
 ---
 
 # Web, HTMX & Frontend Review (`review-web-htmx`)
 
-Reviews changes under `src/app/domain/web/`, `src/app/domain/*/controllers/`, and `src/resources/`.
+Reviews changes under `src/app/domain/web/` (`src/app/domain/web/controllers/_pages.py` `PageController` and `src/app/domain/web/templates/`), `src/app/domain/chat/controllers/_chat.py`, `src/app/domain/chat/services/_telemetry.py`, `src/app/domain/products/controllers/_products.py`, `src/app/domain/products/controllers/_vector.py`, `src/app/domain/products/services/_maps.py`, `src/resources/`, and `src/apex/cymbal-coffee-ops/`.
 
 ## Capsule Constraints
 

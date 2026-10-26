@@ -580,9 +580,7 @@ Once the core Litestar and APEX 26.1 applications are running, explore the follo
           return {"status": "cleared"}
 
       @staticmethod
-      async def _log_turn_to_bigquery(
-          *, session_id: str, user_query: str, response_text: str, start_time: float
-      ) -> None:
+      async def _log_turn_to_bigquery(*, session_id: str, user_query: str, response_text: str, start_time: float) -> None:
           """Persist one completed chat turn row to BigQuery asynchronously.
 
           Args:

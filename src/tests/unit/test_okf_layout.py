@@ -61,12 +61,49 @@ LEGACY_BEADS_RE = re.compile(r"\bbd\s+(?:ready|create|close|update|list|show|syn
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`[^`]+`")
 MARKDOWN_LINK_RE = re.compile(r"(?<!\!)\[[^\]]+\]\(([^)]+)\)")
+INTERNAL_SHORTLINK_RE = re.compile(r"(?<![A-Za-z0-9_./-])go/[a-z0-9][a-z0-9_-]{2,}", re.IGNORECASE)
+INTERNAL_APP_RE = re.compile(r"\b(?:db-skus|beekeeper|dma_classic)\b", re.IGNORECASE)
+
+RETIRED_AGENT_DOC_TOKENS: tuple[str, ...] = (
+    "enable_AutoLob",
+    "OrdsSidecar",
+    "apex_install.py",
+    "apex_media.py",
+    "ResponseCacheService",
+    "SystemService",
+    "InventoryService",
+    "EmbeddingService",
+    "MapsService",
+    "make_container",
+    "LitestarPersistenceProvider",
+    "IntegrationsProvider",
+    "tools/deploy/gcp/configure-apex-cdn.sql",
+)
+
+FORBIDDEN_AGENT_PATH_PREFIXES: tuple[str, ...] = ("/usr/local/google/home/", "/google/src/")
 
 
 def _strip_code_spans(markdown_text: str) -> str:
     """Remove fenced code blocks and inline code spans before scanning markdown links."""
     without_fences = FENCED_CODE_RE.sub("", markdown_text)
     return INLINE_CODE_RE.sub("", without_fences)
+
+
+def _active_agent_doc_files() -> list[Path]:
+    """Collect active agent rule, test-guide, OKF product/knowledge, and skill Markdown files."""
+    explicit = [
+        REPO_ROOT / "AGENTS.md",
+        AGENTS_DIR / "AGENTS.md",
+        REPO_ROOT / "src" / "tests" / "README.md",
+        REPO_ROOT / "src" / "tests" / "AGENTS.md",
+        REPO_ROOT / "src" / "tests" / "unit" / "AGENTS.md",
+        REPO_ROOT / "src" / "tests" / "integration" / "AGENTS.md",
+        BUNDLES_DIR / "index.md",
+    ]
+    product_files = sorted(PRODUCT_DIR.rglob("*.md")) if PRODUCT_DIR.exists() else []
+    knowledge_files = sorted(KNOWLEDGE_DIR.rglob("*.md")) if KNOWLEDGE_DIR.exists() else []
+    skill_files = sorted((AGENTS_DIR / "skills").rglob("*.md")) if (AGENTS_DIR / "skills").exists() else []
+    return [path for path in [*explicit, *product_files, *knowledge_files, *skill_files] if path.is_file()]
 
 
 def test_required_okf_knowledge_files_exist() -> None:
@@ -141,3 +178,26 @@ def test_knowledge_and_spec_relative_markdown_links_resolve() -> None:
             if not resolved.exists():
                 broken_links.append(f"{rel_source} -> {raw_target}")
     assert broken_links == []
+
+
+def test_no_retired_symbols_or_private_paths_in_agents_knowledge_and_skills() -> None:
+    """Verify active rules, test guides, OKF chapters, and skills contain zero retired symbols or private paths."""
+    violations: list[str] = []
+    for doc_path in _active_agent_doc_files():
+        rel_doc = doc_path.relative_to(REPO_ROOT).as_posix()
+        text = doc_path.read_text(encoding="utf-8")
+        violations.extend(
+            f"{rel_doc}: contains retired token {token!r}" for token in RETIRED_AGENT_DOC_TOKENS if token in text
+        )
+        violations.extend(
+            f"{rel_doc}: contains private workstation path {prefix!r}"
+            for prefix in FORBIDDEN_AGENT_PATH_PREFIXES
+            if prefix in text
+        )
+        violations.extend(
+            f"{rel_doc}: contains internal shortlink {shortlink!r}" for shortlink in INTERNAL_SHORTLINK_RE.findall(text)
+        )
+        violations.extend(
+            f"{rel_doc}: contains internal identifier {app_name!r}" for app_name in INTERNAL_APP_RE.findall(text)
+        )
+    assert violations == []

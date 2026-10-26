@@ -114,14 +114,8 @@ Before claiming a task, phase, or flow is complete, verify:
 
 - This consumer skill is installed at `.agents/skills/flow-memory-keeper/SKILL.md`;
   `.agents/skills/` is the only operational project-skill authority.
-- Inventory UI selectors must be data-driven from `StoreService`/fixtures, not
-  hardcoded store preset arrays. Store selectors must query `StoreService.list_with_count` or
-  pass seeded store lists from context.
-- When joining HNSW vector searches to relational tables (`vector-search-products-by-store`),
-  isolate `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST :k ROWS ONLY` inside a CTE
-  before joining or re-sorting by store stock status so Oracle 26ai preserves the HNSW
-  `VECTOR INDEX ACCESS` plan.
-- When archiving a completed Flow spec, verify that no markdown file under
-  `.agents/bundles/knowledge/` or `.agents/skills/` retains a relative link to the
-  contracted `.agents/bundles/specs/<flow_id>/` directory (`test_okf_layout.py` validates
-  all relative markdown links across `product/`, `knowledge/`, `specs/`, and `research/`).
+- Inventory UI selectors in `PageController` (`src/app/domain/web/controllers/_pages.py`) must be data-driven from `StoreService` (`src/app/domain/products/services/_stores.py`) and seeded fixtures (`StoreService.get_all_stores()` or `StoreService.list_with_count`), not hardcoded store preset arrays.
+- Domain implementation modules use private `_*` filenames re-exported via package `__init__.py` facades, schemas inherit from `FrozenBaseStruct` or `CamelizedFrozenStruct` (`src/app/lib/schema.py`), data services inherit from `OracleLoaderService` or `OracleAsyncService` (`src/app/lib/service.py`), and Dishka wiring uses `create_container()` / `get_providers()` in `src/app/ioc/__init__.py` (`ConfigProvider`, `DBProvider`, `AIProvider`, `DomainServiceProvider`).
+- SQLSpec `0.69.0` defaults `fetch_lobs` to `False` (returning `CLOB`/`BLOB` columns under 1 GB directly as inline Python `str` / `bytes`), while `DatabaseSettings.get_queue_config()` (`session_key="queue_db_session"` in `src/app/lib/settings/_database.py`) isolates `OracledbAsyncQueueStore`'s background worker pool and config mutations from `config.db`.
+- When joining HNSW vector searches to relational tables (`vector-search-products-by-store` in `src/app/db/sql/products.sql`), isolate `ORDER BY VECTOR_DISTANCE(...) FETCH APPROX FIRST 50 ROWS ONLY` (or `:limit`) inside a CTE before joining or re-sorting by store stock status and applying the outer `FETCH FIRST :limit ROWS ONLY` so Oracle 26ai preserves the HNSW `VECTOR INDEX ACCESS` plan.
+- When updating OKF chapters, operational skills, or archiving a completed Flow spec, verify that no markdown file under `.agents/bundles/` or `.agents/skills/` retains retired symbol names, broken relative links to a contracted `.agents/bundles/specs/<flow_id>/` directory, or non-existent backticked repository paths (`src/tests/unit/test_okf_layout.py` enforces relative link resolution across `.agents/bundles/` and retired-symbol hygiene across active agent docs and `.agents/skills/`, while `.agents/skills/ghop-review-manager/scripts/validate_agentic_review.py` enforces backticked repository path existence across `review-*` skills).
