@@ -53,7 +53,7 @@ uv run coffee model-info
 
 # Documentation & Automated Demo Video Recorders (tools/demos/{cli,shell,web}.py, docs/_tapes/*.tape)
 make docs
-uv run python manage.py demos check
+uv run --group demos python manage.py demos check
 make docs-demos-shell
 make docs-demos-web
 make docs-demos-live

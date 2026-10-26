@@ -127,7 +127,7 @@ uv run python manage.py infra apex import --alias cymbal-coffee-ops --workspace 
 | `uv run --group demos python manage.py demos check` | Verify VHS, `ttyd`, FFmpeg, Chromium, and Playwright demo recording prerequisites |
 | `make docs-demos-shell` | Record VHS terminal and SQLcl demo videos (`uv run python manage.py demos shell`) |
 | `make docs-demos-web` | Record headless Playwright + FFmpeg APEX 26.1 browser demo videos (`uv run --group demos python manage.py demos web`) |
-| `make docs-demos-live` | Interactively confirm (`RECORD LIVE DEMOS`) and record all VHS terminal and Playwright browser demos via `./tools/scripts/record-live-demos.sh` (requires `uv sync --group demos`) |
+| `make docs-demos-live` | Interactively confirm (`RECORD LIVE DEMOS`) and record all VHS terminal and Playwright browser demos via `./tools/scripts/record-live-demos.sh` |
 | `make docs-demos-clean` | Remove generated demo media under `docs/_static/demos/` |
 
 ## Documentation

@@ -8,8 +8,9 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-AGENTS_DIR = REPO_ROOT / ".agents"
+from tests.support.paths import PROJECT_ROOT
+
+AGENTS_DIR = PROJECT_ROOT / ".agents"
 BUNDLES_DIR = AGENTS_DIR / "bundles"
 PRODUCT_DIR = BUNDLES_DIR / "product"
 KNOWLEDGE_DIR = BUNDLES_DIR / "knowledge"
@@ -63,6 +64,19 @@ INLINE_CODE_RE = re.compile(r"`[^`]+`")
 MARKDOWN_LINK_RE = re.compile(r"(?<!\!)\[[^\]]+\]\(([^)]+)\)")
 INTERNAL_SHORTLINK_RE = re.compile(r"(?<![A-Za-z0-9_./-])go/[a-z0-9][a-z0-9_-]{2,}", re.IGNORECASE)
 INTERNAL_APP_RE = re.compile(r"\b(?:db-skus|beekeeper|dma_classic)\b", re.IGNORECASE)
+DRIVE_DOC_URL_RE = re.compile(
+    r"(?:docs|drive)\.google\.com/(?:presentation|document|spreadsheets|file)/d/[A-Za-z0-9_-]+", re.IGNORECASE
+)
+CREDENTIAL_TOKEN_RE = re.compile(
+    r"(?:"
+    + "|".join((
+        "ya" + r"29\.[A-Za-z0-9_.-]{10,}",
+        "AI" + r"za[0-9A-Za-z_-]{20,}",
+        "AK" + r"IA[0-9A-Z]{12,}",
+        "gh" + r"p_[0-9A-Za-z]{20,}",
+    ))
+    + r")"
+)
 
 RETIRED_AGENT_DOC_TOKENS: tuple[str, ...] = (
     "enable_AutoLob",
@@ -89,15 +103,31 @@ def _strip_code_spans(markdown_text: str) -> str:
     return INLINE_CODE_RE.sub("", without_fences)
 
 
+def _validate_okf_frontmatter(md_file: Path) -> str | None:
+    """Validate opening/closing YAML frontmatter and required OKF keys for a bundle file."""
+    rel = md_file.relative_to(PROJECT_ROOT).as_posix()
+    text = md_file.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return f"{rel}: missing opening --- frontmatter"
+    closing_idx = text.find("\n---\n", 4)
+    if closing_idx == -1:
+        return f"{rel}: missing closing --- frontmatter"
+    frontmatter = text[4:closing_idx]
+    missing_keys = [key for key in ("type:", "title:", "description:") if key not in frontmatter]
+    if missing_keys:
+        return f"{rel}: missing frontmatter keys {missing_keys}"
+    return None
+
+
 def _active_agent_doc_files() -> list[Path]:
     """Collect active agent rule, test-guide, OKF product/knowledge, and skill Markdown files."""
     explicit = [
-        REPO_ROOT / "AGENTS.md",
+        PROJECT_ROOT / "AGENTS.md",
         AGENTS_DIR / "AGENTS.md",
-        REPO_ROOT / "src" / "tests" / "README.md",
-        REPO_ROOT / "src" / "tests" / "AGENTS.md",
-        REPO_ROOT / "src" / "tests" / "unit" / "AGENTS.md",
-        REPO_ROOT / "src" / "tests" / "integration" / "AGENTS.md",
+        PROJECT_ROOT / "src" / "tests" / "README.md",
+        PROJECT_ROOT / "src" / "tests" / "AGENTS.md",
+        PROJECT_ROOT / "src" / "tests" / "unit" / "AGENTS.md",
+        PROJECT_ROOT / "src" / "tests" / "integration" / "AGENTS.md",
         BUNDLES_DIR / "index.md",
     ]
     product_files = sorted(PRODUCT_DIR.rglob("*.md")) if PRODUCT_DIR.exists() else []
@@ -108,35 +138,35 @@ def _active_agent_doc_files() -> list[Path]:
 
 def test_required_okf_knowledge_files_exist() -> None:
     """Verify all required OKF v0.2 knowledge bundle and `AGENTS.md` files exist."""
-    missing = [rel for rel in REQUIRED_OKF_KNOWLEDGE_PATHS if not (REPO_ROOT / rel).is_file()]
+    missing = [rel for rel in REQUIRED_OKF_KNOWLEDGE_PATHS if not (PROJECT_ROOT / rel).is_file()]
     assert missing == []
 
 
 def test_retired_knowledge_directories_are_removed() -> None:
     """Verify legacy `guides/` and `plans/` directories under `.agents/bundles/knowledge/` are removed."""
-    present = [rel for rel in RETIRED_KNOWLEDGE_DIRS if (REPO_ROOT / rel).exists()]
+    present = [rel for rel in RETIRED_KNOWLEDGE_DIRS if (PROJECT_ROOT / rel).exists()]
     assert present == []
 
 
 def test_knowledge_markdown_files_have_yaml_frontmatter() -> None:
-    """Verify every markdown file under `.agents/bundles/knowledge/` starts with YAML frontmatter."""
-    missing_frontmatter: list[str] = []
-    for md_file in sorted(KNOWLEDGE_DIR.rglob("*.md")):
-        rel = md_file.relative_to(REPO_ROOT).as_posix()
-        text = md_file.read_text(encoding="utf-8")
-        if not text.startswith("---\n"):
-            missing_frontmatter.append(rel)
-    assert missing_frontmatter == []
+    """Verify every markdown file under `.agents/bundles/product/` and `.agents/bundles/knowledge/` has OKF frontmatter."""
+    invalid_frontmatter: list[str] = []
+    for bundle_dir in (PRODUCT_DIR, KNOWLEDGE_DIR):
+        for md_file in sorted(bundle_dir.rglob("*.md")):
+            problem = _validate_okf_frontmatter(md_file)
+            if problem is not None:
+                invalid_frontmatter.append(problem)
+    assert invalid_frontmatter == []
 
 
 def test_no_legacy_beads_commands_in_agents_docs() -> None:
     """Verify active `AGENTS.md` and `.agents/bundles/knowledge/` files contain no legacy `bd` CLI invocations."""
     violations: list[str] = []
-    targets = [REPO_ROOT / "AGENTS.md", AGENTS_DIR / "AGENTS.md", *sorted(KNOWLEDGE_DIR.rglob("*.md"))]
+    targets = [PROJECT_ROOT / "AGENTS.md", AGENTS_DIR / "AGENTS.md", *sorted(KNOWLEDGE_DIR.rglob("*.md"))]
     for path in targets:
         if not path.is_file():
             continue
-        rel = path.relative_to(REPO_ROOT).as_posix()
+        rel = path.relative_to(PROJECT_ROOT).as_posix()
         if LEGACY_BEADS_RE.search(path.read_text(encoding="utf-8")):
             violations.append(rel)
     assert violations == []
@@ -144,10 +174,10 @@ def test_no_legacy_beads_commands_in_agents_docs() -> None:
 
 def test_agentic_review_and_skills_exist_and_validate() -> None:
     """Verify root `AGENTIC_REVIEW` and all GHOP review skills exist and pass structural validation."""
-    agentic_review = REPO_ROOT / "AGENTIC_REVIEW"
+    agentic_review = PROJECT_ROOT / "AGENTIC_REVIEW"
     assert agentic_review.is_file()
 
-    missing = [rel for rel in REQUIRED_REVIEW_SKILLS if not (REPO_ROOT / rel).is_file()]
+    missing = [rel for rel in REQUIRED_REVIEW_SKILLS if not (PROJECT_ROOT / rel).is_file()]
     assert missing == []
 
     lines = agentic_review.read_text(encoding="utf-8").splitlines()
@@ -165,7 +195,7 @@ def test_knowledge_and_spec_relative_markdown_links_resolve() -> None:
         md_file for bundle_dir in OKF_BUNDLE_DIRS if bundle_dir.exists() for md_file in sorted(bundle_dir.rglob("*.md"))
     ]
     for md_file in markdown_files:
-        rel_source = md_file.relative_to(REPO_ROOT).as_posix()
+        rel_source = md_file.relative_to(PROJECT_ROOT).as_posix()
         cleaned = _strip_code_spans(md_file.read_text(encoding="utf-8"))
         for match in MARKDOWN_LINK_RE.finditer(cleaned):
             raw_target = match.group(1).strip()
@@ -181,10 +211,10 @@ def test_knowledge_and_spec_relative_markdown_links_resolve() -> None:
 
 
 def test_no_retired_symbols_or_private_paths_in_agents_knowledge_and_skills() -> None:
-    """Verify active rules, test guides, OKF chapters, and skills contain zero retired symbols or private paths."""
+    """Verify active rules, test guides, OKF chapters, and skills contain zero retired symbols or leaked identifiers."""
     violations: list[str] = []
     for doc_path in _active_agent_doc_files():
-        rel_doc = doc_path.relative_to(REPO_ROOT).as_posix()
+        rel_doc = doc_path.relative_to(PROJECT_ROOT).as_posix()
         text = doc_path.read_text(encoding="utf-8")
         violations.extend(
             f"{rel_doc}: contains retired token {token!r}" for token in RETIRED_AGENT_DOC_TOKENS if token in text
@@ -199,5 +229,12 @@ def test_no_retired_symbols_or_private_paths_in_agents_knowledge_and_skills() ->
         )
         violations.extend(
             f"{rel_doc}: contains internal identifier {app_name!r}" for app_name in INTERNAL_APP_RE.findall(text)
+        )
+        violations.extend(
+            f"{rel_doc}: contains Drive/Slides document URL {drive_url!r}"
+            for drive_url in DRIVE_DOC_URL_RE.findall(text)
+        )
+        violations.extend(
+            f"{rel_doc}: contains credential token {token[:6]!r}..." for token in CREDENTIAL_TOKEN_RE.findall(text)
         )
     assert violations == []

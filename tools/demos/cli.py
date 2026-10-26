@@ -109,6 +109,8 @@ def demos_all(output_dir: str | None) -> None:
     """Record all VHS terminal tapes and Playwright APEX 26.1 browser walkthroughs."""
     resolved_dir = Path(output_dir) if output_dir else None
     try:
+        verify_vhs_prerequisites()
+        verify_web_prerequisites()
         shell_results = record_all_tapes(config=VHSRecorderConfig())
         web_results = record_all_web_scenarios(config=WebDemoConfig.from_env(output_dir=resolved_dir))
     except (VHSRecorderError, WebDemoError) as exc:

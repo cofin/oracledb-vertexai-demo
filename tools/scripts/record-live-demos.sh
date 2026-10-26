@@ -21,4 +21,4 @@ if [[ "${confirmation}" != "${REQUIRED_PHRASE}" ]]; then
     exit 1
 fi
 
-exec uv run python manage.py demos all
+exec uv run --group demos python manage.py demos all

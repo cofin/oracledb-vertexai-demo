@@ -5,7 +5,7 @@ Pure in-memory unit tests (`make test-unit`) with zero Docker/Podman container d
 ## Canonical Module Map
 
 - `cli/`
-  - `test_commands.py` — `coffee run` port resolution (`--port` -> `PORT` -> `LITESTAR_PORT` -> `8000`) and `configure-apex-cdn` (`src/app/db/sql/deploy/configure-apex-cdn.sql`).
+  - `test_commands.py` — `coffee run` port resolution (`--port` -> `LITESTAR_PORT` / `GRANIAN_PORT` -> `PORT` -> `8000`) and `configure-apex-cdn` (`src/app/db/sql/deploy/configure-apex-cdn.sql`).
   - `test_fixtures_and_embeddings.py` — baseline `0001` `MULTI_COLUMN_DATASTORE` / `chat_route` DDL, `coffee upgrade` migration-failure abort, `chat_route.json` exemplar integrity, and `bulk-embed` `batch_size` validation.
   - `test_surface.py` — public `coffee` Click group command surface and `_helpers` boundary.
 - `db/`

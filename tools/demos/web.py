@@ -263,37 +263,14 @@ def record_web_scenario(scenario: WebDemoScenario, *, config: WebDemoConfig | No
     """Execute a headless Playwright APEX 26.1 walkthrough and transcode it to `.mp4` and `.gif`."""
     cfg = config if config is not None else WebDemoConfig.from_env()
     sync_api = _load_playwright_sync_api()
+    pw_errors = _playwright_error_types(sync_api)
 
     with tempfile.TemporaryDirectory(prefix="cymbal-web-demo-") as raw_tmp:
         raw_dir = Path(raw_tmp)
-        with sync_api.sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=cfg.headless)
-            context = browser.new_context(
-                ignore_https_errors=True,
-                viewport={"width": cfg.width, "height": cfg.height},
-                record_video_dir=str(raw_dir),
-                record_video_size={"width": cfg.width, "height": cfg.height},
-            )
-            page: Any = None
-            context_closed = False
-            try:
-                context.add_init_script(HUD_INIT_SCRIPT)
-                page = context.new_page()
-                if scenario == WebDemoScenario.APEX_CONFIGURE_VERTEX_AI:
-                    _run_configure_vertex_ai_scenario(page, cfg)
-                elif scenario == WebDemoScenario.APEX_CREATE_VERTEX_APP:
-                    _run_create_vertex_app_scenario(page, cfg)
-                else:
-                    raise WebDemoError(f"Unsupported web demo scenario: {scenario}")
-                context.close()
-                context_closed = True
-                if page.video is None:
-                    raise WebDemoError(f"Playwright page did not attach a video recorder for {scenario.value}")
-                raw_webm = Path(page.video.path())
-            finally:
-                if not context_closed:
-                    context.close()
-                browser.close()
+        try:
+            raw_webm = _capture_scenario_webm(sync_api, scenario=scenario, cfg=cfg, raw_dir=raw_dir)
+        except pw_errors as exc:
+            raise WebDemoError(f"Playwright failed while recording {scenario.value}: {exc}") from exc
 
         mp4_path, gif_path = transcode_webm_to_mp4_and_gif(
             raw_webm,
@@ -319,6 +296,52 @@ def record_all_web_scenarios(
     return tuple(record_web_scenario(scenario, config=cfg) for scenario in target_scenarios)
 
 
+def _playwright_error_types(sync_api: Any) -> tuple[type[Exception], ...]:
+    """Return Playwright's runtime ``Error`` exception tuple when exposed by ``sync_api``."""
+    err_cls = getattr(sync_api, "Error", None)
+    if isinstance(err_cls, type) and issubclass(err_cls, Exception):
+        return (err_cls,)
+    return ()
+
+
+def _capture_scenario_webm(sync_api: Any, *, scenario: WebDemoScenario, cfg: WebDemoConfig, raw_dir: Path) -> Path:
+    """Launch headless Chromium, run the scenario inside an isolated context, and guarantee browser cleanup."""
+    with sync_api.sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=cfg.headless)
+        try:
+            return _run_context_capture(browser, scenario=scenario, cfg=cfg, raw_dir=raw_dir)
+        finally:
+            browser.close()
+
+
+def _run_context_capture(browser: Any, *, scenario: WebDemoScenario, cfg: WebDemoConfig, raw_dir: Path) -> Path:
+    """Record one scenario inside a video-enabled ``BrowserContext`` and flush the ``.webm`` file."""
+    context = browser.new_context(
+        ignore_https_errors=True,
+        viewport={"width": cfg.width, "height": cfg.height},
+        record_video_dir=str(raw_dir),
+        record_video_size={"width": cfg.width, "height": cfg.height},
+    )
+    context_closed = False
+    try:
+        context.add_init_script(HUD_INIT_SCRIPT)
+        page = context.new_page()
+        if scenario == WebDemoScenario.APEX_CONFIGURE_VERTEX_AI:
+            _run_configure_vertex_ai_scenario(page, cfg)
+        elif scenario == WebDemoScenario.APEX_CREATE_VERTEX_APP:
+            _run_create_vertex_app_scenario(page, cfg)
+        else:
+            raise WebDemoError(f"Unsupported web demo scenario: {scenario}")
+        context.close()
+        context_closed = True
+        if page.video is None:
+            raise WebDemoError(f"Playwright page did not attach a video recorder for {scenario.value}")
+        return Path(page.video.path())
+    finally:
+        if not context_closed:
+            context.close()
+
+
 def _resolve_ffmpeg_binary() -> Path:
     """Resolve ``ffmpeg`` on ``PATH`` or raise ``WebDemoError``."""
     found = shutil.which("ffmpeg")
@@ -339,8 +362,13 @@ def _load_playwright_sync_api() -> Any:
 
 
 def _run_ffmpeg(cmd: list[str], *, label: str, timeout_seconds: int) -> None:
-    """Execute an FFmpeg command and raise ``WebDemoError`` on non-zero exit status."""
-    completed = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_seconds, check=False)
+    """Execute an FFmpeg command and raise ``WebDemoError`` on timeout, OS error, or non-zero exit status."""
+    try:
+        completed = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout_seconds, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise WebDemoError(f"FFmpeg timed out after {timeout_seconds}s while generating {label}") from exc
+    except OSError as exc:
+        raise WebDemoError(f"Failed to execute FFmpeg while generating {label}: {exc}") from exc
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout or f"exit code {completed.returncode}").strip()
         raise WebDemoError(f"FFmpeg failed while generating {label}: {detail}")
@@ -353,7 +381,7 @@ def _set_caption(page: Any, text: str, *, pause_ms: int = 1200) -> None:
 
 
 def _run_configure_vertex_ai_scenario(page: Any, cfg: WebDemoConfig) -> None:
-    """Record signing into APEX 26.1 Builder and inspecting Direct Vertex AI Generative AI Service wiring."""
+    """Record signing into APEX 26.1 Builder, inspecting VERTEX_AI_CRED and COFFEE_VERTEX_AI, and testing Vertex AI."""
     page.goto(cfg.apex_base_url, wait_until="domcontentloaded")
     _set_caption(page, f"Step 1: Sign in to Oracle APEX 26.1 Builder (Workspace {cfg.workspace})")
 
@@ -376,17 +404,40 @@ def _run_configure_vertex_ai_scenario(page: Any, cfg: WebDemoConfig) -> None:
     utilities_link.click()
     page.wait_for_load_state("networkidle")
 
+    web_creds_link = page.get_by_role("link", name="Web Credentials").first
+    web_creds_link.wait_for(state="visible", timeout=30_000)
+    web_creds_link.click()
+    page.wait_for_load_state("networkidle")
+
+    cred_detail_link = page.get_by_role("link", name="VERTEX_AI_CRED").first
+    cred_detail_link.wait_for(state="visible", timeout=30_000)
+    cred_detail_link.click()
+    page.wait_for_load_state("networkidle")
+
+    utilities_breadcrumb = page.get_by_role("link", name="Workspace Utilities").first
+    utilities_breadcrumb.wait_for(state="visible", timeout=30_000)
+    utilities_breadcrumb.click()
+    page.wait_for_load_state("networkidle")
+
     _set_caption(
-        page,
-        f"Step 3: Generative AI Service COFFEE_VERTEX_AI -> Direct Vertex AI /endpoints/openapi ({cfg.model})",
-        pause_ms=1800,
+        page, f"Step 3: Generative AI Service COFFEE_VERTEX_AI -> {cfg.vertex_openapi_url} ({cfg.model})", pause_ms=1800
     )
     genai_link = page.get_by_role("link", name="Generative AI").first
     genai_link.wait_for(state="visible", timeout=30_000)
     genai_link.click()
     page.wait_for_load_state("networkidle")
 
-    _set_caption(page, "Step 4: Verify COFFEE_VERTEX_AI (Used by App Builder = Yes) & Test Connection", pause_ms=2200)
+    service_link = page.get_by_role("link", name="COFFEE_VERTEX_AI").first
+    service_link.wait_for(state="visible", timeout=30_000)
+    service_link.click()
+    page.wait_for_load_state("networkidle")
+
+    _set_caption(page, "Step 4: Verify COFFEE_VERTEX_AI (Used by App Builder = Yes) & Test Connection", pause_ms=1800)
+    test_button = page.get_by_role("button", name="Test Connection").first
+    test_button.wait_for(state="visible", timeout=30_000)
+    test_button.click()
+    page.wait_for_load_state("networkidle")
+    _set_caption(page, f"Direct Vertex AI Connection Verified ({cfg.model})", pause_ms=2200)
 
 
 def _run_create_vertex_app_scenario(page: Any, cfg: WebDemoConfig) -> None:

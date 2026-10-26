@@ -153,15 +153,20 @@ def record_vhs_tape(tape_path: Path, *, config: VHSRecorderConfig | None = None)
     if cfg.no_sandbox:
         env["VHS_NO_SANDBOX"] = "true"
 
-    completed = subprocess.run(
-        [str(host_bins["vhs"]), str(tape_path)],
-        cwd=cfg.repo_root,
-        env=env,
-        text=True,
-        capture_output=True,
-        timeout=cfg.timeout_seconds,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [str(host_bins["vhs"]), str(tape_path)],
+            cwd=cfg.repo_root,
+            env=env,
+            text=True,
+            capture_output=True,
+            timeout=cfg.timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise VHSRecorderError(f"VHS timed out after {cfg.timeout_seconds}s for {tape_path.name}") from exc
+    except OSError as exc:
+        raise VHSRecorderError(f"Failed to execute VHS for {tape_path.name}: {exc}") from exc
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout or f"exit code {completed.returncode}").strip()
         raise VHSRecorderError(f"VHS failed for {tape_path.name}: {detail}")

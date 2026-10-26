@@ -25,9 +25,9 @@ from tools.demos.shell import (
     verify_vhs_prerequisites,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
-TAPES_DIR = REPO_ROOT / "docs" / "_tapes"
-LIVE_SCRIPT_PATH = REPO_ROOT / "tools" / "scripts" / "record-live-demos.sh"
+from tests.support.paths import PROJECT_ROOT
+
+LIVE_SCRIPT_PATH = PROJECT_ROOT / "tools" / "scripts" / "record-live-demos.sh"
 
 
 def _make_executable(path: Path, content: str = "#!/usr/bin/env bash\nexit 0\n") -> Path:
@@ -84,9 +84,9 @@ def test_verify_vhs_prerequisites_validates_required_binaries(monkeypatch: pytes
 
 def test_tracked_tapes_declare_mp4_and_gif_outputs_dimensions_hide_show_and_no_secrets() -> None:
     """Verify tracked VHS tapes configure 1200x675 MP4/GIF outputs, Hide/Show blocks, Wait+Screen, and zero secrets."""
-    tapes = list_default_tapes(repo_root=REPO_ROOT)
+    tapes = list_default_tapes(repo_root=PROJECT_ROOT)
     assert [tape.name for tape in tapes] == ["apex-vertex-ai-setup.tape", "apexlang-workflow.tape"]
-    assert (REPO_ROOT / "docs" / "_static" / "demos" / ".gitkeep").is_file()
+    assert (PROJECT_ROOT / "docs" / "_static" / "demos" / ".gitkeep").is_file()
 
     token_pairs = (("ya", "29."), ("AI", "za"), ("AK", "IA"), ("gh", "p_"))
     forbidden_tokens = (
@@ -97,11 +97,11 @@ def test_tracked_tapes_declare_mp4_and_gif_outputs_dimensions_hide_show_and_no_s
     )
     for tape_path in tapes:
         raw = tape_path.read_text(encoding="utf-8")
-        outputs = parse_tape_outputs(tape_path, repo_root=REPO_ROOT)
+        outputs = parse_tape_outputs(tape_path, repo_root=PROJECT_ROOT)
         suffixes = {output.suffix for output in outputs}
         assert suffixes == {".mp4", ".gif"}
         for output in outputs:
-            rel = output.relative_to(REPO_ROOT).as_posix()
+            rel = output.relative_to(PROJECT_ROOT).as_posix()
             assert rel.startswith("docs/_static/demos/")
 
         assert "Set Width 1200" in raw
@@ -171,6 +171,13 @@ def test_record_vhs_tape_injects_rod_env_and_fails_fast_on_errors_or_empty_outpu
     with pytest.raises(VHSRecorderError, match=r"sample\.mp4"):
         record_vhs_tape(tape_file, config=cfg)
 
+    def fake_run_timeout(*_args: Any, **_kwargs: Any) -> SimpleNamespace:
+        raise subprocess.TimeoutExpired(cmd="vhs", timeout=300)
+
+    monkeypatch.setattr("tools.demos.shell.subprocess.run", fake_run_timeout)
+    with pytest.raises(VHSRecorderError, match="timed out"):
+        record_vhs_tape(tape_file, config=cfg)
+
 
 def test_record_live_demos_script_requires_exact_confirmation_phrase(tmp_path: Path) -> None:
     """Verify tools/scripts/record-live-demos.sh aborts without RECORD LIVE DEMOS and dispatches manage.py demos all."""
@@ -192,4 +199,4 @@ def test_record_live_demos_script_requires_exact_confirmation_phrase(tmp_path: P
         [str(LIVE_SCRIPT_PATH)], input="RECORD LIVE DEMOS\n", text=True, capture_output=True, env=env, check=False
     )
     assert confirmed.returncode == 0, confirmed.stderr
-    assert marker_file.read_text(encoding="utf-8").strip() == "run python manage.py demos all"
+    assert marker_file.read_text(encoding="utf-8").strip() == "run --group demos python manage.py demos all"
