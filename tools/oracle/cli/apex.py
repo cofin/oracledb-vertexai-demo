@@ -1,97 +1,53 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""APEX install/upgrade/status CLI commands (``manage.py infra apex``)."""
+"""Oracle APEX status, OpenAPI catalog, and APEXlang CLI commands (``manage.py infra apex``)."""
 
 from __future__ import annotations
 
-from dataclasses import replace
+import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any
 
+import oracledb
 import rich_click as click
 from rich.console import Console
+from sqlspec.adapters.oracledb import extract_oracle_wallet_zip
 
+from tools.oracle.adb import probe_ords_https
 from tools.oracle.apex_catalog import DEFAULT_APEX_OPENAPI_PATH, export_current_app_apex_catalog
+from tools.oracle.apex_lang import ApexLang, ApexLangConfig
+from tools.oracle.connection import ConnectionConfig
+from tools.oracle.database import ContainerFlavor, DatabaseConfig
+from tools.oracle.sqlcl_installer import SQLclInstaller
 
-if TYPE_CHECKING:
-    from tools.oracle.apex_install import ApexInstaller
-    from tools.oracle.apex_lang import ApexLang
+__all__ = (
+    "apex_export",
+    "apex_export_openapi",
+    "apex_generate",
+    "apex_group",
+    "apex_import",
+    "apex_status",
+    "apex_validate",
+    "console",
+)
 
 console = Console()
 
 
-def _build_installer(*, apex_version: str | None = None, english: bool | None = None) -> ApexInstaller:
-    """Build an APEX installer for the configured container and media version."""
-    from tools.oracle.apex_install import ApexInstallConfig, ApexInstaller
-    from tools.oracle.apex_media import ApexMedia, ApexMediaConfig
-    from tools.oracle.container import ContainerRuntime
-    from tools.oracle.database import DatabaseConfig, OracleDatabase
-
-    media_config = ApexMediaConfig.from_env()
-    if apex_version is not None:
-        media_config = replace(media_config, version=apex_version)
-    if english is not None:
-        media_config = replace(media_config, english_only=english)
-
-    runtime = ContainerRuntime()
-    db = OracleDatabase(runtime=runtime, config=DatabaseConfig.from_env(), console=console)
-    media = ApexMedia(media_config)
-    return ApexInstaller(runtime, db, media, ApexInstallConfig.from_env(), console=console)
-
-
-def _build_apex_lang() -> ApexLang:
-    """Build the SQLcl-backed APEXlang workflow wrapper."""
-    from tools.oracle.apex_lang import ApexLang, ApexLangConfig
-    from tools.oracle.sqlcl_installer import SQLclInstaller
-
-    return ApexLang(installer=SQLclInstaller(console=console), config=ApexLangConfig.from_env(), console=console)
-
-
 @click.group(name="apex")
 def apex_group() -> None:
-    """Install, upgrade, inspect, and source-control Oracle APEX."""
-
-
-@apex_group.command(name="install")
-@click.option("--apex-version", default=None, help="APEX version to install (default 26.1 / env)")
-@click.option("--force", is_flag=True, help="Re-run install even when already at target")
-@click.option("--english/--full", default=True, help="Use the English-only zip (default) or the full zip")
-def apex_install(apex_version: str | None, force: bool, english: bool) -> None:
-    """Install APEX into the container PDB (idempotent)."""
-    try:
-        installer = _build_installer(apex_version=apex_version, english=english)
-        version = installer.install(force=force)
-        console.print(f"[green]✓ APEX {version} installed.[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEX install failed: {e}[/red]")
-        raise click.Abort from e
-
-
-@apex_group.command(name="upgrade")
-@click.option("--apex-version", default=None, help="Target APEX version to upgrade to")
-def apex_upgrade(apex_version: str | None) -> None:
-    """Upgrade APEX in place to a newer version (idempotent re-run)."""
-    try:
-        installer = _build_installer(apex_version=apex_version)
-        version = installer.install()
-        console.print(f"[green]✓ APEX upgraded to {version}.[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEX upgrade failed: {e}[/red]")
-        raise click.Abort from e
+    """Inspect Oracle APEX 26.1, export REST catalogs, and manage APEXlang sources."""
 
 
 @apex_group.command(name="status")
 def apex_status() -> None:
-    """Report the installed APEX version against the configured target."""
+    """Report the live APEX_RELEASE version and ORDS HTTPS endpoint readiness."""
     try:
-        installer = _build_installer()
-        installed = installer.installed_version() or "not installed"
-        target = installer.media.config.version
-        console.print(f"[bold]APEX installed:[/bold] {installed}\n[bold]Target:[/bold] {target}")
-    except Exception as e:
-        console.print(f"[red]✗ Failed to read APEX status: {e}[/red]")
-        raise click.Abort from e
+        _render_apex_status()
+    except Exception as exc:
+        console.print(f"[red]✗ Failed to read APEX status: {exc}[/red]")
+        raise click.Abort from exc
 
 
 @apex_group.command(name="export-openapi")
@@ -104,16 +60,18 @@ def apex_status() -> None:
     help="OpenAPI catalog JSON artifact path",
 )
 @click.option(
-    "--server-url", default=None, help="Base URL APEX should use for the Litestar app (default APP_URL/LITESTAR_PORT)"
+    "--server-url",
+    default=None,
+    help="Base URL APEX should use for the Litestar app (default APP_URL or http://host.docker.internal:8000)",
 )
 def apex_export_openapi(output_path: str, server_url: str | None) -> None:
     """Export the /api/apex OpenAPI subset for APEX REST Source Catalog import."""
     try:
         catalog_path = export_current_app_apex_catalog(output_path=Path(output_path), server_url=server_url)
         console.print(f"[green]✓ Exported APEX OpenAPI catalog to {catalog_path}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEX OpenAPI export failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ APEX OpenAPI export failed: {exc}[/red]")
+        raise click.Abort from exc
 
 
 @apex_group.command(name="generate")
@@ -132,9 +90,9 @@ def apex_generate(
             alias=app_alias, app_name=app_name, app_id=app_id, workspace=workspace, schema=schema, force=force
         )
         console.print(f"[green]✓ Generated APEXlang source at {result.target_path}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEXlang generate failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ APEXlang generate failed: {exc}[/red]")
+        raise click.Abort from exc
 
 
 @apex_group.command(name="export")
@@ -146,9 +104,9 @@ def apex_export(app_id: int, app_alias: str, clean: bool) -> None:
     try:
         result = _build_apex_lang().export(app_id=app_id, alias=app_alias, clean=clean)
         console.print(f"[green]✓ Exported APEXlang source to {result.target_path}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEXlang export failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ APEXlang export failed: {exc}[/red]")
+        raise click.Abort from exc
 
 
 @apex_group.command(name="validate")
@@ -170,9 +128,9 @@ def apex_validate(
             debug=debug,
         )
         console.print(f"[green]✓ Validated APEXlang source at {result.target_path}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEXlang validation failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ APEXlang validation failed: {exc}[/red]")
+        raise click.Abort from exc
 
 
 @apex_group.command(name="import")
@@ -207,6 +165,74 @@ def apex_import(
             debug=debug,
         )
         console.print(f"[green]✓ Imported APEXlang source from {result.target_path}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ APEXlang import failed: {e}[/red]")
-        raise click.Abort from e
+    except Exception as exc:
+        console.print(f"[red]✗ APEXlang import failed: {exc}[/red]")
+        raise click.Abort from exc
+
+
+def _build_apex_lang() -> ApexLang:
+    """Build the SQLcl-backed APEXlang workflow wrapper."""
+    return ApexLang(installer=SQLclInstaller(console=console), config=ApexLangConfig.from_env(), console=console)
+
+
+def _render_apex_status() -> None:
+    """Query ``APEX_RELEASE``, probe ORDS HTTPS, and print endpoint URLs."""
+    db_config = DatabaseConfig.from_env()
+    conn_config = ConnectionConfig.from_env()
+    version_no, api_compat = _query_apex_release(db_config, conn_config)
+    ords_ready = probe_ords_https(db_config.https_port)
+    ords_base = f"https://localhost:{db_config.https_port}/ords"
+    ords_state = "[green]ready[/green]" if ords_ready else "[yellow]unreachable[/yellow]"
+    console.print(f"[bold]APEX Release:[/bold] {version_no} (API: {api_compat})")
+    console.print(f"[bold]ORDS HTTPS:[/bold] {ords_base}/ ({ords_state})")
+    console.print(f"[bold]APEX Builder:[/bold] {ords_base}/apex")
+    console.print(f"[bold]Workspace:[/bold] {db_config.workspace_name} (user: {db_config.app_user.upper()})")
+    console.print(f"[bold]Database Actions:[/bold] {ords_base}/sql-developer")
+
+
+def _resolve_status_connection_params(db_config: DatabaseConfig, conn_config: ConnectionConfig) -> dict[str, Any]:
+    """Build ``python-oracledb`` connection parameters for the ``APEX_RELEASE`` status query."""
+    user = conn_config.user or db_config.app_user
+    password = conn_config.password or db_config.app_user_password
+
+    wallet_dir = conn_config.wallet_location
+    if wallet_dir is None and db_config.flavor == ContainerFlavor.ADB_FREE and not os.getenv("DATABASE_HOST"):
+        wallet_dir = db_config.wallet_dir
+
+    if wallet_dir is not None:
+        wallet_pw = conn_config.wallet_password or db_config.wallet_password
+        if wallet_dir.is_file() and wallet_dir.suffix == ".zip":
+            resolved_wallet = extract_oracle_wallet_zip(wallet_dir, wallet_password=wallet_pw)
+            wallet_path = str(resolved_wallet)
+        else:
+            wallet_path = str(wallet_dir.resolve())
+        service_dsn = conn_config.dsn or (
+            conn_config.service_name
+            if conn_config.service_name and conn_config.service_name != "freepdb1"
+            else db_config.service_name
+        )
+        params: dict[str, Any] = {
+            "user": user,
+            "password": password,
+            "dsn": service_dsn,
+            "config_dir": wallet_path,
+            "wallet_location": wallet_path,
+        }
+        if wallet_pw:
+            params["wallet_password"] = wallet_pw
+        return params
+
+    return {"user": user, "password": password, "dsn": conn_config.get_dsn()}
+
+
+def _query_apex_release(db_config: DatabaseConfig, conn_config: ConnectionConfig) -> tuple[str, str]:
+    """Query ``APEX_RELEASE`` via ``oracledb`` and return ``(version_no, api_compatibility)``."""
+    params = _resolve_status_connection_params(db_config, conn_config)
+    with oracledb.connect(**params) as connection, connection.cursor() as cursor:
+        cursor.execute("SELECT VERSION_NO, API_COMPATIBILITY FROM APEX_RELEASE")
+        row = cursor.fetchone()
+    if not row:
+        return ("not installed", "unknown")
+    version_no = str(row[0]) if row[0] is not None else "not installed"
+    api_compat = str(row[1]) if len(row) > 1 and row[1] is not None else "unknown"
+    return (version_no, api_compat)

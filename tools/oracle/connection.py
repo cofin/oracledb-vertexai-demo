@@ -1,93 +1,118 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Connection tester for Oracle databases.
-
-This module tests database connectivity across all deployment modes:
-local, remote, and autonomous.
-"""
+"""Connection tester and deployment-mode detection for Oracle 26ai databases."""
 
 from __future__ import annotations
 
 import os
+import re
+import time
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
+import oracledb
 from rich.console import Console
 from rich.table import Table
+from sqlspec.adapters.oracledb import extract_oracle_wallet_zip
+
+__all__ = (
+    "ConnectionConfig",
+    "ConnectionInfo",
+    "ConnectionTestResult",
+    "ConnectionTester",
+    "DeploymentMode",
+    "detect_deployment_mode",
+    "get_connection_suggestions",
+)
+
+_SQLALCHEMY_URL_RE = re.compile(r"oracle\+oracledb://([^:]+):([^@]+)@(.+)")
 
 
 class DeploymentMode(StrEnum):
     """Database deployment modes."""
 
-    MANAGED = "managed"  # We manage a Docker container
-    EXTERNAL = "external"  # Connect to existing database (auto-detect wallet)
+    MANAGED = "managed"
+    EXTERNAL = "external"
 
 
-@dataclass
+def detect_deployment_mode() -> DeploymentMode:
+    """Resolve deployment mode from ``DATABASE_DEPLOYMENT_MODE`` or host/URL settings."""
+    explicit = os.getenv("DATABASE_DEPLOYMENT_MODE", "").strip().lower()
+    if explicit == DeploymentMode.MANAGED.value:
+        return DeploymentMode.MANAGED
+    if explicit == DeploymentMode.EXTERNAL.value:
+        return DeploymentMode.EXTERNAL
+
+    if os.getenv("DATABASE_HOST") or os.getenv("DATABASE_URL"):
+        return DeploymentMode.EXTERNAL
+    return DeploymentMode.MANAGED
+
+
+def get_connection_suggestions(mode: DeploymentMode, error: str, has_wallet: bool = False) -> list[str]:
+    """Return actionable troubleshooting suggestions for a connection failure."""
+    suggestions: list[str] = []
+    error_lower = error.lower()
+
+    if has_wallet:
+        if "wallet" in error_lower:
+            suggestions.extend([
+                "Verify WALLET_LOCATION points to a valid wallet directory or .zip",
+                "Check TNS_ADMIN is set or matches WALLET_LOCATION",
+            ])
+        if "password" in error_lower:
+            suggestions.append("Verify WALLET_PASSWORD matches the wallet password")
+        if "tns" in error_lower or "service" in error_lower:
+            suggestions.extend([
+                "Verify DATABASE_URL / DATABASE_SERVICE_NAME matches a service in tnsnames.ora (e.g. myatp_low)",
+                "Check wallet files: cwallet.sso, tnsnames.ora, sqlnet.ora",
+            ])
+
+    if mode == DeploymentMode.MANAGED:
+        suggestions.extend([
+            "Check if the Oracle container is running: docker ps",
+            "Start managed ADB-Free container: uv run python manage.py infra start",
+        ])
+        if "refused" in error_lower or "cannot connect" in error_lower:
+            suggestions.append("Verify listener port mappings (1521/1522 and HTTPS 8443)")
+        if "invalid username" in error_lower or "invalid password" in error_lower:
+            suggestions.append("Check DATABASE_USER and DATABASE_PASSWORD environment variables")
+    elif mode == DeploymentMode.EXTERNAL:
+        if "refused" in error_lower or "cannot connect" in error_lower:
+            suggestions.extend(["Verify host and port are correct", "Check firewall rules and database listener state"])
+        if "invalid username" in error_lower or "invalid password" in error_lower:
+            suggestions.append("Verify DATABASE_USER and DATABASE_PASSWORD")
+
+    return suggestions
+
+
+@dataclass(slots=True)
 class ConnectionConfig:
-    """Database connection configuration."""
+    """Database connection configuration across managed and external modes."""
 
-    # Mode
     mode: DeploymentMode
-
-    # Common settings
     user: str
     password: str
-
-    # Local/Remote settings
     host: str | None = None
     port: int | None = None
     service_name: str | None = None
     dsn: str | None = None
-
-    # Autonomous settings
     wallet_location: Path | None = None
     wallet_password: str | None = None
     database_url: str | None = None
 
     @classmethod
     def from_env(cls) -> ConnectionConfig:
-        """Create connection config from environment variables.
-
-        Returns:
-            ConnectionConfig: Configuration from environment
-
-        Detection logic:
-            - If DATABASE_HOST or DATABASE_URL is set -> EXTERNAL mode
-            - Otherwise -> MANAGED mode (local Docker container)
-            - Wallet is auto-detected if WALLET_LOCATION/TNS_ADMIN is set
-
-        Environment variables:
-            # Connection (all modes)
-            - DATABASE_USER
-            - DATABASE_PASSWORD
-            - DATABASE_HOST (or DATABASE_URL for connection string)
-            - DATABASE_PORT
-            - DATABASE_SERVICE_NAME
-            - DATABASE_DSN
-
-            # Wallet (auto-detected when present)
-            - WALLET_LOCATION or TNS_ADMIN
-            - WALLET_PASSWORD
-
-            # Managed mode defaults
-            - Uses localhost:1521/freepdb1 if no DATABASE_HOST/URL set
-        """
+        """Create connection configuration from environment variables."""
         mode = detect_deployment_mode()
-
-        # Check for wallet (independent of mode)
         wallet_location = os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN")
         wallet_password = os.getenv("WALLET_PASSWORD")
-
-        # Handle DATABASE_URL format (e.g., oracle+oracledb://user:password@service_name)
         database_url = os.getenv("DATABASE_URL")
-        if database_url:
-            import re
 
-            match = re.match(r"oracle\+oracledb://([^:]+):([^@]+)@(.+)", database_url)
+        if database_url:
+            match = _SQLALCHEMY_URL_RE.match(database_url)
             if match:
                 user, password, service_name = match.groups()
                 return cls(
@@ -102,9 +127,28 @@ class ConnectionConfig:
 
         user = os.getenv("DATABASE_USER", "app")
         password = os.getenv("DATABASE_PASSWORD", "SuperSecret1" if mode == DeploymentMode.MANAGED else "")
-        host = os.getenv("DATABASE_HOST", "localhost" if mode == DeploymentMode.MANAGED else "")
+        explicit_host = os.getenv("DATABASE_HOST")
+        flavor = os.getenv("ORACLE_CONTAINER_FLAVOR", "adb-free").strip().lower()
+        default_tns = Path(".envs/tns")
+        if (
+            not wallet_location
+            and mode == DeploymentMode.MANAGED
+            and not explicit_host
+            and flavor != "free"
+            and (default_tns / "tnsnames.ora").is_file()
+        ):
+            wallet_location = str(default_tns)
+            if not wallet_password:
+                wallet_password = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
+
+        host = explicit_host if explicit_host is not None else ("localhost" if mode == DeploymentMode.MANAGED else "")
         port = int(os.getenv("DATABASE_PORT", "1521"))
-        service_name = os.getenv("DATABASE_SERVICE_NAME", "freepdb1")
+        default_service = "myatp_low" if wallet_location else "freepdb1"
+        service_name = (
+            database_url.strip()
+            if database_url and "://" not in database_url
+            else os.getenv("DATABASE_SERVICE_NAME", default_service)
+        )
         dsn = os.getenv("DATABASE_DSN")
 
         return cls(
@@ -117,87 +161,34 @@ class ConnectionConfig:
             dsn=dsn,
             wallet_location=Path(wallet_location) if wallet_location else None,
             wallet_password=wallet_password,
-        )
-
-    @classmethod
-    def for_managed(
-        cls,
-        user: str = "app",
-        password: str = f"{'Super'}-{'secret1'}",
-        host: str = "localhost",
-        port: int = 1521,
-        service_name: str = "myatp_low",
-    ) -> ConnectionConfig:
-        """Create config for managed Docker container database."""
-        return cls(
-            mode=DeploymentMode.MANAGED, user=user, password=password, host=host, port=port, service_name=service_name
-        )
-
-    @classmethod
-    def for_external(
-        cls,
-        user: str,
-        password: str,
-        host: str | None = None,
-        port: int = 1521,
-        service_name: str = "freepdb1",
-        database_url: str | None = None,
-        wallet_location: Path | None = None,
-        wallet_password: str | None = None,
-    ) -> ConnectionConfig:
-        """Create config for external database (with optional wallet support)."""
-        return cls(
-            mode=DeploymentMode.EXTERNAL,
-            user=user,
-            password=password,
-            host=host,
-            port=port,
-            service_name=service_name,
             database_url=database_url,
-            wallet_location=wallet_location,
-            wallet_password=wallet_password,
         )
 
     def get_dsn(self) -> str:
-        """Get DSN connection string.
-
-        Returns:
-            str: DSN string
-
-        For wallet connections (TNS_ADMIN set):
-            Returns service_name directly (resolved via tnsnames.ora)
-
-        For standard connections:
-            Returns host:port/service_name format
-        """
+        """Return the effective DSN or TNS alias string."""
         if self.dsn:
             return self.dsn
-
-        # If wallet is configured, use service name directly (tnsnames.ora resolves it)
         if self.wallet_location:
             return self.service_name or ""
-
-        # Standard DSN format
         return f"{self.host}:{self.port}/{self.service_name}"
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionTestResult:
-    """Result of connection test."""
+    """Outcome of a database connection test."""
 
     success: bool
     mode: DeploymentMode
     message: str
     connection_time_ms: float | None = None
     server_version: str | None = None
-    user_info: dict[str, Any] | None = None
     error: str | None = None
     suggestions: list[str] | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ConnectionInfo:
-    """Detailed connection information."""
+    """Detailed connection parameters for display and diagnostics."""
 
     mode: DeploymentMode
     host: str
@@ -210,178 +201,38 @@ class ConnectionInfo:
 
 
 class ConnectionTester:
-    """Test database connections across all deployment modes."""
+    """Test Oracle database connectivity across managed and external deployment modes."""
 
     def __init__(self, console: Console | None = None) -> None:
-        """Initialize connection tester.
-
-        Args:
-            console: Rich console for output (creates new if None)
-        """
+        """Initialize the connection tester."""
         self.console = console or Console()
 
     def test(
         self, config: ConnectionConfig | None = None, *, timeout: int = 10, display: bool = True
     ) -> ConnectionTestResult:
-        """Test database connection.
-
-        Args:
-            config: Connection configuration (reads from env if None)
-            timeout: Connection timeout in seconds
-            display: Display results with Rich formatting
-
-        Returns:
-            ConnectionTestResult: Test results
-
-        Tests performed:
-            1. Basic connectivity
-            2. Authentication
-            3. Query execution (simple SELECT)
-            4. Server version
-
-        Automatically detects and uses wallet if configured.
-        If display=True, shows formatted results.
-        """
-        if config is None:
-            config = ConnectionConfig.from_env()
-
-        # Test connection (handles wallet automatically)
-        result = self._do_connection_test(config, timeout)
-
+        """Execute a connectivity and authentication test against the configured database."""
+        resolved_config = config if config is not None else ConnectionConfig.from_env()
+        result = self._do_connection_test(resolved_config, timeout)
         if display:
             self.display_test_result(result)
-
         return result
 
-    def _do_connection_test(self, config: ConnectionConfig, timeout: int = 10) -> ConnectionTestResult:
-        """Test database connection with automatic wallet detection.
-
-        Args:
-            config: Connection configuration
-            timeout: Connection timeout in seconds
-
-        Returns:
-            ConnectionTestResult: Test results
-        """
-        import time
-
-        start_time = time.time()
-
-        # Pre-flight checks for wallet (if configured)
-        if config.wallet_location and not config.wallet_location.exists():
-            return ConnectionTestResult(
-                success=False,
-                mode=config.mode,
-                message=f"Wallet directory not found: {config.wallet_location}",
-                error=f"Directory does not exist: {config.wallet_location}",
-                suggestions=["Verify WALLET_LOCATION path", "Extract wallet: python manage.py wallet extract <zip>"],
-            )
-
-        try:
-            return self._run_connection_probe(config, start_time=start_time)
-        except Exception as e:
-            error_msg = str(e)
-            suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
-
-            return ConnectionTestResult(
-                success=False,
-                mode=config.mode,
-                message=f"Connection failed: {error_msg}",
-                error=error_msg,
-                suggestions=suggestions,
-            )
-
-    def _run_connection_probe(self, config: ConnectionConfig, *, start_time: float) -> ConnectionTestResult:
-        """Run one wallet-aware connection probe."""
-        import time
-
-        import oracledb
-
-        original_tns = os.environ.get("TNS_ADMIN")
-        if config.wallet_location:
-            os.environ["TNS_ADMIN"] = str(config.wallet_location)
-        try:
-            dsn = config.get_dsn()
-            conn_params = self._connection_params(config, dsn)
-            with oracledb.connect(**conn_params) as connection:
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT 'OK' FROM DUAL")
-                    cursor.fetchone()
-                connection_time_ms = (time.time() - start_time) * 1000
-                return self._successful_connection_result(config, dsn, connection.version, connection_time_ms)
-        finally:
-            if original_tns:
-                os.environ["TNS_ADMIN"] = original_tns
-            else:
-                os.environ.pop("TNS_ADMIN", None)
-
-    @staticmethod
-    def _connection_params(config: ConnectionConfig, dsn: str) -> dict[str, Any]:
-        """Build python-oracledb connection parameters."""
-        conn_params = {"user": config.user, "password": config.password, "dsn": dsn}
-        if config.wallet_password:
-            conn_params["wallet_password"] = config.wallet_password
-        if config.wallet_location:
-            wallet_path = str(config.wallet_location)
-            conn_params["wallet_location"] = wallet_path
-            conn_params["config_dir"] = wallet_path
-        return conn_params
-
-    @staticmethod
-    def _successful_connection_result(
-        config: ConnectionConfig, dsn: str, version: str, connection_time_ms: float
-    ) -> ConnectionTestResult:
-        """Build a successful connection-test result."""
-        mode_desc = "managed container" if config.mode == DeploymentMode.MANAGED else "external database"
-        wallet_desc = " (wallet)" if config.wallet_location else ""
-        message = f"Successfully connected to {mode_desc}{wallet_desc}: {dsn}"
-        return ConnectionTestResult(
-            success=True,
-            mode=config.mode,
-            message=message,
-            connection_time_ms=connection_time_ms,
-            server_version=version,
-        )
-
     def get_connection_info(self, config: ConnectionConfig | None = None) -> ConnectionInfo:
-        """Get detailed connection information.
-
-        Args:
-            config: Connection configuration (reads from env if None)
-
-        Returns:
-            ConnectionInfo: Connection details
-
-        Provides information for debugging and .env configuration.
-        """
-        if config is None:
-            config = ConnectionConfig.from_env()
-
+        """Return structured connection details."""
+        resolved_config = config if config is not None else ConnectionConfig.from_env()
         return ConnectionInfo(
-            mode=config.mode,
-            host=config.host or "N/A",
-            port=config.port or 0,
-            service_name=config.service_name or "N/A",
-            user=config.user,
-            dsn=config.get_dsn(),
-            wallet_location=str(config.wallet_location) if config.wallet_location else None,
-            database_url=config.database_url,
+            mode=resolved_config.mode,
+            host=resolved_config.host or "N/A",
+            port=resolved_config.port or 0,
+            service_name=resolved_config.service_name or "N/A",
+            user=resolved_config.user,
+            dsn=resolved_config.get_dsn(),
+            wallet_location=str(resolved_config.wallet_location) if resolved_config.wallet_location else None,
+            database_url=resolved_config.database_url,
         )
 
     def display_test_result(self, result: ConnectionTestResult) -> None:
-        """Display connection test results with Rich formatting.
-
-        Args:
-            result: Test results
-
-        Shows:
-            - Success/failure status
-            - Connection time
-            - Server version
-            - User information
-            - Error details (if failed)
-            - Troubleshooting suggestions
-        """
+        """Render connection test results to the Rich console."""
         self.console.print()
         if result.success:
             self.console.print(f"[green]✓ {result.message}[/green]")
@@ -398,13 +249,7 @@ class ConnectionTester:
         self.console.print()
 
     def display_connection_info(self, info: ConnectionInfo) -> None:
-        """Display connection information with Rich formatting.
-
-        Args:
-            info: Connection information
-
-        Shows formatted table with all connection details.
-        """
+        """Render a Rich table of connection details."""
         table = Table(title="Connection Information")
         table.add_column("Property", style="cyan")
         table.add_column("Value", style="white")
@@ -423,188 +268,77 @@ class ConnectionTester:
 
         self.console.print(table)
 
-    def validate_credentials(self, config: ConnectionConfig) -> bool:
-        """Quick validation of credentials without full connection.
+    def _do_connection_test(self, config: ConnectionConfig, timeout: int = 10) -> ConnectionTestResult:
+        """Run preflight wallet validation and a live ``SELECT 'OK' FROM DUAL`` probe."""
+        start_time = time.time()
 
-        Args:
-            config: Connection configuration
+        if config.wallet_location and not config.wallet_location.exists():
+            return ConnectionTestResult(
+                success=False,
+                mode=config.mode,
+                message=f"Wallet path not found: {config.wallet_location}",
+                error=f"Path does not exist: {config.wallet_location}",
+                suggestions=[
+                    "Verify WALLET_LOCATION path",
+                    "Start ADB-Free to export wallet: uv run python manage.py infra start",
+                ],
+            )
 
-        Returns:
-            bool: True if credentials are likely valid
+        try:
+            return self._run_connection_probe(config, start_time=start_time, timeout=timeout)
+        except Exception as exc:
+            error_msg = str(exc)
+            suggestions = get_connection_suggestions(config.mode, error_msg, config.wallet_location is not None)
+            return ConnectionTestResult(
+                success=False,
+                mode=config.mode,
+                message=f"Connection failed: {error_msg}",
+                error=error_msg,
+                suggestions=suggestions,
+            )
 
-        Checks:
-            - Required fields are present
-            - Password is not empty
-            - Wallet files exist (if wallet configured)
-        """
-        # Check basic fields
-        if not config.user or not config.password:
-            return False
-
-        # Check for wallet files if wallet is configured
-        if config.wallet_location:
-            if not config.wallet_location.exists():
-                return False
-            # Check for required wallet files
-            required_files = ["cwallet.sso", "tnsnames.ora", "sqlnet.ora"]
-            for file in required_files:
-                if not (config.wallet_location / file).exists():
-                    return False
-
-        # For non-wallet connections, check standard fields
-        return not (not config.wallet_location and (not config.host or not config.port or not config.service_name))
-
-    def _connect(self, config: ConnectionConfig, timeout: int) -> Any:
-        """Internal method to establish connection.
-
-        Args:
-            config: Connection configuration
-            timeout: Connection timeout
-
-        Returns:
-            Connection object
-
-        Uses oracledb async driver if available,
-        falls back to sync driver.
-        """
-        import oracledb
-
+    def _run_connection_probe(
+        self, config: ConnectionConfig, *, start_time: float, timeout: int = 10
+    ) -> ConnectionTestResult:
+        """Open a ``python-oracledb`` connection and verify ``SELECT 'OK' FROM DUAL``."""
         dsn = config.get_dsn()
-        return oracledb.connect(user=config.user, password=config.password, dsn=dsn)
+        conn_params = self._connection_params(config, dsn, timeout=timeout)
+        with oracledb.connect(**conn_params) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 'OK' FROM DUAL")
+                cursor.fetchone()
+            connection_time_ms = (time.time() - start_time) * 1000
+            return self._successful_connection_result(config, dsn, str(connection.version), connection_time_ms)
 
-    def _execute_test_query(self, connection: Any) -> str:
-        """Execute simple test query.
+    @staticmethod
+    def _connection_params(config: ConnectionConfig, dsn: str, *, timeout: int = 10) -> dict[str, Any]:
+        """Build ``python-oracledb`` connection parameters, normalizing `.zip` or PEM wallets via SQLSpec."""
+        conn_params: dict[str, Any] = {
+            "user": config.user,
+            "password": config.password,
+            "dsn": dsn,
+            "tcp_connect_timeout": float(timeout),
+        }
+        if config.wallet_location:
+            resolved_wallet = extract_oracle_wallet_zip(config.wallet_location, wallet_password=config.wallet_password)
+            wallet_path = str(resolved_wallet)
+            conn_params["wallet_location"] = wallet_path
+            conn_params["config_dir"] = wallet_path
+        if config.wallet_password:
+            conn_params["wallet_password"] = config.wallet_password
+        return conn_params
 
-        Args:
-            connection: Database connection
-
-        Returns:
-            str: Query result
-
-        Executes: SELECT 'OK' FROM DUAL
-        """
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 'OK' FROM DUAL")
-            result = cursor.fetchone()
-            return str(result[0]) if result else ""
-
-    def _get_server_version(self, connection: Any) -> str:
-        """Get Oracle server version.
-
-        Args:
-            connection: Database connection
-
-        Returns:
-            str: Server version string
-        """
-        return str(connection.version)
-
-    def _get_user_info(self, connection: Any) -> dict[str, Any]:
-        """Get current user information.
-
-        Args:
-            connection: Database connection
-
-        Returns:
-            dict: User details including:
-                - username
-                - default_tablespace
-                - temp_tablespace
-                - account_status
-        """
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT USER FROM DUAL")
-            result = cursor.fetchone()
-            return {"username": result[0] if result else "unknown"}
-
-
-class OracleConnectionError(Exception):
-    """Base exception for connection errors."""
-
-
-class LocalConnectionError(OracleConnectionError):
-    """Raised when local connection fails."""
-
-
-class RemoteConnectionError(OracleConnectionError):
-    """Raised when remote connection fails."""
-
-
-class AutonomousConnectionError(OracleConnectionError):
-    """Raised when autonomous connection fails."""
-
-
-def detect_deployment_mode() -> DeploymentMode:
-    """Auto-detect deployment mode from environment.
-
-    Returns:
-        DeploymentMode: Detected mode
-
-    Detection logic:
-        - If DATABASE_HOST is set -> EXTERNAL (connecting to existing DB)
-        - If DATABASE_URL is set -> EXTERNAL (connecting to existing DB)
-        - Default -> MANAGED (we control a Docker container)
-
-    Wallet detection is automatic - if TNS_ADMIN/WALLET_LOCATION is set,
-    we'll use wallet-based connection regardless of mode.
-    """
-    # Check if connecting to external database
-    if os.getenv("DATABASE_HOST") or os.getenv("DATABASE_URL"):
-        return DeploymentMode.EXTERNAL
-
-    # Default to managed (Docker container)
-    return DeploymentMode.MANAGED
-
-
-def get_connection_suggestions(mode: DeploymentMode, error: str, has_wallet: bool = False) -> list[str]:
-    """Get troubleshooting suggestions for connection failures.
-
-    Args:
-        mode: Deployment mode
-        error: Error message
-        has_wallet: Whether wallet is configured
-
-    Returns:
-        list[str]: Suggested actions
-    """
-    suggestions = []
-    error_lower = error.lower()
-
-    # Wallet-specific suggestions (applies to any mode with wallet)
-    if has_wallet:
-        if "wallet" in error_lower:
-            suggestions.extend([
-                "Verify WALLET_LOCATION points to valid wallet directory",
-                "Check TNS_ADMIN is set correctly",
-            ])
-        if "password" in error_lower:
-            suggestions.append("Verify WALLET_PASSWORD is correct")
-        if "tns" in error_lower or "service" in error_lower:
-            suggestions.extend([
-                "Verify DATABASE_SERVICE_NAME matches a service in tnsnames.ora",
-                "Check wallet files: cwallet.sso, tnsnames.ora, sqlnet.ora",
-            ])
-
-    # Mode-specific suggestions
-    if mode == DeploymentMode.MANAGED:
-        suggestions.extend([
-            "Check if Oracle container is running: docker ps",
-            "Start container: python manage.py database start",
-        ])
-        if "refused" in error_lower or "cannot connect" in error_lower:
-            suggestions.append("Verify port mapping (default: 1521)")
-        if "invalid username" in error_lower or "invalid password" in error_lower:
-            suggestions.append("Check DATABASE_USER and DATABASE_PASSWORD environment variables")
-
-    elif mode == DeploymentMode.EXTERNAL:
-        if "refused" in error_lower or "cannot connect" in error_lower:
-            suggestions.extend([
-                "Verify host and port are correct",
-                "Check firewall rules",
-                "Ensure database listener is running",
-                "Test network connectivity: ping <host>",
-            ])
-        if "invalid username" in error_lower or "invalid password" in error_lower:
-            suggestions.append("Verify DATABASE_USER and DATABASE_PASSWORD")
-
-    return suggestions
+    @staticmethod
+    def _successful_connection_result(
+        config: ConnectionConfig, dsn: str, version: str, connection_time_ms: float
+    ) -> ConnectionTestResult:
+        """Build a successful ``ConnectionTestResult``."""
+        mode_desc = "managed container" if config.mode == DeploymentMode.MANAGED else "external database"
+        wallet_desc = " (wallet)" if config.wallet_location else ""
+        return ConnectionTestResult(
+            success=True,
+            mode=config.mode,
+            message=f"Successfully connected to {mode_desc}{wallet_desc}: {dsn}",
+            connection_time_ms=connection_time_ms,
+            server_version=version,
+        )

@@ -373,16 +373,15 @@ bootstrap: install init doctor start-infra migrate load-fixtures ## One-shot loc
 # Local Infrastructure (Oracle 26ai Docker)
 # =============================================================================
 .PHONY: start-infra
-start-infra: ## Start local Oracle container (DB only; run `make apex` separately for APEX)
-	@echo "${INFO} Starting local Oracle 26ai instance..."
-	@uv run python manage.py infra start --recreate --skip-apex --skip-ords
-	@echo "${OK} Infrastructure started (APEX skipped — run 'make apex' to install/upgrade it)"
+start-infra: ## Start or reuse persistent Autonomous AI Database Free 26ai container (APEX 26.1 + ORDS 26.3)
+	@echo "${INFO} Starting local Oracle Autonomous AI Database Free 26ai instance..."
+	@uv run python manage.py infra start
+	@echo "${OK} Infrastructure ready (APEX 26.1: https://localhost:8443/ords/apex)"
 
 .PHONY: apex
-apex: ## Install/upgrade APEX in the DB and start the ORDS sidecar container (slow; not run automatically)
-	@echo "${INFO} Installing/upgrading Oracle APEX + ORDS — this can take several minutes... ⏳"
-	@uv run python manage.py infra start
-	@echo "${OK} APEX + ORDS ready"
+apex: ## Show Oracle APEX 26.1 and ORDS 26.3 runtime status and URLs
+	@echo "${INFO} Checking Oracle APEX 26.1 + ORDS 26.3 status..."
+	@uv run python manage.py infra apex status
 
 .PHONY: stop-infra
 stop-infra: ## Stop local containers

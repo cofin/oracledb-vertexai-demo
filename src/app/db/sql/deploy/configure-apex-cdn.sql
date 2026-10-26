@@ -1,9 +1,9 @@
 -- SPDX-FileCopyrightText: 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- configure-apex-cdn.sql
+-- src/app/db/sql/deploy/configure-apex-cdn.sql
 -- Updates Oracle APEX to use Oracle's public CDN for static assets instead of serving them locally.
--- This keeps the ORDS deployment stateless on Cloud Run.
+-- Packaged inside the app wheel and PyApp binary so Cloud Run ORDS deployments remain stateless.
 
 SET SERVEROUTPUT ON;
 SET DEFINE OFF;

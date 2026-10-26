@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
-# /// script
-# dependencies = [
-#   "rich-click",
-#   "rich",
-# ]
-# ///
-"""Bundle Python dependencies into a standalone distribution for PyApp."""
+
+"""Bundle Python dependencies into a standalone distribution for PyApp.
+
+Maps Rust target triples to stripped install-only Python 3.13.13 artifacts
+from ``python-build-standalone`` (release ``20260414``, superseding PyApp
+0.29.0's default ``20251014`` / 3.13.9 pin) and ``uv pip --python-platform``
+target identifiers (using ``manylinux_2_28`` on Linux for glibc 2.28+ binary
+wheel compatibility).
+"""
 
 import contextlib
 import operator
@@ -31,15 +33,60 @@ import rich_click as click
 from rich.console import Console
 from rich.rule import Rule
 
+__all__ = (
+    "DEFAULT_CACHE_DIRNAME",
+    "DEFAULT_INSTALL_ROOT",
+    "DEFAULT_PLATFORMS",
+    "DEFAULT_PYTHON_VERSION",
+    "DEFAULT_URLS",
+    "SITE_PACKAGES_TREE_DEPTH",
+    "BuildConfig",
+    "build_bundle",
+    "cli",
+    "configure_rich_click",
+    "create_bundle",
+    "detect_project_name",
+    "download_once",
+    "download_with_retry",
+    "ensure_directory",
+    "ensure_uv_available",
+    "extract_archive",
+    "find_site_packages",
+    "guess_target",
+    "infer_python_version",
+    "install_requirements",
+    "left_aligned_rule",
+    "list_targets",
+    "load_pyproject",
+    "main",
+    "manage",
+    "manage_cache",
+    "manage_paths",
+    "normalize_install_root",
+    "patch_pyapp_install_dir",
+    "prepare_work_dir",
+    "render_install_dir_expression",
+    "repackage_python",
+    "report_package_sizes",
+    "resolve_build_config",
+    "resolve_cache_dir",
+    "resolve_install_dir",
+    "resolve_output_path",
+    "resolve_project_dir",
+    "resolve_python_archive",
+    "resolve_python_root",
+    "resolve_target",
+    "rust_string_literal",
+    "summarize_build_config",
+    "summarize_paths",
+    "validate_requirements",
+)
+
 DEFAULT_PYTHON_VERSION = "3.13"
 DEFAULT_INSTALL_ROOT = "~/.local"
 DEFAULT_CACHE_DIRNAME = ".cache/bundler"
 SITE_PACKAGES_TREE_DEPTH = 4
 
-# Mapping from Rust target to Python Build Standalone URL (Python 3.13.13).
-# Source: build.rs in pyapp 0.29.0 (pyapp is pinned to 20251014 / 3.13.9;
-# these overrides pull the newer stripped install-only artifacts).
-# Release: https://github.com/astral-sh/python-build-standalone/releases/tag/20260414
 DEFAULT_URLS: dict[str, str] = {
     "x86_64-unknown-linux-gnu": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13%2B20260414-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
     "aarch64-unknown-linux-gnu": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13%2B20260414-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz",
@@ -48,9 +95,6 @@ DEFAULT_URLS: dict[str, str] = {
     "x86_64-pc-windows-msvc": "https://github.com/astral-sh/python-build-standalone/releases/download/20260414/cpython-3.13.13%2B20260414-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
 }
 
-# Mapping from Rust target to uv pip --python-platform value
-# These are uv-specific platform identifiers (NOT PEP 425 wheel tags)
-# Note: manylinux_2_28 required because duckdb only provides wheels for glibc 2.28+
 DEFAULT_PLATFORMS: dict[str, str] = {
     "x86_64-unknown-linux-gnu": "x86_64-manylinux_2_28",
     "aarch64-unknown-linux-gnu": "aarch64-manylinux_2_28",
@@ -62,7 +106,7 @@ DEFAULT_PLATFORMS: dict[str, str] = {
 console = Console()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BuildConfig:
     """Resolved inputs for a bundled Python distribution."""
 
@@ -704,7 +748,9 @@ def resolve_python_archive(config: BuildConfig, python_archive: Path | None, ref
     if python_archive:
         return python_archive.expanduser().resolve()
 
-    assert config.python_url is not None  # ruff: ignore[assert] - Validated before archive resolution
+    if config.python_url is None:
+        msg = "Python build standalone URL is required when no local archive is provided."
+        raise click.ClickException(msg)
     cache_root = config.cache_dir / "python-build-standalone" / config.target
     ensure_directory(cache_root)
     archive_path = cache_root / Path(config.python_url).name

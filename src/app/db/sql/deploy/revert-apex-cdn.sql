@@ -1,9 +1,9 @@
 -- SPDX-FileCopyrightText: 2026 Google LLC
 -- SPDX-License-Identifier: Apache-2.0
 
--- revert-apex-cdn.sql
--- Reverts APEX to use local images (/i/) instead of CDN.
--- Useful for local offline development.
+-- src/app/db/sql/deploy/revert-apex-cdn.sql
+-- Reverts APEX to use local images (/i/) instead of Oracle's public CDN.
+-- Packaged inside the app wheel for offline or local development resets.
 
 SET SERVEROUTPUT ON;
 SET DEFINE OFF;

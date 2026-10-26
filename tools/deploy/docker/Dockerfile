@@ -31,7 +31,7 @@ RUN apt-get update \
 COPY tools/scripts/install_oracle_client.sh /tmp/
 RUN /tmp/install_oracle_client.sh
 
-ARG TARGETARCH
+ARG TARGETARCH=amd64
 RUN ARCH_DIR=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64-linux-gnu" || echo "x86_64-linux-gnu") \
     && mkdir -p /runtime-libs/lib /runtime-libs/usr/lib /app/bin /app/wallet \
     && cp -a /lib/${ARCH_DIR} /runtime-libs/lib/ \

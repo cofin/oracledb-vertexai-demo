@@ -2,16 +2,20 @@
 type: Spec
 flow_id: adb-free-26ai-and-tools-hygiene
 title: Autonomous AI Database Free 26ai Runtime, Legacy APEX Sidecar Retirement, Cloud Run ORDS Packaging, and Tools Hygiene
-state: planned
+state: completed
 plan_revision: 1
-plan_commit: null
-state_revision: 0
+plan_commit: "7ff2771"
+state_revision: 4
 current_task: null
-last_operation: null
-operation_targets: []
-last_verified_checkpoint: null
+last_operation: complete
+operation_targets:
+  - "3.1"
+  - "3.2"
+  - "3.3"
+  - "3.4"
+last_verified_checkpoint: "ccbc652"
 created_at: 2026-10-24T19:35:00Z
-updated_at: 2026-10-24T19:35:00Z
+updated_at: 2026-10-25T17:14:00Z
 description: Third stacked PR making container-registry.oracle.com/database/adb-free:latest-26ai (APEX 26.1.5 + ORDS 26.3) the default managed development runtime with automated mTLS wallet export and ADMIN schema provisioning, retiring legacy gvenzl SYSDBA APEX/ORDS/health modules while keeping gvenzl/oracle-free for integration tests, packaging Cloud Run ORDS CDN SQL inside the app wheel, and enforcing check_code_hygiene.py across tools/ and manage.py.
 tags:
   - oracle-26ai
@@ -83,28 +87,29 @@ Files examined:
 
 ### Phase 1: `adb-free:latest-26ai` Runtime, Legacy APEX/ORDS Retirement, Cloud Run Packaging & Tools Hygiene
 
-- [ ] 3.1 Add `adb-free:latest-26ai` container lifecycle, SQLSpec wallet export, `ADMIN` schema/workspace bootstrap, and `free`-flavor integration test isolation
-- [ ] 3.2 Delete retired `gvenzl` APEX/ORDS/health/SQLcl modules and update wallet-aware `ApexLang`, `ApexCatalog`, `manage.py`, and `infra` CLI commands
-- [ ] 3.3 Package Cloud Run ORDS CDN SQL under `src/app/db/sql/deploy/` and fix `tools/cli/` and `tools/lib/utils.py` defects
-- [ ] 3.4 Clean remaining `tools/` modules, update `Makefile` `adb-free` targets, and expand `tools/ci/check_code_hygiene.py` repo-wide
+- [x] 3.1 Add `adb-free:latest-26ai` container lifecycle, SQLSpec wallet export, `ADMIN` schema/workspace bootstrap, and `free`-flavor integration test isolation
+- [x] 3.2 Delete retired `gvenzl` APEX/ORDS/health/SQLcl modules and update wallet-aware `ApexLang`, `ApexCatalog`, `manage.py`, and `infra` CLI commands
+- [x] 3.3 Package Cloud Run ORDS CDN SQL under `src/app/db/sql/deploy/` and fix `tools/cli/` and `tools/lib/utils.py` defects
+- [x] 3.4 Clean remaining `tools/` modules, update `Makefile` `adb-free` targets, and expand `tools/ci/check_code_hygiene.py` repo-wide
 
 ---
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `adb-free-26ai-and-tools-hygiene` (`planned`)
+- **Active Flow / Lifecycle**: `adb-free-26ai-and-tools-hygiene` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `null`
+- **Last Verified Checkpoint**: `ccbc652`
 - **Key Decisions**:
   - Consolidate all 7 legacy `tools/oracle/` deletions and `tools/oracle/{__init__,cli/__init__}.py` + `manage.py` rewiring into Task `3.2` so Task `3.4` owns a strictly disjoint file set when expanding `check_code_hygiene.py` across `tools/**/*.py` and `manage.py`.
   - Retain `tools/oracle/on_init/*.sql` and `tools/oracle/on_startup/*.sql` intact because `ORACLE_CONTAINER_FLAVOR=free` (`make test-integration`) and `tools/deploy/terraform/db_vm.tf` consume them.
 - **Newest Discoveries**:
-  1. `SQLclInstaller.get_path_instructions()` (`tools/oracle/sqlcl_installer.py:401`) returns `str`, causing `tools/cli/install.py:314` (`for instruction in installer.get_path_instructions():`) to print one character per line whenever `~/.local/bin` is absent from `PATH`.
-  2. Moving `configure-apex-cdn.sql` and `revert-apex-cdn.sql` into `src/app/db/sql/deploy/` leverages Hatch's existing `src/app/**/*.sql` wheel inclusion rule without adding custom build hooks.
-- **Blockers & Unblock Conditions**: Depends on `domain-standardization-and-debloat`.
-- **Next Exact Step**: Claim and execute Task `3.1` (`tasks/3.1.md`) after `domain-standardization-and-debloat` completes.
-- **Plan Identity**: `plan_revision: 1`, `plan_commit: null`
-- **State Identity**: `state_revision: 0`, `last_operation: null`, `operation_targets: []`
+  1. `SQLclInstaller.get_path_instructions()` (`tools/oracle/sqlcl_installer.py`) returns `str`, so `tools/cli/install.py` now iterates `.splitlines()` instead of printing one character per line.
+  2. Moving `configure-apex-cdn.sql` and `revert-apex-cdn.sql` into `src/app/db/sql/deploy/` leverages Hatch's `src/app/**/*.sql` wheel inclusion rule and supports both `ADMIN` + wallet and `SYSDBA` connections.
+  3. `tools/ci/check_code_hygiene.py` now checks all 155 Python files across `src/app/`, `tools/`, and `manage.py` for zero inline `#` comments and AST rules.
+- **Blockers & Unblock Conditions**: None.
+- **Next Exact Step**: Branch `feat/apex-26-vertex-ai` from `feat/adb-free-26ai-runtime` and execute `apex-26-vertex-ai-and-app` Tasks `4.1`–`4.3`.
+- **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
+- **State Identity**: `state_revision: 4`, `last_operation: complete`, `operation_targets: ["3.1", "3.2", "3.3", "3.4"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/patterns/operations.md`

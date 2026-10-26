@@ -5,17 +5,33 @@
 
 from __future__ import annotations
 
-import json
+import importlib
 import os
 from copy import deepcopy
-from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
+
+from app.utils.serialization import format_json
+
+__all__ = (
+    "APEX_AI_PATH_PREFIX",
+    "APEX_PATH_PREFIX",
+    "DEFAULT_APEX_CATALOG_TITLE",
+    "DEFAULT_APEX_OPENAPI_PATH",
+    "DEFAULT_APEX_TAG",
+    "build_apex_catalog",
+    "export_apex_openapi_catalog",
+    "export_current_app_apex_catalog",
+)
 
 APEX_PATH_PREFIX = "/api/apex/"
+APEX_AI_PATH_PREFIX = "/api/apex/ai/"
 DEFAULT_APEX_OPENAPI_PATH = Path(".agents/generated/apex-catalog.openapi.json")
 DEFAULT_APEX_CATALOG_TITLE = "Cymbal Coffee APEX REST Source Catalog"
 DEFAULT_APEX_TAG = "APEX REST Catalog"
+_DEFAULT_CONTAINER_HOST = "host.docker.internal"
+_DEFAULT_PORT = "8000"
 _SCHEMA_REF_PREFIX = "#/components/schemas/"
 
 
@@ -23,9 +39,7 @@ def build_apex_catalog(openapi_document: dict[str, Any], *, server_url: str | No
     """Build an OpenAPI document containing only APEX REST Source Catalog paths."""
     paths = openapi_document.get("paths", {})
     filtered_paths = {
-        path: deepcopy(path_item)
-        for path, path_item in sorted(paths.items())
-        if isinstance(path, str) and path.startswith(APEX_PATH_PREFIX)
+        path: deepcopy(path_item) for path, path_item in sorted(paths.items()) if _is_apex_catalog_path(path)
     }
 
     catalog: dict[str, Any] = {
@@ -53,7 +67,7 @@ def export_apex_openapi_catalog(
     """Write a filtered APEX catalog OpenAPI artifact and return its path."""
     catalog = build_apex_catalog(openapi_document, server_url=server_url)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(json.dumps(catalog, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    output_path.write_text(f"{format_json(catalog)}\n", encoding="utf-8")
     return output_path
 
 
@@ -61,16 +75,31 @@ def export_current_app_apex_catalog(
     *, output_path: Path = DEFAULT_APEX_OPENAPI_PATH, server_url: str | None = None
 ) -> Path:
     """Create the app OpenAPI schema and export its APEX REST Source Catalog subset."""
-    return export_apex_openapi_catalog(_current_app_openapi_document(), output_path=output_path, server_url=server_url)
+    effective_server_url = server_url if server_url is not None else _default_server_url()
+    return export_apex_openapi_catalog(
+        _current_app_openapi_document(), output_path=output_path, server_url=effective_server_url
+    )
 
 
 def _current_app_openapi_document() -> dict[str, Any]:
-    from app.server.asgi import create_app
+    """Load the Litestar application OpenAPI document at runtime."""
+    asgi_module = importlib.import_module("app.server.asgi")
+    app = asgi_module.create_app()
+    schema: dict[str, Any] = app.openapi_schema.to_schema()
+    return schema
 
-    return create_app().openapi_schema.to_schema()
+
+def _is_apex_catalog_path(path: object) -> bool:
+    """Return True for ``/api/apex`` catalog routes while excluding ``/api/apex/ai`` gateway routes."""
+    if not isinstance(path, str):
+        return False
+    is_apex = path == "/api/apex" or path.startswith(APEX_PATH_PREFIX)
+    is_apex_ai = path == "/api/apex/ai" or path.startswith(APEX_AI_PATH_PREFIX)
+    return is_apex and not is_apex_ai
 
 
 def _document_version(openapi_document: dict[str, Any]) -> str:
+    """Extract the API version string from an OpenAPI ``info`` block."""
     info = openapi_document.get("info", {})
     if isinstance(info, dict):
         return str(info.get("version") or "0.0.0")
@@ -78,22 +107,22 @@ def _document_version(openapi_document: dict[str, Any]) -> str:
 
 
 def _default_server_url() -> str:
-    if app_url := os.getenv("APP_URL"):
+    """Resolve the container-reachable Litestar base URL for APEX catalog imports."""
+    if catalog_url := (os.getenv("APEX_CATALOG_SERVER_URL") or "").strip():
+        return catalog_url
+    if app_url := (os.getenv("APP_URL") or "").strip():
+        parsed = urlsplit(app_url)
+        if parsed.hostname in {"localhost", "127.0.0.1", "0.0.0.0"}:  # ruff: ignore[hardcoded-bind-all-interfaces]
+            port_suffix = f":{parsed.port}" if parsed.port else ""
+            netloc = f"{_DEFAULT_CONTAINER_HOST}{port_suffix}"
+            return urlunsplit((parsed.scheme or "http", netloc, parsed.path, parsed.query, parsed.fragment))
         return app_url
-    host = _apex_import_host(os.getenv("LITESTAR_HOST", "localhost"))
-    return f"http://{host}:{os.getenv('LITESTAR_PORT', '8000')}"
-
-
-def _apex_import_host(host: str) -> str:
-    try:
-        if ip_address(host).is_unspecified:
-            return "localhost"
-    except ValueError:
-        pass
-    return host
+    port = (os.getenv("PORT") or os.getenv("LITESTAR_PORT") or _DEFAULT_PORT).strip() or _DEFAULT_PORT
+    return f"http://{_DEFAULT_CONTAINER_HOST}:{port}"
 
 
 def _normalize_server_url(server_url: str) -> str:
+    """Strip trailing slashes from a server URL while preserving root ``/``."""
     normalized = server_url.strip()
     if not normalized:
         return _default_server_url()

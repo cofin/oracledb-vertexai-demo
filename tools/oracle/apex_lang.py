@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -12,8 +13,19 @@ from pathlib import Path
 
 from rich.console import Console
 
-from tools.oracle.database import PDB_SERVICE_NAME, DatabaseConfig
+from tools.oracle.adb import ADB_FREE_DEFAULT_SERVICE
+from tools.oracle.database import PDB_SERVICE_NAME, ContainerFlavor, DatabaseConfig
 from tools.oracle.sqlcl_installer import SQLclInstaller
+
+__all__ = (
+    "DEFAULT_APEX_ALIAS",
+    "MINIMUM_APEXLANG_SQLCL",
+    "SQLCL_FATAL_OUTPUT_MARKERS",
+    "ApexLang",
+    "ApexLangConfig",
+    "ApexLangError",
+    "ApexLangResult",
+)
 
 DEFAULT_APEX_ALIAS = "cymbal-coffee-ops"
 MINIMUM_APEXLANG_SQLCL = "26.1.2"
@@ -23,9 +35,14 @@ SQLCL_FATAL_OUTPUT_MARKERS = (
     "Connection failed",
     "SP2-0640: Not connected",
 )
+_DEFAULT_DEV_SECRET = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
 
 
-@dataclass
+class ApexLangError(RuntimeError):
+    """Raised when an APEXlang lifecycle command cannot complete."""
+
+
+@dataclass(slots=True)
 class ApexLangConfig:
     """Configuration for local APEXlang lifecycle commands."""
 
@@ -34,23 +51,44 @@ class ApexLangConfig:
     port: int = 1521
     service_name: str = PDB_SERVICE_NAME
     user: str = "app"
-    password: str = "SuperSecret1"  # ruff: ignore[hardcoded-password-string]
+    password: str = _DEFAULT_DEV_SECRET
+    wallet_location: Path | None = None
+    tns_alias: str | None = None
     minimum_sqlcl: str = MINIMUM_APEXLANG_SQLCL
 
     @classmethod
     def from_env(cls) -> ApexLangConfig:
-        """Build config from the local Oracle container environment."""
+        """Build config from the local Oracle container or wallet environment."""
         db = DatabaseConfig.from_env()
+        raw_wallet = (os.getenv("WALLET_LOCATION") or os.getenv("TNS_ADMIN") or "").strip()
+        raw_host = (os.getenv("DATABASE_HOST") or "").strip()
+        raw_url = (os.getenv("DATABASE_URL") or "").strip()
+        url_alias = raw_url if raw_url and "://" not in raw_url and ":" not in raw_url and "/" not in raw_url else None
+
+        wallet_location: Path | None = None
+        if raw_wallet:
+            wallet_location = Path(raw_wallet)
+        elif db.flavor == ContainerFlavor.ADB_FREE and (url_alias is not None or not raw_host):
+            wallet_location = db.wallet_dir
+
+        tns_alias: str | None = None
+        service_name = db.service_name
+        if wallet_location is not None:
+            tns_alias = url_alias or db.service_name or ADB_FREE_DEFAULT_SERVICE
+            service_name = tns_alias
+
         return cls(
-            host="localhost",
+            host=raw_host or "localhost",
             port=db.host_port,
-            service_name=PDB_SERVICE_NAME,
+            service_name=service_name,
             user=db.app_user,
             password=db.app_user_password,
+            wallet_location=wallet_location,
+            tns_alias=tns_alias,
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ApexLangResult:
     """Result from an APEXlang SQLcl command."""
 
@@ -172,18 +210,25 @@ class ApexLang:
 
     def _connect_line(self) -> str:
         """Build the SQLcl connection command sent over stdin."""
-        user = self.config.user
-        password = self.config.password
+        escaped_pw = self.config.password.replace('"', '""')
+        if self.config.wallet_location is not None:
+            alias = self.config.tns_alias or ADB_FREE_DEFAULT_SERVICE
+            return f'connect {self.config.user}/"{escaped_pw}"@{alias}'
         dsn = f"//{self.config.host}:{self.config.port}/{self.config.service_name}"
-        return f"connect {user}/{password}@{dsn}"
+        return f'connect {self.config.user}/"{escaped_pw}"@{dsn}'
 
     def _run_apex(self, parts: list[str], *, target_path: Path, connect: bool = True) -> ApexLangResult:
         """Run one SQLcl APEX command."""
         sql_path = self._sql_path()
         command = "apex " + " ".join(shlex.quote(part) for part in parts)
         script = f"{self._connect_line()}\n{command}\nexit\n" if connect else f"{command}\nexit\n"
+        run_env = (
+            {**os.environ, "TNS_ADMIN": str(self.config.wallet_location.resolve())}
+            if self.config.wallet_location is not None
+            else None
+        )
         result = subprocess.run(
-            [str(sql_path), "-S", "/nolog"], input=script, capture_output=True, text=True, check=False
+            [str(sql_path), "-S", "/nolog"], input=script, capture_output=True, text=True, check=False, env=run_env
         )
         output = f"{result.stdout}\n{result.stderr}"
         if result.returncode != 0 or self._has_sqlcl_fatal_output(output):
@@ -194,7 +239,3 @@ class ApexLang:
     def _has_sqlcl_fatal_output(output: str) -> bool:
         """Return true for SQLcl errors that can still exit with status zero."""
         return any(marker in output for marker in SQLCL_FATAL_OUTPUT_MARKERS)
-
-
-class ApexLangError(RuntimeError):
-    """Raised when an APEXlang lifecycle command cannot complete."""

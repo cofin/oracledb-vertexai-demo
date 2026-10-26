@@ -12,9 +12,20 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 APP_DIR = ROOT_DIR / "src" / "app"
-TOOLS_SLIDES_DIR = ROOT_DIR / "tools" / "slides"
-TOOLS_CI_DIR = ROOT_DIR / "tools" / "ci"
+TOOLS_DIR = ROOT_DIR / "tools"
 MANAGE_PY = ROOT_DIR / "manage.py"
+
+__all__ = (
+    "ALLOWED_COMMENT_PREFIXES",
+    "ALLOWED_LAZY_IMPORT_FILES",
+    "APP_DIR",
+    "MANAGE_PY",
+    "ROOT_DIR",
+    "TOOLS_DIR",
+    "check_ast_rules",
+    "check_inline_comments",
+    "main",
+)
 
 ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
     "# noqa",
@@ -22,6 +33,7 @@ ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
     "# type: ignore",
     "# pyright:",
     "# pragma:",
+    "# fmt:",
     "# SPDX-FileCopyrightText:",
     "# SPDX-License-Identifier:",
     "# docs-start:",
@@ -31,21 +43,12 @@ ALLOWED_COMMENT_PREFIXES: tuple[str, ...] = (
 
 ALLOWED_LAZY_IMPORT_FILES: frozenset[Path] = frozenset({APP_DIR / "cli" / "commands.py", APP_DIR / "cli" / "main.py"})
 
-ALLOWED_CONTROLLER_BASES: frozenset[str] = frozenset({
-    "PublicController",
-    "SecureController",
-    "SkillController",
-    "PromptController",
-    "MCPController",
-    "A2AController",
-})
-
 
 def check_inline_comments(paths: list[Path]) -> list[str]:
     """Verify that Python source files contain no non-directive inline comments."""
     errors: list[str] = []
     for path in paths:
-        rel = path.relative_to(ROOT_DIR)
+        rel = _display_path(path)
         with path.open("rb") as handle:
             for tok in tokenize.tokenize(handle.readline):
                 if tok.type == tokenize.COMMENT:
@@ -56,13 +59,16 @@ def check_inline_comments(paths: list[Path]) -> list[str]:
 
 
 def check_ast_rules(paths: list[Path]) -> list[str]:
-    """Verify module ordering, top-level imports, Dishka annotations, and controller base classes."""
+    """Verify module docstrings, ordering, top-level imports, Dishka annotations, and dataclass slots."""
     errors: list[str] = []
     for path in paths:
-        rel = path.relative_to(ROOT_DIR)
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(rel))
+        rel = _display_path(path)
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=rel)
 
-        if path.is_relative_to(APP_DIR / "ioc"):
+        if ast.get_docstring(tree) is None:
+            errors.append(f"{rel}:1: module is missing a top-level docstring")
+
+        if _is_ioc_provider_path(path):
             errors.extend(
                 f"{rel}:{node.lineno}: Dishka provider modules in src/app/ioc/ must not use "
                 "from __future__ import annotations"
@@ -70,15 +76,16 @@ def check_ast_rules(paths: list[Path]) -> list[str]:
                 if isinstance(node, ast.ImportFrom) and node.module == "__future__"
             )
 
-        if path not in ALLOWED_LAZY_IMPORT_FILES:
-            for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    errors.extend(
-                        f"{rel}:{child.lineno}: function-scoped import inside '{node.name}' "
-                        "(place imports at module top-level)"
-                        for child in ast.walk(node)
-                        if isinstance(child, (ast.Import, ast.ImportFrom))
-                    )
+        for node in ast.walk(tree):
+            if path not in ALLOWED_LAZY_IMPORT_FILES and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                errors.extend(
+                    f"{rel}:{child.lineno}: function-scoped import inside '{node.name}' "
+                    "(place imports at module top-level)"
+                    for child in ast.walk(node)
+                    if isinstance(child, (ast.Import, ast.ImportFrom))
+                )
+            if isinstance(node, ast.ClassDef) and _is_unslotted_dataclass(node):
+                errors.append(f"{rel}:{node.lineno}: @dataclass class '{node.name}' must specify slots=True")
 
         seen_private = False
         for node in tree.body:
@@ -88,21 +95,13 @@ def check_ast_rules(paths: list[Path]) -> list[str]:
                     seen_private = True
                 elif seen_private:
                     errors.append(f"{rel}:{node.lineno}: public symbol '{node.name}' defined after private helper")
-            if isinstance(node, ast.ClassDef) and "controllers" in path.parts:
-                base_names = {_extract_base_name(base) for base in node.bases}
-                if node.name.endswith("Controller") and not (base_names & ALLOWED_CONTROLLER_BASES):
-                    errors.append(
-                        f"{rel}:{node.lineno}: controller '{node.name}' must inherit from "
-                        f"one of {sorted(ALLOWED_CONTROLLER_BASES)}"
-                    )
     return errors
 
 
 def main() -> int:
-    """Run all code-hygiene checks across src/app, tools/slides, tools/ci, and manage.py."""
-    ast_files = sorted([*APP_DIR.rglob("*.py"), *TOOLS_SLIDES_DIR.rglob("*.py"), *TOOLS_CI_DIR.rglob("*.py")])
-    target_files = [*ast_files, MANAGE_PY]
-    violations = [*check_inline_comments(target_files), *check_ast_rules(ast_files)]
+    """Run all code-hygiene checks across src/app, tools, and manage.py."""
+    target_files = sorted({*APP_DIR.rglob("*.py"), *TOOLS_DIR.rglob("*.py"), MANAGE_PY})
+    violations = [*check_inline_comments(target_files), *check_ast_rules(target_files)]
     if violations:
         for violation in violations:
             sys.stderr.write(f"{violation}\n")
@@ -111,15 +110,38 @@ def main() -> int:
     return 0
 
 
-def _extract_base_name(node: ast.expr) -> str:
-    """Return the simple class name for a base-class AST expression."""
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    if isinstance(node, ast.Subscript):
-        return _extract_base_name(node.value)
-    return ""
+def _display_path(path: Path) -> str:
+    """Format a path relative to the repository root when possible."""
+    if path.is_relative_to(ROOT_DIR):
+        return str(path.relative_to(ROOT_DIR))
+    return str(path)
+
+
+def _is_ioc_provider_path(path: Path) -> bool:
+    """Return whether a path targets a Dishka provider module under src/app/ioc/."""
+    if path.is_relative_to(APP_DIR / "ioc"):
+        return True
+    return path.parts[-4:-1] == ("src", "app", "ioc")
+
+
+def _is_unslotted_dataclass(node: ast.ClassDef) -> bool:
+    """Return True when ``node`` carries a ``@dataclass`` decorator without ``slots=True``."""
+    for dec in node.decorator_list:
+        if isinstance(dec, ast.Name) and dec.id == "dataclass":
+            return True
+        if isinstance(dec, ast.Attribute) and dec.attr == "dataclass":
+            return True
+        if isinstance(dec, ast.Call):
+            func_name = (
+                dec.func.id
+                if isinstance(dec.func, ast.Name)
+                else (dec.func.attr if isinstance(dec.func, ast.Attribute) else "")
+            )
+            if func_name == "dataclass":
+                slots_kw = next((kw.value for kw in dec.keywords if kw.arg == "slots"), None)
+                if not (isinstance(slots_kw, ast.Constant) and slots_kw.value is True):
+                    return True
+    return False
 
 
 if __name__ == "__main__":

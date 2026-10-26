@@ -13,6 +13,7 @@ import contextlib
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 import zipfile
 from dataclasses import dataclass
@@ -22,29 +23,42 @@ import httpx
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+__all__ = ("DownloadError", "InstallationError", "SQLclCapabilityStatus", "SQLclConfig", "SQLclInstaller")
 
-@dataclass
+
+@dataclass(slots=True)
 class SQLclConfig:
-    """Configuration for SQLcl installation."""
+    """Configuration for SQLcl installation.
 
-    # Download URL
+    Attributes:
+        download_url: HTTPS endpoint for the ``sqlcl-latest.zip`` bundle.
+        install_dir: Target directory for ``sql`` and ``sqlcl`` symlinks.
+        sqlcl_dir: Target directory for extracted SQLcl runtime files
+            (defaults to ``install_dir.parent / "sqlcl"``).
+        timeout: HTTP download timeout in seconds.
+        chunk_size: Streaming download chunk size in bytes.
+    """
+
     download_url: str = "https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip"
-
-    # Installation paths
     install_dir: Path = Path.home() / ".local" / "bin"
-    sqlcl_dir: Path | None = None  # Will be install_dir.parent / "sqlcl"
-
-    # HTTP settings
-    timeout: int = 300  # seconds
-    chunk_size: int = 8192  # bytes
+    sqlcl_dir: Path | None = None
+    timeout: int = 300
+    chunk_size: int = 8192
 
     def __post_init__(self) -> None:
         """Set derived paths."""
         if self.sqlcl_dir is None:
             self.sqlcl_dir = self.install_dir.parent / "sqlcl"
 
+    @property
+    def resolved_sqlcl_dir(self) -> Path:
+        """Return the concrete SQLcl extraction directory."""
+        if self.sqlcl_dir is None:
+            return self.install_dir.parent / "sqlcl"
+        return self.sqlcl_dir
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, slots=True)
 class SQLclCapabilityStatus:
     """SQLcl APEXlang capability details."""
 
@@ -92,14 +106,12 @@ class SQLclInstaller:
         """
         self.console.rule("[bold blue]Oracle SQLcl Installer")
 
-        # Check if already installed
         if self.is_installed() and not force:
             version = self.get_version()
             self.console.print(f"[yellow]SQLcl is already installed ({version})[/yellow]")
             self.console.print("Use --force to reinstall")
             return self.config.install_dir
 
-        # Check PATH
         if verify_path and not self.is_in_path():
             self.console.print(
                 f"[yellow]⚠[/yellow] {self.config.install_dir} is not in your PATH. "
@@ -167,8 +179,6 @@ class SQLclInstaller:
             return None
 
         with contextlib.suppress(Exception):
-            import subprocess
-
             result = subprocess.run([str(sql_path), "-V"], capture_output=True, text=True, timeout=5, check=False)
             if result.returncode == 0:
                 return result.stdout.strip()
@@ -182,18 +192,6 @@ class SQLclInstaller:
         if not match:
             return None
         return tuple(int(part) for part in match.group(1).split("."))
-
-    @staticmethod
-    def _normalise_version(version: tuple[int, ...], width: int) -> tuple[int, ...]:
-        """Pad a version tuple to a comparable width."""
-        return (*version, *((0,) * max(width - len(version), 0)))
-
-    @classmethod
-    def _format_version(cls, version: tuple[int, ...] | None) -> str | None:
-        """Format a parsed version tuple for messages."""
-        if version is None:
-            return None
-        return ".".join(str(part) for part in version)
 
     def apexlang_status(self, *, minimum: str = "26.1.2") -> SQLclCapabilityStatus:
         """Return whether the installed SQLcl can run APEXlang commands."""
@@ -229,10 +227,6 @@ class SQLclInstaller:
             minimum=minimum,
             message=f"SQLcl {minimum} or newer is required for APEXlang. Found: {raw_version}",
         )
-
-    def is_apexlang_capable(self, *, minimum: str = "26.1.2") -> bool:
-        """Return ``True`` when SQLcl meets the APEXlang version floor."""
-        return self.apexlang_status(minimum=minimum).capable
 
     def download(self, dest_dir: Path) -> Path:
         """Download SQLcl zip file.
@@ -289,9 +283,6 @@ class SQLclInstaller:
                   sqlcl
                 lib/
                 ...
-
-        Raises:
-            ExtractionError: If extraction fails
         """
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
@@ -328,23 +319,21 @@ class SQLclInstaller:
         if not bin_dir.exists():
             raise InstallationError(f"SQLcl bin directory not found at {bin_dir}")
 
+        sqlcl_dir = self.config.resolved_sqlcl_dir
         with Progress(
             SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=self.console
         ) as progress:
             task = progress.add_task("Installing SQLcl...", total=None)
 
-            # Copy all files from sqlcl directory to install location
-            if self.config.sqlcl_dir.exists():  # type: ignore[union-attr]
-                shutil.rmtree(self.config.sqlcl_dir)  # type: ignore[arg-type]
+            if sqlcl_dir.exists():
+                shutil.rmtree(sqlcl_dir)
 
-            shutil.copytree(extracted_dir, self.config.sqlcl_dir)  # type: ignore[type-var]
-
-            # Create symlinks
+            shutil.copytree(extracted_dir, sqlcl_dir)
             self.create_symlinks()
 
             progress.update(task, completed=True)
 
-        self.console.print(f"[green]✓[/green] SQLcl installed to {self.config.sqlcl_dir}")
+        self.console.print(f"[green]✓[/green] SQLcl installed to {sqlcl_dir}")
         self.console.print(f"[green]✓[/green] Symlinks created in {self.config.install_dir}")
 
     def create_symlinks(self) -> None:
@@ -359,10 +348,10 @@ class SQLclInstaller:
         Raises:
             InstallationError: If symlink creation fails
         """
+        sqlcl_dir = self.config.resolved_sqlcl_dir
         for script in ["sql", "sqlcl"]:
-            script_path = self.config.sqlcl_dir / "bin" / script  # type: ignore[operator]
+            script_path = sqlcl_dir / "bin" / script
             if script_path.exists():
-                # Ensure the source script is executable
                 script_path.chmod(0o755)
 
                 symlink_path = self.config.install_dir / script
@@ -413,28 +402,17 @@ class SQLclInstaller:
             return f"  set -Ux fish_user_paths {self.config.install_dir} $fish_user_paths"
         return f'  export PATH="$PATH:{self.config.install_dir}"'
 
-    def uninstall(self) -> None:
-        """Remove SQLcl installation.
+    @staticmethod
+    def _normalise_version(version: tuple[int, ...], width: int) -> tuple[int, ...]:
+        """Pad a version tuple to a comparable width."""
+        return (*version, *((0,) * max(width - len(version), 0)))
 
-        Removes:
-        - Symlinks in install_dir
-        - SQLcl directory (install_dir.parent / "sqlcl")
-
-        Does not remove install_dir itself.
-        """
-        # Remove symlinks
-        for script in ["sql", "sqlcl"]:
-            symlink_path = self.config.install_dir / script
-            if symlink_path.is_symlink() or symlink_path.exists():
-                symlink_path.unlink()
-                self.console.print(f"[green]✓[/green] Removed {symlink_path}")
-
-        # Remove sqlcl directory
-        if self.config.sqlcl_dir and self.config.sqlcl_dir.exists():
-            shutil.rmtree(self.config.sqlcl_dir)
-            self.console.print(f"[green]✓[/green] Removed {self.config.sqlcl_dir}")
-
-        self.console.print("[bold green]✓ SQLcl uninstalled successfully[/bold green]")
+    @classmethod
+    def _format_version(cls, version: tuple[int, ...] | None) -> str | None:
+        """Format a parsed version tuple for messages."""
+        if version is None:
+            return None
+        return ".".join(str(part) for part in version)
 
 
 class InstallationError(Exception):
@@ -443,11 +421,3 @@ class InstallationError(Exception):
 
 class DownloadError(InstallationError):
     """Raised when download fails."""
-
-
-class ExtractionError(InstallationError):
-    """Raised when extraction fails."""
-
-
-class VerificationError(InstallationError):
-    """Raised when installation verification fails."""

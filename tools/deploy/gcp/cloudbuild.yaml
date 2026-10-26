@@ -16,6 +16,7 @@ substitutions:
   _REGION: "us-central1"
   _SERVICE: "coffee-app"
   _AR: "coffee-artifacts"
+  _ORDS_TAG: "26.3"
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -35,10 +36,36 @@ images:
   - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:latest"
 
 steps:
+  # Compile Vite frontend assets, bundle the wheel (including src/app/db/sql/deploy/*.sql),
+  # and produce dist/coffee-amd64-linux-gnu before building the distroless image.
+  - id: "build-onefile"
+    name: "ghcr.io/rust-cross/cargo-zigbuild"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+        apt-get install -y --no-install-recommends nodejs
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        export PATH="/root/.local/bin:$${PATH}"
+        export PYAPP_BUILD_PYTHON="cpython-3.13.12-linux-x86_64-gnu"
+        export PYAPP_BUILD_TARGET="x86_64-unknown-linux-gnu"
+        export UV_PYTHON="$${PYAPP_BUILD_PYTHON}"
+        uv python install "$${PYAPP_BUILD_PYTHON}"
+        uv sync --python "$${PYAPP_BUILD_PYTHON}" --group build
+        uv run python manage.py assets install
+        uv run python manage.py assets build
+        ./tools/scripts/build-onefile-package.sh
+        install -m 755 dist/coffee dist/coffee-amd64-linux-gnu
+        test -s dist/coffee-amd64-linux-gnu
+
   - id: "build"
     name: "gcr.io/cloud-builders/docker"
     args:
       - "build"
+      - "--build-arg"
+      - "TARGETARCH=amd64"
       - "-t"
       - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
       - "-t"
@@ -60,7 +87,7 @@ steps:
       - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:latest"
 
   # Migrate the PRIVATE DB through the peered pool. The built image has
-  # ENTRYPOINT ["/usr/local/bin/tini", "--", "coffee"] (tools/deploy/docker/Dockerfile:85), so
+  # ENTRYPOINT ["/usr/local/bin/tini", "--", "coffee"] (tools/deploy/docker/Dockerfile:86), so
   # args:["upgrade"] runs `coffee upgrade` = migrate + load committed-embedding
   # fixtures. NO Vertex is needed here. DB password comes from secretEnv.
   - id: "migrate"
@@ -75,7 +102,7 @@ steps:
     secretEnv:
       - "DATABASE_PASSWORD"
 
-  # Configure APEX CDN in the DB using the SYSDBA CLI command.
+  # Configure APEX CDN in the DB using packaged src/app/db/sql/deploy/configure-apex-cdn.sql.
   - id: "configure-apex"
     name: "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/${_SERVICE}:${SHORT_SHA}"
     entrypoint: ""        # use the image ENTRYPOINT (coffee)
@@ -87,7 +114,7 @@ steps:
     secretEnv:
       - "DATABASE_SYSTEM_PASSWORD"
 
-  # Deploy ORDS Cloud Run service peered to VPC.
+  # Deploy ORDS 26.3 Cloud Run service peered to VPC (override tag via _ORDS_TAG).
   - id: "deploy-ords"
     name: "gcr.io/cloud-builders/gcloud"
     args:
@@ -95,7 +122,7 @@ steps:
       - "deploy"
       - "coffee-ords"
       - "--image"
-      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/ords:26.1.2"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT}/${_AR}/ords:${_ORDS_TAG}"
       - "--project"
       - "${_PROJECT}"
       - "--region"
