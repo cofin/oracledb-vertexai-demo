@@ -1,7 +1,7 @@
 # Vectors in Oracle
 
-Cymbal Coffee stores product descriptions as 3072-dimension vectors next to
-their text columns. A `VECTOR_DISTANCE(..., COSINE)` query, served by an
+Cymbal Coffee stores product names and descriptions (as well as `chat_route`
+routing exemplars) as 3072-dimension vectors next to their text columns. A `VECTOR_DISTANCE(..., COSINE)` query, served by an
 HNSW index, returns the closest products straight from the same database
 that holds the rest of the catalog.
 
@@ -22,9 +22,12 @@ flowchart LR
 | Distance metric | `COSINE` |
 | Index type | HNSW, `ORGANIZATION INMEMORY NEIGHBOR GRAPH` |
 | Query embedding input | Query-purpose instruction + user text |
-| Document embedding input | Document-purpose instruction + product text |
+| Document embedding input | Document-purpose instruction + `"{name}: {description}"` (`product`) or `"{route_label} | {title}: {exemplar_text} ({keywords})"` (`chat_route`) |
 
-The product table and the embedding cache both use the same shape.
+The `product`, `chat_route`, and `embedding_cache` tables all store
+`VECTOR(3072, FLOAT32)` columns, with HNSW `INMEMORY NEIGHBOR GRAPH` indexes on
+`product` (`product_embedding_idx`) and `chat_route`
+(`chat_route_embedding_idx`).
 
 ## Schema annotations
 
@@ -60,16 +63,23 @@ pick the search-time `ef` that meets the recall target.
 ## Vector memory
 
 HNSW INMEMORY indexes need a non-zero `vector_memory_size` allocation
-*before* the index DDL runs. Without it migrations fail with `ORA-51962`.
+*before* the index DDL runs. Without it migrations fail with `ORA-51962`. The
+default managed local container (`adb-free:latest-26ai`, `cymbal-adb-free`,
+service `myatp_low`, TLS wallet `.envs/tns`) and cloud Autonomous AI Database
+manage vector memory automatically; self-managed Oracle AI Database 26ai Free
+(`gvenzl/oracle-free`) configures the pool during initialization
+(`tools/oracle/on_init/00_configure_vector_memory.sql`):
 
 ```sql
 ALTER SYSTEM SET vector_memory_size = 512M SCOPE = SPFILE;
 ```
 
-`512M` is intentional for Oracle Free Edition's constrained SGA. The committed
-demo fixture has 130 product vectors, so this is generous headroom for the
-catalog plus query embeddings saved in `embedding_cache`. For larger Oracle
-editions, raise `vector_memory_size` to a 4G target on the SPFILE.
+`512M` is sized for Oracle Free Edition's constrained SGA. The committed demo
+fixtures contain 130 product vectors (`product_embedding_idx`) plus the
+`chat_route` routing exemplars (`chat_route_embedding_idx`), leaving ample
+headroom in the HNSW pool (`embedding_cache` uses B-tree key lookups on
+`(text_hash, model)` rather than an HNSW index). For larger self-managed Oracle
+editions, raise `vector_memory_size` on the SPFILE.
 
 Verify the pool with:
 
@@ -79,8 +89,10 @@ SELECT name, bytes FROM v$sgainfo WHERE name IN ('Vector Memory Area', 'Vector M
 
 ## The query shape
 
-The vector search itself is a named SQL file the products service loads by
-key — every query in the app lives under `src/app/db/sql/`.
+Every static query in the app lives under `src/app/db/sql/`. Domain services
+inherit from `OracleLoaderService` (`src/app/lib/service.py`) and load named
+SQL via `self.get_sql("<name>")` (`default_sql_loader()`), without importing
+`app.config`.
 
 ```{literalinclude} ../../src/app/db/sql/products.sql
 :language: sql
@@ -93,9 +105,10 @@ key — every query in the app lives under `src/app/db/sql/`.
 where higher is better. `:threshold` filters out rows that aren't close
 enough; `:limit` caps the top-k.
 
-`ProductService.search_by_vector` is the SQLSpec async service method that
-runs the query above and maps each row to a typed `ProductMatch` — Python
-hands Oracle a plain `list[float]`, no manual packing required.
+`ProductService.search_by_vector` (`src/app/domain/products/services/_products.py`)
+runs the query above and maps each row to an immutable `ProductMatch`
+(`FrozenBaseStruct` in `src/app/lib/schema.py`) — Python hands Oracle a plain
+`list[float]`, no manual packing required.
 
 ```{literalinclude} ../../src/app/domain/products/services/_products.py
 :language: python
@@ -103,19 +116,30 @@ hands Oracle a plain `list[float]`, no manual packing required.
 :caption: src/app/domain/products/services/_products.py
 ```
 
-SQLSpec and the Oracle adapter handle the vector binding. Don't reach for
-`array.array("f", ...)`.
+SQLSpec `0.69.0` (`DatabaseSettings.create_config()` in
+`src/app/lib/settings/_database.py`) handles native `list[float]` vector
+binding, `wallet_zip` extraction, `driver_features={"enable_session_tracing": True}`,
+wire-level `sqlcommenter` (`enable_sqlcommenter=True`), default
+`fetch_lobs=False` (inline `str`/`bytes` for LOBs under 1 GB), and an isolated
+`DatabaseSettings.get_queue_config()` pool (`session_key="queue_db_session"`).
+Do not reach for `array.array("f", ...)`.
 
 ## Embedding cache
 
-User queries are repeated often. The same text + model hashes to the same
-row in `embedding_cache`, which stores the vector itself in a parallel
+User queries are repeated often. `CacheService`
+(`src/app/domain/system/services/_cache.py`) hashes the same text + model to
+the same row in `embedding_cache`, which stores the vector itself in a
 `VECTOR(3072, FLOAT32)` column. Cache hits skip the Vertex AI call entirely
 and feed straight into the HNSW search.
 
 ## Understanding performance
 
-The `/explore` page surfaces three timings per query:
+The `/explore` page (`http://localhost:8000/explore`, rendered by
+`PageController.explore_page` in `src/app/domain/web/controllers/_pages.py` and
+powered by `VectorController` in `src/app/domain/products/controllers/_vector.py`
+plus `OracleVectorSearchService` in
+`src/app/domain/products/services/_vector.py`) surfaces per-query retrieval
+telemetry alongside live `DBMS_XPLAN` execution plans:
 
 <details>
 <summary>Click to expand Explore Page Screenshot</summary>
@@ -127,14 +151,19 @@ The `/explore` page surfaces three timings per query:
 
 </details>
 
-- **embedding_ms** — time spent generating (or hitting the cache for) the
-  query vector;
-- **oracle_ms** — round-trip time for the HNSW search;
-- **similarity score** — the top returned row's score.
+- **`embedding_ms` / `embedding_time_ms`** — time spent generating (or hitting
+  `embedding_cache` for) the 3072-float query vector;
+- **`oracle_ms` / `oracle_time_ms`** — round-trip time for the Oracle 26ai
+  Hybrid RRF query (`hybrid-search-products`, combining `PRODUCT_HYBRID_CTX_IDX`
+  and HNSW `PRODUCT_EMBEDDING_IDX`, with pure HNSW fallback);
+- **RRF, similarity, and lexical scores** — each result card displays its fused
+  RRF score (`1/(60 + r_lex) + 1/(60 + r_vec)`), HNSW cosine similarity
+  percentage and vector rank, and Oracle Text `SCORE` and lexical rank (while
+  `search_metric` records the top row's `similarity_score`).
 
 If `oracle_ms` spikes, check that `vector_memory_size` is non-zero, that
-`product_embedding_idx` exists, and that the query metric still matches
-`COSINE`.
+`product_embedding_idx` and `product_hybrid_ctx_idx` are `VALID`, and that the
+query metric still matches `COSINE`.
 
 ## Where this is used
 
@@ -142,5 +171,5 @@ If `oracle_ms` spikes, check that `vector_memory_size` is non-zero, that
   message: see [the walkthrough](../tour.md).
 - **RAG** uses the `ProductMatch` rows returned here as grounding context:
   see [RAG](rag.md).
-- **Chat routing** decides *whether* to fire this search at all: see
-  [Chat routing and Native Agent Runtime](agent-flow.md).
+- **Hybrid routing** fuses route exemplars and product HNSW search into one
+  round trip: see [Hybrid RRF Routing and Native AI Runtime](agent-flow.md).

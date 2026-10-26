@@ -18,7 +18,7 @@ uv run python manage.py infra apex configure-vertex --mode direct --refresh-toke
 
 ### Method 2 (Managed / mTLS Workstations): Litestar OpenAI-Compatible Gateway
 
-Routes `COFFEE_VERTEX_AI` through Cymbal Coffee's local Litestar gateway (`http://host.docker.internal:8000/api/apex/ai/v1`, backed by `GeminiModelClient`) so ADC refresh and Context-Aware Access mTLS certificates are handled automatically by the Python host without token rotation:
+Routes `COFFEE_VERTEX_AI` through Cymbal Coffee's local Litestar gateway (`http://host.docker.internal:8000/api/apex/ai/v1`, served by `ApexAIController` at `GET /api/apex/ai/v1/models` and `POST /api/apex/ai/v1/chat/completions` and backed by `GeminiModelClient` with optional `APEX_GATEWAY_API_KEY` Bearer authentication) so ADC refresh and Context-Aware Access mTLS certificates are handled automatically by the Python host without token rotation:
 
 ```bash
 uv run python manage.py infra apex configure-vertex --mode gateway --verify
@@ -26,9 +26,12 @@ uv run python manage.py infra apex configure-vertex --mode gateway --verify
 
 ## SQLcl 26.1.2+ APEXlang Lifecycle
 
-Validate, import, and export `src/apex/cymbal-coffee-ops/` (`compatibilityMode: 26.1`, Application ID `100`) with SQLcl `26.1.2` or newer:
+Inspect runtime status and validate, import, export, or scaffold `src/apex/cymbal-coffee-ops/` (`mmdVersion: 26.1.0+3102`, Application ID `100`) with SQLcl `26.1.2` or newer (`make install-sqlcl`):
 
 ```bash
+# Report live APEX_RELEASE version and ORDS HTTPS readiness
+uv run python manage.py infra apex status
+
 # Offline compiler validation (no running database required)
 uv run python manage.py infra apex validate --alias cymbal-coffee-ops
 
@@ -38,12 +41,24 @@ uv run python manage.py infra apex import --alias cymbal-coffee-ops --workspace 
 # Round-trip export from workspace COFFEE back to APEXlang source
 uv run python manage.py infra apex export --app-id 100 --alias cymbal-coffee-ops
 
-# Export the /api/apex/* OpenAPI 3.1 subset for APEX REST Source Catalog inspection
+# Generate starter APEXlang source files for a new application alias
+uv run python manage.py infra apex generate --alias my-coffee-app
+
+# Export the /api/apex/* OpenAPI 3.1 subset (ApexController) for APEX REST Source Catalog inspection
 uv run python manage.py infra apex export-openapi
+```
+
+## Production CDN Static Assets (`coffee configure-apex-cdn`)
+
+For stateless cloud ORDS deployments where APEX static assets are served from Oracle's public CDN rather than local `/i/` mounts, run the packaged `coffee` command (executes `src/app/db/sql/deploy/configure-apex-cdn.sql` as `ADMIN` with wallet or `SYSDBA`; `src/app/db/sql/deploy/revert-apex-cdn.sql` is packaged alongside it to restore `/i/`):
+
+```bash
+uv run coffee configure-apex-cdn
 ```
 
 ## Application Pages (`cymbal-coffee-ops`)
 
+- **Page 0 (`p00000-global-page.apx`)**: Global Page — application-wide `globalPage: 0` container reserved for shared regions.
 - **Page 1 (`p00001-home.apx`)**: Operations & AI Overview — live `PRODUCT`, `VECTOR(3072, FLOAT32)`, `STORE`, `STORE_PRODUCT_INVENTORY`, and `USER_ANNOTATIONS_USAGE` KPI metrics.
 - **Page 2 (`p00002-products.apx`)**: Coffee & Bakery Catalog — catalog pricing, roast metadata, stock flags, and 3072-dimensional `gemini-embedding-2` readiness.
 - **Page 3 (`p00003-stores.apx`)**: DFW Store Directory — seeded store hours and keyless Google Maps search links (zero user browser coordinates stored).
@@ -51,5 +66,17 @@ uv run python manage.py infra apex export-openapi
 - **Page 5 (`p00005-availability.apx`)**: Pickup Availability — store-level `STORE_PRODUCT_INVENTORY` precedence over global `PRODUCT.IN_STOCK`.
 - **Page 6 (`p00006-vector-recommendations.apx`)**: Vertex AI Coffee Concierge — interactive `P6_PROMPT` / `P6_CATEGORY` prompt invoking `APEX_AI.GENERATE` (`p_service_static_id => 'COFFEE_VERTEX_AI'`) grounded on live `PRODUCT` rows.
 - **Page 7 (`p00007-integration-health.apx`)**: 26ai & Vertex AI Health — `APEX_RELEASE`, `VERTEX_AI_CRED` readiness, vector coverage, and `USER_ANNOTATIONS_USAGE` catalog inspection.
+- **Page 9999 (`p09999-login.apx`)**: Login Page — APEX workspace authentication entry point (`/ords/r/coffee/cymbal-coffee-ops/login`).
 
 > **Import Round-Trip Note**: Pages query local schema `APP` tables and `APEX_AI.GENERATE` directly without app-level `restDataSourceServer` references, avoiding the `WWV_WEBSRC_MODULE_RSERVER_FK` import rollback when moving between workspaces.
+
+## Deterministic Demo Recordings (`manage.py demos`)
+
+Terminal VHS tapes (`docs/_tapes/{apex-vertex-ai-setup,apexlang-workflow}.tape`) and headless Playwright + FFmpeg browser walkthroughs (`apex-configure-vertex-ai` and `apex-create-vertex-app` in `tools/demos/web.py`) record `.mp4` and `.gif` artifacts under `docs/_static/demos/`:
+
+```bash
+uv run --group demos python manage.py demos check
+make docs-demos-shell
+make docs-demos-web
+make docs-demos-live
+```
