@@ -2,17 +2,17 @@
 type: Spec
 flow_id: platform-alignment-apex-vertex-prd
 title: SQLSpec 0.69.0 Platform Alignment, Codebase Simplification, Autonomous AI Database Free APEX 26.1 + Vertex AI, and Automated Demo Recordings
-state: active
+state: completed
 plan_revision: 1
 plan_commit: "7ff2771"
-state_revision: 4
+state_revision: 5
 current_task: null
-last_operation: checkpoint
+last_operation: finish
 operation_targets:
-  - apex-26-vertex-ai-and-app
-last_verified_checkpoint: "15348ea"
+  - web-and-shell-demo-recordings-and-docs
+last_verified_checkpoint: "bccc0e8"
 created_at: 2026-10-24T19:25:00Z
-updated_at: 2026-10-25T18:21:00Z
+updated_at: 2026-10-26T15:42:00Z
 description: Master PRD roadmap delivering SQLSpec 0.69.0 adoption, frozen msgspec/service/DI standardization and codebase debloating, Oracle Autonomous AI Database Free 26ai (APEX 26.1.5 + ORDS 26.3) migration, Direct Vertex AI + Litestar gateway APEX 26.1 Generative AI integration with a cohesive Cymbal Coffee APEX 26.1 app, and automated VHS + Playwright + FFmpeg shell/browser demo recordings across five stacked PRs.
 tags:
   - refactor
@@ -127,9 +127,9 @@ Each chapter corresponds to **one self-contained, green-CI pull request** in a l
 
 ## Continuity Snapshot
 
-- **Active Flow / Lifecycle**: `platform-alignment-apex-vertex-prd` (`active`)
+- **Active Flow / Lifecycle**: `platform-alignment-apex-vertex-prd` (`completed`)
 - **Current Task & Claimant**: `null`
-- **Last Verified Checkpoint**: `15348ea`
+- **Last Verified Checkpoint**: `bccc0e8`
 - **Key Decisions**:
   - Adopt SQLSpec `0.69.0` (`enable_session_tracing`, wire `sqlcommenter`, `queue_db` `manage_lifespan`, `wallet_zip`, `OracleLoaderService`) and `FrozenBaseStruct` (`frozen=True, gc=False`) in PR 1, followed by domain-wide standardization and dead-code removal in PR 2.
   - Switch local managed infrastructure to `container-registry.oracle.com/database/adb-free:latest-26ai` (APEX 26.1.5 + ORDS 26.3) and retire legacy `gvenzl` SYSDBA APEX/ORDS installers in PR 3 while keeping `gvenzl/oracle-free` for ephemeral `make test-integration`.
@@ -141,10 +141,11 @@ Each chapter corresponds to **one self-contained, green-CI pull request** in a l
   3. Ordering PR 2 tasks as `system` (`2.1`) $\rightarrow$ `chat` (`2.2`) $\rightarrow$ `ai` (`2.3`) $\rightarrow$ `products`/`web` (`2.4`) allows every legacy alias and dead service (`InventoryService`, `MapsService`, `EmbeddingService`, `RunContextRegistry`, `CoffeeToolServices`) to be removed cleanly with zero cross-task file overlap and green tests at every commit.
   4. Packaging `configure-apex-cdn.sql` under `src/app/db/sql/deploy/` fixes a broken path lookup (`BASE_DIR.parents[1] / "tools"`) inside distroless Cloud Run PyApp builds.
   5. APEXlang `26.1.0+3102` compiles `src/apex/cymbal-coffee-ops/` offline via SQLcl `26.1.2+` (`manage.py infra apex validate --alias cymbal-coffee-ops`) with `APEX_AI.GENERATE` (`COFFEE_VERTEX_AI`) and `USER_ANNOTATIONS_USAGE` health diagnostics.
+  6. Deterministic `vhs` (`ROD_BROWSER_BIN`, `VHS_NO_SANDBOX=true`) and Playwright (`ignore_https_errors=True`, `context.close()` flush before `ffmpeg` transcoding) pipelines plus 9-auditor sentence-level doc verification keep all 83 public and agent documentation files synchronized (`496` unit tests passing).
 - **Blockers & Unblock Conditions**: None
-- **Next Exact Step**: Branch `docs/apex-vertex-demo-recordings` from `feat/apex-26-vertex-ai` and execute `web-and-shell-demo-recordings-and-docs` Tasks `5.1`–`5.4`.
+- **Next Exact Step**: All 5 stacked PR chapters completed (`6b3fe60`, `e064eb1`, `778c56e`, `6787bcf`, `bccc0e8`).
 - **Plan Identity**: `plan_revision: 1`, `plan_commit: "7ff2771"`
-- **State Identity**: `state_revision: 4`, `last_operation: checkpoint`, `operation_targets: ["apex-26-vertex-ai-and-app"]`
+- **State Identity**: `state_revision: 5`, `last_operation: finish`, `operation_targets: ["web-and-shell-demo-recordings-and-docs"]`
 - **Relevant Knowledge Paths**:
   - `.agents/bundles/specs/platform-alignment-apex-vertex-prd/research/codebase-alignment-and-apex/research.md`
   - `.agents/bundles/knowledge/architecture/system-architecture.md`
