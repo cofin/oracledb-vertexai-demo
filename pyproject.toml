@@ -302,15 +302,6 @@ split-on-trailing-comma = false
 "manage.py" = ["banned-api"]
 "src/app/cli/**/*.py" = ["banned-api"]
 "src/app/config.py" = ["banned-api"]
-"src/app/db/utils.py" = ["banned-api"]
-"src/app/domain/ai/runtime/_store.py" = ["banned-api"]
-"src/app/domain/chat/services/_router.py" = ["banned-api"]
-"src/app/domain/chat/services/_telemetry.py" = ["banned-api"]
-"src/app/domain/products/services/_embedding.py" = ["banned-api"]
-"src/app/domain/products/services/_products.py" = ["banned-api"]
-"src/app/domain/products/services/_stores.py" = ["banned-api"]
-"src/app/domain/system/services/_cache.py" = ["banned-api"]
-"src/app/domain/system/services/_health.py" = ["banned-api"]
 "src/app/server/**/*.py" = ["banned-api"]
 "src/tests/*.py" = [
     "ANN",

@@ -8,19 +8,29 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
+import msgspec
 import pytest
 
-from app.domain.chat.schemas import HybridProductCandidate, HybridStoreCandidate, HybridTurnContext
-from app.domain.chat.services._grounded import GroundedRouteService
-from app.domain.chat.services._telemetry import (
+from app.domain.chat.schemas import HybridProductCandidate, HybridRouteLabel, HybridStoreCandidate, HybridTurnContext
+from app.domain.chat.services import (
+    ORDER_STATUS_ANSWER,
+    GroundedRouteService,
+    GroundedTurnResult,
     SearchMetrics,
     SQLPhase,
     build_hybrid_sql_phases,
     build_response_cache_phase,
     build_search_metrics,
+    compose_availability_answer,
+    compose_off_menu_alternative,
+    compose_product_rag_answer,
+    compose_store_location_answer,
+    extract_location_filters,
     safe_location_context,
 )
 from app.domain.products.schemas import ProductAvailability, Store, StoreDistance
+from app.lib.exceptions import AIServiceUnconfigured
+from app.lib.schema import FrozenBaseStruct
 
 pytestmark = pytest.mark.anyio
 
@@ -30,7 +40,7 @@ _NOW = datetime(2026, 10, 12, 12, 0, tzinfo=UTC)
 def _make_turn_context(
     *,
     user_message: str = "Recommend a coffee",
-    intent_detected: str = "PRODUCT_RAG",
+    intent_detected: HybridRouteLabel = "PRODUCT_RAG",
     is_deterministic: bool = True,
     products: list[HybridProductCandidate] | None = None,
     stores: list[HybridStoreCandidate] | None = None,
@@ -41,7 +51,7 @@ def _make_turn_context(
     return HybridTurnContext(
         user_message=user_message,
         oracle_text_query=oracle_text_query,
-        intent_detected=intent_detected,  # type: ignore[arg-type]
+        intent_detected=intent_detected,
         is_deterministic=is_deterministic,
         route_confidence=0.0328,
         products=products or [],
@@ -384,3 +394,71 @@ async def test_telemetry_builders_produce_valid_sql_phases_and_search_metrics() 
         "coordinates": {"latitude": 32.7, "longitude": -96.8, "accuracy_meters": 10.0},
     })
     assert masked == {"city": "Dallas", "has_browser_coordinates": True, "accuracy_meters": 10.0}
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_city"),
+    [
+        ("Do you have espresso in Plano?", "Plano"),
+        ("Do you have espresso in Fort Worth?", "Fort Worth"),
+        ("Do you have espresso in Plano or Fort Worth?", "Fort Worth"),
+        ("Which Arlington store has cold brew?", "Arlington"),
+        ("Where is your Frisco cafe?", "Frisco"),
+        ("Any shops open in Irving today?", "Irving"),
+        ("Closest shop in Dallas?", "Dallas"),
+    ],
+)
+async def test_extract_location_filters_resolves_seeded_dfw_cities(query: str, expected_city: str) -> None:
+    """Verify extract_location_filters resolves all seeded Dallas-Fort Worth store cities."""
+    filters = extract_location_filters(query, None)
+    assert filters["city"] == expected_city
+    assert filters["state"] == "TX"
+    assert extract_location_filters(query)["city"] == expected_city
+
+
+async def test_composers_and_grounded_turn_result_use_frozen_structs() -> None:
+    """Verify deterministic route composers, frozen turn result, and credential guard."""
+    assert issubclass(GroundedTurnResult, FrozenBaseStruct)
+    assert issubclass(SQLPhase, FrozenBaseStruct)
+
+    assert "does not include order tracking yet" in ORDER_STATUS_ANSWER
+    assert "does not carry Folgers" in compose_off_menu_alternative("Folgers", [])
+    assert "For breakfast, I'd start with Dawn Blend ($14.00)." in compose_product_rag_answer(
+        "breakfast coffee", [{"name": "Dawn Blend", "price": 14.0, "description": ""}]
+    )
+    assert "Plano Cafe is at 100 Legacy Dr, Plano, TX 75024." in compose_store_location_answer([
+        {"name": "Plano Cafe", "address": "100 Legacy Dr", "city": "Plano", "state": "TX", "zip": "75024"}
+    ])
+    assert "Velvet Espresso is out of stock at Plano Cafe." in compose_availability_answer(
+        target={"product_name": "Velvet Espresso", "store_name": "Plano Cafe", "stock_status": "OUT_OF_STOCK"},
+        alternatives=[],
+    )
+
+    turn_ctx = _make_turn_context(
+        user_message="Recommend a dark roast",
+        intent_detected="PRODUCT_RAG",
+        products=[
+            HybridProductCandidate(
+                id=1,
+                name="Velvet Espresso",
+                description="Dark cocoa finish.",
+                price=16.5,
+                rrf_score=0.032,
+                vector_similarity=0.88,
+            )
+        ],
+    )
+    vertex_ai_service = AsyncMock()
+    vertex_ai_service.generate_structured_content.side_effect = RuntimeError(
+        "Could not automatically determine credentials"
+    )
+    service = GroundedRouteService(
+        product_service=AsyncMock(), store_service=AsyncMock(), vertex_ai_service=vertex_ai_service
+    )
+    with pytest.raises(AIServiceUnconfigured):
+        await service.handle_product_rag("Recommend a dark roast", turn_ctx)
+
+    result = await service.handle_order_status("Where is order #1?", turn_ctx)
+    with pytest.raises(AttributeError):
+        setattr(result, "answer", "mutated")
+    assert isinstance(result, msgspec.Struct)

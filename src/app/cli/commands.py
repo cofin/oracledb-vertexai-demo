@@ -32,7 +32,6 @@ from sqlspec.migrations.commands import create_migration_commands
 
 import app.config as app_config
 from app.cli._helpers import configure_apex_cdn_helper
-from app.cli._helpers.embeddings import validate_batch_size
 from app.cli._helpers.fixtures import (
     display_available_tables,
     display_fixture_list,
@@ -282,9 +281,16 @@ def _show_model_info(vertex_ai_service: VertexAIService) -> None:
     console.print()
 
 
+def _validate_batch_size(batch_size: int) -> None:
+    """Validate embedding batch size before enqueuing background work."""
+    if batch_size < 1:
+        msg = "Batch size must be at least 1."
+        raise click.ClickException(msg)
+
+
 async def _run_bulk_embed(*, batch_size: int, force: bool, queue_service: QueueService) -> None:
     """Enqueue and execute ``products.embed_missing`` in the foreground via ``QueueService``."""
-    validate_batch_size(batch_size)
+    _validate_batch_size(batch_size)
     result = await queue_service.enqueue(
         embed_missing_records, batch_size=batch_size, force=force, execution_backend="immediate"
     )

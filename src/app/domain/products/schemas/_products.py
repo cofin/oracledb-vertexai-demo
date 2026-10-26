@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from msgspec import field
 
-from app.lib.schema import CamelizedBaseStruct
+from app.lib.schema import CamelizedFrozenStruct
 
 __all__ = (
     "ExplainPlan",
@@ -29,7 +29,7 @@ __all__ = (
 StockStatus = Literal["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]
 
 
-class Product(CamelizedBaseStruct, omit_defaults=True):
+class Product(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Product entity from database."""
 
     id: int
@@ -45,7 +45,7 @@ class Product(CamelizedBaseStruct, omit_defaults=True):
     updated_at: datetime | None = None
 
 
-class Store(CamelizedBaseStruct, omit_defaults=True):
+class Store(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Store location entity from database."""
 
     id: int
@@ -65,7 +65,7 @@ class Store(CamelizedBaseStruct, omit_defaults=True):
     metadata: dict[str, Any] | None = None
 
 
-class StoreHours(CamelizedBaseStruct, omit_defaults=True):
+class StoreHours(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Store hours response contract."""
 
     store_id: int
@@ -74,14 +74,14 @@ class StoreHours(CamelizedBaseStruct, omit_defaults=True):
     hours: dict[str, Any] = field(default_factory=dict)
 
 
-class StoreDistance(Store, omit_defaults=True):
+class StoreDistance(Store, frozen=True, omit_defaults=True):
     """Store row plus local coordinate ranking score."""
 
     distance_miles: float = 0.0
     distance_score: float | None = None
 
 
-class StoreProductInventory(CamelizedBaseStruct, omit_defaults=True):
+class StoreProductInventory(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Store-product inventory row."""
 
     id: int
@@ -93,7 +93,7 @@ class StoreProductInventory(CamelizedBaseStruct, omit_defaults=True):
     updated_at: datetime | None = None
 
 
-class ProductAvailability(StoreProductInventory, omit_defaults=True):
+class ProductAvailability(StoreProductInventory, frozen=True, omit_defaults=True):
     """Product availability row with store and product display fields."""
 
     store_name: str = ""
@@ -113,13 +113,13 @@ class ProductAvailability(StoreProductInventory, omit_defaults=True):
     distance_miles: float | None = None
 
 
-class VectorQuery(CamelizedBaseStruct, omit_defaults=True):
+class VectorQuery(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """A user-supplied vector-search query string."""
 
     query: str
 
 
-class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
+class ProductMatch(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """A product row returned by vector or hybrid RRF search.
 
     Slim projection of `product` (no embedding, no metadata) plus the
@@ -143,7 +143,7 @@ class ProductMatch(CamelizedBaseStruct, omit_defaults=True):
     pickup_available: bool | None = None
 
 
-class VectorDemoMatch(CamelizedBaseStruct, omit_defaults=True):
+class VectorDemoMatch(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """A vector or hybrid RRF search hit shaped for the explore-page Panel 1 partial."""
 
     name: str
@@ -157,7 +157,7 @@ class VectorDemoMatch(CamelizedBaseStruct, omit_defaults=True):
     rrf_k: int = 60
 
 
-class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
+class VectorDemo(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Full ``POST /api/vector-demo`` payload for SPA / JSON consumers."""
 
     results: list[VectorDemoMatch]
@@ -173,7 +173,7 @@ class VectorDemo(CamelizedBaseStruct, omit_defaults=True):
     sql_phases: list[dict[str, Any]] = field(default_factory=list)
 
 
-class ExplainPlanRow(CamelizedBaseStruct, omit_defaults=True):
+class ExplainPlanRow(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """A structured operation row parsed from Oracle ``DBMS_XPLAN`` text."""
 
     id: str
@@ -187,7 +187,7 @@ class ExplainPlanRow(CamelizedBaseStruct, omit_defaults=True):
     is_vector: bool = False
 
 
-class ExplainPlan(CamelizedBaseStruct, omit_defaults=True):
+class ExplainPlan(CamelizedFrozenStruct, frozen=True, omit_defaults=True):
     """Oracle EXPLAIN PLAN output for the vector-search SQL (Panel 2)."""
 
     plan_lines: list[str]

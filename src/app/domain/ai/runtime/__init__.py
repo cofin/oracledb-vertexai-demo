@@ -3,7 +3,7 @@
 
 """Core primitives, types, schema translation, and tool runners for dynamic agents."""
 
-from ._context import CallContext, CoffeeToolContext, RunContextRegistry
+from ._context import CallContext, CoffeeToolContext
 from ._loop import AgentRuntime, BudgetExceededError, SpanManager, TurnBudget
 from ._model import GeminiModelClient
 from ._schema import GEMINI_ALLOWED_KEYS, translate_to_gemini_schema
@@ -32,7 +32,6 @@ __all__ = (
     "OracleEventStore",
     "OracleSessionStore",
     "Part",
-    "RunContextRegistry",
     "SpanManager",
     "SpecTree",
     "Tool",

@@ -30,8 +30,7 @@ from litestar_vite import VitePlugin
 from sqlspec.extensions.litestar import SQLSpecPlugin as _SQLSpecPluginBase
 
 from app import config
-from app.domain.ai.a2a.card import build_agent_card
-from app.domain.ai.a2a.executor import CoffeeAgentExecutor, build_a2a_call_context
+from app.domain.ai.a2a import CoffeeAgentExecutor, build_a2a_call_context, build_agent_card
 from app.lib import settings as app_settings
 from app.lib.security import build_security_config
 from app.server.mcp import build_mcp_config, build_mcp_route_opt

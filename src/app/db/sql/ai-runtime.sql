@@ -68,8 +68,22 @@ SELECT
     content,
     actions,
     created_at
-FROM agent_event
-WHERE session_id = :session_id
+FROM (
+    SELECT
+        id,
+        session_id,
+        invocation_id,
+        seq,
+        turn,
+        agent,
+        content,
+        actions,
+        created_at
+    FROM agent_event
+    WHERE session_id = :session_id
+    ORDER BY seq DESC, id DESC
+    FETCH FIRST :limit ROWS ONLY
+)
 ORDER BY seq ASC, id ASC;
 
 -- name: next-ai-event-seq

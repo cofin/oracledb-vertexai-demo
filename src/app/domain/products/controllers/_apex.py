@@ -3,20 +3,17 @@
 
 """APEX-safe JSON product-domain API."""
 
-import structlog
 from litestar import get, post
 from litestar.exceptions import ValidationException
 from litestar.params import FromPath, FromQuery
 from litestar_security import PublicController
 
 from app.__metadata__ import __version__
-from app.domain.products.controllers._vector_helpers import is_expected_service_unavailable
 from app.domain.products.schemas import (
     ApexInventoryList,
     ApexInventorySummaryList,
     ApexOpenAPIStatus,
     ApexProductList,
-    ApexRecommendation,
     ApexRecommendationRequest,
     ApexRecommendationResponse,
     ApexStoreList,
@@ -24,13 +21,9 @@ from app.domain.products.schemas import (
 )
 from app.domain.products.services import OracleVectorSearchService, ProductService, StoreService
 from app.lib.di import Inject
-from app.lib.settings import PLACEHOLDER_VALUES, Settings
 
 __all__ = ("ApexController",)
 
-logger = structlog.get_logger()
-
-_PLACEHOLDER_PROJECT_IDS = PLACEHOLDER_VALUES
 _APEX_TAG = "APEX REST Catalog"
 _OPERATION_IDS = [
     "ApexListProducts",
@@ -115,77 +108,19 @@ class ApexController(PublicController):
         summary="APEX Product Recommendations",
     )
     async def recommendations(
-        self,
-        vector_search_service: Inject[OracleVectorSearchService],
-        products_service: Inject[ProductService],
-        stores_service: Inject[StoreService],
-        data: ApexRecommendationRequest,
+        self, vector_search_service: Inject[OracleVectorSearchService], data: ApexRecommendationRequest
     ) -> ApexRecommendationResponse:
-        """Return vector recommendations, falling back to deterministic catalog search."""
+        """Return vector or hybrid recommendations, falling back to deterministic catalog search."""
         query = data.query.strip()
         if not query:
             raise ValidationException(detail="Query cannot be empty")
         limit = _bounded_limit(data.limit, default=5, maximum=25)
-
-        try:
-            matches, cache_hit, timings = await vector_search_service.similarity_search(
-                query, k=limit, threshold=0.5, store_id=data.store_id
-            )
-        except Exception as exc:
-            if not is_expected_service_unavailable(exc):
-                raise
-            await logger.awarning("APEX vector recommendations fell back", error_type=type(exc).__name__)
-            return await _fallback_recommendations(
-                products_service,
-                stores_service,
-                query=query,
-                limit=limit,
-                store_id=data.store_id,
-                reason=type(exc).__name__,
-            )
-
-        return ApexRecommendationResponse(
-            query=query,
-            mode="vector",
-            items=[
-                ApexRecommendation(
-                    product_id=row.id,
-                    name=row.name,
-                    description=row.description,
-                    price=row.price,
-                    similarity_score=row.similarity_score,
-                    store_id=row.store_id,
-                    store_name=row.store_name,
-                    quantity_available=row.quantity_available,
-                    stock_status=row.stock_status,
-                    pickup_available=row.pickup_available,
-                )
-                for row in matches
-            ],
-            total=len(matches),
-            cache_hit=cache_hit,
-            embedding_time_ms=round(timings.get("embedding_ms", 0.0), 2),
-            oracle_time_ms=round(timings.get("oracle_ms", 0.0), 2),
-        )
+        return await vector_search_service.recommend_for_apex(query=query, limit=limit, store_id=data.store_id)
 
     @get("/vector/status", operation_id="ApexVectorStatus", name="apex:vector_status", summary="APEX Vector Status")
-    async def vector_status(
-        self, products_service: Inject[ProductService], vector_search_service: Inject[OracleVectorSearchService]
-    ) -> ApexVectorStatus:
+    async def vector_status(self, vector_search_service: Inject[OracleVectorSearchService]) -> ApexVectorStatus:
         """Return embedding/provider and Oracle vector readiness status."""
-        readiness = await products_service.get_vector_readiness()
-        settings = Settings.from_env()
-        vertex_ai_service = vector_search_service.vertex_ai_service
-        embedding_model = str(getattr(vertex_ai_service, "embedding_model", settings.ai.embedding_model))
-        embedding_dimensions = int(getattr(vertex_ai_service, "embedding_dimensions", settings.ai.embedding_dimensions))
-        return ApexVectorStatus(
-            embedding_model=embedding_model,
-            embedding_dimensions=embedding_dimensions,
-            provider_configured=_provider_configured(),
-            oracle_vector_ready=readiness.product_count > 0 and readiness.embedded_product_count > 0,
-            product_count=readiness.product_count,
-            embedded_product_count=readiness.embedded_product_count,
-        )
+        return await vector_search_service.get_apex_vector_status()
 
     @get("/openapi/status", operation_id="ApexOpenAPIStatus", name="apex:openapi_status", summary="APEX OpenAPI Status")
     async def openapi_status(self) -> ApexOpenAPIStatus:
@@ -197,62 +132,6 @@ class ApexController(PublicController):
             tags=[_APEX_TAG],
             operation_ids=list(_OPERATION_IDS),
         )
-
-
-async def _fallback_recommendations(
-    products_service: ProductService,
-    stores_service: StoreService,
-    *,
-    query: str,
-    limit: int,
-    store_id: int | None,
-    reason: str,
-) -> ApexRecommendationResponse:
-    if store_id is not None:
-        inventory = await stores_service.search_store_inventory(store_id=store_id, q=query, limit=limit)
-        return ApexRecommendationResponse(
-            query=query,
-            mode="fallback",
-            items=[
-                ApexRecommendation(
-                    product_id=row.product_id,
-                    name=row.product_name,
-                    description=row.product_description,
-                    price=row.product_price if row.product_price is not None else 0.0,
-                    category=row.product_category,
-                    sku=row.product_sku,
-                    store_id=row.store_id,
-                    store_name=row.store_name,
-                    quantity_available=row.quantity_available,
-                    stock_status=row.stock_status,
-                    pickup_available=row.pickup_available,
-                )
-                for row in inventory
-            ],
-            total=len(inventory),
-            fallback_reason=reason,
-        )
-
-    products, _ = await products_service.list_apex_products(q=query, category=None, limit=limit, offset=0)
-    items = [
-        ApexRecommendation(
-            product_id=row.id,
-            name=row.name,
-            description=row.description,
-            price=row.price,
-            category=row.category,
-            sku=row.sku,
-        )
-        for row in products
-    ]
-    return ApexRecommendationResponse(
-        query=query, mode="fallback", items=items, total=len(items), fallback_reason=reason
-    )
-
-
-def _provider_configured() -> bool:
-    settings = Settings.from_env()
-    return settings.ai.has_valid_project_id() or settings.ai.has_valid_api_key()
 
 
 def _blank_to_none(value: str | None) -> str | None:

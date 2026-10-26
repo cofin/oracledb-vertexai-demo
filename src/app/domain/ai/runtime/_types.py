@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Provider-neutral BaseStruct wire contracts for dynamic agents."""
+"""Provider-neutral FrozenBaseStruct wire contracts for dynamic agents."""
 
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -9,20 +9,20 @@ from uuid import UUID, uuid4
 
 import msgspec
 
-from app.lib.schema import BaseStruct
+from app.lib.schema import FrozenBaseStruct
 
 __all__ = ("AgentEvent", "AgentLimits", "Content", "FunctionCall", "FunctionResponse", "Part", "Usage")
 
 
-class FunctionCall(msgspec.Struct, kw_only=True, frozen=True):
+class FunctionCall(FrozenBaseStruct, frozen=True, kw_only=True):
     """Tool call emitted by the model."""
 
     name: str
     id: str = ""
-    args: dict[str, Any] = {}
+    args: dict[str, Any] = msgspec.field(default_factory=dict)
 
 
-class FunctionResponse(msgspec.Struct, kw_only=True, frozen=True):
+class FunctionResponse(FrozenBaseStruct, frozen=True, kw_only=True):
     """Result returned by a tool execution."""
 
     name: str
@@ -30,7 +30,7 @@ class FunctionResponse(msgspec.Struct, kw_only=True, frozen=True):
     id: str = ""
 
 
-class Part(msgspec.Struct, kw_only=True, frozen=True):
+class Part(FrozenBaseStruct, frozen=True, kw_only=True):
     """Single content segment within a message."""
 
     text: str | None = None
@@ -40,14 +40,14 @@ class Part(msgspec.Struct, kw_only=True, frozen=True):
     function_response: FunctionResponse | None = None
 
 
-class Content(msgspec.Struct, kw_only=True, frozen=True):
+class Content(FrozenBaseStruct, frozen=True, kw_only=True):
     """Role-tagged message content."""
 
     role: Literal["user", "model", "system"]
-    parts: list[Part] = []
+    parts: list[Part] = msgspec.field(default_factory=list)
 
 
-class Usage(msgspec.Struct, kw_only=True, frozen=True):
+class Usage(FrozenBaseStruct, frozen=True, kw_only=True):
     """Token accounting counters."""
 
     prompt_tokens: int = 0
@@ -57,7 +57,7 @@ class Usage(msgspec.Struct, kw_only=True, frozen=True):
     total_tokens: int = 0
 
 
-class AgentLimits(msgspec.Struct, kw_only=True, frozen=True):
+class AgentLimits(FrozenBaseStruct, frozen=True, kw_only=True):
     """Per-turn and per-session execution budgets."""
 
     max_tool_calls_per_turn: int = 8
@@ -66,7 +66,7 @@ class AgentLimits(msgspec.Struct, kw_only=True, frozen=True):
     max_message_chars: int = 4000
 
 
-class AgentEvent(BaseStruct, kw_only=True):
+class AgentEvent(FrozenBaseStruct, frozen=True, kw_only=True):
     """Sequenced event in the agent conversation log."""
 
     session_id: str

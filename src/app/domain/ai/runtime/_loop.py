@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import msgspec
 from litestar_mcp.agent import BudgetExceededError, TurnBudget
 from litestar_mcp.core.observability import SpanManager
 
@@ -26,6 +27,8 @@ __all__ = ("AgentRuntime", "BudgetExceededError", "SpanManager", "TurnBudget")
 
 class AgentRuntime:
     """Core re-entrant agent execution loop with TurnBudget and OpenTelemetry SpanManager."""
+
+    __slots__ = ("_budget", "_limits", "_model_client", "_span_manager")
 
     def __init__(
         self,
@@ -141,7 +144,7 @@ class AgentRuntime:
             if current_spec.generation.temperature is not None:
                 stream_kwargs["temperature"] = current_spec.generation.temperature
             async for event in self._model_client.generate_stream(contents, **stream_kwargs):
-                _stamp_event(
+                event = _stamp_event(
                     event=event,
                     session_id=session_id,
                     invocation_id=invocation_id,
@@ -263,13 +266,21 @@ def _build_initial_contents(
     *, user_message: str, history: list[AgentEvent] | None, dynamic_context: str | None
 ) -> list[Content]:
     history_events = list(history or [])
-    contents: list[Content] = [ev.content for ev in history_events if ev.content]
+    raw_contents: list[Content] = [ev.content for ev in history_events if ev.content]
+    start_idx = 0
+    while start_idx < len(raw_contents) and not _is_turn_opening_user_content(raw_contents[start_idx]):
+        start_idx += 1
+    contents = raw_contents[start_idx:]
     user_text = user_message
     if dynamic_context:
         fenced = fence_context_block("ACTIVE_SESSION_CONTEXT", dynamic_context)
         user_text = f"{user_message}\n\n{fenced}"
     contents.append(Content(role="user", parts=[Part(text=user_text)]))
     return contents
+
+
+def _is_turn_opening_user_content(content: Content) -> bool:
+    return content.role == "user" and not any(part.function_response is not None for part in content.parts)
 
 
 def _stamp_event(
@@ -282,17 +293,17 @@ def _stamp_event(
     usage_totals: list[int],
     accumulated_parts: list[Part],
     pending_calls: list[FunctionCall],
-) -> None:
-    event.session_id = session_id
-    event.invocation_id = invocation_id
-    event.turn = turn
-    event.agent = agent_name
-    if event.usage is not None:
-        usage_totals[0] += event.usage.prompt_tokens
-        usage_totals[1] += event.usage.output_tokens
-    if event.content and event.content.parts:
-        accumulated_parts.extend(event.content.parts)
-        pending_calls.extend(p.function_call for p in event.content.parts if p.function_call)
+) -> AgentEvent:
+    stamped = msgspec.structs.replace(
+        event, session_id=session_id, invocation_id=invocation_id, turn=turn, agent=agent_name
+    )
+    if stamped.usage is not None:
+        usage_totals[0] += stamped.usage.prompt_tokens
+        usage_totals[1] += stamped.usage.output_tokens
+    if stamped.content and stamped.content.parts:
+        accumulated_parts.extend(stamped.content.parts)
+        pending_calls.extend(p.function_call for p in stamped.content.parts if p.function_call)
+    return stamped
 
 
 def _normalize_budget(

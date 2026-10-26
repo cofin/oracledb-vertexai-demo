@@ -9,11 +9,9 @@ from dataclasses import dataclass
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import msgspec
 import pytest
 from google.genai.errors import APIError
 
-from app.config import db_manager
 from app.domain.ai.runtime import (
     AgentEvent,
     AgentSpec,
@@ -30,6 +28,8 @@ from app.domain.ai.runtime import (
     fence_context_block,
 )
 from app.domain.ai.runtime._spec import SYSTEM_FENCE_CLOSE, SYSTEM_FENCE_OPEN
+from app.lib.service import OracleLoaderService, default_sql_loader
+from app.utils.serialization import encode_json
 from tests.support.paths import APP_ROOT
 
 pytestmark = pytest.mark.anyio
@@ -301,11 +301,12 @@ def test_ai_runtime_sql_targets_agent_session_and_agent_event() -> None:
     assert "on delete cascade" in migration_sql
     assert "idx_agent_event_session_seq" not in migration_sql
 
-    get_session_sql = str(db_manager.get_sql("get-ai-session")).lower()
-    upsert_session_sql = str(db_manager.get_sql("upsert-ai-session")).lower()
-    append_event_sql = str(db_manager.get_sql("append-ai-event")).lower()
-    list_events_sql = str(db_manager.get_sql("list-ai-events")).lower()
-    next_seq_sql = str(db_manager.get_sql("next-ai-event-seq")).lower()
+    loader = default_sql_loader()
+    get_session_sql = str(loader.get_sql("get-ai-session")).lower()
+    upsert_session_sql = str(loader.get_sql("upsert-ai-session")).lower()
+    append_event_sql = str(loader.get_sql("append-ai-event")).lower()
+    list_events_sql = str(loader.get_sql("list-ai-events")).lower()
+    next_seq_sql = str(loader.get_sql("next-ai-event-seq")).lower()
 
     assert "agent_session" in get_session_sql
     assert "adk_session" not in get_session_sql
@@ -313,7 +314,14 @@ def test_ai_runtime_sql_targets_agent_session_and_agent_event() -> None:
     assert "agent_event" in append_event_sql
     assert "adk_event" not in append_event_sql
     assert "agent_event" in list_events_sql
+    assert "fetch first :limit rows only" in list_events_sql
     assert "coalesce(max(seq), 0) + 1" in next_seq_sql
+
+
+def test_oracle_ai_stores_inherit_oracle_loader_service() -> None:
+    """Verify OracleSessionStore and OracleEventStore inherit OracleLoaderService."""
+    assert issubclass(OracleSessionStore, OracleLoaderService)
+    assert issubclass(OracleEventStore, OracleLoaderService)
 
 
 async def test_oracle_session_store_crud() -> None:
@@ -386,13 +394,15 @@ async def test_oracle_event_store_append_and_list() -> None:
                 "agent": "coordinator",
                 "seq": 1,
                 "turn": 1,
-                "content": msgspec.json.encode(event_to_append.content).decode("utf-8"),
-                "actions": msgspec.json.encode(event_to_append.actions).decode("utf-8"),
+                "content": encode_json(event_to_append.content),
+                "actions": encode_json(event_to_append.actions),
             }
         ]
     )
 
-    events = await store.list_events("s10")
+    events = await store.list_events("s10", limit=25)
+    assert mock_driver.select.await_args is not None
+    assert mock_driver.select.await_args.kwargs == {"session_id": "s10", "limit": 25}
     assert len(events) == 1
     reconstructed = events[0]
     assert reconstructed.session_id == "s10"

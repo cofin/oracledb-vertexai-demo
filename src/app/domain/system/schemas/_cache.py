@@ -6,12 +6,12 @@
 from datetime import datetime
 from typing import Any
 
-from app.lib.schema import CamelizedBaseStruct
+from app.lib.schema import CamelizedFrozenStruct
 
 __all__ = ("EmbeddingCache", "ResponseCache")
 
 
-class ResponseCache(CamelizedBaseStruct, omit_defaults=True):
+class ResponseCache(CamelizedFrozenStruct, frozen=True):
     """Response cache entry."""
 
     id: int
@@ -21,7 +21,7 @@ class ResponseCache(CamelizedBaseStruct, omit_defaults=True):
     expires_at: datetime | None = None
 
 
-class EmbeddingCache(CamelizedBaseStruct, omit_defaults=True):
+class EmbeddingCache(CamelizedFrozenStruct, frozen=True):
     """Embedding cache entry."""
 
     id: int

@@ -30,7 +30,7 @@ from litestar.stores.memory import MemoryStore
 from litestar.testing import AsyncTestClient
 
 from app.domain.ai.a2a import COFFEE_AGENT_CARD, CoffeeAgentExecutor, build_a2a_call_context, build_agent_card
-from app.domain.ai.services.agent_service import AgentOrchestrationService
+from app.domain.ai.services import AgentOrchestrationService
 from app.server.asgi import create_app
 
 
@@ -49,7 +49,9 @@ class _RecordingQueue(EventQueue):
 
 
 def test_build_agent_card_custom_base_url() -> None:
-    """Verify build_agent_card normalizes base_url and appends /a2a."""
+    """Verify build_agent_card normalizes base_url, appends /a2a, and originates from private _card/_executor modules."""
+    assert build_agent_card.__module__ == "app.domain.ai.a2a._card"
+    assert CoffeeAgentExecutor.__module__ == "app.domain.ai.a2a._executor"
     card = build_agent_card(base_url="https://coffee.example.com/")
     assert card.supported_interfaces[0].url == "https://coffee.example.com/a2a"
     assert COFFEE_AGENT_CARD.supported_interfaces[0].url == "http://localhost:8000/a2a"

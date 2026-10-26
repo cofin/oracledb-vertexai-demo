@@ -3,31 +3,21 @@
 
 """Oracle SQLSpec persistence stores for AI conversation sessions and event streams."""
 
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from __future__ import annotations
+
 from typing import Any
 
-import msgspec
-from sqlspec.adapters.oracledb import OracleAsyncDriver
-
-from app import config
-from app.config import db_manager
 from app.domain.ai.runtime._types import AgentEvent, Content
+from app.lib.service import OracleLoaderService
+from app.utils.serialization import decode_json, encode_json, to_schema
 
 __all__ = ("OracleEventStore", "OracleSessionStore")
 
 
-class OracleSessionStore:
+class OracleSessionStore(OracleLoaderService):
     """Oracle 26ai backed session state store."""
 
-    def __init__(self, driver: OracleAsyncDriver | None = None) -> None:
-        """Initialize session store with optional explicit Oracle async driver.
-
-        Args:
-            driver: Optional SQLSpec OracleAsyncDriver instance. When omitted, each
-                operation acquires a short-lived session from ``db_manager``.
-        """
-        self._driver = driver
+    __slots__ = ()
 
     async def get_session(self, session_id: str, user_id: str) -> dict[str, Any] | None:
         """Fetch session metadata and state dictionary.
@@ -39,9 +29,9 @@ class OracleSessionStore:
         Returns:
             Dictionary with session row or None if not found.
         """
-        async with self._acquire_driver() as driver:
+        async with self.provide_app_session() as driver:
             return await driver.select_one_or_none(
-                db_manager.get_sql("get-ai-session"), session_id=session_id, user_id=user_id
+                self.get_sql("get-ai-session"), session_id=session_id, user_id=user_id
             )
 
     async def save_session(self, session_id: str, user_id: str, app_name: str, state: dict[str, Any]) -> None:
@@ -53,10 +43,10 @@ class OracleSessionStore:
             app_name: Name of the hosting application.
             state: Serialized session state dictionary.
         """
-        encoded_state = msgspec.json.encode(state).decode("utf-8")
-        async with self._acquire_driver() as driver:
+        encoded_state = encode_json(state)
+        async with self.provide_app_session() as driver:
             await driver.execute(
-                db_manager.get_sql("upsert-ai-session"),
+                self.get_sql("upsert-ai-session"),
                 session_id=session_id,
                 user_id=user_id,
                 app_name=app_name,
@@ -71,31 +61,15 @@ class OracleSessionStore:
             session_id: Unique session identifier.
             user_id: Owner user identifier.
         """
-        async with self._acquire_driver() as driver:
-            await driver.execute(db_manager.get_sql("clear-ai-session"), session_id=session_id, user_id=user_id)
+        async with self.provide_app_session() as driver:
+            await driver.execute(self.get_sql("clear-ai-session"), session_id=session_id, user_id=user_id)
             await driver.commit()
 
-    @asynccontextmanager
-    async def _acquire_driver(self) -> AsyncGenerator[OracleAsyncDriver, None]:
-        if self._driver is not None:
-            yield self._driver
-            return
 
-        async with config.db_manager.provide_session(config.db) as driver:
-            yield driver
-
-
-class OracleEventStore:
+class OracleEventStore(OracleLoaderService):
     """Oracle 26ai backed event log store."""
 
-    def __init__(self, driver: OracleAsyncDriver | None = None) -> None:
-        """Initialize event store with optional explicit Oracle async driver.
-
-        Args:
-            driver: Optional SQLSpec OracleAsyncDriver instance. When omitted, each
-                operation acquires a short-lived session from ``db_manager``.
-        """
-        self._driver = driver
+    __slots__ = ()
 
     async def get_next_seq(self, session_id: str) -> int:
         """Return the next monotonic event sequence number for a session.
@@ -106,8 +80,8 @@ class OracleEventStore:
         Returns:
             Positive integer sequence number starting at 1.
         """
-        async with self._acquire_driver() as driver:
-            val = await driver.select_value_or_none(db_manager.get_sql("next-ai-event-seq"), session_id=session_id)
+        async with self.provide_app_session() as driver:
+            val = await driver.select_value_or_none(self.get_sql("next-ai-event-seq"), session_id=session_id)
             return int(val) if val is not None else 1
 
     async def append_event(self, event: AgentEvent) -> None:
@@ -116,11 +90,11 @@ class OracleEventStore:
         Args:
             event: AgentEvent instance to record.
         """
-        encoded_content = msgspec.json.encode(event.content).decode("utf-8") if event.content else None
-        encoded_actions = msgspec.json.encode(event.actions).decode("utf-8")
-        async with self._acquire_driver() as driver:
+        encoded_content = encode_json(event.content) if event.content is not None else None
+        encoded_actions = encode_json(event.actions)
+        async with self.provide_app_session() as driver:
             await driver.execute(
-                db_manager.get_sql("append-ai-event"),
+                self.get_sql("append-ai-event"),
                 session_id=event.session_id,
                 invocation_id=event.invocation_id,
                 seq=event.seq,
@@ -136,52 +110,40 @@ class OracleEventStore:
 
         Args:
             session_id: Unique session identifier.
-            limit: Maximum number of most-recent events to return.
+            limit: Maximum number of most-recent events to return in chronological order.
 
         Returns:
             Chronological list of AgentEvent instances.
         """
-        async with self._acquire_driver() as driver:
-            rows = await driver.select(db_manager.get_sql("list-ai-events"), session_id=session_id)
-        if limit > 0 and len(rows) > limit:
-            rows = rows[-limit:]
-        events: list[AgentEvent] = []
-        for r in rows:
-            content: Content | None = None
-            if r.get("content"):
-                raw_content = r["content"]
-                if isinstance(raw_content, str):
-                    content = msgspec.json.decode(raw_content.encode("utf-8"), type=Content)
-                elif isinstance(raw_content, dict):
-                    content = msgspec.convert(raw_content, type=Content)
+        bounded_limit = max(1, limit)
+        async with self.provide_app_session() as driver:
+            rows = await driver.select(self.get_sql("list-ai-events"), session_id=session_id, limit=bounded_limit)
+        return [_row_to_agent_event(row) for row in rows]
 
-            actions: dict[str, Any] = {}
-            if r.get("actions"):
-                raw_actions = r["actions"]
-                if isinstance(raw_actions, str):
-                    actions = msgspec.json.decode(raw_actions.encode("utf-8"), type=dict[str, Any])
-                elif isinstance(raw_actions, dict):
-                    actions = raw_actions
 
-            events.append(
-                AgentEvent(
-                    session_id=str(r.get("session_id", "")),
-                    invocation_id=str(r.get("invocation_id", "")),
-                    agent=str(r.get("agent", "")),
-                    content=content,
-                    actions=actions,
-                    seq=int(r.get("seq", 0)),
-                    turn=int(r.get("turn", 0)),
-                    partial=False,
-                )
-            )
-        return events
+def _row_to_agent_event(row: dict[str, Any]) -> AgentEvent:
+    """Decode an Oracle agent_event row mapping into a typed AgentEvent."""
+    content: Content | None = None
+    raw_content = row.get("content")
+    if isinstance(raw_content, str | bytes | bytearray):
+        content = decode_json(raw_content, target_type=Content)
+    elif isinstance(raw_content, dict):
+        content = to_schema(raw_content, Content)
 
-    @asynccontextmanager
-    async def _acquire_driver(self) -> AsyncGenerator[OracleAsyncDriver, None]:
-        if self._driver is not None:
-            yield self._driver
-            return
+    actions: dict[str, Any] = {}
+    raw_actions = row.get("actions")
+    if isinstance(raw_actions, str | bytes | bytearray):
+        actions = decode_json(raw_actions, target_type=dict[str, Any])
+    elif isinstance(raw_actions, dict):
+        actions = dict(raw_actions)
 
-        async with config.db_manager.provide_session(config.db) as driver:
-            yield driver
+    return AgentEvent(
+        session_id=str(row.get("session_id", "")),
+        invocation_id=str(row.get("invocation_id", "")),
+        agent=str(row.get("agent", "")),
+        content=content,
+        actions=actions,
+        seq=int(row.get("seq", 0)),
+        turn=int(row.get("turn", 0)),
+        partial=False,
+    )

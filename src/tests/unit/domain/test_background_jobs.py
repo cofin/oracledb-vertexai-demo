@@ -5,7 +5,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+import ast
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -85,9 +88,22 @@ async def test_cleanup_expired_cache_and_sessions_executes_maintenance() -> None
     mock_cache_service.delete_stale_agent_sessions.assert_awaited_once_with(retention_days=7)
 
 
+def test_products_jobs_module_has_zero_cli_imports() -> None:
+    """Verify `app.domain.products.jobs` does not import `app.cli` helpers."""
+    jobs_path = Path(__file__).resolve().parents[3] / "app" / "domain" / "products" / "jobs.py"
+    jobs_tree = ast.parse(jobs_path.read_text(encoding="utf-8"), filename=str(jobs_path))
+    cli_imports = [
+        node.module
+        for node in ast.walk(jobs_tree)
+        if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("app.cli")
+    ]
+    assert cli_imports == []
+
+
 @pytest.mark.anyio
 async def test_embed_missing_records_embeds_products_and_chat_routes() -> None:
-    """Verify products.embed_missing embeds missing products and chat_route exemplars."""
+    """Verify products.embed_missing delegates directly to VertexAIService.embed_missing_products."""
+
     registry = get_task_registry()
     assert "products.embed_missing" in registry
     assert registry["products.embed_missing"].queue == "embeddings"
@@ -113,8 +129,15 @@ async def test_embed_missing_records_embeds_products_and_chat_routes() -> None:
     mock_product_service.update_embedding.return_value = True
     mock_product_service.update_chat_route_embedding.return_value = True
 
-    mock_vertex_service = AsyncMock(spec=VertexAIService)
-    mock_vertex_service.get_text_embedding.return_value = [0.25] * 3072
+    embed_content = AsyncMock(return_value=SimpleNamespace(embeddings=[SimpleNamespace(values=[0.25] * 3072)]))
+    cache_service: Any = SimpleNamespace(get_embedding=AsyncMock(return_value=None), save_embedding=AsyncMock())
+    vertex_service = VertexAIService(
+        client=cast("Any", SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content)))),
+        model="gemini-3.8-flash",
+        embedding_model="gemini-embedding-2",
+        embedding_dimensions=3072,
+        cache_service=cache_service,
+    )
 
     fake_container = AsyncMock()
 
@@ -122,7 +145,7 @@ async def test_embed_missing_records_embeds_products_and_chat_routes() -> None:
         if dep_type is ProductService:
             return mock_product_service
         if dep_type is VertexAIService:
-            return mock_vertex_service
+            return vertex_service
         raise KeyError(dep_type)
 
     fake_container.get.side_effect = _get_dep

@@ -10,8 +10,9 @@ import contextlib
 import time
 from typing import TYPE_CHECKING, Any
 
-import msgspec
 from litestar_mcp.agent import AgentStreamFrame
+
+from app.utils.serialization import encode_json
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, AsyncIterator
@@ -53,7 +54,7 @@ def build_tool_preview(response: dict[str, Any], max_chars: int = RESULT_PREVIEW
         Tuple containing status indicator and truncated string preview.
     """
     status = "error" if response.get("error") else "completed"
-    encoded = msgspec.json.encode(response).decode("utf-8")
+    encoded = encode_json(response)
     if len(encoded) <= max_chars:
         return status, encoded
     return status, f"{encoded[: max_chars - 1]}…"
@@ -79,6 +80,8 @@ def to_agent_stream_frame(frame: dict[str, Any], *, turn_id: str, seq: int = 0) 
 
 class AgentStreamService:
     """Adapts raw AgentEvents into an SSE-ready dictionary stream."""
+
+    __slots__ = ("_ping_interval",)
 
     def __init__(self, ping_interval: float = DEFAULT_PING_INTERVAL) -> None:
         """Initialize stream adapter with keep-alive interval.

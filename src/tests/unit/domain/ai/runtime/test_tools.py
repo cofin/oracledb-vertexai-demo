@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import gc
+from dataclasses import fields
 from typing import Any, Literal
 
 import msgspec
@@ -14,16 +16,17 @@ from app.domain.ai.runtime import (
     AgentEvent,
     AgentLimits,
     CallContext,
+    CoffeeToolContext,
     Content,
     FunctionCall,
     FunctionResponse,
     Part,
-    RunContextRegistry,
     Usage,
     declare,
     execute_parallel,
     translate_to_gemini_schema,
 )
+from app.lib.schema import FrozenBaseStruct
 
 pytestmark = pytest.mark.anyio
 
@@ -126,20 +129,25 @@ def test_translate_to_gemini_schema_nested_struct() -> None:
     assert "$ref" not in gemini_struct
 
 
-def test_call_context_and_registry() -> None:
-    """Verify CallContext registration, resolution, and release lifecycle."""
-    registry = RunContextRegistry()
-    ctx = CallContext(session_id="session-123", invocation_id="inv-456", turn=1, state={"user": "tester"})
-    token = registry.bind(ctx)
-    assert isinstance(token, str)
+def test_call_context_and_frozen_runtime_contracts() -> None:
+    """Verify CallContext tool_context resolution, CoffeeToolContext fields, and FrozenBaseStruct wire types."""
+    field_names = tuple(f.name for f in fields(CoffeeToolContext))
+    assert field_names == ("product_service", "store_service", "vertex_ai_service", "metrics_service", "turn_context")
 
-    resolved = registry.resolve(token)
-    assert resolved.session_id == "session-123"
-    assert resolved.turn == 1
+    tool_ctx = CoffeeToolContext()
+    ctx = CallContext(
+        session_id="session-123", invocation_id="inv-456", turn=1, state={"user": "tester"}, services=tool_ctx
+    )
+    assert ctx.tool_context is tool_ctx
 
-    registry.release(token)
-    with pytest.raises(RuntimeError, match="Tool CallContext expired or missing"):
-        registry.resolve(token)
+    wire_types = (FunctionCall, FunctionResponse, Part, Content, Usage, AgentLimits, AgentEvent)
+    for cls in wire_types:
+        assert issubclass(cls, FrozenBaseStruct), f"{cls.__name__} must inherit FrozenBaseStruct"
+
+    ev = AgentEvent(session_id="s1", invocation_id="i1")
+    assert not gc.is_tracked(ev)
+    with pytest.raises(AttributeError):
+        ev.seq = 99  # type: ignore[misc]
 
 
 def test_tool_declaration_generation() -> None:

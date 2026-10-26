@@ -19,6 +19,7 @@ from ._metrics import (
     PerformanceStats,
     SearchMetricsCreate,
 )
+from ._persona import PersonaDefinition
 
 __all__ = (
     "CacheStats",
@@ -34,6 +35,7 @@ __all__ = (
     "MetricsTimeSeriesPoints",
     "MetricsTimeSeriesRow",
     "PerformanceStats",
+    "PersonaDefinition",
     "ResponseCache",
     "SearchMetricsCreate",
 )

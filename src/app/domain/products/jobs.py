@@ -3,10 +3,11 @@
 
 """Background embedding tasks for the products domain."""
 
+from __future__ import annotations
+
 import structlog
 from litestar_queues import RetryBackoff, task
 
-from app.cli._helpers.embeddings import generate_product_embeddings
 from app.domain.products.services import ProductService, VertexAIService
 from app.lib.jobs import task_container_scope
 
@@ -36,9 +37,7 @@ async def embed_missing_records(batch_size: int = 50, force: bool = False) -> di
     async with task_container_scope() as container:
         product_service = await container.get(ProductService)
         vertex_ai_service = await container.get(VertexAIService)
-        summary = await generate_product_embeddings(
-            batch_size=batch_size, force=force, product_service=product_service, vertex_ai_service=vertex_ai_service
-        )
+        summary = await vertex_ai_service.embed_missing_products(product_service, batch_size=batch_size, force=force)
 
     logger.info(
         "Completed background embedding job",

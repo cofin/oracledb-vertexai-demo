@@ -5,148 +5,26 @@
 
 from __future__ import annotations
 
-import re
-from typing import Any, cast
+from typing import Any
 
 from sqlspec import sql
+from sqlspec.core.filters import LimitOffsetFilter
 
-from app.config import db_manager
 from app.domain.products.schemas import ApexProduct, ApexVectorReadiness, Product, ProductMatch
-from app.lib.service import FilterTypes, OffsetPagination, OracleAsyncService
+from app.lib.service import FilterTypes, OffsetPagination, OracleLoaderService
+from app.lib.text_search import build_oracle_text_query
 
-__all__ = ("ProductService", "sanitize_oracle_text_query")
-
-_ORACLE_TEXT_RESERVED_AND_STOPWORDS = frozenset({
-    "a",
-    "about",
-    "accum",
-    "all",
-    "am",
-    "an",
-    "and",
-    "any",
-    "are",
-    "as",
-    "at",
-    "be",
-    "bt",
-    "btg",
-    "bti",
-    "btp",
-    "by",
-    "can",
-    "carry",
-    "definescore",
-    "definomerge",
-    "do",
-    "does",
-    "equiv",
-    "for",
-    "from",
-    "fuzzy",
-    "give",
-    "has",
-    "have",
-    "here",
-    "hi",
-    "hello",
-    "how",
-    "i",
-    "in",
-    "into",
-    "is",
-    "it",
-    "list",
-    "mddata",
-    "me",
-    "minus",
-    "my",
-    "near",
-    "not",
-    "nt",
-    "ntg",
-    "nti",
-    "ntp",
-    "of",
-    "on",
-    "or",
-    "please",
-    "pt",
-    "rt",
-    "sdata",
-    "sell",
-    "show",
-    "soundex",
-    "sqe",
-    "stem",
-    "syn",
-    "tell",
-    "that",
-    "the",
-    "their",
-    "there",
-    "they",
-    "this",
-    "threshold",
-    "to",
-    "tr",
-    "transform",
-    "trsyn",
-    "us",
-    "what",
-    "when",
-    "where",
-    "which",
-    "who",
-    "why",
-    "wild",
-    "will",
-    "with",
-    "within",
-    "you",
-    "your",
-})
-_MIN_ORACLE_TEXT_TOKEN_LEN = 2
-_MAX_ORACLE_TEXT_TOKENS = 8
+__all__ = ("ProductService",)
 
 
-def sanitize_oracle_text_query(text_query: str | None) -> str | None:
-    """Brace-escape raw tokens and join with ``ACCUM`` for Oracle Text ``CONTAINS``."""
-    if text_query is None:
-        return None
-    stripped = text_query.strip()
-    if not stripped:
-        return None
-    if stripped.startswith("{"):
-        return stripped
-    tokens: list[str] = []
-    seen: set[str] = set()
-    for raw in re.findall(r"[a-zA-Z0-9][a-zA-Z0-9\-']*", stripped.lower()):
-        cleaned = re.sub(r"[^a-z0-9\-]", "", raw.strip("-'")).strip("-")
-        if (
-            len(cleaned) < _MIN_ORACLE_TEXT_TOKEN_LEN
-            or cleaned in _ORACLE_TEXT_RESERVED_AND_STOPWORDS
-            or cleaned in seen
-        ):
-            continue
-        seen.add(cleaned)
-        tokens.append(f"{{{cleaned}}}")
-        if len(tokens) >= _MAX_ORACLE_TEXT_TOKENS:
-            break
-    if not tokens:
-        return None
-    return " ACCUM ".join(tokens)
-
-
-class ProductService(OracleAsyncService):
+class ProductService(OracleLoaderService):
     """Handles database operations for products using SQLSpec patterns."""
+
+    __slots__ = ()
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Product]:
         """Paginate products matching the supplied filter definitions."""
-        return cast(
-            "OffsetPagination[Product]",
-            await self.paginate(db_manager.get_sql("list-products"), *filters, schema_type=Product),
-        )
+        return await self.paginate_limit_offset(self.get_sql("list-products"), *filters, schema_type=Product)
 
     async def list_apex_products(
         self, *, q: str | None = None, category: str | None = None, limit: int = 50, offset: int = 0
@@ -154,31 +32,29 @@ class ProductService(OracleAsyncService):
         """List products and total count for the APEX administration console."""
         bounded_limit = max(1, min(limit, 100))
         bounded_offset = max(offset, 0)
-        rows = await self.driver.select(
-            db_manager.get_sql("list-apex-products"),
+        page = await self.paginate_limit_offset(
+            self.get_sql("list-apex-products"),
+            LimitOffsetFilter(limit=bounded_limit, offset=bounded_offset),
+            schema_type=ApexProduct,
             q=q,
             category=category,
-            limit=bounded_limit,
-            offset=bounded_offset,
-            schema_type=ApexProduct,
         )
-        total = await self.driver.select_value(db_manager.get_sql("count-apex-products"), q=q, category=category)
-        return rows, int(total or 0)
+        return list(page.items), page.total
 
     async def get_vector_readiness(self) -> ApexVectorReadiness:
         """Return vector index and embedding population readiness statistics."""
-        return await self.driver.select_one(db_manager.get_sql("get-vector-readiness"), schema_type=ApexVectorReadiness)
+        return await self.driver.select_one(self.get_sql("get-vector-readiness"), schema_type=ApexVectorReadiness)
 
     async def get_by_id(self, product_id: int) -> Product | None:
         """Return a single product by primary key."""
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-product").where("id = :id"), id=product_id, schema_type=Product
+            self.get_sql("get-product").where("id = :id"), id=product_id, schema_type=Product
         )
 
     async def get_by_name(self, name: str) -> Product | None:
         """Return a single product by exact name."""
         return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-product").where("name = :name"), name=name, schema_type=Product
+            self.get_sql("get-product").where("name = :name"), name=name, schema_type=Product
         )
 
     async def get_products_for_embedding(self, force: bool = False) -> tuple[list[dict[str, Any]], int]:
@@ -222,7 +98,7 @@ class ProductService(OracleAsyncService):
         """Search products by HNSW cosine similarity."""
         if store_id is not None:
             return await self.driver.select(
-                db_manager.get_sql("vector-search-products-by-store"),
+                self.get_sql("vector-search-products-by-store"),
                 query_vector=query_embedding,
                 threshold=similarity_threshold,
                 limit=limit,
@@ -230,7 +106,7 @@ class ProductService(OracleAsyncService):
                 schema_type=ProductMatch,
             )
         return await self.driver.select(
-            db_manager.get_sql("vector-search-products"),
+            self.get_sql("vector-search-products"),
             query_vector=query_embedding,
             threshold=similarity_threshold,
             limit=limit,
@@ -247,11 +123,11 @@ class ProductService(OracleAsyncService):
         limit: int = 5,
     ) -> list[ProductMatch]:
         """Run single-query Oracle 26ai Hybrid RRF product search combining CONTAINS/SCORE and VECTOR_DISTANCE."""
-        sanitized_query = sanitize_oracle_text_query(text_query)
+        sanitized_query = build_oracle_text_query(text_query, max_terms=8)
         has_text_query = 1 if sanitized_query is not None else 0
         bind_text_query = sanitized_query if sanitized_query is not None else "{coffee}"
         return await self.driver.select(
-            db_manager.get_sql("hybrid-search-products"),
+            self.get_sql("hybrid-search-products"),
             has_text_query=has_text_query,
             text_query=bind_text_query,
             query_vector=query_embedding,

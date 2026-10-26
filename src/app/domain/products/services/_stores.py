@@ -5,42 +5,36 @@
 
 from __future__ import annotations
 
-from typing import cast
+from msgspec.structs import asdict, replace
 
-from msgspec.structs import asdict
-
-from app.config import db_manager
 from app.domain.products.schemas import ApexInventorySummaryRow, ProductAvailability, Store, StoreDistance, StoreHours
 from app.domain.products.services._location import haversine_miles, store_matches_hint
-from app.lib.service import FilterTypes, OffsetPagination, OracleAsyncService
+from app.lib.service import FilterTypes, OffsetPagination, OracleLoaderService
 
 __all__ = ("StoreService",)
 
 
-class StoreService(OracleAsyncService):
+class StoreService(OracleLoaderService):
     """Service for managing store locations and store-level inventory queries."""
+
+    __slots__ = ()
 
     async def list_with_count(self, *filters: FilterTypes) -> OffsetPagination[Store]:
         """Paginate store records."""
-        return cast(
-            "OffsetPagination[Store]",
-            await self.paginate(db_manager.get_sql("list-stores"), *filters, schema_type=Store),
-        )
+        return await self.paginate_limit_offset(self.get_sql("list-stores"), *filters, schema_type=Store)
 
     async def get_all_stores(self) -> list[Store]:
         """Return all Cymbal Coffee stores."""
-        return await self.driver.select(db_manager.get_sql("list-stores"), schema_type=Store)
+        return await self.driver.select(self.get_sql("list-stores"), schema_type=Store)
 
     async def list_inventory_summary(self) -> list[ApexInventorySummaryRow]:
         """Return per-store inventory summary counts."""
-        return await self.driver.select(
-            db_manager.get_sql("list-inventory-summary"), schema_type=ApexInventorySummaryRow
-        )
+        return await self.driver.select(self.get_sql("list-inventory-summary"), schema_type=ApexInventorySummaryRow)
 
     async def search_store_inventory(self, *, store_id: int, q: str, limit: int = 5) -> list[ProductAvailability]:
         """Search product availability within a single store."""
         return await self.driver.select(
-            db_manager.get_sql("search-store-inventory"),
+            self.get_sql("search-store-inventory"),
             store_id=store_id,
             q=q,
             limit=max(1, min(limit, 100)),
@@ -52,14 +46,12 @@ class StoreService(OracleAsyncService):
     ) -> list[Store]:
         """Find stores matching city, state, or ZIP code."""
         return await self.driver.select(
-            db_manager.get_sql("find-stores-by-location"), city=city, state=state, zip_code=zip_code, schema_type=Store
+            self.get_sql("find-stores-by-location"), city=city, state=state, zip_code=zip_code, schema_type=Store
         )
 
     async def get_store_by_id(self, store_id: int) -> Store | None:
         """Return a single store by primary key."""
-        return await self.driver.select_one_or_none(
-            db_manager.get_sql("get-store-by-id"), id=store_id, schema_type=Store
-        )
+        return await self.driver.select_one_or_none(self.get_sql("get-store-by-id"), id=store_id, schema_type=Store)
 
     async def get_store_hours(self, store_id: int) -> StoreHours | None:
         """Return operating hours for a store."""
@@ -100,16 +92,14 @@ class StoreService(OracleAsyncService):
     ) -> list[ProductAvailability]:
         """List stores carrying a given product ID, optionally ranked by distance."""
         rows = await self.driver.select(
-            db_manager.get_sql("find-stores-with-product-inventory"),
-            product_id=product_id,
-            schema_type=ProductAvailability,
+            self.get_sql("find-stores-with-product-inventory"), product_id=product_id, schema_type=ProductAvailability
         )
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
 
     async def list_store_inventory(self, store_id: int) -> list[ProductAvailability]:
         """List all inventory rows for a specific store."""
         return await self.driver.select(
-            db_manager.get_sql("list-store-inventory"), store_id=store_id, schema_type=ProductAvailability
+            self.get_sql("list-store-inventory"), store_id=store_id, schema_type=ProductAvailability
         )
 
     async def find_product_availability(
@@ -118,9 +108,7 @@ class StoreService(OracleAsyncService):
         """Find product availability across stores matching a query string."""
         del location_hint
         rows = await self.driver.select(
-            db_manager.get_sql("find-product-availability-by-query"),
-            product_query=query,
-            schema_type=ProductAvailability,
+            self.get_sql("find-product-availability-by-query"), product_query=query, schema_type=ProductAvailability
         )
         latitude, longitude = coordinates or (None, None)
         return self._rank_availability(rows, latitude=latitude, longitude=longitude)
@@ -131,10 +119,6 @@ class StoreService(OracleAsyncService):
     ) -> list[ProductAvailability]:
         if latitude is None or longitude is None:
             return rows
-        ranked: list[ProductAvailability] = []
-        for row in rows:
-            data = asdict(row)
-            data["distance_miles"] = round(haversine_miles(latitude, longitude, row), 2)
-            ranked.append(ProductAvailability(**data))
+        ranked = [replace(row, distance_miles=round(haversine_miles(latitude, longitude, row), 2)) for row in rows]
         ranked.sort(key=lambda row: row.distance_miles if row.distance_miles is not None else float("inf"))
         return ranked

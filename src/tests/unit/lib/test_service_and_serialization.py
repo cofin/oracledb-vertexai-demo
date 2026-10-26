@@ -19,7 +19,6 @@ from google.auth.exceptions import DefaultCredentialsError
 from google.genai import errors as genai_errors
 from litestar.exceptions import ServiceUnavailableException
 
-from app.domain.chat.exceptions import AIServiceUnconfigured as ChatAIServiceUnconfigured
 from app.lib.exceptions import (
     AIServiceUnconfigured,
     ApplicationError,
@@ -127,7 +126,6 @@ def test_serialization_helpers_round_trip_structs_decimals_and_numpy() -> None:
 
 def test_exceptions_classify_credentials_and_render_503_handler() -> None:
     """Verify ApplicationError, AIServiceUnconfigured, credential classifiers, and 503 handler."""
-    assert ChatAIServiceUnconfigured is AIServiceUnconfigured
     assert issubclass(AIServiceUnconfigured, ServiceUnavailableException)
     assert issubclass(AIServiceUnconfigured, ApplicationError)
 

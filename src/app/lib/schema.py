@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Base msgspec Struct classes for application schemas."""
+"""Immutable, GC-exempt msgspec Struct base classes for application schemas."""
 
 from __future__ import annotations
 
@@ -9,15 +9,7 @@ from typing import Any, cast
 
 import msgspec
 
-__all__ = ("BaseStruct", "CamelizedBaseStruct", "CamelizedFrozenStruct", "FrozenBaseStruct", "Message")
-
-
-class BaseStruct(msgspec.Struct):
-    """Legacy mutable msgspec struct base retained during incremental domain migration."""
-
-
-class CamelizedBaseStruct(BaseStruct, rename="camel"):
-    """Legacy mutable camelCase msgspec struct base retained during incremental domain migration."""
+__all__ = ("CamelizedFrozenStruct", "FrozenBaseStruct", "Message")
 
 
 class FrozenBaseStruct(msgspec.Struct, frozen=True, gc=False, omit_defaults=True):

@@ -22,6 +22,8 @@ HTTP_429_TOO_MANY_REQUESTS = 429
 class GeminiModelClient:
     """Model client managing direct streaming generation with Gemini 3.8 Flash."""
 
+    __slots__ = ("_client", "_default_model")
+
     def __init__(self, client: Client, default_model: str = "gemini-3.8-flash") -> None:
         """Initialize the Gemini model client.
 

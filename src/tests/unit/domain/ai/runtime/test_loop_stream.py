@@ -21,6 +21,7 @@ from app.domain.ai.runtime import (
     CallContext,
     Content,
     FunctionCall,
+    FunctionResponse,
     Part,
     SpecTree,
     Tool,
@@ -395,3 +396,71 @@ async def test_partial_only_model_stream_aggregates_and_emits_frontend_final_con
     assert persisted_events[1].text() == "Try our Ethiopian Yirgacheffe!"
     assert persisted_events[1].content is not None
     assert persisted_events[1].content.parts[0].thought_signature == b"sig-123"
+
+
+async def test_agent_runtime_trims_leading_orphaned_history_at_tail_window_boundary() -> None:
+    """Verify AgentRuntime trims leading model or orphaned function_response events before calling generate_stream."""
+    captured_contents: list[Content] = []
+    mock_model_client = MagicMock()
+
+    async def mock_generate_stream(contents: list[Content], **_kwargs: Any) -> Any:
+        captured_contents.extend(contents)
+        yield AgentEvent(
+            session_id="s1",
+            invocation_id="inv2",
+            content=Content(role="model", parts=[Part(text="Fresh answer")]),
+            partial=False,
+        )
+
+    mock_model_client.generate_stream = mock_generate_stream
+    runtime = AgentRuntime(model_client=mock_model_client)
+    tree = SpecTree(
+        root=AgentSpec(
+            name="barista", description="Barista", model="gemini-3.8-flash", static_instruction="Help customers."
+        )
+    )
+    truncated_history = [
+        AgentEvent(
+            session_id="s1",
+            invocation_id="inv0",
+            content=Content(role="model", parts=[Part(function_call=FunctionCall(id="c0", name="search", args={}))]),
+        ),
+        AgentEvent(
+            session_id="s1",
+            invocation_id="inv0",
+            content=Content(
+                role="user",
+                parts=[Part(function_response=FunctionResponse(id="c0", name="search", response={"items": []}))],
+            ),
+        ),
+        AgentEvent(
+            session_id="s1", invocation_id="inv0", content=Content(role="model", parts=[Part(text="No items matched.")])
+        ),
+        AgentEvent(
+            session_id="s1",
+            invocation_id="inv1",
+            content=Content(role="user", parts=[Part(text="What dark roasts do you have?")]),
+        ),
+        AgentEvent(
+            session_id="s1",
+            invocation_id="inv1",
+            content=Content(role="model", parts=[Part(text="Velvet Espresso is in stock.")]),
+        ),
+    ]
+    ctx = CallContext(session_id="s1", invocation_id="inv2", turn=2, state={})
+
+    events = [
+        ev
+        async for ev in runtime.execute_turn(
+            spec_tree=tree,
+            session_id="s1",
+            invocation_id="inv2",
+            user_message="How much is it?",
+            ctx=ctx,
+            history=truncated_history,
+        )
+    ]
+
+    assert events[-1].text() == "Fresh answer"
+    assert [c.role for c in captured_contents] == ["user", "model", "user"]
+    assert captured_contents[0].parts[0].text == "What dark roasts do you have?"

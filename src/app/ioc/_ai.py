@@ -16,6 +16,8 @@ from google.auth.credentials import Credentials
 from google.auth.exceptions import GoogleAuthError, RefreshError
 from google.auth.transport import mtls
 from google.genai import Client, types
+from sqlspec.adapters.oracledb import OracleAsyncConfig
+from sqlspec.loader import SQLFileLoader
 
 from app.domain.ai.runtime import (
     AgentRuntime,
@@ -116,14 +118,14 @@ class AIProvider(Provider):
         return PersonaManager()
 
     @provide(scope=Scope.APP)
-    def provide_session_store(self) -> OracleSessionStore:
+    def provide_session_store(self, db_config: OracleAsyncConfig, loader: SQLFileLoader) -> OracleSessionStore:
         """Provide the Oracle-backed agent session store."""
-        return OracleSessionStore()
+        return OracleSessionStore.from_config(db_config, loader=loader)
 
     @provide(scope=Scope.APP)
-    def provide_event_store(self) -> OracleEventStore:
+    def provide_event_store(self, db_config: OracleAsyncConfig, loader: SQLFileLoader) -> OracleEventStore:
         """Provide the Oracle-backed agent event store."""
-        return OracleEventStore()
+        return OracleEventStore.from_config(db_config, loader=loader)
 
 
 class _VertexFallbackCredentials(Credentials):

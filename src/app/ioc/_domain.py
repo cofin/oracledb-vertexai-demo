@@ -5,18 +5,13 @@
 
 from dishka import Provider, Scope, provide
 from google.genai import Client
+from sqlspec.adapters.oracledb import OracleAsyncDriver
+from sqlspec.loader import SQLFileLoader
 
 from app.domain.ai.runtime import AgentRuntime, AgentStreamService, OracleEventStore, OracleSessionStore, SpecTree
 from app.domain.ai.services import AgentOrchestrationService
 from app.domain.chat.services import GroundedRouteService, HybridRouteResolver
-from app.domain.products.services import (
-    InventoryService,
-    MapsService,
-    OracleVectorSearchService,
-    ProductService,
-    StoreService,
-    VertexAIService,
-)
+from app.domain.products.services import OracleVectorSearchService, ProductService, StoreService, VertexAIService
 from app.domain.system.services import CacheService, MetricsService, PersonaManager
 from app.lib.settings import AISettings
 
@@ -30,15 +25,9 @@ class DomainServiceProvider(Provider):
 
     product_service = provide(ProductService)
     store_service = provide(StoreService)
-    inventory_service = provide(InventoryService)
     cache_service = provide(CacheService)
     metrics_service = provide(MetricsService)
     route_resolver = provide(HybridRouteResolver)
-
-    @provide
-    def provide_maps_service(self) -> MapsService:
-        """Provide the Google Maps URL builder service."""
-        return MapsService()
 
     @provide
     def provide_vertex_ai_service(
@@ -98,7 +87,18 @@ class DomainServiceProvider(Provider):
 
     @provide
     def provide_vector_search_service(
-        self, vertex_ai_service: VertexAIService, product_service: ProductService
+        self,
+        driver: OracleAsyncDriver,
+        loader: SQLFileLoader,
+        vertex_ai_service: VertexAIService,
+        product_service: ProductService,
+        store_service: StoreService,
     ) -> OracleVectorSearchService:
-        """Provide OracleVectorSearchService combining Vertex AI embeddings with product search."""
-        return OracleVectorSearchService(vertex_ai_service=vertex_ai_service, product_service=product_service)
+        """Provide OracleVectorSearchService combining Vertex AI embeddings with product and store search."""
+        return OracleVectorSearchService(
+            driver,
+            vertex_ai_service=vertex_ai_service,
+            product_service=product_service,
+            store_service=store_service,
+            loader=loader,
+        )

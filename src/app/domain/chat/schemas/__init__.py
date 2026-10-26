@@ -4,6 +4,7 @@
 """Chat domain schemas package."""
 
 from ._chat import ChatMessage
+from ._forms import CoffeeChatForm
 from ._hybrid import (
     HybridProductCandidate,
     HybridRouteLabel,
@@ -15,6 +16,7 @@ from ._hybrid import (
 
 __all__ = (
     "ChatMessage",
+    "CoffeeChatForm",
     "HybridProductCandidate",
     "HybridRouteLabel",
     "HybridSearchRow",

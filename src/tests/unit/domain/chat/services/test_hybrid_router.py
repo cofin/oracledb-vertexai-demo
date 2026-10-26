@@ -13,7 +13,16 @@ import msgspec
 import pytest
 
 from app.domain.chat.schemas import HybridSearchRow, HybridTurnContext, TermHitRow
-from app.domain.chat.services._router import HybridRouteResolver, build_oracle_text_query, extract_candidate_terms
+from app.domain.chat.services import HybridRouteResolver, extract_candidate_terms
+from app.lib.schema import FrozenBaseStruct
+from app.lib.service import OracleLoaderService
+from app.lib.text_search import (
+    ORACLE_TEXT_RESERVED_WORDS,
+    ORACLE_TEXT_STOPWORDS,
+    build_oracle_proximity_query,
+    build_oracle_text_query,
+    extract_search_tokens,
+)
 from tests.support.paths import APP_ROOT, TESTS_ROOT
 
 HYBRID_SQL = APP_ROOT / "db" / "sql" / "hybrid.sql"
@@ -171,3 +180,35 @@ async def test_hybrid_route_resolver_passes_golden_suite(case: dict[str, Any]) -
     expected_off_menu = case.get("expected_off_menu_terms", [])
     for off_term in expected_off_menu:
         assert off_term in turn_ctx.off_menu_terms
+
+
+def test_text_search_proximity_and_token_extraction() -> None:
+    """Verify shared Oracle Text token extraction and NEAR proximity query construction."""
+    assert "near" in ORACLE_TEXT_RESERVED_WORDS
+    assert "accum" in ORACLE_TEXT_RESERVED_WORDS
+    assert "the" in ORACLE_TEXT_STOPWORDS
+    assert extract_search_tokens("What fruity OR floral light-roast coffees?") == [
+        "fruity",
+        "floral",
+        "light-roast",
+        "coffees",
+    ]
+    assert build_oracle_proximity_query("light roast") == (
+        "NEAR(({light}, {roast}), 6, TRUE) ACCUM ({light} ACCUM {roast})"
+    )
+    assert build_oracle_proximity_query("light roast", max_span=4, in_order=False) == (
+        "NEAR(({light}, {roast}), 4, FALSE) ACCUM ({light} ACCUM {roast})"
+    )
+    assert build_oracle_proximity_query("espresso") == "{espresso}"
+    assert build_oracle_proximity_query("the and or not") is None
+
+
+def test_hybrid_route_resolver_uses_oracle_loader_service_and_frozen_schemas() -> None:
+    """Verify HybridRouteResolver inherits from OracleLoaderService with frozen schemas and DFW proper-noun guards."""
+    assert issubclass(HybridRouteResolver, OracleLoaderService)
+    assert issubclass(HybridSearchRow, FrozenBaseStruct)
+    assert issubclass(TermHitRow, FrozenBaseStruct)
+    assert issubclass(HybridTurnContext, FrozenBaseStruct)
+
+    terms_dfw = extract_candidate_terms("Do you have espresso in Plano or Fort Worth or Arlington or Frisco or Irving?")
+    assert terms_dfw == []

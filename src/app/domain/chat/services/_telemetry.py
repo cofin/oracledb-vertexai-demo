@@ -10,9 +10,11 @@ from hashlib import sha256
 from math import fsum, sqrt
 from typing import TYPE_CHECKING, Any
 
-from app.config import db_manager
+import msgspec
+
 from app.domain.products.services import build_store_directions_url, build_store_search_url
-from app.lib.schema import BaseStruct
+from app.lib.schema import FrozenBaseStruct
+from app.lib.service import default_sql_loader
 from app.utils.serialization import sanitize_for_json
 
 if TYPE_CHECKING:
@@ -38,20 +40,26 @@ _MAX_LATITUDE = 90.0
 _MIN_LONGITUDE = -180.0
 _MAX_LONGITUDE = 180.0
 _KNOWN_CITY_FILTERS: tuple[tuple[str, str | None], ...] = (
-    ("Austin", "TX"),
-    ("Berkeley", "CA"),
-    ("Dallas", "TX"),
-    ("Denver", "CO"),
-    ("Fresno", "CA"),
+    ("Fort Worth", "TX"),
     ("Los Angeles", "CA"),
-    ("Oakland", "CA"),
     ("Palo Alto", "CA"),
-    ("Portland", "OR"),
-    ("Sacramento", "CA"),
     ("San Diego", "CA"),
     ("San Francisco", "CA"),
     ("San Jose", "CA"),
     ("Santa Monica", "CA"),
+    ("Dallas", "TX"),
+    ("Plano", "TX"),
+    ("Arlington", "TX"),
+    ("Frisco", "TX"),
+    ("Irving", "TX"),
+    ("Aurora", "CO"),
+    ("Austin", "TX"),
+    ("Berkeley", "CA"),
+    ("Denver", "CO"),
+    ("Fresno", "CA"),
+    ("Oakland", "CA"),
+    ("Portland", "OR"),
+    ("Sacramento", "CA"),
     ("Seattle", "WA"),
 )
 _PRODUCT_QUERY_ALIASES: tuple[tuple[str, str], ...] = (
@@ -95,7 +103,7 @@ _PRODUCT_QUERY_STOP_WORDS = frozenset({
 })
 
 
-class SQLPhase(BaseStruct, kw_only=True):
+class SQLPhase(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Structured SQL execution phase emitted in the chat SSE final payload."""
 
     label: str
@@ -119,7 +127,7 @@ class SQLPhase(BaseStruct, kw_only=True):
         }
 
 
-class SearchMetrics(BaseStruct, kw_only=True):
+class SearchMetrics(FrozenBaseStruct, frozen=True, gc=False, kw_only=True):
     """Structured retrieval and grounding metrics emitted in the chat SSE final payload."""
 
     vector_query: str
@@ -129,9 +137,9 @@ class SearchMetrics(BaseStruct, kw_only=True):
     results_count: int
     products_found: int
     ai_ms: float = 0.0
-    similarity_scores: list[float] = []
+    similarity_scores: list[float] = msgspec.field(default_factory=list)
     avg_similarity: float | None = None
-    rrf_scores: list[float] = []
+    rrf_scores: list[float] = msgspec.field(default_factory=list)
     lexical_hits: int = 0
     grounded_answer_mode: str | None = None
     grounded_answer_ms: float | None = None
@@ -212,6 +220,7 @@ def build_hybrid_sql_phases(
     limit: int = 5,
 ) -> list[SQLPhase]:
     """Build SQLPhase records for the embedding lookup, hybrid-search-turn RRF query, and term hits."""
+    del similarity_threshold
     phases: list[SQLPhase] = [
         build_sql_phase(
             label="Embedding cache lookup",
@@ -257,6 +266,7 @@ def build_search_metrics(
     total_ms: float,
     embedding_ms: float,
     oracle_ms: float,
+    ai_ms: float = 0.0,
     results_count: int | None = None,
     grounded_answer_mode: str | None = None,
     grounded_answer_ms: float | None = None,
@@ -276,6 +286,7 @@ def build_search_metrics(
         total_ms=round(total_ms, 2),
         embedding_ms=round(embedding_ms, 2),
         oracle_ms=round(oracle_ms, 2),
+        ai_ms=round(ai_ms, 2),
         results_count=effective_results_count,
         products_found=products_found,
         similarity_scores=similarities,
@@ -324,7 +335,7 @@ def safe_location_context(location_context: dict[str, Any] | None) -> dict[str, 
     return safe
 
 
-def extract_location_filters(query: str, location_context: dict[str, Any] | None) -> dict[str, str | None]:
+def extract_location_filters(query: str, location_context: dict[str, Any] | None = None) -> dict[str, str | None]:
     """Extract city, state, and zip_code filters from location_context or query text."""
     context = location_context if isinstance(location_context, dict) else {}
     filters: dict[str, str | None] = {
@@ -339,7 +350,7 @@ def extract_location_filters(query: str, location_context: dict[str, Any] | None
             filters["zip_code"] = zip_match.group(0)
     if not filters["city"]:
         for city, state in _KNOWN_CITY_FILTERS:
-            if city.casefold() in query_text:
+            if re.search(rf"\b{re.escape(city.casefold())}\b", query_text):
                 filters["city"] = city
                 if not filters["state"] and state:
                     filters["state"] = state
@@ -390,7 +401,7 @@ def build_map_actions(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
 
 def _named_sql_text(sql_key: str) -> str:
     try:
-        return str(db_manager.get_sql(sql_key).sql)
+        return str(default_sql_loader().get_sql(sql_key).sql)
     except Exception:
         return sql_key
 

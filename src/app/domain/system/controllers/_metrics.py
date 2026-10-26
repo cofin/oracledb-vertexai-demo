@@ -26,7 +26,7 @@ class MetricsController(PublicController):
         """Return summary cards for the metrics summary panel."""
         perf_stats = await metrics_service.get_performance_stats(hours=1)
         cache_stats = await cache_service.get_cache_stats()
-        prev_stats = await metrics_service.get_performance_stats(hours=2)
+        prev_stats = await metrics_service.get_performance_stats(hours=2, window_end_hours=1)
 
         total_trend, total_change = _calculate_trend(perf_stats.total_searches, prev_stats.total_searches)
 

@@ -18,7 +18,7 @@ from app.domain.ai.runtime._types import FunctionCall, FunctionResponse
 __all__ = ("Tool", "ToolDeclaration", "declare", "execute_parallel")
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class ToolDeclaration:
     """Model-facing function declaration."""
 
@@ -27,7 +27,7 @@ class ToolDeclaration:
     parameters_json_schema: dict[str, Any]
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class Tool:
     """Executable function tool with argument validation."""
 
