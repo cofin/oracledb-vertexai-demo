@@ -1,5 +1,5 @@
 app CYMBAL-COFFEE-OPS (
-    name: Cymbal Coffee Operations Console
+    name: Cymbal Coffee — Vertex AI & Operations
     logo {
         type: text
         text: &APP_TITLE.
@@ -45,6 +45,6 @@ app CYMBAL-COFFEE-OPS (
     }
     runtime {
         allowFeedback: true
-        compatibilityMode: 24.2
+        compatibilityMode: 26.1
     }
 )

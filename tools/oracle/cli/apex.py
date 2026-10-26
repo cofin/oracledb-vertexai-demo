@@ -17,11 +17,13 @@ from sqlspec.adapters.oracledb import extract_oracle_wallet_zip
 from tools.oracle.adb import probe_ords_https
 from tools.oracle.apex_catalog import DEFAULT_APEX_OPENAPI_PATH, export_current_app_apex_catalog
 from tools.oracle.apex_lang import ApexLang, ApexLangConfig
+from tools.oracle.apex_vertex import ApexVertexConfig, ApexVertexConfigurator, ApexVertexMode, ApexVertexResult
 from tools.oracle.connection import ConnectionConfig
 from tools.oracle.database import ContainerFlavor, DatabaseConfig
 from tools.oracle.sqlcl_installer import SQLclInstaller
 
 __all__ = (
+    "apex_configure_vertex",
     "apex_export",
     "apex_export_openapi",
     "apex_generate",
@@ -168,6 +170,82 @@ def apex_import(
     except Exception as exc:
         console.print(f"[red]✗ APEXlang import failed: {exc}[/red]")
         raise click.Abort from exc
+
+
+@apex_group.command(name="configure-vertex")
+@click.option(
+    "--mode",
+    type=click.Choice(["direct", "gateway"], case_sensitive=False),
+    default="direct",
+    show_default=True,
+    help="Vertex AI connectivity mode (direct /endpoints/openapi or local Litestar gateway)",
+)
+@click.option("--project", "project_id", default=None, help="Google Cloud project ID for direct Vertex AI mode")
+@click.option("--location", default=None, help="Vertex AI location (default VERTEX_AI_LOCATION or global)")
+@click.option("--model", default=None, help="Model identifier override")
+@click.option("--gateway-url", default=None, help="Litestar OpenAI-compatible gateway URL for gateway mode")
+@click.option("--workspace", default=None, help="APEX workspace name (default APEX_WORKSPACE or COFFEE)")
+@click.option("--refresh-token", is_flag=True, help="Refresh VERTEX_AI_CRED Bearer token without recreating ACLs")
+@click.option("--verify", is_flag=True, help="Run a live APEX_AI.GENERATE verification prompt after configuration")
+def apex_configure_vertex(
+    mode: str,
+    project_id: str | None,
+    location: str | None,
+    model: str | None,
+    gateway_url: str | None,
+    workspace: str | None,
+    refresh_token: bool,
+    verify: bool,
+) -> None:
+    """Provision Oracle network ACLs, VERTEX_AI_CRED, and COFFEE_VERTEX_AI in APEX 26.1."""
+    try:
+        config = ApexVertexConfig.from_env(
+            mode=mode.lower(),
+            project_id=project_id,
+            location=location,
+            model=model,
+            gateway_url=gateway_url,
+            workspace_name=workspace,
+        )
+        result = ApexVertexConfigurator(config).configure(refresh_token_only=refresh_token, verify=verify)
+        _render_apex_vertex_result(result, refresh_token_only=refresh_token)
+    except Exception as exc:
+        console.print(f"[red]✗ APEX Vertex AI configuration failed: {exc}[/red]", soft_wrap=True)
+        raise click.Abort from exc
+
+
+def _render_apex_vertex_result(result: ApexVertexResult, *, refresh_token_only: bool) -> None:
+    """Render concise Vertex AI provisioning status without printing sensitive credentials."""
+    action = "Refreshed APEX Vertex AI credential" if refresh_token_only else "Configured APEX 26.1 Vertex AI service"
+    console.print(f"[green]✓ {action} ({result.service_static_id})[/green]", soft_wrap=True)
+    console.print(f"[bold]Mode:[/bold] {result.mode.value}", soft_wrap=True)
+    console.print(f"[bold]Endpoint:[/bold] {result.base_url}", soft_wrap=True)
+    console.print(f"[bold]Model:[/bold] {result.model}", soft_wrap=True)
+    console.print(
+        f"[bold]Workspace:[/bold] {result.workspace_name} (APEX engine: {result.apex_schema})", soft_wrap=True
+    )
+    console.print(
+        f"[bold]Service:[/bold] {result.service_static_id} (credential: {result.credential_static_id or 'none'})",
+        soft_wrap=True,
+    )
+    if result.mode == ApexVertexMode.DIRECT:
+        console.print(
+            "[yellow]Token Expiry:[/yellow] Re-run with --refresh-token when OAuth2 access token expires (~60m)",
+            soft_wrap=True,
+        )
+    else:
+        console.print(
+            "[dim]Token Expiry: Managed automatically by the Litestar gateway (zero OAuth2 token rotation)[/dim]",
+            soft_wrap=True,
+        )
+    if result.verification_response is not None:
+        latency_suffix = (
+            f" ({result.verification_latency_ms:.1f}ms)" if result.verification_latency_ms is not None else ""
+        )
+        console.print(
+            f"[green]✓ APEX_AI.GENERATE verified{latency_suffix}:[/green] {result.verification_response}",
+            soft_wrap=True,
+        )
 
 
 def _build_apex_lang() -> ApexLang:

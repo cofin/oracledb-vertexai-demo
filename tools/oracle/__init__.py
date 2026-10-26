@@ -12,6 +12,14 @@ from __future__ import annotations
 
 from tools.oracle.adb import AdbBootstrap, AdbBootstrapConfig, AdbBootstrapError, AdbBootstrapResult
 from tools.oracle.apex_lang import ApexLang, ApexLangConfig, ApexLangError, ApexLangResult
+from tools.oracle.apex_vertex import (
+    ApexVertexConfig,
+    ApexVertexConfigurator,
+    ApexVertexError,
+    ApexVertexMode,
+    ApexVertexResult,
+    mint_vertex_access_token,
+)
 from tools.oracle.cli import apex_group, connect_group, database_group, wallet_group
 from tools.oracle.connection import ConnectionConfig, ConnectionTester, DeploymentMode
 from tools.oracle.container import ContainerRuntime, RuntimeType
@@ -28,6 +36,11 @@ __all__ = (
     "ApexLangConfig",
     "ApexLangError",
     "ApexLangResult",
+    "ApexVertexConfig",
+    "ApexVertexConfigurator",
+    "ApexVertexError",
+    "ApexVertexMode",
+    "ApexVertexResult",
     "ConnectionConfig",
     "ConnectionTester",
     "ContainerFlavor",
@@ -45,5 +58,6 @@ __all__ = (
     "apex_group",
     "connect_group",
     "database_group",
+    "mint_vertex_access_token",
     "wallet_group",
 )

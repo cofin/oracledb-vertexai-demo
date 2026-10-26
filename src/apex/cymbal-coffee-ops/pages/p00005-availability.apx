@@ -1,7 +1,7 @@
 page 5 (
-    name: Availability Lookup
+    name: Pickup Availability
     alias: AVAILABILITY
-    title: Availability Lookup
+    title: Pickup Availability
     appearance {
         pageTemplate: @/standard
         templateOptions: #DEFAULT#
@@ -15,9 +15,15 @@ page 5 (
     }
 
     region availability-api (
-        name: /api/apex/products/{product_id}/availability
-        title: /api/apex/products/{product_id}/availability
+        name: Store Precedence Rule (/api/apex/products/{product_id}/availability)
+        title: Store Precedence Rule (/api/apex/products/{product_id}/availability)
         type: staticContent
+        source {
+            htmlCode:
+                ```html
+                <p>Enforces the Cymbal Coffee inventory precedence rule: curated <code>STORE_PRODUCT_INVENTORY</code> rows override global <code>PRODUCT.IN_STOCK</code> whenever a store-level record is present.</p>
+                ```
+        }
         layout {
             sequence: 20
             slot: body
@@ -28,10 +34,41 @@ page 5 (
         }
     )
 
-    region availability-lookup (
-        name: Availability Lookup
-        title: Availability Lookup
-        type: staticContent
+    region availability-matrix (
+        name: Store-Level Pickup Availability
+        title: Store-Level Pickup Availability
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select s.name as store_name,
+                       s.city,
+                       p.name as product_name,
+                       p.category,
+                       p.price as price_usd,
+                       coalesce(spi.stock_status, case when p.in_stock then 'GLOBAL_IN_STOCK' else 'GLOBAL_OUT_OF_STOCK' end) as stock_source,
+                       coalesce(spi.quantity_available, case when p.in_stock then 1 else 0 end) as quantity_available,
+                       case
+                           when spi.id is not null then
+                               case
+                                   when spi.pickup_available and spi.stock_status != 'OUT_OF_STOCK' and spi.quantity_available > 0
+                                       then 'Available for Pickup'
+                                   else 'Unavailable at Store'
+                               end
+                           when p.in_stock then 'Available (Global Fallback)'
+                           else 'Out of Stock'
+                       end as effective_availability
+                  from store s
+                  cross join product p
+                  left join store_product_inventory spi
+                    on spi.store_id = s.id
+                   and spi.product_id = p.id
+                 where spi.id is not null or not p.in_stock
+                 order by s.city, s.name, p.name
+                ```
+        }
         layout {
             sequence: 10
             slot: body
@@ -39,6 +76,13 @@ page 5 (
         appearance {
             template: @/standard
             templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635512809664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
         }
     )
 

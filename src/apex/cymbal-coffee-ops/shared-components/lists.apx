@@ -63,7 +63,7 @@ list navigation-menu (
     name: Navigation Menu
 
     entry availability (
-        label: Availability Lookup
+        label: Pickup Availability
         icon {
             imageIconCssClasses: fa-search
         }
@@ -78,7 +78,7 @@ list navigation-menu (
     )
 
     entry home (
-        label: Dashboard
+        label: Operations & AI Overview
         icon {
             imageIconCssClasses: fa-dashboard
         }
@@ -93,7 +93,7 @@ list navigation-menu (
     )
 
     entry integration-health (
-        label: Integration Health
+        label: 26ai & Vertex AI Health
         icon {
             imageIconCssClasses: fa-heartbeat
         }
@@ -108,7 +108,7 @@ list navigation-menu (
     )
 
     entry products (
-        label: Product Catalog
+        label: Coffee & Bakery Catalog
         icon {
             imageIconCssClasses: fa-coffee
         }
@@ -123,7 +123,7 @@ list navigation-menu (
     )
 
     entry recommendations (
-        label: Vector Recommendations
+        label: Vertex AI Concierge
         icon {
             imageIconCssClasses: fa-magic
         }
@@ -153,7 +153,7 @@ list navigation-menu (
     )
 
     entry stores (
-        label: Stores
+        label: DFW Store Directory
         icon {
             imageIconCssClasses: fa-map-marker
         }

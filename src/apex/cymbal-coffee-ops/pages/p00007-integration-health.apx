@@ -1,7 +1,7 @@
 page 7 (
-    name: Integration Health
+    name: 26ai & Vertex AI Health
     alias: INTEGRATION-HEALTH
-    title: Integration Health
+    title: 26ai & Vertex AI Health
     appearance {
         pageTemplate: @/standard
         templateOptions: #DEFAULT#
@@ -14,19 +14,25 @@ page 7 (
         formAutoComplete: false
     }
 
-    region catalog-status-api (
-        name: /api/apex/openapi/status
-        title: /api/apex/openapi/status
+    region apex-vertex-readiness (
+        name: APEX 26.1 Release & Vertex AI Credential Readiness
+        title: APEX 26.1 Release & Vertex AI Credential Readiness
         type: interactiveReport
         source {
             location: localDatabase
             type: sqlQuery
             sqlQuery:
                 ```sql
-                select 'Cymbal Coffee APEX REST API' as title,
-                       '/api/apex' as base_path,
-                       '/api/apex/openapi/status' as endpoint
-                  from dual
+                select r.version_no as apex_version,
+                       r.api_compatibility,
+                       (
+                           select count(*)
+                             from apex_workspace_credentials c
+                            where c.static_id = 'VERTEX_AI_CRED'
+                       ) as vertex_credential_count,
+                       'COFFEE_VERTEX_AI' as generative_ai_service_id,
+                       '/api/apex/ai/v1' as litestar_gateway_path
+                  from apex_release r
                 ```
         }
         layout {
@@ -47,9 +53,15 @@ page 7 (
     )
 
     region integration-health (
-        name: Integration Health
-        title: Integration Health
+        name: Integration Health Overview
+        title: Integration Health Overview
         type: staticContent
+        source {
+            htmlCode:
+                ```html
+                <p>Live readiness diagnostics across Oracle AI Database 26ai <code>USER_ANNOTATIONS_USAGE</code>, <code>VECTOR(3072, FLOAT32)</code> embedding coverage (<code>gemini-embedding-2</code>), <code>APEX_RELEASE</code>, and the <code>VERTEX_AI_CRED</code> / <code>COFFEE_VERTEX_AI</code> Generative AI Service configuration.</p>
+                ```
+        }
         layout {
             sequence: 10
             slot: body
@@ -60,9 +72,44 @@ page 7 (
         }
     )
 
+    region schema-annotations (
+        name: Oracle 26ai AI Schema Annotations (USER_ANNOTATIONS_USAGE)
+        title: Oracle 26ai AI Schema Annotations (USER_ANNOTATIONS_USAGE)
+        type: interactiveReport
+        source {
+            location: localDatabase
+            type: sqlQuery
+            sqlQuery:
+                ```sql
+                select object_name,
+                       object_type,
+                       coalesce(column_name, '(table-level)') as column_name,
+                       annotation_name,
+                       annotation_value
+                  from user_annotations_usage
+                 order by object_name, column_name nulls first, annotation_name
+                ```
+        }
+        layout {
+            sequence: 40
+            slot: body
+        }
+        appearance {
+            template: @/standard
+            templateOptions: #DEFAULT#
+        }
+        advanced {
+            savedReportMappingIdentifier: 3635941108664502
+        }
+        page {
+            borderWidth: 0.5
+            borderColor: #666666
+        }
+    )
+
     region vector-status-api (
-        name: /api/apex/vector/status
-        title: /api/apex/vector/status
+        name: Vertex AI Embedding Coverage (/api/apex/vector/status)
+        title: Vertex AI Embedding Coverage (/api/apex/vector/status)
         type: interactiveReport
         source {
             location: localDatabase
@@ -72,7 +119,8 @@ page 7 (
                 select 'gemini-embedding-2' as embedding_model,
                        3072 as embedding_dimensions,
                        count(*) as product_count,
-                       sum(case when embedding is not null then 1 else 0 end) as embedded_product_count
+                       sum(case when embedding is not null then 1 else 0 end) as embedded_product_count,
+                       sum(case when embedding is null then 1 else 0 end) as missing_embedding_count
                   from product
                 ```
         }
