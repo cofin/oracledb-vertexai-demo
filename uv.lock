@@ -6,13 +6,6 @@ resolution-markers = [
     "python_full_version < '3.14'",
 ]
 
-[options]
-exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
-exclude-newer-span = "P3D"
-
-[options.exclude-newer-package]
-sqlspec = false
-
 [[package]]
 name = "a2a-sdk"
 version = "1.2.2"
@@ -383,7 +376,7 @@ wheels = [
 
 [[package]]
 name = "bump-my-version"
-version = "1.5.1"
+version = "1.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -396,9 +389,9 @@ dependencies = [
     { name = "tomlkit" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/09/5b09ac74962eca809cbf7010a08ea6ad405852bdd53489209a9f473d775c/bump_my_version-1.5.1.tar.gz", hash = "sha256:5079e443ab8c9a9903f140b427ff9f6fe8dd54013a55a4cf48b89326f3a71c07", size = 1132060, upload-time = "2026-08-06T14:26:38.9Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/4a/c8d1330dd23349ee3f1a0f0ae2fb9ffb8f8e8e3f1a6cfc8511edcced2b12/bump_my_version-1.6.3.tar.gz", hash = "sha256:a886d5b8a86b439bb1119eecc3625a940c545e8e7b093ae5fd52a754c904c165", size = 1129141, upload-time = "2026-10-18T17:50:58.538Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/0b/5885530f79d4400368b9d4dcb9b39274c0d52e633f7871e7fc6feceea1e3/bump_my_version-1.5.1-py3-none-any.whl", hash = "sha256:df3e2989d0d7fe704718feb24a5880f089b6b6369e427a4445b89c3adebfcff1", size = 65090, upload-time = "2026-08-06T14:26:37.083Z" },
+    { url = "https://files.pythonhosted.org/packages/68/53/2b79c2317d2a41231597b8ae7da3c44eaa06b9fff79e51f9104b8ef82839/bump_my_version-1.6.3-py3-none-any.whl", hash = "sha256:48d4a302e49a507f3b71e0532a317121f58815ed446ad36b52fb2589c134f548", size = 67139, upload-time = "2026-10-18T17:50:56.65Z" },
 ]
 
 [[package]]
