@@ -83,7 +83,7 @@ table scan.
 Terminal and APEX 26.1 browser walkthrough videos (`.mp4` and palette-optimized
 `.gif` under `docs/_static/demos/`) are scripted and reproducible via
 `tools/demos/{cli,shell,web}.py`, VHS tapes in
-`docs/_tapes/{apex-vertex-ai-setup,apexlang-workflow}.tape`, and the optional
+`docs/_tapes/{sqlcl-apexlang,sqlcl-vertex-ai}.tape`, and the optional
 `demos` dependency group (`[dependency-groups].demos = ["playwright>=1.50"]`):
 
 ```bash
