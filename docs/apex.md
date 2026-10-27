@@ -27,16 +27,16 @@ Bundled **APEX 26.1.5 + ORDS 26.3** running in `cymbal-adb-free` with mTLS walle
 `COFFEE_VERTEX_AI` Generative AI Service calling `google/gemini-3.8-flash` via `APEX_AI.GENERATE`.
 :::
 
-:::{grid-item-card} {octicon}`code;1.2em` APEXlang in Git
+:::{grid-item-card} {octicon}`code;1.2em` Native SQLcl APEXlang
 :class-card: hero-pill
 
-Deterministic `.apx` source files managed with SQLcl `26.1.2+` without binary exports.
+Native `apex validate`, `apex import`, and `apex export` commands managing `.apx` plain text in Git.
 :::
 
-:::{grid-item-card} {octicon}`video;1.2em` Deterministic Demos
+:::{grid-item-card} {octicon}`video;1.2em` Native & CLI Demos
 :class-card: hero-pill
 
-Automated VHS terminal recordings and Playwright headless browser walkthroughs.
+Deterministic VHS recordings for native SQLcl and CLI workflows alongside Playwright browser walkthroughs.
 :::
 
 ::::
@@ -51,16 +51,81 @@ Generative AI Service (configured in workspace `COFFEE` with `Used by App Builde
 In direct mode, Oracle Database makes outbound HTTPS calls directly to Google
 Cloud Vertex AI's OpenAI-compatible endpoint:
 
-```
+```text
 https://aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/openapi
 ```
 
-The CLI configurator idempotently appends `DBMS_NETWORK_ACL_ADMIN` host ACEs for
-`aiplatform.googleapis.com:443` to parsing schema `APP` and the active APEX
-engine schema (`APEX_260100`), creates or updates the `APEX_CREDENTIAL`
-(`VERTEX_AI_CRED`) with an OAuth2 Bearer token, registers the Generative AI
-Service with model `google/gemini-3.8-flash`, and runs a live `APEX_AI.GENERATE`
-smoke verification:
+#### Option A: Native PL/SQL & SQLcl (No Python Required)
+
+DBAs and APEX developers can provision network ACLs, workspace credentials, and
+the Generative AI Service directly in Oracle SQLcl or SQL*Plus using standard
+PL/SQL APIs (`DBMS_NETWORK_ACL_ADMIN`, `APEX_CREDENTIAL`, and `APEX_AI`):
+
+```bash
+# Execute the standalone deployment PL/SQL script in SQLcl as ADMIN
+sql admin/"$ADMIN_PASSWORD"@myatp_low @src/app/db/sql/deploy/configure-vertex-ai.sql "$OAUTH_TOKEN" "$VERTEX_AI_PROJECT_ID" "global"
+```
+
+The script executes the following native Oracle PL/SQL blocks:
+
+```sql
+-- 1. Grant outbound network ACLs for Vertex AI
+BEGIN
+    DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
+        host       => 'aiplatform.googleapis.com',
+        lower_port => 443,
+        upper_port => 443,
+        ace        => xs$ace_type(
+            privilege_list => xs$name_list('http', 'connect'),
+            principal_name => 'APP',
+            principal_type => xs_acl.ptype_db
+        )
+    );
+END;
+/
+
+-- 2. Store OAuth2 Bearer token in workspace credential
+BEGIN
+    APEX_UTIL.SET_WORKSPACE('COFFEE');
+    APEX_CREDENTIAL.SET_PERSISTENT_CREDENTIALS(
+        p_credential_static_id => 'VERTEX_AI_CRED',
+        p_key                  => 'Authorization',
+        p_value                => 'Bearer ' || '&OAUTH_TOKEN'
+    );
+END;
+/
+
+-- 3. Live verification call via APEX_AI.GENERATE
+SET SERVEROUTPUT ON;
+DECLARE
+    v_output CLOB;
+BEGIN
+    APEX_UTIL.SET_WORKSPACE('COFFEE');
+    v_output := APEX_AI.GENERATE(
+        p_prompt            => 'Recommend a specialty dark roast coffee.',
+        p_service_static_id => 'COFFEE_VERTEX_AI'
+    );
+    DBMS_OUTPUT.PUT_LINE(v_output);
+END;
+/
+```
+
+<div class="soft-backdrop-wrapper">
+
+```{image} _static/demos/sqlcl-vertex-ai-native.gif
+:alt: Native SQLcl PL/SQL Vertex AI Direct Provisioning Demo
+:align: center
+:width: 100%
+```
+
+</div>
+
+*Native SQLcl session executing `configure-vertex-ai.sql` and testing `APEX_AI.GENERATE` directly in the database.*
+
+#### Option B: Python CLI Automation
+
+For automated local environment setup, the Python CLI wrapper provisions the
+same ACLs, token credentials, and service registrations idempotently:
 
 ```bash
 # Initial provisioning with ACLs, credentials, and verification
@@ -88,7 +153,7 @@ For developer workstations with Context-Aware Access, PKCS#11 hardware keys, or
 strict corporate proxies where direct outbound HTTPS from the database
 container is restricted, Cymbal Coffee provides an internal gateway:
 
-```
+```text
 http://host.docker.internal:8000/api/apex/ai/v1
 ```
 
@@ -120,6 +185,43 @@ Cymbal Coffee tracks APEX application definitions exclusively as **APEXlang**
 plain text (`.apx`) under `src/apex/cymbal-coffee-ops/`. Developers never commit
 opaque binary SQL exports.
 
+### Option A: Native SQLcl Terminal Commands
+
+Developers can run APEXlang commands directly inside Oracle SQLcl without any
+Python wrapper:
+
+```sql
+-- Connect to Autonomous Database in SQLcl
+sql app/"$DATABASE_PASSWORD"@myatp_low
+
+-- 1. Validate APEXlang source (runs offline without database connection)
+apex validate -input src/apex/cymbal-coffee-ops
+
+-- 2. Import APEXlang application into workspace COFFEE
+apex import -input src/apex/cymbal-coffee-ops -workspace COFFEE -schema APP -id 100
+
+-- 3. Export round-trip changes back to plain-text APEXlang
+apex export -applicationid 100 -exptype APEXLANG -dir src/apex -force
+
+exit
+```
+
+<div class="soft-backdrop-wrapper">
+
+```{image} _static/demos/sqlcl-apexlang-native.gif
+:alt: Native SQLcl APEXlang Lifecycle Demo
+:align: center
+:width: 100%
+```
+
+</div>
+
+*Pure SQLcl session demonstrating native `apex validate`, `apex import`, and `apex export` commands.*
+
+### Option B: Python CLI Automation
+
+The repository CLI provides convenience wrappers for local scripts and CI:
+
 ```bash
 # 1. Verify APEX release and ORDS HTTPS readiness
 uv run python manage.py infra apex status
@@ -150,7 +252,7 @@ uv run python manage.py infra apex export-openapi
 
 </div>
 
-*APEXlang offline validation, import into workspace COFFEE, and round-trip export to version control.*
+*CLI automation for APEXlang offline validation, import into workspace COFFEE, and round-trip export.*
 
 ## Application Pages (`cymbal-coffee-ops`)
 
@@ -204,10 +306,14 @@ using the repository's demo recorder tooling:
 # Verify prerequisites (vhs, ttyd, ffmpeg, chromium, playwright)
 uv run python manage.py demos check
 
-# Record terminal VHS tapes (docs/_tapes/*.tape -> docs/_static/demos/)
+# Record native and CLI terminal VHS tapes (docs/_tapes/*.tape -> docs/_static/demos/)
+# - docs/_tapes/sqlcl-apexlang-native.tape   -> docs/_static/demos/sqlcl-apexlang-native.{mp4,gif}
+# - docs/_tapes/sqlcl-vertex-ai-native.tape -> docs/_static/demos/sqlcl-vertex-ai-native.{mp4,gif}
+# - docs/_tapes/apexlang-workflow.tape       -> docs/_static/demos/apexlang-workflow.{mp4,gif}
+# - docs/_tapes/apex-vertex-ai-setup.tape    -> docs/_static/demos/apex-vertex-ai-setup.{mp4,gif}
 make docs-demos-shell
 
-# Record Playwright browser walkthroughs
+# Record Playwright browser walkthroughs (APEX Builder & Page 6 Barista Concierge)
 make docs-demos-web
 
 # Run interactive live recording runner
