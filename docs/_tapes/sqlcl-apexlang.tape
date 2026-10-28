@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Google LLC
 # SPDX-License-Identifier: Apache-2.0
 
-Output docs/_static/demos/sqlcl-apexlang-native.mp4
-Output docs/_static/demos/sqlcl-apexlang-native.gif
+Output docs/_static/demos/sqlcl-apexlang.mp4
+Output docs/_static/demos/sqlcl-apexlang.gif
 
 Require sql
 

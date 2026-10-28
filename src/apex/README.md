@@ -72,7 +72,7 @@ uv run coffee configure-apex-cdn
 
 ## Deterministic Demo Recordings (`manage.py demos`)
 
-Terminal VHS tapes (`docs/_tapes/{apex-vertex-ai-setup,apexlang-workflow}.tape`) and headless Playwright + FFmpeg browser walkthroughs (`apex-configure-vertex-ai` and `apex-create-vertex-app` in `tools/demos/web.py`) record `.mp4` and `.gif` artifacts under `docs/_static/demos/`:
+Terminal VHS tapes (`docs/_tapes/{sqlcl-apexlang,sqlcl-vertex-ai}.tape`) and headless Playwright + FFmpeg browser walkthroughs (`apex-configure-vertex-ai` and `apex-create-vertex-app` in `tools/demos/web.py`) record `.mp4` and `.gif` artifacts under `docs/_static/demos/`:
 
 ```bash
 uv run --group demos python manage.py demos check

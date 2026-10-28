@@ -85,12 +85,7 @@ def test_verify_vhs_prerequisites_validates_required_binaries(monkeypatch: pytes
 def test_tracked_tapes_declare_mp4_and_gif_outputs_dimensions_hide_show_and_no_secrets() -> None:
     """Verify tracked VHS tapes configure 1200x675 MP4/GIF outputs, Hide/Show blocks, Wait+Screen, and zero secrets."""
     tapes = list_default_tapes(repo_root=PROJECT_ROOT)
-    assert [tape.name for tape in tapes] == [
-        "apex-vertex-ai-setup.tape",
-        "apexlang-workflow.tape",
-        "sqlcl-apexlang-native.tape",
-        "sqlcl-vertex-ai-native.tape",
-    ]
+    assert [tape.name for tape in tapes] == ["sqlcl-apexlang.tape", "sqlcl-vertex-ai.tape"]
     assert (PROJECT_ROOT / "docs" / "_static" / "demos" / ".gitkeep").is_file()
 
     token_pairs = (("ya", "29."), ("AI", "za"), ("AK", "IA"), ("gh", "p_"))
