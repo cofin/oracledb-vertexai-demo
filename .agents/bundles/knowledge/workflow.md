@@ -64,7 +64,7 @@ uv run pytest src/tests/unit/<path>.py -k <test_name> -p no:cacheprovider
 make test-unit
 make test-integration # ephemeral ORACLE_CONTAINER_FLAVOR=free (gvenzl/oracle-free:latest on :1521/freepdb1)
 make test
-make py-check         # ruff + check_code_hygiene.py + check_litestar_security.py + validate_agentic_review.py + mypy + pyright + slotscheck
+make py-check         # ruff + check_code_hygiene.py + check_litestar_security.py + validate_agentic_review.py + mypy + pyrefly + slotscheck
 make typecheck
 make lint             # prek + make py-check + make frontend-typecheck
 make lint && make docs && make test
