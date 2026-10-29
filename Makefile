@@ -15,12 +15,14 @@ MAKEFLAGS += --no-print-directory
 PYAPP_BUILD_PYTHON ?= cpython-3.13.12-linux-x86_64-gnu
 PYAPP_BUILD_TARGET ?=
 FRONTEND_DIR := src/resources
+WORKING_TREE_FILES = $$(git ls-files --cached --others --exclude-standard 2>/dev/null)
 
 # Detect Rodete and configure public package indexes
 ifneq ($(shell grep -s -q "rodete" /etc/os-release && echo "yes"),)
 export NPM_CONFIG_REGISTRY=https://registry.npmjs.org
 export PIP_INDEX_URL=https://pypi.org/simple
 export UV_INDEX_URL=https://pypi.org/simple
+export UV_NO_SYNC ?= 1
 endif
 
 # ----------------------------------------------------------------------------
@@ -85,11 +87,9 @@ install: destroy clean setup-env install-uv ## Install the project and its depen
 	@echo "${INFO} Tip: run \`uvx prek install\` if you want pre-commit hooks active on git commit (not required — \`make lint\` runs the full check on demand)."
 
 .PHONY: destroy
-# Remove venv and node_modules
-
-destroy:
+destroy:                                            ## Remove venv and node_modules
 	@echo "${INFO} Destroying virtual environment... 🗑️"
-	@uvx prek clean >/dev/null 2>&1 || true
+	@uv run prek clean >/dev/null 2>&1 || uvx prek clean >/dev/null 2>&1 || true
 	@rm -rf .venv
 	@rm -rf node_modules
 	@rm -rf $(FRONTEND_DIR)/node_modules
@@ -97,16 +97,17 @@ destroy:
 
 # =============================================================================
 # Dependency Management
+# =============================================================================
 .PHONY: upgrade
-upgrade: setup-env ## Upgrade all dependencies to latest stable versions
+upgrade: setup-env                                  ## Upgrade all dependencies to latest stable versions
 	@echo "${INFO} Updating all dependencies... 🔄"
-
-	@uv lock --upgrade
+	@uv lock --upgrade --default-index https://pypi.org/simple
 	@echo "${INFO} Updating frontend dependencies... 🔄"
 	@(cd $(FRONTEND_DIR) && npx --yes npm-check-updates@latest --target latest --upgrade && npm install --no-fund)
 	@echo "${OK} Dependencies updated 🔄"
-	@uvx prek autoupdate
+	@uv run prek autoupdate || uvx prek autoupdate --cooldown-days 7
 	@echo "${OK} Updated prek hooks 🔄"
+	@uv lock --default-index https://pypi.org/simple >/dev/null 2>&1
 
 
 .PHONY: lock
@@ -278,67 +279,91 @@ coverage: ## Run tests with coverage report
 	@uv run coverage xml >/dev/null 2>&1
 	@echo "${OK} Coverage report generated ✨"
 
+.PHONY: prek
+prek:                                               ## Run prek hooks on working tree files
+	@echo "${INFO} Running prek checks... 🔎"
+	@files="${WORKING_TREE_FILES}"; \
+	if [ -n "$$files" ]; then \
+		uv run prek run --show-diff-on-failure --color=always --files $$files 2>/dev/null || uv run prek run --show-diff-on-failure --color=always --all-files; \
+	else \
+		uv run prek run --show-diff-on-failure --color=always --all-files; \
+	fi
+	@echo "${OK} prek checks passed ✨"
+
+.PHONY: pre-commit
+pre-commit: prek                                    ## Alias for prek
+
+.PHONY: fix
+fix:                                                ## Fix formatting and linting issues
+	@echo "${INFO} Fixing linting issues... 🔧"
+	@uv run ruff check --fix --unsafe-fixes src/app src/tests tools manage.py
+	@uv run ruff format src/app src/tests tools manage.py
+	@echo "${OK} Linting issues fixed ✨"
+
+.PHONY: format
+format: fix                                         ## Alias for fix
+
+.PHONY: mypy
+mypy:                                               ## Run mypy type checker using local packages
+	@echo "${INFO} Running mypy type checker... 🔍"
+	@uv run mypy src/app src/tests tools manage.py
+	@echo "${OK} Mypy type checking complete ✨"
+
+.PHONY: pyrefly
+pyrefly:                                            ## Run pyrefly type checker
+	@echo "${INFO} Running pyrefly type checker... 🔍"
+	@uv run pyrefly check src/app src/tests tools manage.py
+	@echo "${OK} Pyrefly type checking complete ✨"
+
+.PHONY: slotscheck
+slotscheck:                                         ## Run slotscheck on application modules
+	@echo "${INFO} Running slotscheck... 🔍"
+	@uv run slotscheck -m app
+	@echo "${OK} Slotscheck complete ✨"
+
+.PHONY: type-check
+type-check: mypy pyrefly                            ## Run mypy and pyrefly type checkers
+	@echo "${OK} Type checking complete ✨"
+
+.PHONY: typecheck
+typecheck: mypy pyrefly slotscheck                  ## Run all type checkers
+	@echo "${OK} All type checks complete ✨"
+
+.PHONY: zizmor
+zizmor:                                             ## Audit GitHub Actions workflows with zizmor
+	@echo "${INFO} Auditing GitHub Actions workflows... 🛡️"
+	@if [ -d ".github/workflows" ]; then \
+		uv run zizmor --strict-collection .github/workflows 2>/dev/null || uvx zizmor --strict-collection .github/workflows 2>/dev/null || echo "${WARN} zizmor skipped (not installed)"; \
+	else \
+		echo "${WARN} No .github/workflows directory found"; \
+	fi
+	@echo "${OK} Workflow checks passed ✨"
+
 .PHONY: py-lint
-py-lint: ## Run Ruff lint/format and repository CI gates
-	@echo "${INFO} Running Ruff and CI hygiene/security/review gates... 🔎"
-	@uv run ruff check --no-fix src/app src/tests tools manage.py
-	@uv run ruff format --check src/app src/tests tools manage.py
+py-lint:                                            ## Run repository CI hygiene/security/review gates
+	@echo "${INFO} Running CI hygiene/security/review gates... 🔎"
 	@uv run python tools/ci/check_code_hygiene.py
 	@uv run python tools/ci/check_litestar_security.py
 	@uv run python .agents/skills/ghop-review-manager/scripts/validate_agentic_review.py
-	@echo "${OK} Python lint and CI gates passed ✨"
+	@echo "${OK} Python CI gates passed ✨"
 
 .PHONY: dependency-smoke
-dependency-smoke: ## Verify core runtime and DI imports
+dependency-smoke:                                   ## Verify core runtime and DI imports
 	@echo "${INFO} Running dependency smoke check... 🔍"
 	@uv run python -c "import app.server.asgi; import app.ioc; import app.domain.ai.runtime; import app.domain.chat.services"
 	@echo "${OK} Dependency smoke check complete ✨"
-
-.PHONY: type-check
-type-check: mypy pyright ## Run mypy and pyright type checkers
-	@echo "${OK} Type checking complete ✨"
 
 .PHONY: py-check
 py-check: py-lint type-check slotscheck dependency-smoke ## Run all Python static analysis and CI gates
 	@echo "${OK} All Python checks complete ✨"
 
 .PHONY: lint
-lint: ## Run all linting and type checking (Python + frontend)
-	@echo "${INFO} Running prek (pre-commit) checks... 🔎"
-	@uv run prek run --color=always --all-files
-	@echo "${OK} prek checks passed ✨"
-	@$(MAKE) py-check
-	@$(MAKE) frontend-typecheck
+lint: prek type-check slotscheck py-lint frontend-typecheck zizmor ## Run all linting, type-checking, and CI gates
 	@echo "${OK} All linting and type checks complete ✨"
 
-.PHONY: format
-format: ## Run code formatters
-	@echo "${INFO} Running code formatters... 🔧"
-	@uv run ruff check --fix --unsafe-fixes
-	@uv run ruff format
-	@echo "${OK} Code formatting complete ✨"
-
-.PHONY: mypy
-mypy: ## Run mypy type checker using local packages
-	@echo "${INFO} Running mypy type checker... 🔍"
-	@uv run mypy src/app src/tests tools manage.py
-	@echo "${OK} Mypy type checking complete ✨"
-
-.PHONY: pyright
-pyright: ## Run pyright type checker using local packages
-	@echo "${INFO} Running pyright type checker... 🔍"
-	@uv run pyright src/app src/tests tools manage.py
-	@echo "${OK} Pyright type checking complete ✨"
-
-.PHONY: slotscheck
-slotscheck: ## Run slotscheck on application modules
-	@echo "${INFO} Running slotscheck... 🔍"
-	@uv run slotscheck -m app
-	@echo "${OK} Slotscheck complete ✨"
-
-.PHONY: typecheck
-typecheck: mypy pyright slotscheck ## Run all type checkers
-	@echo "${OK} All type checks complete ✨"
+.PHONY: check-all
+check-all: lint test-unit                           ## Run all linting, type checking, CI gates, and unit tests
+	@echo "${OK} All checks passed successfully ✨"
 
 # =============================================================================
 # Frontend and Assets

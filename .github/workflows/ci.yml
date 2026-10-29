@@ -7,9 +7,50 @@ on:
       - main
       - master
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    name: Static analysis, linting, and typing
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: |
+          uv python install 3.12
+          uv sync --python 3.12 --group lint --group build
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/resources/package-lock.json
+
+      - name: Install frontend dependencies
+        run: uv run python manage.py assets install
+
+      - name: Build frontend assets
+        run: uv run python manage.py assets build
+
+      - name: Run linting, typing, and hygiene gates
+        run: make lint
+
   test:
     name: Python ${{ matrix.python-label }}
+    needs: lint
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -43,7 +84,28 @@ jobs:
       - name: Set up Python
         run: |
           uv python install "${{ matrix.python-version }}"
-          uv sync --python "${{ matrix.python-version }}" --group lint --group test --group build
+          uv sync --python "${{ matrix.python-version }}" --group test
+
+      - name: Run unit tests
+        run: make test-unit
+
+  build:
+    name: Build package
+    needs: lint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: |
+          uv python install 3.12
+          uv sync --python 3.12 --group build
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -55,20 +117,5 @@ jobs:
       - name: Install frontend dependencies
         run: uv run python manage.py assets install
 
-      - name: Build frontend assets
-        run: uv run python manage.py assets build
-
-      - name: Run static analysis & code hygiene gates
-        run: |
-          uv run ruff check --no-fix src tools manage.py
-          uv run ruff format --check src tools manage.py
-          uv run mypy src/app src/tests tools manage.py
-          uv run pyright src/app src/tests tools manage.py
-          uv run slotscheck -m app
-          uv run python tools/ci/check_code_hygiene.py
-
-      - name: Run unit tests
-        run: uv run pytest src/tests/unit
-
-      - name: Build Python package
-        run: uv build
+      - name: Build package
+        run: make build

@@ -39,7 +39,7 @@ uv run coffee model-info
 make docs             # Sphinx HTML build (warnings treated as errors)
 make docs-demos-shell # deterministic VHS terminal & SQLcl demos (docs/_tapes/*.tape)
 make docs-demos-web   # headless Playwright + FFmpeg APEX 26.1 browser demos
-make lint             # prek + ruff + mypy + pyright + slotscheck + hygiene + security + review gates + tsc
+make lint            # prek + ruff + mypy + pyrefly + slotscheck + hygiene + security + review gates + tsc
 make test-unit        # fast isolated unit tests + AST meta-guards (no database required)
 make test-integration # live Oracle 26ai integration tests (ORACLE_CONTAINER_FLAVOR=free)
 make test             # full test suite

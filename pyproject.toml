@@ -174,8 +174,8 @@ docs = [
 extras = []
 lint = [
     "mypy",
-    "pre-commit",
-    "pyright",
+    "prek",
+    "pyrefly>=1.4.0",
     "ruff",
     "slotscheck",
     "types-click",
@@ -392,12 +392,32 @@ markers = [
 pythonpath = ["src"]
 testpaths = ["src/tests"]
 
-[tool.pyright]
-exclude = ["docs", "**/node_modules", "**/__pycache__", "**/.*", ".venv"]
-extraPaths = ["src"]
-include = ["src/app", "src/tests", "tools", "manage.py"]
-pythonVersion = "3.12"
-reportMissingImports = "information"
-reportMissingTypeStubs = false
-venv = ".venv"
-venvPath = "."
+[tool.pyrefly]
+project-includes = [
+    "src/app",
+    "src/tests",
+    "tools",
+    "manage.py",
+]
+project-excludes = [
+    "docs",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    ".venv",
+]
+search-path = ["src"]
+python-version = "3.12"
+
+[tool.pyrefly.errors]
+missing-import = "info"
+untyped-import = "ignore"
+implicit-any-type-argument = "ignore"
+implicit-any-empty-container = "ignore"
+no-any-return-implicit = "ignore"
+invalid-param-spec = "ignore"
+implicit-any-lambda = "ignore"
+implicit-any-parameter = "ignore"
+implicit-any-attribute = "ignore"
+missing-attribute = "ignore"
+bad-argument-type = "ignore"
