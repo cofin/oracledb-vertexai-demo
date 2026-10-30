@@ -188,7 +188,7 @@ requires-dist = [
     { name = "litestar-autowire", extras = ["dishka", "queues"], specifier = ">=0.2.0" },
     { name = "litestar-granian", extras = ["uvloop"] },
     { name = "litestar-htmx", specifier = ">=0.5.0" },
-    { name = "litestar-mcp", extras = ["a2a", "google-genai", "opentelemetry"], specifier = ">=0.15.0" },
+    { name = "litestar-mcp", extras = ["a2a", "google-genai", "opentelemetry"], specifier = ">=0.16.0" },
     { name = "litestar-queues", extras = ["sqlspec"], specifier = ">=0.12.0" },
     { name = "litestar-security", specifier = ">=0.6.0" },
     { name = "litestar-vite" },
@@ -1253,7 +1253,7 @@ wheels = [
 
 [[package]]
 name = "litestar-mcp"
-version = "0.15.0"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1262,9 +1262,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/13/b82b315c1f1fcadbc4adac85c0644ad473e3a19eeed076de677291dd3005/litestar_mcp-0.15.0.tar.gz", hash = "sha256:1e288a15b2ed03348a137b738bb398f4a38dfa2c10c891bc4a97aaf17ffc8fe7", size = 705811, upload-time = "2026-10-09T20:15:39.555Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/4d/4b3ea8c1b960ee48ed1a0bd2b757b7b2e4d287d89cf6b74afbf17c69d2d6/litestar_mcp-0.16.0.tar.gz", hash = "sha256:ed2156477e2df6f2a29445fafd3817780f3c9238130689ace5d516e60ff7c430", size = 729690, upload-time = "2026-10-19T22:02:29.213Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/2d/3dabcc3cd214194d83bbe3dacd2e8639c94191fd25307e022078e9297a97/litestar_mcp-0.15.0-py3-none-any.whl", hash = "sha256:70a605a082a415020001b793183ccf1070da00864cfc95905d40a6346dc5e540", size = 170162, upload-time = "2026-10-09T20:15:37.976Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/d8/e853b66f6195ddc145b9af8933738178553e216cea360c1b26b9c30368b2/litestar_mcp-0.16.0-py3-none-any.whl", hash = "sha256:0e86ffc027929bc7cae2ac75984d55266ce80a090d5961fb045a9f874656d702", size = 178566, upload-time = "2026-10-19T22:02:27.776Z" },
 ]
 
 [package.optional-dependencies]
