@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [
     "litestar[cryptography,jinja,jwt,opentelemetry,structlog]",
     "litestar-granian[uvloop]",
-    "litestar-mcp[a2a,google-genai,opentelemetry]>=0.15.0",
+    "litestar-mcp[a2a,google-genai,opentelemetry]>=0.16.0",
     "msgspec>=0.22.0",
     "sqlspec[litestar,mypyc,opentelemetry,oracledb,performance]>=0.69.0",
     "google-genai>=2.33.0",
