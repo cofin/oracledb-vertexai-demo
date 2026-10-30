@@ -167,7 +167,7 @@ docs = [
     "sphinx-copybutton>=0.5",
     "sphinx-design>=0.6",
     "sphinx-autobuild>=2024.10",
-    "sphinx-autodoc-typehints>=3.6.1",
+    "sphinx-autodoc-typehints>=3.17.4",
     "sphinxcontrib-mermaid>=2.0.2",
     "linkify-it-py>=2.0",
 ]
